@@ -96,6 +96,10 @@ elseif ( "${FLAN_GFX_API}" MATCHES "FLAN_D3D11" )
     target_link_libraries( MotorwayClient dxgi )
     target_link_libraries( MotorwayClient dxguid ) # Used by resource labels
     target_link_libraries( MotorwayClient d3dcompiler )
+    
+    target_link_libraries( MotorwayClient 
+                            debug "${FLAN_BASE_FOLDER}/ThirdParty/DirectXTex/DirectXTex/Bin/Desktop_2017/x64/Debug/DirectXTex.lib"
+                            optimized "${FLAN_BASE_FOLDER}/ThirdParty/DirectXTex/DirectXTex/Bin/Desktop_2017/x64/Release/DirectXTex.lib" )
 elseif ( "${FLAN_GFX_API}" MATCHES "FLAN_VULKAN" )
     find_package( Vulkan REQUIRED )
     

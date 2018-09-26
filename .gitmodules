@@ -16,3 +16,6 @@
 [submodule "ThirdParty/OpenAL"]
 	path = ThirdParty/OpenAL
 	url = https://github.com/kcat/openal-soft.git
+[submodule "ThirdParty/DirectXTex"]
+	path = ThirdParty/DirectXTex
+	url = https://github.com/Microsoft/DirectXTex
