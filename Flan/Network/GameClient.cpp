@@ -98,7 +98,7 @@ void GameClient::OnFrame()
 
     static constexpr int32_t PACKET_MINIMAL_SIZE = sizeof( packetCRC_t );
 
-    while ( enet_host_service( client, &event, flan::framework::LOGIC_DELTA ) > 0 ) {
+    while ( enet_host_service( client, &event, static_cast<enet_uint32>( flan::framework::LOGIC_DELTA ) ) > 0 ) {
         switch ( event.type ) {
         case ENET_EVENT_TYPE_RECEIVE:
             // Ignore malformed packets

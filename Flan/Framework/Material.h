@@ -29,6 +29,7 @@ class Buffer;
 class PipelineState;
 struct PipelineStateDesc;
 class WorldRenderer;
+class RenderTarget;
 
 #include <unordered_map>
 
@@ -113,6 +114,9 @@ private:
     FLAN_IS_MEMORY_ALIGNED( 16, Material::editableMaterialData );
 
     std::unique_ptr<Buffer> editableMaterialBuffer;
+    bool rebuildSpecularAAMaps[MAX_LAYER_COUNT];
+    RenderTarget* normalMapRT[MAX_LAYER_COUNT];
+    RenderTarget* roughnessMapRT[MAX_LAYER_COUNT];
 
 private:
     void readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent );

@@ -50,6 +50,7 @@ Material::Material( const fnString_t& materialName )
     , builderVersion( 1 )
     , sortKey( 0 )
     , shadingModel( flan::graphics::eShadingModel::SHADING_MODEL_STANDARD )
+    , rebuildSpecularAAMaps{ false }
 {
     editableMaterialData = { 0 };
     editableMaterialData.LayerCount = 1;
@@ -779,6 +780,13 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
             auto& layer = editableMaterialData.layers[i];
             auto layerLabel = "Layer" + std::to_string( i );
 
+            if ( rebuildSpecularAAMaps[i] ) {
+                std::vector<uint8_t> texels;
+                normalMapRT[i]->retrieveTexelsLDR( renderDevice, texels ); 
+                flan::graphics::SaveTextureLDR( "./data/dump.jpg", 512, 512, 4, texels );
+                rebuildSpecularAAMaps[i] = false;
+            }
+
             if ( !isBaseLayer 
               && ImGui::Button( ( "-##" + std::to_string( i ) ).c_str() ) ) {
                 editableMaterialData.LayerCount--;
@@ -791,8 +799,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 ImGui::SameLine();
                 if ( ImGui::Button( "Recompute Specular AA Map" )
                     && layer.Normal.InputType == MaterialEditionInput::TEXTURE ) {
-                    RenderTarget* normalMapRT = new RenderTarget();
-                    RenderTarget* roughnessMapRT = new RenderTarget();
+                    normalMapRT[i] = new RenderTarget();
+                    roughnessMapRT[i] = new RenderTarget();
 
                     auto& nmDesc = layer.Normal.InputTexture->getDescription();
                     TextureDescription renderTargetDesc;
@@ -805,12 +813,15 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     renderTargetDesc.flags.useHardwareMipGen = 1;
 
                     renderTargetDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-                    normalMapRT->createAsRenderTarget2D( renderDevice, renderTargetDesc );
+                    normalMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
 
                     renderTargetDesc.format = IMAGE_FORMAT_R8G8_UNORM;
-                    roughnessMapRT->createAsRenderTarget2D( renderDevice, renderTargetDesc );
+                    roughnessMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
 
-                    worldRenderer->computeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, normalMapRT, roughnessMapRT );
+                    worldRenderer->computeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, normalMapRT[i], roughnessMapRT[i] );
+
+                    // Postpone rendertarget retrieval to the next frame (wait for the cmdlist to finish)
+                    rebuildSpecularAAMaps[i] = true;
                 }
 
                 uint32_t slotBaseIndex = ( TEXTURE_SLOT_INDEX_MATERIAL_BEGIN + ( i * 10 ) + i );

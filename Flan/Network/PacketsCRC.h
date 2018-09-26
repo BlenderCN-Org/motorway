@@ -35,3 +35,4 @@ static constexpr packetCRC_t CRC_A_GET_PLAYERS_INFOS    = FLAN_STRING_HASH( "A_G
 static constexpr packetCRC_t CRC_R_GET_PLAYERS_INFOS    = FLAN_STRING_HASH( "R_GET_PLAYERS_INFOS" );
 
 static constexpr packetCRC_t CRC_A_SUBMIT_PLAYER_INPUT  = FLAN_STRING_HASH( "A_SUBMIT_PLAYER_INPUT" );
+static constexpr packetCRC_t CRC_A_SUBMIT_MESSAGE = FLAN_STRING_HASH( "A_SUBMIT_MESSAGE" );

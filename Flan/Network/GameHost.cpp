@@ -126,6 +126,18 @@ void GameHost::OnFrame()
                 //Net_ReadClientInput( event.packet->data, player.ButtonMap );
             } break;
 
+            case CRC_A_SUBMIT_MESSAGE:
+            {
+                uint16_t messageLength = static_cast<uint16_t>( event.packet->data[4] );
+                uint8_t messageChannel = static_cast<uint8_t>( event.packet->data[6] );
+
+                fnString_t message;
+                message.resize( messageLength );
+                memcpy( &message, &event.packet->data[8], sizeof( fnChar_t ) * messageLength );
+
+                // TODO Filter words and stuff
+            } break;
+
             default:
                 FLAN_CWARN << "Unknown packet identifier: 0x" << std::hex << packetCRC << std::dec << std::endl;
                 break;
