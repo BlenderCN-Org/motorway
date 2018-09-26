@@ -40,11 +40,14 @@ struct MaterialEditionInput
 
     enum : uint32_t
     {
-        RED_CHANNEL = 0,
-        BLUE_CHANNEL,
-        GREEN_CHANNEL,
-        ALPHA_CHANNEL
-    } SamplingChannel;
+        // BaseColor Flags
+        SRGB_SOURCE = 0,
+        LINEAR_SOURCE = 1,
+
+        // Roughness Flags
+        ROUGHNESS_SOURCE = 0,
+        ALPHA_ROUGHNESS_SOURCE = 1,
+    } SamplingFlags;
 
     Texture* InputTexture;
 };

@@ -130,6 +130,12 @@ uint GetTileIndex( float2 ScreenPos )
 #define INPUT_TYPE_3D 2
 #define INPUT_TYPE_TEXTURE 3
 
+#define SAMPLING_MODE_SRGB 0
+#define SAMPLING_MODE_LINEAR 1
+
+#define SAMPLING_MODE_ALPHA_ROUGHNESS 0
+#define SAMPLING_MODE_ROUGHNESS 1
+
 struct MaterialEditionInput
 {
     // Input can have 4 states:
@@ -141,7 +147,7 @@ struct MaterialEditionInput
     float   Input1D;
     
     int     Type;
-    uint    SamplingChannel; // (default = 0 = red)
+    uint    SamplingMode;
     float2  EXPLICIT_PADDING;
 };
 #include <MaterialsShared.h>
@@ -395,10 +401,15 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
 #define READ_LAYER_CONTENT( layerIdx )\
     MaterialReadLayer layer;\
     layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BaseColorSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, float3( 0.42, 0.42, 0.42 ) );\
-    layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
+    if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
+        layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
+    }\
     layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_RoughnessSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
+        layer.Roughness = ( layer.Roughness * layer.Roughness );\
+    }\
     layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_MetalnessSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
     layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_AmbientOcclusionSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_EmissivitySampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
@@ -623,7 +634,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     const bool needUnpackAndTBNMult = ( needNormalMapUnpack0 || needNormalMapUnpack1 || needNormalMapUnpack2 );
     
     if ( needUnpackAndTBNMult ) {
-        BaseLayer.Normal = mul( BaseLayer.Normal, TBNMatrix );
+        BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
     }
     
     N = BaseLayer.Normal;
