@@ -13,6 +13,7 @@ Stuff todo for the project
         > Per SubMesh Material Instance (allow local override; dont apply changes to instancied material)
         > Fix serialization/deserialization
         > Fix layer blending for edge cases (see bug reports)
+        > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
     > Split Client and Editor contexts
     
 [Engine]
@@ -25,9 +26,6 @@ Stuff todo for the project
     > Jobify CPU work (see Destiny presentation)
     > Implement Instanciation (should help for Vulkan port)
     > Better physics
-    <Specular AntiAliasing>
-        > How should it be saved? Draft idea: compute both rt at frame N, save to disk at frame N+1 (basically wait for 
-          the previous cmdlist to be finished)
           
 [Client]
     > Implement Client to Server connection (see old code)
@@ -46,5 +44,7 @@ DONE
     <Specular AntiAliasing>
         > Finalize VMF Compute shader
         > Editor Panel (material editor only or dedicated one?)
+        > How should it be saved? Draft idea: compute both rt at frame N, save to disk at frame N+1 (basically wait for 
+          the previous cmdlist to be finished)
 
 [Client]
