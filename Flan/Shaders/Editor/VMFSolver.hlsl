@@ -1,7 +1,7 @@
 #include <Shared.hlsli>
 
 static const int ThreadSize = 16;
-static const int NumVMFs = 1;
+static const uint NumVMFs = 1;
 
 struct VMF
 {
@@ -10,7 +10,7 @@ struct VMF
     float alpha;
 };
 
-cbuffer Constants : register(b0)
+cbuffer Constants : register( b0 )
 {
     float2 TextureSize;
     float2 OutputSize;
@@ -20,11 +20,14 @@ cbuffer Constants : register(b0)
 };
 
 // Inputs
-Texture2D NormalMap : register(t0);
+Texture2D NormalMap : register( t0 );
+
+#if FLAN_TEX_INPUT
+Texture2D RoughnessMap : register( t1 );
+#endif
 
 // Outputs
-RWTexture2D<float4> OutputVMFMap : register(u0);
-RWTexture2D<unorm float2> OutputRoughnessMap : register(u1);
+RWTexture2D<unorm float> OutputRoughnessMap : register( u0 );
 
 float3 FetchNormal(uint2 samplePos)
 {
@@ -44,8 +47,7 @@ float SpecPowerToRoughness(in float s) {
     return sqrt(2.0f / (s + 2.0f));
 }
 
-VMF SolveVMF(float2 centerPos, uint numSamples, out float vmfRoughness,
-              out float toksvigRoughness)
+VMF SolveVMF( float2 centerPos, uint numSamples, out float vmfRoughness )
 {
     VMF vmfs;
 
@@ -63,13 +65,20 @@ VMF SolveVMF(float2 centerPos, uint numSamples, out float vmfRoughness,
             vmfs.kappa = 10000.0f;
         }
 
+#if FLAN_TEX_INPUT
+        vmfRoughness = RoughnessMap[uint2(centerPos)].r;
+#else
         vmfRoughness = Roughness;
-        toksvigRoughness = Roughness;
+#endif
     }
     else
     {
         float3 avgNormal = 0.0f;
 
+#if FLAN_TEX_INPUT
+        float avgRoughness = 0.0f;
+#endif
+        
         float2 topLeft = (-float(numSamples) / 2.0f) + 0.5f;
 
         for(uint y = 0; y < numSamples; ++y)
@@ -79,12 +88,21 @@ VMF SolveVMF(float2 centerPos, uint numSamples, out float vmfRoughness,
                 float2 offset = topLeft + float2(x, y);
                 float2 samplePos = floor(centerPos + offset) + 0.5f;
                 float3 sampleNormal = FetchNormal(samplePos);
-
+                
                 avgNormal += sampleNormal;
+                
+#if FLAN_TEX_INPUT
+                float sampleRoughness = RoughnessMap[samplePos].r;
+                avgRoughness += sampleRoughness;
+#endif       
             }
         }
 
         avgNormal /= (numSamples * numSamples);
+    
+#if FLAN_TEX_INPUT
+        avgRoughness /= (numSamples * numSamples);
+#endif  
 
         float r = length(avgNormal);
         float kappa = 10000.0f;
@@ -106,36 +124,31 @@ VMF SolveVMF(float2 centerPos, uint numSamples, out float vmfRoughness,
         }
 
         // Pre-compute roughness map values
+#if FLAN_TEX_INPUT
+        vmfRoughness = sqrt(avgRoughness * avgRoughness + (2.0f / kappa));
+#else
         vmfRoughness = sqrt(Roughness * Roughness + (2.0f / kappa));
-
-        float s = RoughnessToSpecPower(Roughness);
-        float ft = r / lerp(s, 1.0f, r);
-        toksvigRoughness = SpecPowerToRoughness(ft * s);
+#endif
     }
 
     return vmfs;
 }
 
-//=================================================================================================
-// vMF solver for normal map NDF
-//=================================================================================================
-[numthreads(ThreadSize, ThreadSize, 1)]
-void EntryPointCS(uint3 GroupID : SV_GroupID, uint3 DispatchThreadID : SV_DispatchThreadID,
-              uint3 GroupThreadID : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+[numthreads( ThreadSize, ThreadSize, 1 )]
+void EntryPointCS( uint3 GroupID : SV_GroupID, uint3 DispatchThreadID : SV_DispatchThreadID,
+              uint3 GroupThreadID : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex )
 {
-    uint2 outputPos = GroupID.xy * uint2(ThreadSize, ThreadSize) + GroupThreadID.xy;
+    uint2 outputPos = GroupID.xy * uint2( ThreadSize, ThreadSize ) + GroupThreadID.xy;
 
     [branch]
-    if(outputPos.x < uint(OutputSize.x) && outputPos.y < uint(OutputSize.y))
-    {
+    if( outputPos.x < uint( OutputSize.x ) 
+     && outputPos.y < uint( OutputSize.y ) ) {
         float2 uv = (outputPos + 0.5f) / OutputSize;
         uint sampleRadius = (1 << MipLevel);
         float2 samplePos = uv * TextureSize;
 
-        float vmfRoughness, toksvigRoughness;
-        VMF vmfs = SolveVMF(samplePos, sampleRadius, vmfRoughness, toksvigRoughness);
-
-        OutputVMFMap[outputPos] = float4(vmfs.mu.xy, 1.0f, 1.0f / vmfs.kappa);  
-        OutputRoughnessMap[outputPos] = sqrt(float2(vmfRoughness, toksvigRoughness));
+        float vmfRoughness;
+        VMF vmfs = SolveVMF( samplePos, sampleRadius, vmfRoughness );
+        OutputRoughnessMap[outputPos] = sqrt( vmfRoughness );
     }
 }
