@@ -276,11 +276,14 @@ fnPipelineMutableResHandle_t RenderableEntityManager::addLightCullingPass( Rende
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
             // Pipeline State
             RenderPassPipelineStateDesc passPipelineState = {};
-            passPipelineState.hashcode = FLAN_STRING_HASH( "FPlus Light Culling" );
-            passPipelineState.computeStage = enableMSAA
-                ? FLAN_STRING( "LightCullingMSAA" )
-                : FLAN_STRING( "LightCulling" );
 
+            if ( enableMSAA ) {
+                passPipelineState.hashcode = FLAN_STRING_HASH( "FPlus Light Culling MSAA" );
+                passPipelineState.computeStage = FLAN_STRING( "LightCullingMSAA" );
+            } else {
+                passPipelineState.hashcode = FLAN_STRING_HASH( "FPlus Light Culling" );
+                passPipelineState.computeStage = FLAN_STRING( "LightCulling" );
+            }
             passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
 
             // Read Depth Buffer
