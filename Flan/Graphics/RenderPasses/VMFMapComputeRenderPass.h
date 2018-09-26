@@ -44,7 +44,6 @@ struct VMFResolveOutput
 
     int generatedMipCount;
     fnPipelineResHandle_t roughnessMipMaps[MAX_MIP_COUNT];
-    fnPipelineResHandle_t normalMipMaps[MAX_MIP_COUNT];
 };
 
 static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Texture* normalMap, const float roughness = 0.05f )
@@ -86,16 +85,13 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
                 // Texture UAV
                 BufferDesc bufferDesc;
                 bufferDesc.Type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
-                bufferDesc.ViewFormat = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+                bufferDesc.ViewFormat = IMAGE_FORMAT_R8_UNORM;
                 bufferDesc.Width = width;
                 bufferDesc.Height = height;
                 bufferDesc.Depth = 1;
                 bufferDesc.MipCount = 1;
 
-                passData.buffers[1 + ( mipLevel * 2 )] = renderPipelineBuilder->allocateBuffer( bufferDesc );
-
-                bufferDesc.ViewFormat = IMAGE_FORMAT_R8G8_UNORM;
-                passData.buffers[2 + ( mipLevel * 2 )] = renderPipelineBuilder->allocateBuffer( bufferDesc );
+                passData.buffers[( mipLevel + 1 )] = renderPipelineBuilder->allocateBuffer( bufferDesc );
 
                 width >>= 1;
                 height >>= 1;
@@ -127,21 +123,17 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
 
             auto width = normalMapDesc.width, height = normalMapDesc.height;
             for ( unsigned int mipLevel = 0; mipLevel < normalMapDesc.mipCount; mipLevel++ ) {
-
-                auto normalUAV = renderPipelineResources->getBuffer( passData.buffers[1 + ( mipLevel * 2 )] );
-                auto roughnessUAV = renderPipelineResources->getBuffer( passData.buffers[2 + ( mipLevel * 2 )] );
+                auto roughnessUAV = renderPipelineResources->getBuffer( passData.buffers[( mipLevel + 1 )] );
 
                 passBufferData.mipLevel = mipLevel;
                 passBufferData.outputTexWidth = width;
                 passBufferData.outputTexHeight = height;
                 buffer->updateAsynchronous( cmdList, &passBufferData, sizeof( PassBuffer ) );
 
-                normalUAV->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
-                roughnessUAV->bind( cmdList, 1, SHADER_STAGE_COMPUTE );
+                roughnessUAV->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
 
                 cmdList->dispatchComputeCmd( DispatchSize( 16, width ), DispatchSize( 16, height ), 1 );
 
-                normalUAV->unbind( cmdList );
                 roughnessUAV->unbind( cmdList );
 
                 width >>= 1;
@@ -154,10 +146,118 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
     
     VMFResolveOutput output;
     output.generatedMipCount = normalMapDesc.mipCount;
-
     for ( unsigned int mipLevel = 0; mipLevel < normalMapDesc.mipCount; mipLevel++ ) {
-        output.normalMipMaps[mipLevel] = RenderPass.buffers[1 + ( mipLevel * 2 )];
-        output.roughnessMipMaps[mipLevel] = RenderPass.buffers[2 + ( mipLevel * 2 )];
+        output.roughnessMipMaps[mipLevel] = RenderPass.buffers[( mipLevel + 1 )];
+    }
+
+    return output;
+}
+
+// IMPORTANT It is implicitely assumed that normal map dimensions are the same as the roughness map
+// Dimensions mismatch will result as an invalid output
+static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Texture* normalMap, Texture* roughnessMap )
+{
+    struct PassBuffer
+    {
+        float       inputTexWidth;
+        float       inputTexHeight;
+        float       outputTexWidth;
+        float       outputTexHeight;
+        uint32_t    mipLevel;
+        float       roughness;
+        float       scaleFactor;
+        uint32_t    __PADDING__;
+    };
+
+    FLAN_IS_MEMORY_ALIGNED( 16, PassBuffer )
+
+    auto RenderPass = renderPipeline->addRenderPass(
+        "VMF Solver (using precomputed Texture)",
+        [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
+            // Pipeline State
+            RenderPassPipelineStateDesc passPipelineState = {};
+            passPipelineState.hashcode = FLAN_STRING_HASH( "VMF Solver (using precomputed Texture)" );
+            passPipelineState.computeStage = FLAN_STRING( "VMFSolverTextureMapInput" );
+
+            passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
+
+            // Constant Buffer
+            BufferDesc bufferDesc;
+            bufferDesc.Type = BufferDesc::CONSTANT_BUFFER;
+            bufferDesc.Size = sizeof( PassBuffer );
+
+            passData.buffers[0] = renderPipelineBuilder->allocateBuffer( bufferDesc );
+
+            auto& roughnessMapDesc = roughnessMap->getDescription();
+            auto width = roughnessMapDesc.width, height = roughnessMapDesc.height;
+            for ( unsigned int mipLevel = 0; mipLevel < roughnessMapDesc.mipCount; mipLevel++ ) {
+                // Texture UAV
+                BufferDesc bufferDesc;
+                bufferDesc.Type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
+                bufferDesc.ViewFormat = IMAGE_FORMAT_R8_UNORM;
+                bufferDesc.Width = width;
+                bufferDesc.Height = height;
+                bufferDesc.Depth = 1;
+                bufferDesc.MipCount = 1;
+
+                passData.buffers[( mipLevel + 1 )] = renderPipelineBuilder->allocateBuffer( bufferDesc );
+
+                width >>= 1;
+                height >>= 1;
+            }
+        },
+        [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
+            // Bind Pass Pipeline State
+            auto pipelineState = renderPipelineResources->getPipelineState( passData.pipelineState );
+            cmdList->bindPipelineStateCmd( pipelineState );
+
+            // Bind Normal Map
+            normalMap->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
+            roughnessMap->bind( cmdList, 1, SHADER_STAGE_COMPUTE );
+
+            auto& normalMapDesc = normalMap->getDescription();
+
+            auto buffer = renderPipelineResources->getBuffer( passData.buffers[0] );
+
+            PassBuffer passBufferData;
+            passBufferData.inputTexWidth = normalMapDesc.width;
+            passBufferData.inputTexHeight = normalMapDesc.height;
+            passBufferData.outputTexWidth = normalMapDesc.width;
+            passBufferData.outputTexHeight = normalMapDesc.height;
+            passBufferData.mipLevel = 0;
+            passBufferData.roughness = 0;
+            passBufferData.scaleFactor = std::pow( 10.0f, 0.5f );
+            buffer->updateAsynchronous( cmdList, &passBufferData, sizeof( PassBuffer ) );
+
+            buffer->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
+
+            auto width = normalMapDesc.width, height = normalMapDesc.height;
+            for ( unsigned int mipLevel = 0; mipLevel < normalMapDesc.mipCount; mipLevel++ ) {
+                auto roughnessUAV = renderPipelineResources->getBuffer( passData.buffers[( mipLevel + 1 )] );
+
+                passBufferData.mipLevel = mipLevel;
+                passBufferData.outputTexWidth = width;
+                passBufferData.outputTexHeight = height;
+                buffer->updateAsynchronous( cmdList, &passBufferData, sizeof( PassBuffer ) );
+
+                roughnessUAV->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
+
+                cmdList->dispatchComputeCmd( DispatchSize( 16, width ), DispatchSize( 16, height ), 1 );
+
+                roughnessUAV->unbind( cmdList );
+
+                width >>= 1;
+                height >>= 1;
+            }
+        } 
+    );
+
+    const auto& normalMapDesc = normalMap->getDescription();
+
+    VMFResolveOutput output;
+    output.generatedMipCount = normalMapDesc.mipCount;
+    for ( unsigned int mipLevel = 0; mipLevel < normalMapDesc.mipCount; mipLevel++ ) {
+        output.roughnessMipMaps[mipLevel] = RenderPass.buffers[( mipLevel + 1 )];
     }
 
     return output;

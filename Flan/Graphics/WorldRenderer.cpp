@@ -395,22 +395,34 @@ float WorldRenderer::getTimeDelta() const
 }
 
 #include "RenderPasses/VMFMapComputeRenderPass.h"
-#include "RenderPasses/SaveTexturePass.h"
+#include "RenderPasses/WriteTextureToDiskPass.h"
 
-void WorldRenderer::computeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputNormalMap, RenderTarget* outputRoughnessMap )
+void WorldRenderer::saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName )
+{
+    auto renderTarget = renderPipeline->importRenderTarget( outputTarget );
+    AddWriteBufferedTextureToDiskPass( renderPipeline.get(), renderDevice, renderTarget, outputTargetName );
+}
+
+void WorldRenderer::precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap )
 {
     auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap );
 
     // Build Ouput Texture (merge UAVs into a single mip mapped render target)
-    auto normalRT = renderPipeline->importRenderTarget( outputNormalMap );
     auto roughnessRT = renderPipeline->importRenderTarget( outputRoughnessMap );
-
     for ( int mipLevel = 0; mipLevel < resolvedVMF.generatedMipCount; mipLevel++ ) {
-        AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, normalRT, resolvedVMF.normalMipMaps[mipLevel] );
         AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
     }
+}
 
-    AddSaveTexturePass( renderPipeline.get(), renderDevice, normalRT );
+void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap )
+{
+    auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap, roughnessMap );
+
+    // Build Ouput Texture (merge UAVs into a single mip mapped render target)
+    auto roughnessRT = renderPipeline->importRenderTarget( outputRoughnessMap );
+    for ( int mipLevel = 0; mipLevel < resolvedVMF.generatedMipCount; mipLevel++ ) {
+        AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
+    }
 }
 
 void WorldRenderer::createRenderTargets( void )

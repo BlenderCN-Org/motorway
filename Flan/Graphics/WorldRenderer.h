@@ -83,7 +83,9 @@ public:
     float                   getTimeDelta() const;
 
     // TODO Move this to an appropriate dedicated renderer?
-    void                    computeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputNormalMap, RenderTarget* outputRoughnessMap );
+    void                    precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap );
+    void                    precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap );
+    void                    saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName );
 
 #if FLAN_DEVBUILD
     // TODO Nothing to do in the worldRenderer...
