@@ -1,0 +1,26 @@
+InternalName: "default_car"
+Version: 1
+
+HasHeadLights: True
+
+Physics
+{
+    DriveBalance: PROPULSION_TYPE_RWD
+    BrakeBalance: PROPULSION_TYPE_RWD
+    ChassisMass: 1600.00000
+    TorqueCurve: { 1.0, 0.2 }
+    WheelCount: 4
+    Drag: 200.0
+    CompressionDrag: 200.0
+    MaxAngularVelocity: 120.0
+    GearCount: 6
+    TransmissionType: TRANSMISSION_AUTO 
+}
+
+Graphics
+{
+    VehicleModel: GameData/Models/Vehicle/DefaultCar.model
+    WheelModel: GameData/Models/Wheels/DefaultWheel.model
+    
+    HIDTemperature: 3200.0
+}

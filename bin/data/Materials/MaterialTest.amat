@@ -1,0 +1,29 @@
+Name: "Material Test"
+Version: 1
+
+ShadingModel: SHADING_MODEL_STANDARD
+WriteVelocity: True
+EnableAlphaTest: False
+EnableAlphaToCoverage: False
+IsDoubleFace: False
+EnableAlphaBlend: False
+CastShadow: True
+ReceiveShadow: True
+ScaleUVByModelScale: True
+
+Layer 
+{
+    BaseColor: "GameData/Textures/T_Grid_D.dds"
+    AlphaMask: None
+    Reflectance: 0.60
+    Refraction: 0.000000
+    RefractionIor: 0.000000
+    Metalness: 0.000000
+    AmbientOcclusion: None
+    Normal: None
+    Roughness: 0.80
+    Emissivity: 0.000000
+
+    Offset: { 0, 0 }
+    Scale: { 4, 4 }
+}

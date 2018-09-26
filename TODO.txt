@@ -1,0 +1,50 @@
+MOTORWAY (SHITTY) TODO
+----------
+Stuff todo for the project
+
+[Editor]
+    <Road Network Editor>
+        > TopDown View ('Map' like view)
+        > Road Generation (Bezier Curve and shiet)
+        > 'Road Profile' (material, AI node, etc.)
+        > Procedural road generation (noise based?)
+    > Better mouse picking (color buffer instead of bounding geometry?)
+    <Material Editor Unfuckery>
+        > Per SubMesh Material Instance (allow local override; dont apply changes to instancied material)
+        > Fix serialization/deserialization
+        > Fix layer blending for edge cases (see bug reports)
+    > Split Client and Editor contexts
+    
+[Engine]
+    > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
+    <Terrain Rendering/Physics>
+        > Still need to figure out stuff (check state of art)
+    > Implement Software Occlusion Culling (see Intel mess and whitepapers)
+    > Finish Vulkan port
+    > Fix AutoExposure glitches (tip: do calibration with EV100 rule)
+    > Jobify CPU work (see Destiny presentation)
+    > Implement Instanciation (should help for Vulkan port)
+    > Better physics
+    <Specular AntiAliasing>
+        > How should it be saved? Draft idea: compute both rt at frame N, save to disk at frame N+1 (basically wait for 
+          the previous cmdlist to be finished)
+          
+[Client]
+    > Implement Client to Server connection (see old code)
+    > Implement Client chat (server sided)
+    > Move Physics to server side (use Client prediction only?)
+    
+[Assets]
+    > Vehicle custom format (graphics/physics/audio properties in a txt file)
+    > Create assets (world/vehicle)
+
+    ----------
+DONE
+
+[Editor]
+[Engine]
+    <Specular AntiAliasing>
+        > Finalize VMF Compute shader
+        > Editor Panel (material editor only or dedicated one?)
+
+[Client]

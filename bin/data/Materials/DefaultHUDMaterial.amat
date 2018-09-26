@@ -1,0 +1,12 @@
+Name: "Placeholder HUD"
+Version: 1
+
+ShadingModel: SHADING_MODEL_HUD_STANDARD
+EnableAlphaBlend: True
+
+Layer {
+    BaseColor: 0.0
+    AlphaMask: 0.7
+
+    Scale: { 1, 1 }
+}

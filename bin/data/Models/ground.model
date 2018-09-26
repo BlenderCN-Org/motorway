@@ -1,0 +1,8 @@
+Mesh
+{
+	Name : GameData/Geometry/proto2.mesh
+	SubMeshes
+	{
+		Plane : GameData/Materials/DefaultWorldMaterial.amat
+	}
+}
