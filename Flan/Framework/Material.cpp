@@ -50,7 +50,7 @@ Material::Material( const fnString_t& materialName )
     , builderVersion( 1 )
     , sortKey( 0 )
     , shadingModel( flan::graphics::eShadingModel::SHADING_MODEL_STANDARD )
-    , rebuildSpecularAAMaps{ false }
+    , rebuildSpecularAAMaps{ 0 }
 {
     editableMaterialData = { 0 };
     editableMaterialData.LayerCount = 1;
@@ -550,7 +550,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
     };
 
     // Input label
-    ImGui::LabelText( ( "##hidden_" + displayName + std::to_string(inputTextureBindIndex ) ).c_str(), displayName.c_str() );
+    ImGui::LabelText( ( "##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), displayName.c_str() );
 
     ImGui::PushItemWidth( 100.0f );
     ImGui::SameLine( 128.0f );
@@ -584,11 +584,12 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         }
     } else if ( input.InputType == MaterialEditionInput::TEXTURE ) {
         // Input label
-        ImVec2 texInfosSize = ImVec2( 200.0f, 64.0f );
+        ImVec2 texInfosSize = ImVec2( 318.0f, 64.0f );
         std::string imageInfos = "No texture selected...";
 
         auto textureSetIterator = textureSet.find( inputTextureBindIndex );
-        if ( textureSetIterator != textureSet.end() ) {
+        if ( textureSetIterator != textureSet.end() 
+            && textureSetIterator->second != nullptr ) {
             // Build Image Infos Text
             imageInfos.clear();
 
@@ -618,7 +619,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
                 }
             }
         } else {
-            if ( ImGui::Button((  std::string( "+##" ) + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), ImVec2( 64, 64 ) ) ) {
+            if ( ImGui::Button( ( "+##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), ImVec2( 64, 64 ) ) ) {
                 fnString_t filenameBuffer;
                 if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga)\0*.dds;*.jpg;*.png;*.tga\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
                     fnString_t assetPath;
@@ -776,15 +777,26 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
         for ( uint32_t i = 0; i < editableMaterialData.LayerCount; i++ ) {
             const bool isBaseLayer = ( i == 0 );
+            uint32_t slotBaseIndex = ( TEXTURE_SLOT_INDEX_MATERIAL_BEGIN + ( i * 10 ) + i );
 
             auto& layer = editableMaterialData.layers[i];
             auto layerLabel = "Layer" + std::to_string( i );
 
-            if ( rebuildSpecularAAMaps[i] ) {
-                std::vector<uint8_t> texels;
-                normalMapRT[i]->retrieveTexelsLDR( renderDevice, texels ); 
-                flan::graphics::SaveTextureLDR( "./data/dump.jpg", 512, 512, 4, texels );
-                rebuildSpecularAAMaps[i] = false;
+            if ( rebuildSpecularAAMaps[i] == 1 ) {
+                fnString_t roughnessMapName = name + FLAN_STRING( "_Layer" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Roughness" );
+                worldRenderer->saveTexture( roughnessMapRT[i], roughnessMapName );
+
+                rebuildSpecularAAMaps[i] = 2;
+            } else if ( rebuildSpecularAAMaps[i] == 2 ) {
+                fnString_t roughnessMapName = name + FLAN_STRING( "_Layer" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Roughness" );
+
+                layer.Roughness.InputType = MaterialEditionInput::TEXTURE;
+                layer.Roughness.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + roughnessMapName + FLAN_STRING( ".dds" ) ).c_str(), true );
+                layer.Roughness.SamplingFlags = MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE;
+
+                textureSet[( slotBaseIndex + 3 )] = layer.Roughness.InputTexture;
+
+                rebuildSpecularAAMaps[i] = 0;
             }
 
             if ( !isBaseLayer 
@@ -797,9 +809,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
             ImGui::SameLine( 200.0f );
             if ( ImGui::TreeNode( layerLabel.c_str() ) ) {
                 ImGui::SameLine();
-                if ( ImGui::Button( "Recompute Specular AA Map" )
+                if ( ImGui::Button( "Precompute Anti-Aliased Roughness Map" )
                     && layer.Normal.InputType == MaterialEditionInput::TEXTURE ) {
-                    normalMapRT[i] = new RenderTarget();
                     roughnessMapRT[i] = new RenderTarget();
 
                     auto& nmDesc = layer.Normal.InputTexture->getDescription();
@@ -811,24 +822,32 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     renderTargetDesc.arraySize = 1;
                     renderTargetDesc.mipCount = flan::rendering::ComputeMipCount( nmDesc.width, nmDesc.height );
                     renderTargetDesc.flags.useHardwareMipGen = 1;
-
-                    renderTargetDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-                    normalMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
-
-                    renderTargetDesc.format = IMAGE_FORMAT_R8G8_UNORM;
+                    renderTargetDesc.format = IMAGE_FORMAT_R8_UNORM;
                     roughnessMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
 
-                    worldRenderer->computeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, normalMapRT[i], roughnessMapRT[i] );
+                    if ( layer.Roughness.InputType == MaterialEditionInput::TEXTURE )
+                        worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.InputTexture, roughnessMapRT[i] );
+                    else
+                        worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, roughnessMapRT[i] );
 
-                    // Postpone rendertarget retrieval to the next frame (wait for the cmdlist to finish)
-                    rebuildSpecularAAMaps[i] = true;
+                    // Post pone render target retrieval to the next frame (wait for previous cmd list to complete)
+                    rebuildSpecularAAMaps[i] = 1;
                 }
 
-                uint32_t slotBaseIndex = ( TEXTURE_SLOT_INDEX_MATERIAL_BEGIN + ( i * 10 ) + i );
 
                 displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex );
+                bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );
+                if ( ImGui::Checkbox( "sRGB Input", &isSRGBInput ) ) {
+                    layer.BaseColor.SamplingFlags = ( isSRGBInput ) ? MaterialEditionInput::SRGB_SOURCE : MaterialEditionInput::LINEAR_SOURCE;
+                }
+
                 displayInputConfiguration( graphicsAssetManager, "Reflectance", layer.Reflectance, ( slotBaseIndex + 2 ) );
                 displayInputConfiguration( graphicsAssetManager, "Roughness", layer.Roughness, ( slotBaseIndex + 3 ) );
+                bool isAlphaRoughness = ( layer.Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE );
+                if ( ImGui::Checkbox( "Alpha Roughness Input", &isAlphaRoughness ) ) {
+                    layer.Roughness.SamplingFlags = ( isAlphaRoughness ) ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE : MaterialEditionInput::ROUGHNESS_SOURCE;
+                }
+
                 displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ) );
                 displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ) );
                 displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ) );
