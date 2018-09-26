@@ -35,6 +35,6 @@ namespace flan
     namespace core
     {
         void LoadDirectDrawSurface( FileSystemObject* stream, DirectDrawSurface& data );
-        void SaveDirectDrawSurface( FileSystemObject* stream, std::vector<float>& texels, const TextureDescription& description );
+        //void SaveDirectDrawSurface( FileSystemObject* stream, std::vector<float>& texels, const TextureDescription& description );
     }
 }
