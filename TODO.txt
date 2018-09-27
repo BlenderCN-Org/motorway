@@ -10,8 +10,6 @@ Stuff todo for the project
         > Procedural road generation (noise based?)
     > Better mouse picking (color buffer instead of bounding geometry?)
     <Material Editor Unfuckery>
-        > Per SubMesh Material Instance (allow local override; dont apply changes to instancied material)
-        > Fix serialization/deserialization
         > Fix layer blending for edge cases (see bug reports)
         > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
     > Split Client and Editor contexts
@@ -22,11 +20,12 @@ Stuff todo for the project
         > Still need to figure out stuff (check state of art)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
-    > Fix AutoExposure glitches (tip: do calibration with EV100 rule)
     > Jobify CPU work (see Destiny presentation)
     > Implement Instanciation (should help for Vulkan port)
     > Better physics
-          
+    > Grass rendering (see Boulanger paper)
+	> DoD Scene
+	
 [Client]
     > Implement Client to Server connection (see old code)
     > Implement Client chat (server sided)
@@ -39,8 +38,13 @@ Stuff todo for the project
     ----------
 DONE
 
-[Editor]
+[Editor]    
+	<Material Editor Unfuckery>
+        > Fix serialization/deserialization
+        > Per SubMesh Material Instance (allow local override; dont apply changes to instancied material)
+		
 [Engine]
+    > Fix AutoExposure glitches (tip: do calibration with EV100 rule)
     <Specular AntiAliasing>
         > Finalize VMF Compute shader
         > Editor Panel (material editor only or dedicated one?)
