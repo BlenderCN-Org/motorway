@@ -12,18 +12,26 @@ Stuff todo for the project
     <Material Editor Unfuckery>
         > Fix layer blending for edge cases (see bug reports)
         > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
+        > Allow custom sampler parameters (tex coordinates addressing; custom blend state)
+    > Wireframe primitives for renderable entities (light sources, probes, etc.)
     
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
         > Still need to figure out stuff (check state of art)
+        | See presentations: FarCry5 Terrain; Battlefield 3 (quadtree based system seems nice)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
-    > Jobify CPU work (see Destiny presentation)
+    > Jobify CPU work
+        | Resources:
+        | http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf
+        | http://twvideo01.ubm-us.net/o1/vault/gdc2015/presentations/Gyrling_Christian_Parallelizing_The_Naughty.pdf
+        | http://adruab.net/wp-images/GDC14_infamous_second_son_engine_postmortem.pdf      
     > Implement Instanciation (should help for Vulkan port)
     > Better physics
     > Grass rendering (see Boulanger paper)
-	> DoD Scene Class
+	> Data Oriented Design (GameLogic/Framework wise)
+    > Vectorify draw commands building as much as possible (see profiler output on stress test)
 	> Punctual/Spot light shadow map support
     > Automatic exposure override (to properly handle night time)
     
@@ -35,7 +43,8 @@ Stuff todo for the project
 [Assets]
     > Vehicle custom format (graphics/physics/audio properties in a txt file)
     > Create assets (world/vehicle)
-
+    > Non-ugly icons?
+    
 ----------
 DONE
 
