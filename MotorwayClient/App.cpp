@@ -56,46 +56,8 @@
 #if FLAN_DEVBUILD
 #include <Graphics/GraphicsProfiler.h>
 #include <Core/Profiler.h>
-#include "Core/FileSystem/FileSystemWatchdog.h"
-
 #include <Physics/PhysicsDebugDraw.h>
-
-#include <Rendering/CommandList.h>
-#include <Rendering/CommandListPool.h>
-#include <Display/DisplaySurfaceWin32.h>
-
-#if FLAN_D3D11
-#include <imgui/imgui.h>
-#include <imgui/examples/imgui_impl_win32.h>
-
-#include <Rendering/Direct3D11/CommandList.h>
-#include <Rendering/Direct3D11/CommandListPool.h>
-#include <Rendering/Direct3D11/RenderContext.h>
-#include <imgui/examples/imgui_impl_dx11.h>
-#elif FLAN_GL460
-#include <imgui/imgui.h>
-#include <imgui/examples/imgui_impl_win32.h>
-
-#include <Rendering/OpenGL460/CommandList.h>
-#include <Rendering/OpenGL460/CommandListPool.h>
-#include <Rendering/OpenGL460/RenderContext.h>
-
-#include <imgui/examples/imgui_impl_opengl3.h>
-#elif FLAN_VULKAN
-#include <imgui/imgui.h>
-#include <imgui/examples/imgui_impl_win32.h>
-
-#include <Rendering/Vulkan/CommandList.h>
-#include <Rendering/Vulkan/CommandListPool.h>
-#include <Rendering/Vulkan/RenderContext.h>
-
-#include <imgui/examples/imgui_impl_vulkan.h>
 #endif
-
-#include <Framework/TransactionHandler/TransactionHandler.h>
-#endif
-
-#include "EditorInterface.h"
 
 static constexpr fnChar_t* const PROJECT_NAME = ( fnChar_t* const )FLAN_STRING( "MotorwayClient" );
 
@@ -109,8 +71,6 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", true, bool )
-
-static CommandListPool* cmdListTest = nullptr;
 
 App::App()
 {
@@ -134,9 +94,6 @@ App::App()
     g_GameLogic.reset( new GameLogic() );
 
 #if FLAN_DEVBUILD
-    //g_GraphicsProfiler.reset( new GraphicsProfiler() );
-    g_FileSystemWatchdog.reset( new FileSystemWatchdog() );
-    g_TransactionHandler.reset( new TransactionHandler() );
     g_PhysicsDebugDraw.reset( new PhysicsDebugDraw() );
 #endif
 }
@@ -239,8 +196,6 @@ int App::launch()
             g_WorldRenderer->drawDebugText( fpsString, 0.3f, 1.0f, 0.0f, 0.50f, glm::vec4( 1.0f, 1.0f, 0.0f, 1.00f ) );
         }
 
-        g_FileSystemWatchdog->OnFrame();
-
         if ( EnableDebugPhysicsColliders ) {
             g_PhysicsDebugDraw->onFrame();
         }
@@ -268,23 +223,8 @@ int App::launch()
         g_Profiler.endSection();
         //g_GraphicsProfiler->endSection( g_RenderDevice.get() );
 
-#if FLAN_DEVBUILD
-        auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice.get() );
-        DrawEditorInterface( interpolatedFrametime, cmdList );
-#endif
-
         g_RenderDevice->present();
     }
-
-#if FLAN_D3D11
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-#elif FLAN_GL460
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-#endif
 
     g_WorldRenderer->destroy();
     g_GraphicsAssetManager->destroy();
@@ -423,58 +363,10 @@ int App::initialize()
     FLAN_CLOG << "Initialization done!" << std::endl;
 
 #if FLAN_DEVBUILD
-    //g_GraphicsProfiler->create( g_RenderDevice.get() );
-
     g_PhysicsDebugDraw->create( g_DynamicsWorld.get(), g_DrawCommandBuilder.get() );
-
-    // Initialize ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-
-    cmdListTest = new CommandListPool();
-    cmdListTest->create( g_RenderDevice.get(), 8 );
-
-    ImGui_ImplWin32_Init( g_MainDisplaySurface->getNativeDisplaySurface()->Handle );
-
-    // Setup style
-    ImGui::StyleColorsDark();
-
-    ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.14f, 0.14f, 0.14f, 1.0f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_Button,  ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_TitleBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_SeparatorActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_TextSelectedBg, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_HeaderActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );    
-    ImGui::PushStyleColor( ImGuiCol_HeaderHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBgHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_Text,  ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_CheckMark, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_TitleBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_MenuBarBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_Header, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_PopupBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, ImVec4( 0.24f, 0.24f, 0.24f, 1.0f ) );
 
     g_Profiler.create();
     g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 1.0f, 0.1f );
-    g_FileSystemWatchdog->Create();
 #endif
 
     return 0;

@@ -39,8 +39,6 @@ class GameClient;
 
 #if FLAN_DEVBUILD
 class GraphicsProfiler;
-class FileSystemWatchdog;
-class TransactionHandler;
 class PhysicsDebugDraw;
 #endif
 
@@ -67,8 +65,6 @@ extern std::unique_ptr<GameClient>              g_GameClient;
 
 #if FLAN_DEVBUILD
 extern std::unique_ptr<GraphicsProfiler>        g_GraphicsProfiler;
-extern std::unique_ptr<FileSystemWatchdog>      g_FileSystemWatchdog;
 extern std::unique_ptr<FileSystemNative>        g_DevFileSystem;
-extern std::unique_ptr<TransactionHandler>      g_TransactionHandler;
 extern std::unique_ptr<PhysicsDebugDraw>        g_PhysicsDebugDraw;
 #endif
