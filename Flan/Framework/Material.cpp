@@ -203,9 +203,10 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         }
 
         // Reversed Depth Only Pipeline State
-        auto depthShader = editableMaterialData.EnableAlphaTest ? FLAN_STRING( "SurfaceDepth" ) : FLAN_STRING( "" );
         descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
-        descriptor.pixelStage = shaderStageManager->getOrUploadStage( depthShader, SHADER_STAGE_PIXEL );
+
+        if ( editableMaterialData.EnableAlphaTest )
+            descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
 
         depthStencilDesc = {};
         depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_LESS;
