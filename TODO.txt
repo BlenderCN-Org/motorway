@@ -24,7 +24,9 @@ Stuff todo for the project
     > Better physics
     > Grass rendering (see Boulanger paper)
 	> DoD Scene Class
-	
+	> Punctual/Spot light shadow map support
+    > Automatic exposure override (to properly handle night time)
+    
 [Client]
     > Implement Client to Server connection (see old code)
     > Implement Client chat (server sided)
@@ -34,7 +36,7 @@ Stuff todo for the project
     > Vehicle custom format (graphics/physics/audio properties in a txt file)
     > Create assets (world/vehicle)
 
-    ----------
+----------
 DONE
 
 [Editor]    
