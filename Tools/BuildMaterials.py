@@ -146,7 +146,7 @@ def read_value_vector( value ):
 def read_value_rgb( value ):
 	spaceless_value = value.replace( ' ', '' )
 	
-	return [float( spaceless_value[offset:( offset + 2)] ) / 255.0 for offset in range( 1, 7, 2 )] 
+	return [float( spaceless_value[offset:( offset + 2 )] ) / 255.0 for offset in range( 1, 7, 2 )] 
 
 def read_value_input( value ):
 	if value.startswith( '{' ) and value.endswith( '}' ):
@@ -159,6 +159,9 @@ def read_value_input( value ):
 		return None
 	else:
 		return read_value_float( value )
+
+class MaterialLayer(object):
+    __slots__ = ['BaseColor', 'UseBaseColorsRGBSource', 'AlphaMask', 'UseAlphaRoughnessSource', 'Roughness', 'Metalness', 'Reflectance', 'SecondaryNormal', 'Refraction', 'RefractionIor', 'AmbientOcclusion', 'Normal', 'Emissivity', 'BlendMask', 'ClearCoat', 'ClearCoatGlossiness', 'DiffuseContribution', 'SpecularContribution', 'NormalContribution', 'AlphaCutoff', 'Displacement', 'Scale', 'Offset']
 
 # Parse script args
 parser = argparse.ArgumentParser(description='Flan Game Engine. Compile materials shaders permutations for Graphics backends.')
@@ -215,25 +218,27 @@ material_cast_shadow = False
 material_receive_shadow = False
 material_scale_uv_by_model_scale = False
 
-material_base_color = None
-material_alpha_mask = None
-material_reflectance = None
-material_refraction = None
-material_refraction_ior = None
-material_metalness = None
-material_ambient_occlusion = None
-material_normal = None
-material_roughness = None
-material_emissivity = None
-material_scale = None
-
+is_first_layer = True
+material_layer = MaterialLayer()
+material_layers = []
+ 
 for line in material_file:
 	try:
+		if not ':' in line:
+			if 'Layer' in line:
+				print( 'next layer' )
+				if is_first_layer is True:
+					is_first_layer = False
+				else:
+					material_layers.append( material_layer )
+					
+				material_layer = MaterialLayer()			
+			continue
+			
 		key, value = line[:line.find( ';' )].split( ':' )
 		value = value[1:] if value.startswith( ' ' ) else value
 		value = value.replace( "\r", "" ).replace( '\n', '' )
-		#print( key, value )
-		
+	
 		if 'Name' in key:
 			material_name = read_value_string( value )
 		elif 'Version' in key:
@@ -256,31 +261,58 @@ for line in material_file:
 			material_receive_shadow = read_value_boolean( value )
 		elif 'ScaleUVByModelScale' in key:
 			material_scale_uv_by_model_scale = read_value_boolean( value )
+		elif 'UseBaseColorsRGBSource' in key:
+			material_layer.UseBaseColorsRGBSource = True
+		elif 'UseAlphaRoughnessSource' in key:
+			material_layer.UseAlphaRoughnessSource = True
 		elif 'BaseColor' in key:
-			material_base_color = read_value_input( value )
+			material_layer.BaseColor = read_value_input( value )
 		elif 'AlphaMask' in key:
-			material_alpha_mask = read_value_input( value )
+			material_layer.AlphaMask = read_value_input( value )
 		elif 'Reflectance' in key:
-			material_reflectance = read_value_input( value )
+			material_layer.Reflectance = read_value_input( value )
 		elif 'Refraction' in key:
-			material_refraction = read_value_input( value )
+			material_layer.Refraction = read_value_input( value )
 		elif 'RefractionIor' in key:
-			material_refraction_ior = read_value_input( value )
+			material_layer.RefractionIor = read_value_float( value )
 		elif 'Metalness' in key:
-			material_metalness = read_value_input( value )
+			material_layer.Metalness = read_value_input( value )
 		elif 'AmbientOcclusion' in key:
-			material_ambient_occlusion = read_value_input( value )
+			material_layer.AmbientOcclusion = read_value_input( value )
 		elif 'Normal' in key:
-			material_normal = read_value_input( value )
+			material_layer.Normal = read_value_input( value )
+		elif 'Displacement' in key:
+			material_layer.Displacement = read_value_input( value )
+		elif 'SecondaryNormal' in key:
+			material_layer.SecondaryNormal = read_value_input( value )
 		elif 'Roughness' in key:
-			material_roughness = read_value_input( value )
+			material_layer.Roughness = read_value_input( value )
 		elif 'Emissivity' in key:
-			material_emissivity = read_value_input( value )
+			material_layer.Emissivity = read_value_input( value )
+		elif 'BlendMask' in key:
+			material_layer.BlendMask = read_value_input( value )
 		elif 'Scale' in key:
-			material_scale = read_value_vector( value )
+			material_layer.Scale = read_value_vector( value )
+		elif 'Offset' in key:
+			material_layer.Offset = read_value_vector( value )
+		elif 'ClearCoat' in key:
+			material_layer.ClearCoat = read_value_float( value )
+		elif 'ClearCoatGlossiness' in key:
+			material_layer.ClearCoatGlossiness = read_value_float( value )
+		elif 'DiffuseContribution' in key:
+			material_layer.DiffuseContribution = read_value_float( value )
+		elif 'SpecularContribution' in key:
+			material_layer.SpecularContribution = read_value_float( value )
+		elif 'NormalContribution' in key:
+			material_layer.NormalContribution = read_value_float( value )
+		elif 'AlphaCutoff' in key:
+			material_layer.AlphaCutoff = read_value_float( value )
 	except ValueError:
 		print( "warning: line skipped" )
 	
+if not is_first_layer:
+	material_layers.append( material_layer )
+
 define_list = {}
 
 def add_input_define( value, name, swizzle_mask ):
@@ -318,16 +350,15 @@ if material_is_double_face:
 #if not material_receive_shadow:
 #	define_list["PA_NO_SHADOW"] = 1
 	
-define_list["PA_BASE_COLOR"] = add_input_define( material_base_color, "BaseColor", "rgb" )
-define_list["PA_ALPHA_MASK"] = add_input_define( material_alpha_mask, "AlphaMask", "r" )
-define_list["PA_REFLECTANCE"] = add_input_define( material_reflectance, "Reflectance", "r" )
-define_list["PA_REFRACTION"] = add_input_define( material_refraction, "Refraction", "r" )
-define_list["PA_REFRACTION_IOR"] = add_input_define( material_refraction_ior, "RefractionIor", "r" )
-define_list["PA_METALNESS"] = add_input_define( material_metalness, "Metalness", "r" )
-define_list["PA_AMBIENT_OCCLUSION"] = add_input_define( material_ambient_occlusion, "AmbientOcclusion", "r" )
-define_list["PA_NORMAL"] = add_input_define( material_normal, "Normal", "rgb" )
-define_list["PA_ROUGHNESS"] = add_input_define( material_roughness, "Roughness", "r" )
-define_list["PA_EMISSIVITY"] = add_input_define( material_emissivity, "Emissivity", "rgb" )
-define_list["PA_SCALE"] = add_input_define( material_scale, "Scale", "rg" )
+# define_list["PA_BASE_COLOR"] = add_input_define( material_base_color, "BaseColor", "rgb" )
+# define_list["PA_ALPHA_MASK"] = add_input_define( material_alpha_mask, "AlphaMask", "r" )
+# define_list["PA_METALNESS"] = add_input_define( material_metalness, "Metalness", "r" )
+# define_list["PA_AMBIENT_OCCLUSION"] = add_input_define( material_ambient_occlusion, "AmbientOcclusion", "r" )
+# define_list["PA_NORMAL"] = add_input_define( material_normal, "Normal", "rgb" )
+# define_list["PA_ROUGHNESS"] = add_input_define( material_roughness, "Roughness", "r" )
+# define_list["PA_EMISSIVITY"] = add_input_define( material_emissivity, "Emissivity", "rgb" )
+# define_list["PA_SCALE"] = add_input_define( material_scale, "Scale", "rg" )
 
-print( define_list )
+layer_build_fun = ''
+for layer in material_layers:
+	print( add_input_define( layer.BaseColor, "BaseColor", "rgb" ) )
