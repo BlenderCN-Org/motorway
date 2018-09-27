@@ -25,8 +25,8 @@ elseif ( "${FLAN_GFX_API}" MATCHES "FLAN_VULKAN" )
 										   "${FLAN_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.h" )
 endif( "${FLAN_GFX_API}" MATCHES "FLAN_D3D11" )
 
-file( GLOB_RECURSE SOURCE_MINIZ "${PH_BASE_FOLDER}/ThirdParty/miniz/miniz.c"
-                                "${PH_BASE_FOLDER}/ThirdParty/miniz/miniz.h" )
+file( GLOB_RECURSE SOURCE_MINIZ "${FLAN_BASE_FOLDER}/ThirdParty/miniz/miniz.c"
+                                "${FLAN_BASE_FOLDER}/ThirdParty/miniz/miniz.h" )
                                
 build_file_macros( SOURCES )
 
