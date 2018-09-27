@@ -40,7 +40,7 @@ class Material
 {
 public:
                                 Material( const fnString_t& materialName = FLAN_STRING( "Mesh" ) );
-                                Material( Material& material ) = default;
+                                Material( Material& material );
                                 Material& operator = ( Material& material ) = default;
                                 ~Material();
 

@@ -43,6 +43,7 @@ public:
 
     Texture*        getTexture( const fnChar_t* assetName, const bool forceReload = false );
     FontDescriptor* getFont( const fnChar_t* assetName, const bool forceReload = false );
+    Material*       getMaterialCopy( const fnChar_t* assetName );
     Material*       getMaterial( const fnChar_t* assetName, const bool forceReload = false );
     Mesh*           getMesh( const fnChar_t* assetName, const bool forceReload = false );
     Model*          getModel( const fnChar_t* assetName, const bool forceReload = false );

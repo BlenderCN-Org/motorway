@@ -211,6 +211,19 @@ FontDescriptor* GraphicsAssetManager::getFont( const fnChar_t* assetName, const 
     return fontMap[assetHashcode].get();
 }
 
+Material* GraphicsAssetManager::getMaterialCopy( const fnChar_t* assetName )
+{
+    auto materialLoaded = getMaterial( assetName );
+    
+    Material* matCopy = nullptr;
+    if ( materialLoaded != nullptr ) {
+        matCopy = new Material( *materialLoaded );
+        matCopy->create( renderDevice, shaderStageManager );
+    }
+
+    return matCopy;
+}
+
 Material* GraphicsAssetManager::getMaterial( const fnChar_t* assetName, const bool forceReload )
 {
     auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
@@ -293,7 +306,7 @@ Mesh* GraphicsAssetManager::getMesh( const fnChar_t* assetName, const bool force
 
     // Define submeshes
     for ( GeomLoadData::SubMesh& subMesh : loadData.subMesh ) {
-        meshInstance->addSubMesh( { getMaterial( FLAN_STRING( "GameData/Materials/MaterialTest.amat" ) ), subMesh.indiceBufferOffset, subMesh.indiceCount, subMesh.boundingSphere, subMesh.name, subMesh.aabb } );
+        meshInstance->addSubMesh( { getMaterialCopy( FLAN_STRING( "GameData/Materials/MaterialTest.amat" ) ), subMesh.indiceBufferOffset, subMesh.indiceCount, subMesh.boundingSphere, subMesh.name, subMesh.aabb } );
     }
 
     return meshInstance;
@@ -340,7 +353,11 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
         for ( auto& subMesh : subMeshes ) {
             for ( auto& subMeshName : mesh.SubMeshMaterialMap ) {
                 if ( subMesh.name == subMeshName.first ) {
+#if FLAN_DEVBUILD
+                    subMesh.material = getMaterialCopy( fnString_t( subMeshName.second ).c_str() );
+#else
                     subMesh.material = getMaterial( fnString_t( subMeshName.second ).c_str() );
+#endif
                 }
             }
         }

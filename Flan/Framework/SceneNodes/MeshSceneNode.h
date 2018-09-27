@@ -133,7 +133,7 @@ struct MeshSceneNode : public SceneNode
 
                     std::replace( materialName.begin(), materialName.end(), '\\', '/' );
 
-                    subMesh.material = graphicsAssetManager->getMaterial( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
+                    subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
                 }
             }
             ImGui::SameLine();

@@ -59,6 +59,19 @@ Material::Material( const fnString_t& materialName )
     //editableMaterialData.RefractionIor = 0.0f;
 }
 
+Material::Material( Material& material )
+    : name( material.name )
+    , isEditable( material.isEditable )
+    , scaleUVByModelScale( material.scaleUVByModelScale )
+    , builderVersion( material.builderVersion )
+    , sortKey( material.sortKey )
+    , shadingModel( material.shadingModel )
+    , textureSet( material.textureSet )
+    , editableMaterialData( material.editableMaterialData )
+{
+
+}
+
 Material::~Material()
 {
     name.clear();
@@ -273,6 +286,11 @@ void Material::readEditableMaterialInput( const fnString_t& materialInputLine, c
     }
 }
 
+uint32_t GetLayerBaseSlotIndex( const uint32_t layerIndex )
+{
+    return ( TEXTURE_SLOT_INDEX_MATERIAL_BEGIN + ( layerIndex * 10 ) + layerIndex );
+}
+
 void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphicsAssetManager )
 {
 #define FLAN_CASE_READ_MATERIAL_FLAG( streamLine, variable ) case FLAN_STRING_HASH( #variable ): editableMaterialData.variable = flan::core::StringToBoolean( streamLine ); break;
@@ -285,6 +303,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
     fnString_t streamLine, dictionaryKey, dictionaryValue;
 
     int currentLayerIndex = -1;
+    uint32_t slotBaseIndex = 0;
     while ( file->isGood() ) {
         flan::core::ReadString( file, streamLine );
 
@@ -333,6 +352,18 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                     scaleUVByModelScale = flan::core::StringToBoolean( dictionaryValue );
                     break;
 
+                case FLAN_STRING_HASH( "UseBaseColorsRGBSource" ):
+                    editableMaterialData.layers[currentLayerIndex].BaseColor.SamplingFlags = flan::core::StringToBoolean( dictionaryValue ) 
+                        ? MaterialEditionInput::SRGB_SOURCE 
+                        : MaterialEditionInput::LINEAR_SOURCE;
+                    break;
+
+                case FLAN_STRING_HASH( "UseAlphaRoughnessSource" ):
+                    editableMaterialData.layers[currentLayerIndex].Roughness.SamplingFlags = flan::core::StringToBoolean( dictionaryValue )
+                        ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE
+                        : MaterialEditionInput::ROUGHNESS_SOURCE;
+                    break;
+
                 // Material Flags
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, WriteVelocity );
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaTest );
@@ -343,17 +374,17 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, AlphaToCoverage );
 
                 // Shading Model Inputs
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 0, BaseColor )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 1, Reflectance )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 2, Roughness )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 3, Metalness )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 4, AmbientOcclusion )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 5, Normal )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 6, Emissivity )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 7, AlphaMask )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 8, Displacement )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 9, SecondaryNormal )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, 10, BlendMask )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 3 ), Roughness )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 4 ), Metalness )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 5 ), AmbientOcclusion )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 6 ), Normal )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 7 ), Emissivity )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 1 ), AlphaMask )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 8 ), Displacement )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 9 ), SecondaryNormal )
+                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 10 ), BlendMask )
 
                 // Misc. / Blending Inputs
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, Refraction )
@@ -386,7 +417,8 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
             switch ( keyHashcode ) {
             case FLAN_STRING_HASH( "Layer" ):
                 if ( currentLayerIndex < MAX_LAYER_COUNT ) {
-                    currentLayerIndex++;
+                    currentLayerIndex++; 
+                    slotBaseIndex = GetLayerBaseSlotIndex( currentLayerIndex );
                 }
                 break;
             }
@@ -407,8 +439,7 @@ void Material::serialize( FileSystemObject* file )
         case MaterialEditionInput::COLOR_1D:
             return std::to_string( input.Input1D );
         case MaterialEditionInput::TEXTURE:
-            return std::string( "Reimplement this function you lazy fuck" );
-            //return "\"" + textureSet.at( inputIndex )->getResourceName() + "\"";
+            return "\"" + textureSet.at( inputIndex )->getResourceName() + "\"";
         default:
         case MaterialEditionInput::NONE:
             return std::string( "None" );
@@ -416,7 +447,7 @@ void Material::serialize( FileSystemObject* file )
     };
 
     file->writeString( "Name: \"" + flan::core::WideStringToString( name ) + "\"\n" );
-    file->writeString( "Version: 2\n" );
+    file->writeString( "Version: 3\n" );
     file->writeString( "ShadingModel:" + std::string( flan::graphics::ShadingModelToString[shadingModel] ) + "\n\n");
 
     file->writeString( "WriteVelocity:" + std::to_string( editableMaterialData.WriteVelocity ) + "\n" );
@@ -433,19 +464,21 @@ void Material::serialize( FileSystemObject* file )
 
     for ( uint32_t i = 0; i < editableMaterialData.LayerCount; i++ ) {
         const auto& layer = editableMaterialData.layers[i];
-        file->writeString( "Layer {\n" );
+        auto slotBaseIndex = GetLayerBaseSlotIndex( i );
 
-        FLAN_WRITE_INPUT( BaseColor, 0 )
-        FLAN_WRITE_INPUT( Reflectance, 1 )
-        FLAN_WRITE_INPUT( Roughness, 2 )
-        FLAN_WRITE_INPUT( Metalness, 3 )
-        FLAN_WRITE_INPUT( AmbientOcclusion, 4 )
-        FLAN_WRITE_INPUT( Normal, 5 )
-        FLAN_WRITE_INPUT( Emissivity, 6 )
-        FLAN_WRITE_INPUT( AlphaMask, 7 )
-        FLAN_WRITE_INPUT( Displacement, 8 )
-        FLAN_WRITE_INPUT( SecondaryNormal, 9 )
-        FLAN_WRITE_INPUT( BlendMask, 10 )
+        file->writeString( "Layer\n{\n" );
+
+        FLAN_WRITE_INPUT( BaseColor, slotBaseIndex )
+        FLAN_WRITE_INPUT( Reflectance, ( slotBaseIndex + 2 ) )
+        FLAN_WRITE_INPUT( Roughness, ( slotBaseIndex + 3 ) )
+        FLAN_WRITE_INPUT( Metalness, ( slotBaseIndex + 4 ) )
+        FLAN_WRITE_INPUT( AmbientOcclusion, ( slotBaseIndex + 5 ) )
+        FLAN_WRITE_INPUT( Normal, ( slotBaseIndex + 6 ) )
+        FLAN_WRITE_INPUT( Emissivity, ( slotBaseIndex + 7 ) )
+        FLAN_WRITE_INPUT( AlphaMask, ( slotBaseIndex + 1 ) )
+        FLAN_WRITE_INPUT( Displacement, ( slotBaseIndex + 8 ) )
+        FLAN_WRITE_INPUT( SecondaryNormal, ( slotBaseIndex + 9 ) )
+        FLAN_WRITE_INPUT( BlendMask, ( slotBaseIndex + 10 ) )
 
         FLAN_WRITE_VARIABLE( Refraction )
         FLAN_WRITE_VARIABLE( RefractionIor )
@@ -456,10 +489,13 @@ void Material::serialize( FileSystemObject* file )
         FLAN_WRITE_VARIABLE( NormalContribution )
         FLAN_WRITE_VARIABLE( AlphaCutoff )
 
-        file->writeString( "Offset: { " + std::to_string( layer.LayerOffset.x ) + ", " + std::to_string( layer.LayerOffset.y ) + " }\n" );
-        file->writeString( "Scale: { " + std::to_string( layer.LayerScale.x ) + ", " + std::to_string( layer.LayerScale.y ) + " }\n" );
+        file->writeString( "\tOffset: { " + std::to_string( layer.LayerOffset.x ) + ", " + std::to_string( layer.LayerOffset.y ) + " }\n" );
+        file->writeString( "\tScale: { " + std::to_string( layer.LayerScale.x ) + ", " + std::to_string( layer.LayerScale.y ) + " }\n" );
 
-        file->writeString( "}\n" );
+        file->writeString( "\tUseBaseColorsRGBSource: " + std::string( ( editableMaterialData.layers[i].BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE ) ? "True" : "False" ) + "\n" );
+        file->writeString( "\tUseAlphaRoughnessSource: " + std::string( ( editableMaterialData.layers[i].Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE ) ? "True" : "False" ) + "\n" );
+       
+        file->writeString( "}\n\n" );
     }
 }
 
@@ -777,7 +813,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
         for ( uint32_t i = 0; i < editableMaterialData.LayerCount; i++ ) {
             const bool isBaseLayer = ( i == 0 );
-            uint32_t slotBaseIndex = ( TEXTURE_SLOT_INDEX_MATERIAL_BEGIN + ( i * 10 ) + i );
+            uint32_t slotBaseIndex = GetLayerBaseSlotIndex( i );
 
             auto& layer = editableMaterialData.layers[i];
             auto layerLabel = "Layer" + std::to_string( i );
