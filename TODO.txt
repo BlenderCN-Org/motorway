@@ -11,10 +11,9 @@ Stuff todo for the project
     > Better mouse picking (color buffer instead of bounding geometry?)
     <Material Editor Unfuckery>
         > Fix layer blending for edge cases (see bug reports)
-        > Reimplement parallax occlusion mapping (displacement map sampling/blend)
-        > Add Normal Map Strength parameter
         > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
         > Allow custom sampler parameters (tex coordinates addressing; custom blend state)
+        > Fix Depth shaders (blend layers alphas)
     > Wireframe primitives for renderable entities (light sources, probes, etc.)
     
 [Engine]
@@ -54,7 +53,9 @@ DONE
 [Editor]    
 	<Material Editor Unfuckery>
         > Fix serialization/deserialization
+        > Reimplement parallax occlusion mapping (displacement map sampling/blend)
         > Per SubMesh Material Instance (allow local override; dont apply changes to instancied material)		
+        > Add Normal Map Strength parameter
     > Split Client and Editor contexts
     
 [Engine]
