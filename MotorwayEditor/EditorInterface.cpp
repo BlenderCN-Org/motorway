@@ -427,8 +427,8 @@ static void DisplayMenuBar()
             }
 
             if ( ImGui::BeginMenu( "SSAA" ) ) {
-                FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, int32_t );
-                if ( ImGui::MenuItem( "x1.0", nullptr, *SSAAMultiplicator == 1 ) ) {
+                FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float );
+                if ( ImGui::MenuItem( "x1.0", nullptr, *SSAAMultiplicator == 1.0f ) ) {
                     *SSAAMultiplicator = 1.0f;
                 }
                 if ( ImGui::MenuItem( "x1.5", nullptr, *SSAAMultiplicator == 1.5f ) ) {
