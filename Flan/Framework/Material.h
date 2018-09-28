@@ -46,7 +46,7 @@ public:
 
     void                        create( RenderDevice* renderDevice, ShaderStageManager* shaderStageManager, PipelineStateDesc* customPipelineDescriptor = nullptr );
     void                        deserialize( FileSystemObject* file, GraphicsAssetManager* graphicsAssetManager );
-    void                        serialize( FileSystemObject* file );
+    void                        serialize( FileSystemObject* file ) const;
 
     void                        bind( CommandList* cmdList ) const;
     // Reversed Z rendering (e.g. depth prepass)
@@ -97,6 +97,7 @@ private:
     std::unique_ptr<PipelineState>          reversedDepthPipelineState;
     std::unique_ptr<PipelineState>          pipelineStateProbe;
 
+    // TODO Editor specific stuff; move to editor project
     struct {
         // Per Material Input
         uint32_t WriteVelocity;
@@ -112,7 +113,6 @@ private:
         MaterialLayer layers[MAX_LAYER_COUNT];
     } editableMaterialData;
     FLAN_IS_MEMORY_ALIGNED( 16, Material::editableMaterialData );
-
     std::unique_ptr<Buffer> editableMaterialBuffer;
     int rebuildSpecularAAMaps[MAX_LAYER_COUNT];
     RenderTarget* roughnessMapRT[MAX_LAYER_COUNT];

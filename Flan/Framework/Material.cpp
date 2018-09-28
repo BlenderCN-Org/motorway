@@ -365,6 +365,18 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                         : MaterialEditionInput::ROUGHNESS_SOURCE;
                     break;
 
+                case FLAN_STRING_HASH( "IsNormalMapTangentSpace" ):
+                    editableMaterialData.layers[currentLayerIndex].Normal.SamplingFlags = flan::core::StringToBoolean( dictionaryValue )
+                        ? MaterialEditionInput::TANGENT_SPACE_SOURCE
+                        : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                    break;
+
+                case FLAN_STRING_HASH( "IsSecondaryNormalMapTangentSpace" ):
+                    editableMaterialData.layers[currentLayerIndex].SecondaryNormal.SamplingFlags = flan::core::StringToBoolean( dictionaryValue )
+                        ? MaterialEditionInput::TANGENT_SPACE_SOURCE
+                        : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                    break;
+
                 // Material Flags
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, WriteVelocity );
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaTest );
@@ -396,6 +408,9 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, SpecularContribution )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, NormalContribution )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, AlphaCutoff )
+                FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, NormalMapStrength )
+                FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, SecondaryNormalMapStrength )
+                FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, DisplacementMapStrength )
 
                 // Layer Scaling
                 case FLAN_STRING_HASH( "Offset" ):
@@ -431,7 +446,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
     file->close();
 }
 
-void Material::serialize( FileSystemObject* file )
+void Material::serialize( FileSystemObject* file ) const
 {
     auto WriteInput = [this]( const MaterialEditionInput& input, const uint32_t inputIndex ) {
         switch ( input.InputType ) {
@@ -489,13 +504,18 @@ void Material::serialize( FileSystemObject* file )
         FLAN_WRITE_VARIABLE( SpecularContribution )
         FLAN_WRITE_VARIABLE( NormalContribution )
         FLAN_WRITE_VARIABLE( AlphaCutoff )
+        FLAN_WRITE_VARIABLE( NormalMapStrength )
+        FLAN_WRITE_VARIABLE( SecondaryNormalMapStrength )
+        FLAN_WRITE_VARIABLE( DisplacementMapStrength )
 
         file->writeString( "\tOffset: { " + std::to_string( layer.LayerOffset.x ) + ", " + std::to_string( layer.LayerOffset.y ) + " }\n" );
         file->writeString( "\tScale: { " + std::to_string( layer.LayerScale.x ) + ", " + std::to_string( layer.LayerScale.y ) + " }\n" );
 
         file->writeString( "\tUseBaseColorsRGBSource: " + std::string( ( editableMaterialData.layers[i].BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE ) ? "True" : "False" ) + "\n" );
         file->writeString( "\tUseAlphaRoughnessSource: " + std::string( ( editableMaterialData.layers[i].Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE ) ? "True" : "False" ) + "\n" );
-       
+        file->writeString( "\tIsNormalMapTangentSpace: " + std::string( ( editableMaterialData.layers[i].Normal .SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE ) ? "True" : "False" ) + "\n" );
+        file->writeString( "\tIsSecondaryNormalMapTangentSpace: " + std::string( ( editableMaterialData.layers[i].SecondaryNormal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE ) ? "True" : "False" ) + "\n" );
+
         file->writeString( "}\n\n" );
     }
 }
@@ -803,6 +823,10 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
             addedLayer.ClearCoat = 0.0f;
             addedLayer.ClearCoatGlossiness = 0.0f;
 
+            addedLayer.NormalMapStrength = 1.0f;
+            addedLayer.SecondaryNormalMapStrength = 1.0f;
+            addedLayer.DisplacementMapStrength = 1.0f;
+
             addedLayer.DiffuseContribution = 1.0f;
             addedLayer.SpecularContribution = 1.0f;
             addedLayer.NormalContribution = 1.0f;
@@ -888,7 +912,16 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ) );
                 displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ) );
                 displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ) );
+                bool isTangentSpace = ( layer.Normal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
+                if ( ImGui::Checkbox( "Tangent Space Input##Normal", &isTangentSpace ) ) {
+                    layer.Normal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                }
+
+                ImGui::SliderFloat( "Normal Map Strength", &layer.NormalMapStrength, 0.0f, 1.0f );
+
                 displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ) );
+                ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
+
                 displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), false );
 
                 if ( editableMaterialData.EnableAlphaTest == 1 ) {
@@ -911,6 +944,12 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     ImGui::PopItemWidth();
 
                     displayInputConfiguration( graphicsAssetManager, "Secondary NormalMap", layer.SecondaryNormal, ( slotBaseIndex + 9 ) );
+                    bool isTangentSpace = ( layer.SecondaryNormal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
+                    if ( ImGui::Checkbox( "Tangent Space Input##SecondaryNormal", &isTangentSpace ) ) {
+                        layer.SecondaryNormal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                    }
+
+                    ImGui::SliderFloat( "Secondary NormalMap Strength", &layer.SecondaryNormalMapStrength, 0.0f, 1.0f );
                 }
 
                 if ( i != 0 ) {

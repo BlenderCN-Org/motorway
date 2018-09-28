@@ -47,6 +47,10 @@ struct MaterialEditionInput
         // Roughness Flags
         ROUGHNESS_SOURCE = 0,
         ALPHA_ROUGHNESS_SOURCE = 1,
+
+        // Normal Flags
+        TANGENT_SPACE_SOURCE = 0,
+        WORLD_SPACE_SOURCE = 1,
     } SamplingFlags;
 
     Texture* InputTexture;
@@ -73,6 +77,11 @@ struct MaterialLayer
     float                  RefractionIor;
     float                  ClearCoat;
     float                  ClearCoatGlossiness;
+
+    float                  NormalMapStrength;
+    float                  SecondaryNormalMapStrength;
+    float                  DisplacementMapStrength;
+    uint                   __PADDING__;
 
     float                  DiffuseContribution;
     float                  SpecularContribution;

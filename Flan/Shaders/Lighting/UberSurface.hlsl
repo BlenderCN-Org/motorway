@@ -151,6 +151,62 @@ uint GetTileIndex( float2 ScreenPos )
     return nTileIdx;
 }
 
+float2 ApplyParallaxMapping( in float2 uvCoordinates, in float3 V, in float3 N, in float3 viewDirTS, in texture2D displacementMap, in float displacementStrength )
+{
+    // TODO Expose those parameters on the editor side
+    static const int gMaxSampleCount = 64;
+    static const int gMinSampleCount = 8;
+        
+    float2 maxParallaxOffset = -viewDirTS.xy*displacementStrength/viewDirTS.z;
+    
+    // Vary number of samples based on view angle between the eye and
+    // the surface normal. (Head-on angles require less samples than
+    // glancing angles.)
+    int sampleCount = (int)lerp(gMaxSampleCount, gMinSampleCount, dot(-V, N));
+    float zStep = 1.0f / (float)sampleCount;
+    float2 texStep = maxParallaxOffset * zStep;
+    
+    // Precompute texture gradients since we cannot compute texture
+    // gradients in a loop. Texture gradients are used to select the right
+    // mipmap level when sampling textures. Then we use Texture2D.SampleGrad()
+    // instead of Texture2D.Sample().
+    float2 dx = ddx( uvCoordinates );
+    float2 dy = ddy( uvCoordinates );
+    int sampleIndex = 0;
+    float2 currTexOffset = 0;
+    float2 prevTexOffset = 0;
+    float2 finalTexOffset = 0;
+    float currRayZ = 1.0f - zStep;
+    float prevRayZ = 1.0f;
+    float currHeight = 0.0f;
+    float prevHeight = 0.0f;
+    
+    // Ray trace the heightfield.
+    while ( sampleIndex < sampleCount + 1 ) {
+        currHeight = displacementMap.SampleGrad( g_NormalMapSampler, uvCoordinates + currTexOffset, dx, dy ).r;
+        // Did we cross the height profile?
+        if ( currHeight > currRayZ ) {
+            // Do ray/line segment intersection and compute final tex offset.
+            float t = (prevHeight - prevRayZ) / (prevHeight - currHeight + currRayZ - prevRayZ);
+            finalTexOffset = prevTexOffset + t * texStep;
+            
+            // Exit loop.
+            sampleIndex = sampleCount + 1;
+        } else {
+            ++sampleIndex;
+            prevTexOffset = currTexOffset;
+            prevRayZ = currRayZ;
+            prevHeight = currHeight;
+            currTexOffset += texStep;
+            
+            // Negative because we are going "deeper" into the surface.
+            currRayZ -= zStep;
+        }
+    }
+    
+    return ( uvCoordinates + finalTexOffset );
+}
+
 #if PA_EDITOR
 #define INPUT_TYPE_NONE 0
 #define INPUT_TYPE_1D 1
@@ -162,6 +218,9 @@ uint GetTileIndex( float2 ScreenPos )
 
 #define SAMPLING_MODE_ALPHA_ROUGHNESS 0
 #define SAMPLING_MODE_ROUGHNESS 1
+
+#define SAMPLING_MODE_TANGENT_SPACE 0
+#define SAMPLING_MODE_WORLD_SPACE 1
 
 struct MaterialEditionInput
 {
@@ -175,7 +234,7 @@ struct MaterialEditionInput
     
     int     Type;
     uint    SamplingMode;
-    float2  EXPLICIT_PADDING;
+    float2  EXPLICIT_PADDING; // Holds Texture pointer on CPU side
 };
 #include <MaterialsShared.h>
 
@@ -222,33 +281,43 @@ float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampl
 }
     
 #define READ_LAYER_FUNC( layerIdx )\
-MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3 N, in float3 V, inout bool needNormalMapUnpack )\
+MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3 N, in float3 V, in float3x3 TBNMatrix, inout bool needNormalMapUnpack, inout bool needSecondaryNormalMapUnpack )\
 
 #define READ_LAYER_CONTENT( layerIdx )\
     MaterialReadLayer layer;\
-    layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BaseColorSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, float3( 0.42, 0.42, 0.42 ) );\
+    float2 uvCoordinates = VertexStage.uvCoord;\
+    if ( g_Layers[layerIdx].Displacement.Type == INPUT_TYPE_TEXTURE ) {\
+        float3 viewDirTS = normalize( mul( -V, transpose( TBNMatrix ) ) );\
+        uvCoordinates = ApplyParallaxMapping( uvCoordinates, V, N, viewDirTS, g_TexDisplacement##layerIdx, g_Layers[layerIdx].DisplacementMapStrength );\
+    }\
+    layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BaseColorSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, float3( 0.42, 0.42, 0.42 ) );\
     if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
         layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
     }\
-    layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
         layer.Roughness = ( layer.Roughness * layer.Roughness );\
     }\
-    layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_MetalnessSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
-    layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_AmbientOcclusionSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_EmissivitySampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
-    layer.SecondaryNormal = ReadInput3D( g_Layers[layerIdx].SecondaryNormal, g_TexClearCoatNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
+    layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_MetalnessSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
+    layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_AmbientOcclusionSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_EmissivitySampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
     \
-    needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE );\
-    if ( needNormalMapUnpack ) {\
-        float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale );\
-        static const float NORMAL_MAP_STRENGTH = 0.8f;\
-        \
-        layer.Normal = normalize( sampledTexture.rgb * 2.0f - 1.0f );\
+    needSecondaryNormalMapUnpack = ( g_Layers[layerIdx].SecondaryNormal.Type == INPUT_TYPE_TEXTURE && g_Layers[layerIdx].SecondaryNormal.SamplingMode == SAMPLING_MODE_TANGENT_SPACE );\
+    if ( needSecondaryNormalMapUnpack ) {\
+        float4 sampledTexture = g_TexClearCoatNormal##layerIdx.Sample( g_NormalMapSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale );\
+        layer.SecondaryNormal = normalize( ( sampledTexture.rgb * g_Layers[layerIdx].SecondaryNormalMapStrength ) * 2.0f - 1.0f );\
     } else {\
-        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
+        layer.SecondaryNormal = ReadInput3D( g_Layers[layerIdx].SecondaryNormal, g_TexClearCoatNormal##layerIdx, g_NormalMapSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
+    }\
+    \
+    needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE && g_Layers[layerIdx].Normal.SamplingMode == SAMPLING_MODE_TANGENT_SPACE );\
+    if ( needNormalMapUnpack ) {\
+        float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_NormalMapSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale );\
+        layer.Normal = normalize( ( sampledTexture.rgb * g_Layers[layerIdx].NormalMapStrength ) * 2.0f - 1.0f );\
+    } else {\
+        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_NormalMapSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
     }\
     \
     layer.Refraction = g_Layers[layerIdx].Refraction;\
@@ -263,7 +332,7 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     \
 
 #define READ_LAYER_BLEND_MASK( layerIdx )\
-        layer.BlendMask = ReadInput1D( g_Layers[layerIdx].BlendMask, g_TexBlendMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+        layer.BlendMask = ReadInput1D( g_Layers[layerIdx].BlendMask, g_TexBlendMask##layerIdx, g_AlphaMaskSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
         
 #define READ_LAYER_SKIP_BLEND_MASK( layerIdx )\
     layer.BlendMask = 1.0f;
@@ -309,63 +378,6 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 UV, out float3 T, out 
 
 	return float3x3(T, B, N);
 }
-
-// float2 ApplyParallaxMapping( in float2 uvCoordinates, in float3 V, in float3 N, in float3 viewDirTS, in texture2D displacementMap )
-// {
-    // // TODO Expose those parameters on the editor side
-    // static const float gHeightScale = 0.50f;
-    // static const int gMaxSampleCount = 64;
-    // static const int gMinSampleCount = 8;
-        
-    // float2 maxParallaxOffset = -viewDirTS.xy*gHeightScale/viewDirTS.z;
-    
-    // // Vary number of samples based on view angle between the eye and
-    // // the surface normal. (Head-on angles require less samples than
-    // // glancing angles.)
-    // int sampleCount = (int)lerp(gMaxSampleCount, gMinSampleCount, dot(-V, N));
-    // float zStep = 1.0f / (float)sampleCount;
-    // float2 texStep = maxParallaxOffset * zStep;
-    
-    // // Precompute texture gradients since we cannot compute texture
-    // // gradients in a loop. Texture gradients are used to select the right
-    // // mipmap level when sampling textures. Then we use Texture2D.SampleGrad()
-    // // instead of Texture2D.Sample().
-    // float2 dx = ddx( uvCoordinates );
-    // float2 dy = ddy( uvCoordinates );
-    // int sampleIndex = 0;
-    // float2 currTexOffset = 0;
-    // float2 prevTexOffset = 0;
-    // float2 finalTexOffset = 0;
-    // float currRayZ = 1.0f - zStep;
-    // float prevRayZ = 1.0f;
-    // float currHeight = 0.0f;
-    // float prevHeight = 0.0f;
-    
-    // // Ray trace the heightfield.
-    // while ( sampleIndex < sampleCount + 1 ) {
-        // currHeight = displacementMap.SampleGrad( g_NormalMapSampler, ( uvCoordinates * g_LayerScale ) + currTexOffset, dx, dy ).r;
-        // // Did we cross the height profile?
-        // if ( currHeight > currRayZ ) {
-            // // Do ray/line segment intersection and compute final tex offset.
-            // float t = (prevHeight - prevRayZ) / (prevHeight - currHeight + currRayZ - prevRayZ);
-            // finalTexOffset = prevTexOffset + t * texStep;
-            
-            // // Exit loop.
-            // sampleIndex = sampleCount + 1;
-        // } else {
-            // ++sampleIndex;
-            // prevTexOffset = currTexOffset;
-            // prevRayZ = currRayZ;
-            // prevHeight = currHeight;
-            // currTexOffset += texStep;
-            
-            // // Negative because we are going "deeper" into the surface.
-            // currRayZ -= zStep;
-        // }
-    // }
-    
-    // return ( uvCoordinates + finalTexOffset );
-// }
 
 uint GetEntityCountForCurrentTile( float2 positionScreenSpace )
 {
@@ -460,13 +472,6 @@ PixelStageData EntryPointHeatMapPS( VertexStageData VertexStage, bool isFrontFac
     return output;
 }
 
-    // float2 uvCoordinates = VertexStage.uvCoord;
-
-    // if ( g_Layers[layerIndex].Displacement.Type == 3 ) {
-        // float3 viewDirTS = normalize( mul( -V, transpose( TBNMatrix ) ) );
-        // uvCoordinates = ApplyParallaxMapping( uvCoordinates, viewDirTS );
-    // }
-
 float3 BlendNormals_UDN( in float3 baseNormal, in float3 topNormal )
 {
     static const float3 c = float3( 2, 1, 0 );  
@@ -500,7 +505,6 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
     baseLayer.NormalContribution = nextLayer.NormalContribution;
     baseLayer.AlphaCutoff = nextLayer.AlphaCutoff;
 }
-
 
 #define DFG_TEXTURE_SIZE 512.0f
 #define LD_MIP_COUNT 8
@@ -606,6 +610,7 @@ void EvaluateIBL(
      specularSum.rgb = ( specularSum.rgb * ( fresnelColor * preDFG.x + f90 * preDFG.y ) ) * computeSpecOcclusion( NoV, ambientOcclusion, linearRoughness ); // LD.(f0.Gv.(1 - Fc) + Gv.Fc.f90)
 }
 
+// Baked layers read (see material build python script)
 #ifndef PA_EDITOR
 FLAN_LAYERS_READ
 #endif
@@ -621,25 +626,30 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
 #if PA_EDITOR
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
+    bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
     
-    MaterialReadLayer BaseLayer = ReadLayer0( VertexStage, N, V, needNormalMapUnpack0 );
+    MaterialReadLayer BaseLayer = ReadLayer0( VertexStage, N, V, TBNMatrix, needNormalMapUnpack0, needSecondaryNormalMapUnpack0 );
     
     // NOTE Only use the double branch for material realtime edition
     // Otherwise, resolve branches offline at compile time
     if ( g_LayerCount > 1 ) {
-        MaterialReadLayer layer1 = ReadLayer1( VertexStage, N, V, needNormalMapUnpack1 );
+        MaterialReadLayer layer1 = ReadLayer1( VertexStage, N, V, TBNMatrix, needNormalMapUnpack1, needSecondaryNormalMapUnpack1 );
         BlendLayers( BaseLayer, layer1 );
         
         if ( g_LayerCount > 2 ) {
-            MaterialReadLayer layer2 = ReadLayer2( VertexStage, N, V, needNormalMapUnpack2 );
+            MaterialReadLayer layer2 = ReadLayer2( VertexStage, N, V, TBNMatrix, needNormalMapUnpack2, needSecondaryNormalMapUnpack2 );
             BlendLayers( BaseLayer, layer2 );
         }
     }
   
-    const bool needUnpackAndTBNMult = ( needNormalMapUnpack0 || needNormalMapUnpack1 || needNormalMapUnpack2 );
-    
+    const bool needUnpackAndTBNMult = ( needNormalMapUnpack0 || needNormalMapUnpack1 || needNormalMapUnpack2 );  
     if ( needUnpackAndTBNMult ) {
         BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
+    }
+  
+    const bool needUnpackAndTBNMultSecondary = ( needSecondaryNormalMapUnpack0 || needSecondaryNormalMapUnpack1 || needSecondaryNormalMapUnpack2 );
+     if ( needUnpackAndTBNMult ) {
+        BaseLayer.SecondaryNormal = normalize( mul( BaseLayer.SecondaryNormal, TBNMatrix ) );
     }
 #else
 	FLAN_BUILD_LAYERS
@@ -920,6 +930,5 @@ void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
     if ( AlphaMask < g_AlphaCutoff ) discard;
 #endif
 #else
-FLAN_BUILD_DEPTH_LAYER
 #endif
 }
