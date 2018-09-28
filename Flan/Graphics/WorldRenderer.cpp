@@ -78,7 +78,7 @@ FLAN_DEV_VAR_PERSISTENT( EnvProbeDimension,
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
 FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
-FLAN_ENV_VAR( SSAAMultiplicator, "SSAA Multiplication Factor [1/1.5/2/4/8]", 1.0f, float )
+FLAN_ENV_VAR( SSAAMultiplicator, "SSAA Multiplication Factor [1/1.5/2/4/8]", 1.5f, float )
 
 WorldRenderer::WorldRenderer()
     : renderDevice( nullptr )
@@ -338,6 +338,10 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
         FLAN_STRING_HASH( "AntiAliasingPassMSAA8TAA" ),
         [=]( RenderPipeline* renderPipeline ) { return addAAPass( renderPipeline, 8, true ); } );
 
+    Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent(
+        FLAN_STRING_HASH( "SSAAResolvePass" ),
+        [=]( RenderPipeline* renderPipeline ) { return addSSAAResolvePass( renderPipeline ); } );
+    
     brdfInputs.dfgLut = dfgLut;
     brdfInputs.envProbeCapture = environmentProbes[0].get();
     brdfInputs.envProbeDiffuse = environmentProbes[1].get();
@@ -626,6 +630,21 @@ fnPipelineResHandle_t WorldRenderer::addAAPass( RenderPipeline* renderPipeline, 
             auto antiAliasedFrame = AddMSAAResolvePass( renderPipeline, samplerCount, useTemporalAA, previousFrameRT );
             
             AddCopyTexturePass( renderPipeline, false, 0, 0, previousFrameRT, antiAliasedFrame );
+        }
+    );
+
+    return -1;
+}
+
+fnPipelineResHandle_t WorldRenderer::addSSAAResolvePass( RenderPipeline* renderPipeline )
+{
+    renderPipeline->addPipelineSetupPass(
+        [&]( RenderPipeline* renderPipeline, RenderPipelineBuilder* renderPipelineBuilder ) {
+            auto colorBuffer = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) );
+
+            // Downsample Super Sampled render target for the post processing pipeline part
+            auto downsampledTarget = AddDownsamplingPass( renderPipeline, colorBuffer, SSAAMultiplicator );
+            renderPipelineBuilder->registerWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ), downsampledTarget );
         }
     );
 

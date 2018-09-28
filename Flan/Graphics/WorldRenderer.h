@@ -153,6 +153,7 @@ private:
 
     fnPipelineResHandle_t addProbeCaptureSavePass( RenderPipeline* renderPipeline );
     fnPipelineResHandle_t addProbeConvolutionPass( RenderPipeline* renderPipeline );
+    fnPipelineResHandle_t addSSAAResolvePass( RenderPipeline* renderPipeline );
 
     fnPipelineResHandle_t addAAPass( RenderPipeline* renderPipeline, const int32_t samplerCount, const bool useTemporalAA );
 };
