@@ -426,6 +426,26 @@ static void DisplayMenuBar()
                 ImGui::EndMenu();
             }
 
+            if ( ImGui::BeginMenu( "SSAA" ) ) {
+                FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, int32_t );
+                if ( ImGui::MenuItem( "x1.0", nullptr, *SSAAMultiplicator == 1 ) ) {
+                    *SSAAMultiplicator = 1.0f;
+                }
+                if ( ImGui::MenuItem( "x1.5", nullptr, *SSAAMultiplicator == 1.5f ) ) {
+                    *SSAAMultiplicator = 1.5f;
+                }
+                if ( ImGui::MenuItem( "x2.0", nullptr, *SSAAMultiplicator == 2.0f ) ) {
+                    *SSAAMultiplicator = 2.0f;
+                }
+                if ( ImGui::MenuItem( "x4", nullptr, *SSAAMultiplicator == 4.0f ) ) {
+                    *SSAAMultiplicator = 4.0f;
+                }
+                if ( ImGui::MenuItem( "x8", nullptr, *SSAAMultiplicator == 8.0f ) ) {
+                    *SSAAMultiplicator = 8.0f;
+                }
+
+                ImGui::EndMenu();
+            }
             if ( ImGui::Checkbox( "Enable VSync", EnableVSync ) ) {
                 g_RenderDevice->setVSyncState( *EnableVSync );
             }

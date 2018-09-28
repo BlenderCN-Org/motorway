@@ -253,6 +253,11 @@ int App::launch()
                 }
             }
 
+            FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
+            if ( *SSAAMultiplicator > 1.0f ) {
+                mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
+            }
+
             mainCamera->addRenderPass( FLAN_STRING_HASH( "AutoExposurePass" ) );
             mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );
             mainCamera->addRenderPass( FLAN_STRING_HASH( "CompositionPass" ) );
