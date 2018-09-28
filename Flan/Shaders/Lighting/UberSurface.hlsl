@@ -167,6 +167,104 @@ cbuffer MaterialEdition : register( b8 )
     
     MaterialLayer           g_Layers[MAX_LAYER_COUNT];
 };
+
+float3 ReadInput3D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float3 defaultValue )
+{
+    if ( materialInput.Type == INPUT_TYPE_1D ) {
+        return materialInput.Input1D.rrr;
+    } else if ( materialInput.Type == INPUT_TYPE_3D ) {
+        return materialInput.Input3D.rgb;
+    } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
+        return textureSampler.Sample( texSampler, uvCoordinates ).rgb;
+    }
+    
+    return defaultValue;
+}
+
+float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float defaultValue )
+{
+    if ( materialInput.Type == INPUT_TYPE_1D ) {
+        return materialInput.Input1D.r;
+    } else if ( materialInput.Type == INPUT_TYPE_3D ) {
+        return materialInput.Input3D.r;
+    } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
+        return textureSampler.Sample( texSampler, uvCoordinates ).r;
+    }
+    
+    return defaultValue;
+}
+    
+#define READ_LAYER_FUNC( layerIdx )\
+MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3 N, in float3 V, inout bool needNormalMapUnpack )\
+
+#define READ_LAYER_CONTENT( layerIdx )\
+    MaterialReadLayer layer;\
+    layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BaseColorSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, float3( 0.42, 0.42, 0.42 ) );\
+    if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
+        layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
+    }\
+    layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
+        layer.Roughness = ( layer.Roughness * layer.Roughness );\
+    }\
+    layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_MetalnessSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
+    layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_AmbientOcclusionSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_EmissivitySampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
+    layer.SecondaryNormal = ReadInput3D( g_Layers[layerIdx].SecondaryNormal, g_TexClearCoatNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
+    \
+    needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE );\
+    if ( needNormalMapUnpack ) {\
+        float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale );\
+        static const float NORMAL_MAP_STRENGTH = 0.8f;\
+        \
+        layer.Normal = normalize( sampledTexture.rgb * 2.0f - 1.0f );\
+    } else {\
+        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
+    }\
+    \
+    layer.Refraction = g_Layers[layerIdx].Refraction;\
+    layer.RefractionIor = g_Layers[layerIdx].RefractionIor;\
+    layer.ClearCoat = g_Layers[layerIdx].ClearCoat;\
+    layer.ClearCoatGlossiness = g_Layers[layerIdx].ClearCoatGlossiness;\
+    \
+    layer.DiffuseContribution = g_Layers[layerIdx].DiffuseContribution;\
+    layer.SpecularContribution = g_Layers[layerIdx].SpecularContribution;\
+    layer.NormalContribution = g_Layers[layerIdx].NormalContribution;\
+    layer.AlphaCutoff = g_Layers[layerIdx].AlphaCutoff;\
+    \
+
+#define READ_LAYER_BLEND_MASK( layerIdx )\
+        layer.BlendMask = ReadInput1D( g_Layers[layerIdx].BlendMask, g_TexBlendMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+        
+#define READ_LAYER_SKIP_BLEND_MASK( layerIdx )\
+    layer.BlendMask = 1.0f;
+
+#define READ_LAYER_FUNC_END( layerIdx )\
+    return layer;
+
+READ_LAYER_FUNC( 0 )
+{
+    READ_LAYER_CONTENT( 0 )
+    READ_LAYER_SKIP_BLEND_MASK( 0 )
+    READ_LAYER_FUNC_END( 0 )
+}
+    
+READ_LAYER_FUNC( 1 )
+{
+    READ_LAYER_CONTENT( 1 )
+    READ_LAYER_BLEND_MASK( 1 )
+    READ_LAYER_FUNC_END( 1 )
+}
+
+READ_LAYER_FUNC( 2 )
+{
+    READ_LAYER_CONTENT( 2 )
+    READ_LAYER_BLEND_MASK( 2 )
+    READ_LAYER_FUNC_END( 2 )
+}
+
 #endif
 
 float3x3 compute_tangent_frame(float3 N, float3 P, float2 UV, out float3 T, out float3 B)
@@ -348,7 +446,7 @@ struct MaterialReadLayer
     float3  Normal;
     float   AlphaMask;
     
-    float3  ClearCoatNormalMap;
+    float3  SecondaryNormal;
     float   BlendMask;
     
     float   Refraction;
@@ -362,109 +460,12 @@ struct MaterialReadLayer
     float   AlphaCutoff;
 };
 
-float3 ReadInput3D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float3 defaultValue )
-{
-    if ( materialInput.Type == INPUT_TYPE_1D ) {
-        return materialInput.Input1D.rrr;
-    } else if ( materialInput.Type == INPUT_TYPE_3D ) {
-        return materialInput.Input3D.rgb;
-    } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
-        return textureSampler.Sample( texSampler, uvCoordinates ).rgb;
-    }
-    
-    return defaultValue;
-}
-
-float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float defaultValue )
-{
-    if ( materialInput.Type == INPUT_TYPE_1D ) {
-        return materialInput.Input1D.r;
-    } else if ( materialInput.Type == INPUT_TYPE_3D ) {
-        return materialInput.Input3D.r;
-    } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
-        return textureSampler.Sample( texSampler, uvCoordinates ).r;
-    }
-    
-    return defaultValue;
-}
-
     // float2 uvCoordinates = VertexStage.uvCoord;
 
     // if ( g_Layers[layerIndex].Displacement.Type == 3 ) {
         // float3 viewDirTS = normalize( mul( -V, transpose( TBNMatrix ) ) );
         // uvCoordinates = ApplyParallaxMapping( uvCoordinates, viewDirTS );
     // }
-    
-#define READ_LAYER_FUNC( layerIdx )\
-MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3 N, in float3 V, inout bool needNormalMapUnpack )\
-
-#define READ_LAYER_CONTENT( layerIdx )\
-    MaterialReadLayer layer;\
-    layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BaseColorSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, float3( 0.42, 0.42, 0.42 ) );\
-    if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
-        layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
-    }\
-    layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
-        layer.Roughness = ( layer.Roughness * layer.Roughness );\
-    }\
-    layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_MetalnessSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
-    layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_AmbientOcclusionSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_EmissivitySampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 0.0f );\
-    layer.ClearCoatNormalMap = ReadInput3D( g_Layers[layerIdx].SecondaryNormal, g_TexClearCoatNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
-    \
-    needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE );\
-    if ( needNormalMapUnpack ) {\
-        float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale );\
-        static const float NORMAL_MAP_STRENGTH = 0.8f;\
-        \
-        layer.Normal = normalize( sampledTexture.rgb * 2.0f - 1.0f );\
-    } else {\
-        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_NormalMapSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, N );\
-    }\
-    \
-    layer.Refraction = g_Layers[layerIdx].Refraction;\
-    layer.RefractionIor = g_Layers[layerIdx].RefractionIor;\
-    layer.ClearCoat = g_Layers[layerIdx].ClearCoat;\
-    layer.ClearCoatGlossiness = g_Layers[layerIdx].ClearCoatGlossiness;\
-    \
-    layer.DiffuseContribution = g_Layers[layerIdx].DiffuseContribution;\
-    layer.SpecularContribution = g_Layers[layerIdx].SpecularContribution;\
-    layer.NormalContribution = g_Layers[layerIdx].NormalContribution;\
-    layer.AlphaCutoff = g_Layers[layerIdx].AlphaCutoff;\
-    \
-
-#define READ_LAYER_BLEND_MASK( layerIdx )\
-        layer.BlendMask = ReadInput1D( g_Layers[layerIdx].BlendMask, g_TexBlendMask##layerIdx, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-        
-#define READ_LAYER_SKIP_BLEND_MASK( layerIdx )\
-    layer.BlendMask = 1.0f;
-
-#define READ_LAYER_FUNC_END( layerIdx )\
-    return layer;
-
-READ_LAYER_FUNC( 0 )
-{
-    READ_LAYER_CONTENT( 0 )
-    READ_LAYER_SKIP_BLEND_MASK( 0 )
-    READ_LAYER_FUNC_END( 0 )
-}
-    
-READ_LAYER_FUNC( 1 )
-{
-    READ_LAYER_CONTENT( 1 )
-    READ_LAYER_BLEND_MASK( 1 )
-    READ_LAYER_FUNC_END( 1 )
-}
-
-READ_LAYER_FUNC( 2 )
-{
-    READ_LAYER_CONTENT( 2 )
-    READ_LAYER_BLEND_MASK( 2 )
-    READ_LAYER_FUNC_END( 2 )
-}
 
 float3 BlendNormals_UDN( in float3 baseNormal, in float3 topNormal )
 {
@@ -486,7 +487,7 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
         
     baseLayer.AlphaMask = lerp( baseLayer.AlphaMask, nextLayer.AlphaMask, nextLayer.BlendMask );
     
-    baseLayer.ClearCoatNormalMap = nextLayer.ClearCoatNormalMap * nextLayer.NormalContribution;
+    baseLayer.SecondaryNormal = nextLayer.SecondaryNormal * nextLayer.NormalContribution;
     baseLayer.BlendMask = nextLayer.BlendMask;
     
     baseLayer.Refraction = lerp( baseLayer.Refraction, nextLayer.Refraction, nextLayer.BlendMask * nextLayer.SpecularContribution );
@@ -507,7 +508,7 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
 void EvaluateIBL(
     inout float3 diffuseSum,
     inout float3 specularSum,
-    inout int nNextLightIndex,
+    inout uint nNextLightIndex,
     inout int scaledTileIndex,
     in float NoV,
     in float roughness,
@@ -526,7 +527,7 @@ void EvaluateIBL(
     // Rebuild the function
     // L . D . ( f0.Gv.(1-Fc) + Gv.Fc ) . cosTheta / (4 . NdotL . NdotV )
     float dfgNoV = max( NoV, 0.5f / DFG_TEXTURE_SIZE );
-    float3 dfgLUTSample = g_DFGLUTStandard.SampleLevel( g_LUTSampler, float2( dfgNoV, roughness ), 0 );
+    float3 dfgLUTSample = g_DFGLUTStandard.SampleLevel( g_LUTSampler, float2( dfgNoV, roughness ), 0 ).rgb;
     float diffF = dfgLUTSample.z;
     float2 preDFG = dfgLUTSample.xy;
 
@@ -538,7 +539,7 @@ void EvaluateIBL(
     diffuseSum = float3( 0, 0, 0 );
     specularSum = float3( 0, 0, 0 );
 
-    for ( int i = 0; i < GlobalEnvironmentProbeCount; i++ ) {
+    for ( uint i = 0; i < GlobalEnvironmentProbeCount; i++ ) {
         diffuseSum.rgb = g_EnvProbeDiffuseArray.Sample( g_DiffuseEnvProbeSampler, float4( dominantN, GlobalEnvProbes[i].Index ) ).rgb;
         specularSum.rgb = g_EnvProbeSpecularArray.SampleLevel( g_SpecularEnvProbeSampler, float4( dominantR, GlobalEnvProbes[i].Index ), mipLevel ).rgb;
     }
@@ -552,7 +553,7 @@ void EvaluateIBL(
          scaledTileIndex++;
          nNextLightIndex = g_LightIndexBuffer[scaledTileIndex];
 
-         float3 clipSpacePos = mul( float4( positionWS, 1.0f ), LocalEnvProbes[nLightIndex].InverseModelMatrix );
+         float3 clipSpacePos = mul( float4( positionWS, 1.0f ), LocalEnvProbes[nLightIndex].InverseModelMatrix ).xyz;
          float3 uvw = clipSpacePos.xyz*float3( 0.5f, -0.5f, 0.5f ) + 0.5f;
 
          [branch]
@@ -605,6 +606,10 @@ void EvaluateIBL(
      specularSum.rgb = ( specularSum.rgb * ( fresnelColor * preDFG.x + f90 * preDFG.y ) ) * computeSpecOcclusion( NoV, ambientOcclusion, linearRoughness ); // LD.(f0.Gv.(1 - Fc) + Gv.Fc.f90)
 }
 
+#ifndef PA_EDITOR
+FLAN_LAYERS_READ
+#endif
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     // Compute common terms from vertex stage variables
@@ -612,7 +617,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float3 V = normalize( WorldPosition.xyz - VertexStage.positionWS.xyz );
     
     float3 t, b;
-    float3x3 TBNMatrix = compute_tangent_frame( N, VertexStage.positionWS, VertexStage.uvCoord, t, b );
+    float3x3 TBNMatrix = compute_tangent_frame( N, VertexStage.positionWS.xyz, VertexStage.uvCoord, t, b );
     
 #if PA_EDITOR
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
@@ -636,12 +641,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     if ( needUnpackAndTBNMult ) {
         BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
     }
-    
-    N = BaseLayer.Normal;
 #else
-	FLAN_BUILD_LAYERS()
+	FLAN_BUILD_LAYERS
 #endif
 
+    
+	N = BaseLayer.Normal;
+	
 #if PA_EDITOR
     // Flip the normal for the backface
     if ( g_IsDoubleFace == 1 && isFrontFace ) {
@@ -682,7 +688,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         ( 0.5f + BaseLayer.Roughness / 2.0f ),
 
         // Clear Coat Normal
-        BaseLayer.ClearCoatNormalMap,
+        BaseLayer.SecondaryNormal,
 
         // N dot V
         // FIX Use clamp instead of saturate (clamp dot product between epsilon and 1)
@@ -801,19 +807,19 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float ClearCoatF0 = 0.04f;
     float ClearCoatRoughness = 1.0f - surface.ClearCoatGlossiness;
     float ClearCoatLinearRoughness = ( ClearCoatRoughness * ClearCoatRoughness );
-    float ClearCoatNoV = saturate( dot( surface.V, surface.ClearCoatNormalMap ) ) + 1e-5f;
+    float ClearCoatNoV = saturate( dot( surface.V, surface.SecondaryNormal ) ) + 1e-5f;
 
     float Fc = pow( 1 - ClearCoatNoV, 5.0f );
     float ClearCoatFresnel = Fc + ( 1 - Fc ) * ClearCoatF0;
     ClearCoatFresnel *= surface.ClearCoat;
 
-    float3 ClearCoatR = reflect( -surface.V, surface.ClearCoatNormalMap );
+    float3 ClearCoatR = reflect( -surface.V, surface.SecondaryNormal );
 
     float LightTransmitAmt = ( 1.0f - ClearCoatFresnel );
 
     // Accentuate rim lighting (which is usually strong on clearcoat-like paints)
     float3 diffuseSum, ClearCoatSpecular;
-    EvaluateIBL( diffuseSum, ClearCoatSpecular, nNextLightIndex, scaledTileIndex, surface.NoV, ClearCoatRoughness, ClearCoatLinearRoughness, surface.ClearCoatNormalMap, surface.V, ClearCoatR, surface.PositionWorldSpace, surface.AmbientOcclusion, float3( 0, 0, 0 ), ClearCoatF0, ( 1.0f - surface.ClearCoat ) );
+    EvaluateIBL( diffuseSum, ClearCoatSpecular, nNextLightIndex, scaledTileIndex, surface.NoV, ClearCoatRoughness, ClearCoatLinearRoughness, surface.SecondaryNormal, surface.V, ClearCoatR, surface.PositionWorldSpace, surface.AmbientOcclusion, float3( 0, 0, 0 ), ClearCoatF0, ( 1.0f - surface.ClearCoat ) );
 
     float Mip = linearRoughnessToMipLevel( ClearCoatLinearRoughness, 8 );
     float3 ClearCoatEnvironment = g_EnvProbeCaptureArray.SampleLevel( g_DiffuseEnvProbeSampler, float4( ClearCoatR, 0 ), Mip ).xyz;
@@ -885,17 +891,18 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 #define PA_WRITE_VELOCITY 1
 #endif
 
+#if PA_WRITE_VELOCITY
         float2 prevPositionSS = (VertexStage.previousPosition.xy / VertexStage.previousPosition.z) * float2(0.5f, -0.5f) + 0.5f;
         prevPositionSS *= float2( g_BackbufferDimension );
        
         Velocity = VertexStage.position.xy - prevPositionSS;
         Velocity -= g_CameraJitteringOffset;
-        
+#endif
+		
 #if PA_EDITOR
     }
 #endif
     
-
     // Write output to buffer(s)
 	PixelStageData output;
 	output.Buffer0 = LightContribution;
@@ -908,9 +915,9 @@ void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
 #if PA_EDITOR
     float AlphaMask = 1.0f; //ReadInput1D( VertexStage.uvCoord, g_AlphaMask, g_AlphaMaskSampler, g_TexAlphaMask, 1.0f );
-#endif
 
 #if PA_ENABLE_ALPHA_TEST
     if ( AlphaMask < g_AlphaCutoff ) discard;
+#endif
 #endif
 }

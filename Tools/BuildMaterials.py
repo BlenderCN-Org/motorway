@@ -23,7 +23,7 @@ from pathlib import Path
 
 # Script args (see description below)
 isProd = False
-shader_folder = "../Flan/Graphics/Shaders/"
+shader_folder = "../Flan/Shaders/"
 compiled_shader_folder = "../bin/data/CompiledShaders/"
 compileD3D11 = False
 compileSPIRV = False
@@ -40,7 +40,7 @@ def build_flag_list( flags ):
     flagset = ""
     
     for (id, text) in flags.items():
-        flagset = flagset + ( "/D " + id + "=" + text + " " )
+        flagset = flagset + ( "/D " + id + "=\"" + text + "\" " )
         
     return flagset
 
@@ -109,6 +109,9 @@ def compile_material( filename_input, filename_output, entrypoint = 'EntryPointP
             cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T ps_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".pso"
             if isProd:
                 cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+            
+            print( cmdLine )
+			
             os.system( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -128,7 +131,6 @@ def compile_material( filename_input, filename_output, entrypoint = 'EntryPointP
          
 def read_value_string( value ):
 	str = value.replace( "\r", "" ).replace( '"', '' ).replace( '\n', '' ).replace( '<', '' ).replace( '>', '' )
-	print( str )
 	return str[1:] if str.startswith( ' ' ) else str
 	
 def read_value_integer( value ):
@@ -138,7 +140,7 @@ def read_value_float( value ):
 	return float( value )
 	
 def read_value_boolean( value ):
-	return True if value is 'True' else False
+	return True if value is 'True' or 1 else False
 	
 def read_value_vector( value ):
 	return value[1:-1].replace( ' ', '' ).split( ',' )
@@ -147,6 +149,24 @@ def read_value_rgb( value ):
 	spaceless_value = value.replace( ' ', '' )
 	
 	return [float( spaceless_value[offset:( offset + 2 )] ) / 255.0 for offset in range( 1, 7, 2 )] 
+
+def add_input_define( value, name, swizzle_mask, default_value ):
+	if value is None:
+		return default_value
+
+	if type( value ) is float:
+		return str( value ) + "f"
+	elif type( value ) is bool:
+		return "true" if value is True else "false"
+	elif type( value ) is str:
+		return "g_Tex" + name + ".Sample( g_" + name + "Sampler, uvCoord * g_LayerScale )." + swizzle_mask
+	elif type( value ) is list:
+		if len( value ) is 2:
+			return "float2( " + value[0] + ", " + value[1] + " )"
+		elif len( value ) is 3:
+			return "float3( " + value[0] + ", " + value[1] + ", " + value[2] + " )"
+		elif len( value ) is 4:
+			return "float4( " + value[0] + ", " + value[1] + ", " + value[2] + ", " + value[3] + " )"
 
 def read_value_input( value ):
 	if value.startswith( '{' ) and value.endswith( '}' ):
@@ -223,16 +243,41 @@ material_layer = MaterialLayer()
 material_layers = []
  
 for line in material_file:
+	# Skip empty lines
+	if not line:
+		continue
+		
 	try:
+		# Material block token handling
 		if not ':' in line:
 			if 'Layer' in line:
-				print( 'next layer' )
 				if is_first_layer is True:
 					is_first_layer = False
 				else:
 					material_layers.append( material_layer )
 					
-				material_layer = MaterialLayer()			
+				material_layer = MaterialLayer()
+				material_layer.UseBaseColorsRGBSource = False
+				material_layer.UseAlphaRoughnessSource = False
+				
+				material_layer.BaseColor = None
+				material_layer.AlphaMask = None
+				material_layer.Reflectance = None
+				material_layer.Roughness = None
+				material_layer.Normal = None
+				material_layer.AlphaCutoff = None
+				material_layer.Metalness = None
+				material_layer.Emissivity = None
+				material_layer.AmbientOcclusion = None
+				material_layer.SecondaryNormal = None
+				material_layer.Refraction = None
+				material_layer.RefractionIor = None
+				material_layer.ClearCoat = None
+				material_layer.ClearCoatGlossiness = None
+				material_layer.DiffuseContribution = None
+				material_layer.SpecularContribution = None
+				material_layer.NormalContribution = None
+				material_layer.BlendMask = None
 			continue
 			
 		key, value = line[:line.find( ';' )].split( ':' )
@@ -310,55 +355,99 @@ for line in material_file:
 	except ValueError:
 		print( "warning: line skipped" )
 	
+# For single layered materials
 if not is_first_layer:
 	material_layers.append( material_layer )
-
+	
+# Build macro list to resolve branches
 define_list = {}
 
-def add_input_define( value, name, swizzle_mask ):
-	if type( value ) is float:
-		return str( value ) + "f"
-	elif type( value ) is bool:
-		return "true" if value is True else "false"
-	elif type( value ) is str:
-		return "g_Tex" + name + ".Sample( g_" + name + "Sampler, uvCoord * g_LayerScale )." + swizzle_mask
-	elif type( value ) is list:
-		if len( value ) is 2:
-			return "float2( " + value[0] + ", " + value[1] + " )"
-		elif len( value ) is 3:
-			return "float3( " + value[0] + ", " + value[1] + ", " + value[2] + " )"
-		elif len( value ) is 4:
-			return "float4( " + value[0] + ", " + value[1] + ", " + value[2] + ", " + value[3] + " )"
-	
 define_list["PA_SHADING_MODEL"] = material_shading_model
 
 if material_write_velocity:
-	define_list["PA_WRITE_VELOCITY"] = 1
+	define_list["PA_WRITE_VELOCITY"] = "1"
 
 if material_enable_alpha_test:
-	define_list["PA_ENABLE_ALPHA_TEST"] = 1
+	define_list["PA_ENABLE_ALPHA_TEST"] = "1"
 
 if material_enable_alpha_blend:
-	define_list["PA_ENABLE_ALPHA_BLEND"] = 1
+	define_list["PA_ENABLE_ALPHA_BLEND"] = "1"
 	
 if material_enable_alpha_to_coverage:
-	define_list["PA_ENABLE_ALPHA_TO_COVERAGE"] = 1
+	define_list["PA_ENABLE_ALPHA_TO_COVERAGE"] = "1"
 
 if material_is_double_face:
-	define_list["PA_IS_DOUBLE_FACE"] = 1
-	
-#if not material_receive_shadow:
-#	define_list["PA_NO_SHADOW"] = 1
-	
-# define_list["PA_BASE_COLOR"] = add_input_define( material_base_color, "BaseColor", "rgb" )
-# define_list["PA_ALPHA_MASK"] = add_input_define( material_alpha_mask, "AlphaMask", "r" )
-# define_list["PA_METALNESS"] = add_input_define( material_metalness, "Metalness", "r" )
-# define_list["PA_AMBIENT_OCCLUSION"] = add_input_define( material_ambient_occlusion, "AmbientOcclusion", "r" )
-# define_list["PA_NORMAL"] = add_input_define( material_normal, "Normal", "rgb" )
-# define_list["PA_ROUGHNESS"] = add_input_define( material_roughness, "Roughness", "r" )
-# define_list["PA_EMISSIVITY"] = add_input_define( material_emissivity, "Emissivity", "rgb" )
-# define_list["PA_SCALE"] = add_input_define( material_scale, "Scale", "rg" )
+	define_list["PA_IS_DOUBLE_FACE"] = "1"
 
 layer_build_fun = ''
+layer_id = 0
+
+need_ts_to_ws_and_unpack = False
+need_ts_to_ws_and_unpack_second = False
+
 for layer in material_layers:
-	print( add_input_define( layer.BaseColor, "BaseColor", "rgb" ) )
+	layer_build_fun = layer_build_fun + "MaterialReadLayer ReadLayer" + str( layer_id ) + "(in VertexStageData VertexStage, in float3 N, in float3 V)"
+	layer_build_fun = layer_build_fun + "{ "
+	layer_build_fun = layer_build_fun + "MaterialReadLayer layer;"
+	layer_build_fun = layer_build_fun + "layer.BaseColor=" + add_input_define( layer.BaseColor, "BaseColor", "rgb", "float3( 0.42, 0.42, 0.42 )" ) + "; "
+	
+	if layer.UseBaseColorsRGBSource:
+		layer_build_fun = layer_build_fun + "layer.BaseColor=accurateSRGBToLinear( layer.BaseColor ); "
+	
+	layer_build_fun = layer_build_fun + "layer.Reflectance=" + add_input_define( layer.Reflectance, "Reflectance", "r", "0.5f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Roughness=" + add_input_define( layer.Roughness, "Roughness", "r", "1.0f" ) + "; "
+
+	if layer.UseAlphaRoughnessSource:
+		layer_build_fun = layer_build_fun + "layer.Roughness*=layer.Roughness; "
+	
+	layer_build_fun = layer_build_fun + "layer.Metalness=" + add_input_define( layer.Metalness, "Metalness", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AmbientOcclusion=" + add_input_define( layer.AmbientOcclusion, "AmbientOcclusion", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Emissivity=" + add_input_define( layer.Emissivity, "Emissivity", "r", "0.0f" ) + "; "
+	
+	layer_build_fun = layer_build_fun + "layer.Normal=" + add_input_define( layer.Normal, "Normal", "rgb", "N" ) + "; "	
+	if type( layer.Normal ) is str:
+		layer_build_fun = layer_build_fun + "layer.Normal=normalize( layer.Normal * 2.0f - 1.0f ); "
+		need_ts_to_ws_and_unpack = True
+		
+	layer_build_fun = layer_build_fun + "layer.SecondaryNormal=" + add_input_define( layer.SecondaryNormal, "SecondaryNormal", "rgb", "N" ) + "; "	
+	if type( layer.SecondaryNormal ) is str:
+		layer_build_fun = layer_build_fun + "layer.SecondaryNormal=normalize( layer.SecondaryNormal * 2.0f - 1.0f ); "
+		need_ts_to_ws_and_unpack_second = True
+		
+	layer_build_fun = layer_build_fun + "layer.Refraction=" + add_input_define( layer.Refraction, "Refraction", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.RefractionIor=" + add_input_define( layer.RefractionIor, "RefractionIor", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.ClearCoat=" + add_input_define( layer.ClearCoat, "ClearCoat", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.ClearCoatGlossiness=" + add_input_define( layer.ClearCoatGlossiness, "ClearCoatGlossiness", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.DiffuseContribution=" + add_input_define( layer.DiffuseContribution, "DiffuseContribution", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.SpecularContribution=" + add_input_define( layer.SpecularContribution, "SpecularContribution", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.NormalContribution=" + add_input_define( layer.NormalContribution, "NormalContribution", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AlphaCutoff=" + add_input_define( layer.AlphaCutoff, "AlphaCutoff", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.BlendMask=" + add_input_define( layer.BlendMask, "BlendMask", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AlphaMask=" + add_input_define( layer.AlphaMask, "AlphaMask", "r", "1.0f" ) + "; "
+	
+	layer_build_fun = layer_build_fun + "return layer; } "
+	
+	layer_id = layer_id + 1
+	
+layer_read_fun="MaterialReadLayer BaseLayer=ReadLayer0( VertexStage, N, V ); "
+
+for layer in range( 1, layer_id ):
+	layer_read_fun = layer_read_fun + "MaterialReadLayer Layer" + str( layer ) + "=ReadLayer" + str( layer ) + "( VertexStage, N, V ); "
+	layer_read_fun = layer_read_fun + "BlendLayers( BaseLayer, Layer" + str( layer ) + " ); "
+
+if need_ts_to_ws_and_unpack:
+	layer_read_fun = layer_read_fun + "BaseLayer.Normal=normalize( mul( BaseLayer.Normal, TBNMatrix ) );"
+
+if need_ts_to_ws_and_unpack_second:
+	layer_read_fun = layer_read_fun + "BaseLayer.SecondaryNormal=normalize( mul( BaseLayer.SecondaryNormal, TBNMatrix ) );"
+
+define_list["FLAN_BUILD_LAYERS"] = layer_read_fun
+define_list["FLAN_LAYERS_READ"] = layer_build_fun
+define_list["PA_USE_STANDARD_SM"] = "1"
+
+#print( layer_build_fun )
+#print( layer_read_fun )
+
+#print( define_list )
+
+compile_material( "Lighting/UberSurface.hlsl", "CompilationTest", "EntryPointPS", define_list )
