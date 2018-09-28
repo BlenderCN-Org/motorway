@@ -110,7 +110,7 @@ def compile_material( filename_input, filename_output, entrypoint = 'EntryPointP
             if isProd:
                 cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
             
-            print( cmdLine )
+            #print( cmdLine )
 			
             os.system( cmdLine )
         if compileSPIRV:
@@ -150,7 +150,7 @@ def read_value_rgb( value ):
 	
 	return [float( spaceless_value[offset:( offset + 2 )] ) / 255.0 for offset in range( 1, 7, 2 )] 
 
-def add_input_define( value, name, swizzle_mask, default_value ):
+def add_input_define( value, name, layer_index, swizzle_mask, default_value ):
 	if value is None:
 		return default_value
 
@@ -159,7 +159,7 @@ def add_input_define( value, name, swizzle_mask, default_value ):
 	elif type( value ) is bool:
 		return "true" if value is True else "false"
 	elif type( value ) is str:
-		return "g_Tex" + name + ".Sample( g_" + name + "Sampler, uvCoord * g_LayerScale )." + swizzle_mask
+		return "g_Tex" + name + str( layer_index ) + ".Sample( g_" + name + "Sampler, uvCoord )." + swizzle_mask
 	elif type( value ) is list:
 		if len( value ) is 2:
 			return "float2( " + value[0] + ", " + value[1] + " )"
@@ -278,6 +278,8 @@ for line in material_file:
 				material_layer.SpecularContribution = None
 				material_layer.NormalContribution = None
 				material_layer.BlendMask = None
+				material_layer.Offset = [0,0]
+				material_layer.Scale = [1,1]
 			continue
 			
 		key, value = line[:line.find( ';' )].split( ':' )
@@ -388,42 +390,42 @@ need_ts_to_ws_and_unpack_second = False
 for layer in material_layers:
 	layer_build_fun = layer_build_fun + "MaterialReadLayer ReadLayer" + str( layer_id ) + "(in VertexStageData VertexStage, in float3 N, in float3 V)"
 	layer_build_fun = layer_build_fun + "{ "
-	layer_build_fun = layer_build_fun + "MaterialReadLayer layer;"
-	layer_build_fun = layer_build_fun + "layer.BaseColor=" + add_input_define( layer.BaseColor, "BaseColor", "rgb", "float3( 0.42, 0.42, 0.42 )" ) + "; "
+	layer_build_fun = layer_build_fun + "MaterialReadLayer layer; float2 uvCoord = ( VertexStage.uvCoord + float2( " + str( layer.Offset[0] ) + ", " + str( layer.Offset[1] ) + " ) ) * float2( " + str( layer.Scale[0] ) + ", " + str( layer.Scale[1]  ) + " ); "
+	layer_build_fun = layer_build_fun + "layer.BaseColor=" + add_input_define( layer.BaseColor, "BaseColor", layer_id, "rgb", "float3( 0.42, 0.42, 0.42 )" ) + "; "
 	
 	if layer.UseBaseColorsRGBSource:
 		layer_build_fun = layer_build_fun + "layer.BaseColor=accurateSRGBToLinear( layer.BaseColor ); "
 	
-	layer_build_fun = layer_build_fun + "layer.Reflectance=" + add_input_define( layer.Reflectance, "Reflectance", "r", "0.5f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.Roughness=" + add_input_define( layer.Roughness, "Roughness", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Reflectance=" + add_input_define( layer.Reflectance, "Reflectance", layer_id, "r", "0.5f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Roughness=" + add_input_define( layer.Roughness, "Roughness", layer_id, "r", "1.0f" ) + "; "
 
 	if layer.UseAlphaRoughnessSource:
 		layer_build_fun = layer_build_fun + "layer.Roughness*=layer.Roughness; "
 	
-	layer_build_fun = layer_build_fun + "layer.Metalness=" + add_input_define( layer.Metalness, "Metalness", "r", "0.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.AmbientOcclusion=" + add_input_define( layer.AmbientOcclusion, "AmbientOcclusion", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.Emissivity=" + add_input_define( layer.Emissivity, "Emissivity", "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Metalness=" + add_input_define( layer.Metalness, "Metalness", layer_id, "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AmbientOcclusion=" + add_input_define( layer.AmbientOcclusion, "AmbientOcclusion", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Emissivity=" + add_input_define( layer.Emissivity, "Emissivity", layer_id, "r", "0.0f" ) + "; "
 	
-	layer_build_fun = layer_build_fun + "layer.Normal=" + add_input_define( layer.Normal, "Normal", "rgb", "N" ) + "; "	
+	layer_build_fun = layer_build_fun + "layer.Normal=" + add_input_define( layer.Normal, "Normal", layer_id, "rgb", "N" ) + "; "	
 	if type( layer.Normal ) is str:
 		layer_build_fun = layer_build_fun + "layer.Normal=normalize( layer.Normal * 2.0f - 1.0f ); "
 		need_ts_to_ws_and_unpack = True
 		
-	layer_build_fun = layer_build_fun + "layer.SecondaryNormal=" + add_input_define( layer.SecondaryNormal, "SecondaryNormal", "rgb", "N" ) + "; "	
+	layer_build_fun = layer_build_fun + "layer.SecondaryNormal=" + add_input_define( layer.SecondaryNormal, "SecondaryNormal", layer_id, "rgb", "N" ) + "; "	
 	if type( layer.SecondaryNormal ) is str:
 		layer_build_fun = layer_build_fun + "layer.SecondaryNormal=normalize( layer.SecondaryNormal * 2.0f - 1.0f ); "
 		need_ts_to_ws_and_unpack_second = True
 		
-	layer_build_fun = layer_build_fun + "layer.Refraction=" + add_input_define( layer.Refraction, "Refraction", "r", "0.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.RefractionIor=" + add_input_define( layer.RefractionIor, "RefractionIor", "r", "0.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.ClearCoat=" + add_input_define( layer.ClearCoat, "ClearCoat", "r", "0.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.ClearCoatGlossiness=" + add_input_define( layer.ClearCoatGlossiness, "ClearCoatGlossiness", "r", "0.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.DiffuseContribution=" + add_input_define( layer.DiffuseContribution, "DiffuseContribution", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.SpecularContribution=" + add_input_define( layer.SpecularContribution, "SpecularContribution", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.NormalContribution=" + add_input_define( layer.NormalContribution, "NormalContribution", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.AlphaCutoff=" + add_input_define( layer.AlphaCutoff, "AlphaCutoff", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.BlendMask=" + add_input_define( layer.BlendMask, "BlendMask", "r", "1.0f" ) + "; "
-	layer_build_fun = layer_build_fun + "layer.AlphaMask=" + add_input_define( layer.AlphaMask, "AlphaMask", "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.Refraction=" + add_input_define( layer.Refraction, "Refraction", layer_id, "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.RefractionIor=" + add_input_define( layer.RefractionIor, "RefractionIor", layer_id, "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.ClearCoat=" + add_input_define( layer.ClearCoat, "ClearCoat", layer_id, "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.ClearCoatGlossiness=" + add_input_define( layer.ClearCoatGlossiness, "ClearCoatGlossiness", layer_id, "r", "0.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.DiffuseContribution=" + add_input_define( layer.DiffuseContribution, "DiffuseContribution", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.SpecularContribution=" + add_input_define( layer.SpecularContribution, "SpecularContribution", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.NormalContribution=" + add_input_define( layer.NormalContribution, "NormalContribution", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AlphaCutoff=" + add_input_define( layer.AlphaCutoff, "AlphaCutoff", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.BlendMask=" + add_input_define( layer.BlendMask, "BlendMask", layer_id, "r", "1.0f" ) + "; "
+	layer_build_fun = layer_build_fun + "layer.AlphaMask=" + add_input_define( layer.AlphaMask, "AlphaMask", layer_id, "r", "1.0f" ) + "; "
 	
 	layer_build_fun = layer_build_fun + "return layer; } "
 	
@@ -443,11 +445,8 @@ if need_ts_to_ws_and_unpack_second:
 
 define_list["FLAN_BUILD_LAYERS"] = layer_read_fun
 define_list["FLAN_LAYERS_READ"] = layer_build_fun
-define_list["PA_USE_STANDARD_SM"] = "1"
-
-#print( layer_build_fun )
-#print( layer_read_fun )
-
-#print( define_list )
 
 compile_material( "Lighting/UberSurface.hlsl", "CompilationTest", "EntryPointPS", define_list )
+with open( compiled_shader_folder + "/" + filename_output + ".mat", 'w') as outfile:
+	outfile.write( "Name:" + material_name )
+	
