@@ -90,15 +90,42 @@ Texture2D g_TexClearCoatNormal2 : register( t47 );
 Texture2D g_TexBlendMask2                : register( t48 );
 
 // Shading Model BRDF
-#if PA_USE_STANDARD_SM
+#if PA_SHADING_MODEL == SHADING_MODEL_STANDARD
 #include "ShadingModels/Standard.hlsl"
-#elif PA_USE_CLEARCOAT_SM
+#elif PA_SHADING_MODEL == SHADING_MODEL_CLEAR_COAT
 #include "ShadingModels/ClearCoat.hlsl"
-#elif PA_USE_EMISSIVE_SM
+#elif PA_SHADING_MODEL == SHADING_EMISSIVE
 #include "ShadingModels/Emissive.hlsl"
 #else
 #include "ShadingModels/Debug.hlsl"
 #endif
+
+struct MaterialReadLayer
+{
+    float3  BaseColor;
+    float   Reflectance;
+    
+    float   Roughness;
+    float   Metalness;
+    float   AmbientOcclusion;
+    float   Emissivity;
+    
+    float3  Normal;
+    float   AlphaMask;
+    
+    float3  SecondaryNormal;
+    float   BlendMask;
+    
+    float   Refraction;
+    float   RefractionIor;
+    float   ClearCoat;
+    float   ClearCoatGlossiness;
+    
+    float   DiffuseContribution;
+    float   SpecularContribution;
+    float   NormalContribution;
+    float   AlphaCutoff;
+};
 
 uint GetNumTilesX()
 {
@@ -433,33 +460,6 @@ PixelStageData EntryPointHeatMapPS( VertexStageData VertexStage, bool isFrontFac
     return output;
 }
 
-struct MaterialReadLayer
-{
-    float3  BaseColor;
-    float   Reflectance;
-    
-    float   Roughness;
-    float   Metalness;
-    float   AmbientOcclusion;
-    float   Emissivity;
-    
-    float3  Normal;
-    float   AlphaMask;
-    
-    float3  SecondaryNormal;
-    float   BlendMask;
-    
-    float   Refraction;
-    float   RefractionIor;
-    float   ClearCoat;
-    float   ClearCoatGlossiness;
-    
-    float   DiffuseContribution;
-    float   SpecularContribution;
-    float   NormalContribution;
-    float   AlphaCutoff;
-};
-
     // float2 uvCoordinates = VertexStage.uvCoord;
 
     // if ( g_Layers[layerIndex].Displacement.Type == 3 ) {
@@ -792,13 +792,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
     
 #ifndef PA_PROBE_CAPTURE
-#ifdef PA_USE_STANDARD_SM
+#if PA_SHADING_MODEL == SHADING_MODEL_STANDARD
     float3 diffuseSum, specularSum;
     EvaluateIBL( diffuseSum, specularSum, nNextLightIndex, scaledTileIndex, surface.NoV, surface.Roughness, surface.LinearRoughness, surface.N, surface.V, surface.R, surface.PositionWorldSpace, surface.AmbientOcclusion, surface.Albedo, surface.FresnelColor, surface.F90 );
 
     // Add indirect contribution to output
     LightContribution.rgb += ( diffuseSum.rgb + specularSum.rgb );
-#elif PA_USE_CLEARCOAT_SM
+#elif PA_SHADING_MODEL == SHADING_MODEL_CLEAR_COAT
     float3 IndirectDiffuse, SpecularReflections;
     EvaluateIBL( IndirectDiffuse, SpecularReflections, nNextLightIndex, scaledTileIndex, surface.NoV, surface.Roughness, surface.LinearRoughness, surface.N, surface.V, surface.R, surface.PositionWorldSpace, surface.AmbientOcclusion, surface.Albedo, surface.FresnelColor, surface.F90 );
 
@@ -919,5 +919,7 @@ void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 #if PA_ENABLE_ALPHA_TEST
     if ( AlphaMask < g_AlphaCutoff ) discard;
 #endif
+#else
+FLAN_BUILD_DEPTH_LAYER
 #endif
 }
