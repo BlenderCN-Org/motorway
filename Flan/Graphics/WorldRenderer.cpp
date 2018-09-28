@@ -78,7 +78,7 @@ FLAN_DEV_VAR_PERSISTENT( EnvProbeDimension,
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 1, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
 FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
-FLAN_ENV_VAR( SSAAMultiplicator, "SSAA Multiplication Factor [1/1.5/2/4/8]", 4.0f, float )
+FLAN_ENV_VAR( SSAAMultiplicator, "SSAA Multiplication Factor [1/1.5/2/4/8]", 1.0f, float )
 
 WorldRenderer::WorldRenderer()
     : renderDevice( nullptr )
