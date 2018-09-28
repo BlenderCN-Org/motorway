@@ -116,7 +116,7 @@ fnPipelineMutableResHandle_t LineRenderingModule::addLineRenderPass( RenderPipel
             cameraCbuffer->bind( cmdList, 0 );
 
             // Update viewport
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Bind Vertex array

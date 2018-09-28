@@ -39,7 +39,8 @@ static fnPipelineMutableResHandle_t AddCompositionPass( RenderPipeline* renderPi
             passRenderTargetDesc.description.samplerCount = 1;
             passRenderTargetDesc.description.arraySize = 1;
             passRenderTargetDesc.description.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-            passRenderTargetDesc.useGlobalDimensions = true;
+            passRenderTargetDesc.copyResource = true;
+            passRenderTargetDesc.resourceToCopy = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) );
 
             passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
 

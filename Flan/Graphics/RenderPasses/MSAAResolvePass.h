@@ -133,7 +133,7 @@ static fnPipelineMutableResHandle_t AddMSAAResolvePass( RenderPipeline* renderPi
             autoExposureBuffer->bindReadOnly( cmdList, 16, SHADER_STAGE_PIXEL );
 
             // Update viewport
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Bind Dummy Vertex Array

@@ -28,7 +28,7 @@
 #include <Graphics/RenderPipeline.h>
 #include <Graphics/TextureSlotIndexes.h>
 
-static fnPipelineMutableResHandle_t AddDownsamplingPass( RenderPipeline* renderPipeline, const fnPipelineMutableResHandle_t renderTarget, const unsigned int downsamplingFactor = 2 )
+static fnPipelineMutableResHandle_t AddDownsamplingPass( RenderPipeline* renderPipeline, const fnPipelineMutableResHandle_t renderTarget, const float downsamplingFactor = 2.0f )
 {
     auto RenderPass = renderPipeline->addRenderPass(
         "Downsample Pass",
@@ -43,6 +43,7 @@ static fnPipelineMutableResHandle_t AddDownsamplingPass( RenderPipeline* renderP
                 return glm::uvec2( width / downsamplingFactor, height / downsamplingFactor );
             };
             passRenderTargetDesc.resourceToCopy = renderTarget;
+            passRenderTargetDesc.copyResource = true;
 
             passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
 
@@ -79,11 +80,11 @@ static fnPipelineMutableResHandle_t AddDownsamplingPass( RenderPipeline* renderP
             
             // Bind Sampler
             auto bilinearSampler = renderPipelineResources->getSampler( passData.samplers[0] );
-            bilinearSampler->bind( cmdList, 3 );
+            bilinearSampler->bind( cmdList, 0 );
 
             // Get base Input Target
             auto inputRenderTarget = renderPipelineResources->getRenderTarget( passData.input[0] );
-            inputRenderTarget->bind( cmdList, TEXTURE_SLOT_INDEX_LINEAR_SAMPLED, SHADER_STAGE_PIXEL );
+            inputRenderTarget->bind( cmdList, 0, SHADER_STAGE_PIXEL );
 
             // Set Ouput Target
             auto ouputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );

@@ -208,7 +208,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             // Bind buffer
             glm::uvec2 rtDimensions;
 
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             rtDimensions.x = pipelineDimensions.Width;

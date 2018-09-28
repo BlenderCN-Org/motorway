@@ -289,7 +289,7 @@ fnPipelineMutableResHandle_t RenderableEntityManager::addLightCullingPass( Rende
             // Read Depth Buffer
             passData.input[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainDepthRT" ) );
 
-            const auto& viewportSize = renderPipelineBuilder->getActiveViewport();
+            const auto& viewportSize = renderPipelineBuilder->getActiveViewportGeometry();
 
             // Compute light buffer size (based on backbuffer size and tuning parameters)
             unsigned int tileCountX = static_cast<unsigned int>( ( viewportSize.Width + TILE_RES - 1 ) / static_cast<float>( TILE_RES ) );
@@ -352,10 +352,10 @@ fnPipelineMutableResHandle_t RenderableEntityManager::addLightCullingPass( Rende
             // Bind Camera Buffer
             glm::uvec2 rtDimensions;
 
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& activeViewport = renderPipelineResources->getActiveViewportGeometry();
 
-            rtDimensions.x = pipelineDimensions.Width;
-            rtDimensions.y = pipelineDimensions.Height;
+            rtDimensions.x = activeViewport.Width;
+            rtDimensions.y = activeViewport.Height;
 
             auto bufferData = renderPipelineResources->getBuffer( passData.buffers[2] );
             bufferData->updateAsynchronous( cmdList, &rtDimensions, sizeof( glm::uvec2 ) );
@@ -364,8 +364,6 @@ fnPipelineMutableResHandle_t RenderableEntityManager::addLightCullingPass( Rende
             renderableEntitiesBuffer->bind( cmdList, CBUFFER_INDEX_LIGHTBUFFER, SHADER_STAGE_COMPUTE );
 
             // Retrieve tile count
-            const auto activeViewport = renderPipelineResources->getActiveViewport();
-
             const unsigned int tileCountX = static_cast<unsigned int>( ( activeViewport.Width + TILE_RES - 1 )
                 / static_cast<float>( TILE_RES ) );
             const unsigned int tileCountY = static_cast<unsigned int>( ( activeViewport.Height + TILE_RES - 1 )

@@ -119,7 +119,7 @@ fnPipelineMutableResHandle_t AtmosphereModule::renderAtmosphere( RenderPipeline*
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             // Set CmdList Viewport
-            auto passViewport = renderPipelineResources->getActiveViewport();
+            auto passViewport = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( passViewport );
 
             // Bind Pass Pipeline State

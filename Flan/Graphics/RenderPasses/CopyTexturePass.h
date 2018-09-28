@@ -96,7 +96,7 @@ static fnPipelineMutableResHandle_t AddCopyTexturePass( RenderPipeline* renderPi
             bilinearSampler->bind( cmdList, 3 );
 
             // Update viewport
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Bind Dummy Vertex Array

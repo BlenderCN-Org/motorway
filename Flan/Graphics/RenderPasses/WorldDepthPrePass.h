@@ -107,7 +107,7 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             cmdList->bindPipelineStateCmd( pipelineState );
 
             // Update viewport
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Bind Render Target

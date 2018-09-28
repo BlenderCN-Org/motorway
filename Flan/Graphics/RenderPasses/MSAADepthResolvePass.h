@@ -84,7 +84,7 @@ static fnPipelineMutableResHandle_t AddMSAADepthResolvePass( RenderPipeline* ren
             inputRenderTarget->bind( cmdList, 0, SHADER_STAGE_PIXEL );
 
             // Update viewport
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Bind Dummy Vertex Array
