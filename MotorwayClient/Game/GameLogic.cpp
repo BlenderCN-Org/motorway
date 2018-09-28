@@ -51,10 +51,6 @@
 
 // Graphics
 FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
-FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
-FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
-FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
-
 FLAN_DEV_VAR( CopiedNode, "Copied Node", nullptr, SceneNode* )
 FLAN_DEV_VAR( PickedNode, "Picked Node", nullptr, SceneNode* )
 FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
@@ -235,8 +231,11 @@ void GameLogic::rebuildPlayerRenderPipeline( Camera* mainCamera )
     mainCamera->clearRenderPasses();
     mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
-
-    if ( MSAASamplerCount <= 1 ) {
+    
+    FLAN_IMPORT_VAR_PTR( MSAASamplerCount, int32_t )
+    FLAN_IMPORT_VAR_PTR( EnableTemporalAA, bool )
+    FLAN_IMPORT_VAR_PTR( EnableFXAA, bool )
+    if ( *MSAASamplerCount <= 1 ) {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
@@ -250,12 +249,12 @@ void GameLogic::rebuildPlayerRenderPipeline( Camera* mainCamera )
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
 
-        mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( *MSAASamplerCount ) ).c_str() ) );
 
-        if ( EnableTemporalAA ) {
-            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) + "TAA" ).c_str() ) );
+        if ( *EnableTemporalAA ) {
+            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( *MSAASamplerCount ) + "TAA" ).c_str() ) );
         } else {
-            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
+            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( *MSAASamplerCount ) ).c_str() ) );
         }
     }
 
@@ -263,7 +262,7 @@ void GameLogic::rebuildPlayerRenderPipeline( Camera* mainCamera )
     mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "CompositionPass" ) );
 
-    if ( EnableFXAA ) {
+    if ( *EnableFXAA ) {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "FXAAPass" ) );
     }
 

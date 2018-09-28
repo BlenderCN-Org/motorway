@@ -73,6 +73,10 @@ void RenderPipelineBuilder::allocateResourcesAndBuild( RenderDevice* renderDevic
         if ( textureDescription.useGlobalDimensions ) {
             textureDescription.description.width = activeViewport.Width;
             textureDescription.description.height = activeViewport.Height;
+
+            FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
+            textureDescription.description.width *= *SSAAMultiplicator;
+            textureDescription.description.height *= *SSAAMultiplicator;
         }
 
         if ( textureDescription.useGlobalMultisamplingState ) {
@@ -80,8 +84,7 @@ void RenderPipelineBuilder::allocateResourcesAndBuild( RenderDevice* renderDevic
             // See https://msdn.microsoft.com/en-us/library/windows/desktop/ff476218(v=vs.85).aspx
             textureDescription.description.flags.useMultisamplePattern = 1;
 
-            FLAN_IMPORT_VAR_PTR( MSAASamplerCount, int32_t );
-            
+            FLAN_IMPORT_VAR_PTR( MSAASamplerCount, int32_t );         
             textureDescription.description.samplerCount = *MSAASamplerCount;
         }
 
