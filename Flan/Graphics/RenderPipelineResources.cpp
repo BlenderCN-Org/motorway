@@ -318,11 +318,21 @@ void RenderPipelineResources::clearBuckets()
 void RenderPipelineResources::submitViewport( const Viewport& viewport )
 {
     activeViewport = viewport;
+    activeViewportGeometry = viewport;
+
+    FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
+    activeViewportGeometry.Width *= *SSAAMultiplicator;
+    activeViewportGeometry.Height *= *SSAAMultiplicator;
 }
 
 const Viewport& RenderPipelineResources::getActiveViewport() const
 {
     return activeViewport;
+}
+
+const Viewport& RenderPipelineResources::getActiveViewportGeometry() const
+{
+    return activeViewportGeometry;
 }
 
 void RenderPipelineResources::submitCamera( const Camera::Data& cameraData )

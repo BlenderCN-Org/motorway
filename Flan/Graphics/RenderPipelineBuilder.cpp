@@ -207,11 +207,21 @@ void RenderPipelineBuilder::popViewportOverride()
 void RenderPipelineBuilder::setViewport( const RenderPipelineViewport& viewport )
 {
     this->viewport = viewport;
+    this->viewportGeometry = viewport;
+
+    FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
+    this->viewportGeometry.rendererViewport.Width *= *SSAAMultiplicator;
+    this->viewportGeometry.rendererViewport.Height *= *SSAAMultiplicator;
 }
 
 const Viewport& RenderPipelineBuilder::getActiveViewport() const
 {
     return viewportOverrideStack.empty() ? viewport.rendererViewport : viewportOverrideStack.front();
+}
+
+const Viewport& RenderPipelineBuilder::getActiveViewportGeometry() const
+{
+    return viewportOverrideStack.empty() ? viewportGeometry.rendererViewport : viewportOverrideStack.front();
 }
 
 const void* RenderPipelineBuilder::getRenderPassArgs( const fnStringHash_t renderPassHashcode ) const

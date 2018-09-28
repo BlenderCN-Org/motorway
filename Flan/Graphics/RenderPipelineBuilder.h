@@ -60,6 +60,7 @@ public:
 
     void                                setViewport( const RenderPipelineViewport& viewport );
     const Viewport&                     getActiveViewport() const;
+    const Viewport&                     getActiveViewportGeometry() const;
 
     const void*                         getRenderPassArgs( const fnStringHash_t renderPassHashcode ) const;
 
@@ -71,6 +72,7 @@ public:
 private:
     std::queue<Viewport>                    viewportOverrideStack;
     RenderPipelineViewport                  viewport;
+    RenderPipelineViewport                  viewportGeometry;
     RenderPipeline*                         builderOwner;
 
     std::queue<RenderPassTextureDesc>       texturesToAllocate;

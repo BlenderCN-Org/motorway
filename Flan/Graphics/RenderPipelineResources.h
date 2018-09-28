@@ -83,6 +83,7 @@ public:
 
     void                                    submitViewport( const Viewport& viewport );
     const Viewport&                         getActiveViewport() const;
+    const Viewport&                         getActiveViewportGeometry() const;
 
     void                                    submitCamera( const Camera::Data& cameraData );
     const Camera::Data&                     getActiveCamera() const;
@@ -123,6 +124,8 @@ private:
     int layerBucketsCmdCount[4 * 4];
 
     Viewport activeViewport;
+    Viewport activeViewportGeometry;
+
     Camera::Data activeCamera;
 
 private:
