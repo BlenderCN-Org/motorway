@@ -141,7 +141,7 @@ struct MeshSceneNode : public SceneNode
                 subMesh.material = new Material();
             }
             ImGui::SameLine();
-            if ( ImGui::SmallButton( flan::core::WideStringToString( subMesh.material->getName() ).c_str() ) ) {
+            if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
                 FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
                 *dev_EditorPickedMaterial = subMesh.material;
             }
