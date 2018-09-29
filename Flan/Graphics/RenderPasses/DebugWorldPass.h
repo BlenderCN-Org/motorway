@@ -92,7 +92,7 @@ static fnPipelineMutableResHandle_t AddDebugWorldPass( RenderPipeline* renderPip
             cameraCbuffer->updateAsynchronous( cmdList, &passCamera, sizeof( Camera::Data ) );
             cameraCbuffer->bind( cmdList, 2 );
 
-            auto& pipelineDimensions = renderPipelineResources->getActiveViewport();
+            auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
             // Render opaque geometry
