@@ -92,6 +92,9 @@ WorldRenderer::WorldRenderer()
     , environmentProbes{ nullptr, nullptr, nullptr }
     , sphereVao( new VertexArrayObject() )
     , rectangleVao( new VertexArrayObject() )
+    , boxVao( new VertexArrayObject() )
+    , circleVao( new VertexArrayObject() )
+    , coneVao( new VertexArrayObject() )
 {
     renderInfos.timeDelta = 0.0f;
     renderInfos.worldTime = 0.0f;
@@ -462,8 +465,8 @@ void WorldRenderer::createRenderTargets( void )
     TextureDescription previousFrameDesc;
     previousFrameDesc.dimension = TextureDescription::DIMENSION_TEXTURE_3D;
     previousFrameDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-    previousFrameDesc.width = 1920;
-    previousFrameDesc.height = 1080;
+    previousFrameDesc.width = 1920 * SSAAMultiplicator;
+    previousFrameDesc.height = 1080 * SSAAMultiplicator;
     previousFrameDesc.arraySize = 1;
     previousFrameDesc.mipCount = 1;
     previousFrameDesc.samplerCount = 1;
@@ -544,6 +547,212 @@ void WorldRenderer::createPrimitives( void )
 
         rectangleVao->setVertexLayout( renderDevice, rectangleVertexLayout );
     }
+    {
+        //
+        static constexpr int CIRCLE_VERTEX_COUNT = 256;
+
+        std::vector<float> vertexBufferData;
+        std::vector<uint32_t> indexBufferData;
+
+        float theta = 0.0f;
+        for ( int i = 0; i < CIRCLE_VERTEX_COUNT; i++ ) {
+            vertexBufferData.push_back( sin( theta ) );
+            vertexBufferData.push_back( 0.0f );
+            vertexBufferData.push_back( cos( theta ) );
+
+            vertexBufferData.push_back( 0.0f );
+            vertexBufferData.push_back( 0.0f );
+
+            indexBufferData.push_back( i );
+
+            theta += glm::pi<float>() * 4.0f / CIRCLE_VERTEX_COUNT;
+        }
+
+        BufferDesc vertexVbo;
+        vertexVbo.Type = BufferDesc::VERTEX_BUFFER;
+        vertexVbo.Size = ( uint32_t )vertexBufferData.size() * sizeof( float );
+        vertexVbo.Stride = 5 * sizeof( float );
+
+        BufferDesc vertexIbo;
+        vertexIbo.Type = BufferDesc::INDICE_BUFFER;
+        vertexIbo.Size = ( uint32_t )indexBufferData.size() * sizeof( uint32_t );
+        vertexIbo.Stride = sizeof( uint32_t );
+
+        circleIndiceCount = indexBufferData.size();
+
+        circleVbo.reset( new Buffer() );
+        circleVbo->create( renderDevice, vertexVbo, ( void* )vertexBufferData.data() );
+
+        circleIbo.reset( new Buffer() );
+        circleIbo->create( renderDevice, vertexIbo, ( void* )indexBufferData.data() );
+
+        circleVao->create( renderDevice, circleVbo.get(), circleIbo.get() );
+
+        VertexLayout_t circleVertexLayout = {
+            { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
+            { 1, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // UVMAP0
+        };
+
+        circleVao->setVertexLayout( renderDevice, circleVertexLayout );
+    }
+    {
+        static constexpr float BOX_VB_DATA[] = {
+            1.0f, 1.0f, 1.0f, +0.0f, +1.0f,
+            -1.0f, 1.0f, 1.0f, +0.0f, -1.0f,
+            1.0f, -1.0f, 1.0f, +1.0f, +1.0f,
+            -1.0f, -1.0f, 1.0f, -1.0f, -1.0f,
+
+            1.0f, 1.0f, 1.0f, +0.0f, +1.0f,
+            1.0f, -1.0f, 1.0f, +0.0f, -1.0f,
+            1.0f, 1.0f, -1.0f, +1.0f, +1.0f,
+            1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+
+            1.0f, 1.0f, 1.0f,  +0.0f, +1.0f,
+            1.0f, 1.0f, -1.0f,  +0.0f, -1.0f,
+            -1.0f, 1.0f, 1.0f, +1.0f, +1.0f,
+            -1.0f, 1.0f, -1.0f, -1.0f, -1.0f,
+
+            1.0f, 1.0f, -1.0f,  +0.0f, +1.0f,
+            1.0f, -1.0f, -1.0f,   +0.0f, -1.0f,
+            -1.0f, 1.0f, -1.0f, +1.0f, +1.0f,
+            -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+
+            -1.0f, 1.0f, 1.0f,  +0.0f, +1.0f,
+            -1.0f, 1.0f, -1.0f,   +0.0f, -1.0f,
+            -1.0f, -1.0f, 1.0f, +1.0f, +1.0f,
+            -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+
+            1.0f, -1.0f, 1.0f,  +0.0f, +1.0f,
+            -1.0f, -1.0f, 1.0f,   +0.0f, -1.0f,
+            1.0f, -1.0f, -1.0f, +1.0f, +1.0f,
+            -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+        };
+
+        static constexpr uint32_t BOX_IB_DATA[] = {
+            0, 1, 2,
+            2, 1, 3,
+
+            4, 5, 6,
+            6, 5, 7,
+
+            8, 9, 10,
+            10, 9, 11,
+
+            12, 13, 14,
+            14, 13, 15,
+
+            16, 17, 18,
+            18, 17, 19,
+
+            20, 21, 22,
+            22, 21, 23,
+        };
+
+        BufferDesc vertexVbo;
+        vertexVbo.Type = BufferDesc::VERTEX_BUFFER;
+        vertexVbo.Size = sizeof( BOX_VB_DATA );
+        vertexVbo.Stride = 5 * sizeof( float );
+
+        BufferDesc vertexIbo;
+        vertexIbo.Type = BufferDesc::INDICE_BUFFER;
+        vertexIbo.Size = sizeof( BOX_IB_DATA );
+        vertexIbo.Stride = sizeof( uint32_t );
+
+        boxIndiceCount = vertexIbo.Size / vertexIbo.Stride;
+
+        boxVbo.reset( new Buffer() );
+        boxVbo->create( renderDevice, vertexVbo, ( void* )BOX_VB_DATA );
+
+        boxIbo.reset( new Buffer() );
+        boxIbo->create( renderDevice, vertexIbo, ( void* )BOX_IB_DATA );
+
+        boxVao->create( renderDevice, boxVbo.get(), boxIbo.get() );
+
+        VertexLayout_t boxVertexLayout = {
+            { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
+            { 1, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // UVMAP0
+        };
+
+        boxVao->setVertexLayout( renderDevice, boxVertexLayout );
+    }
+    {
+        std::vector<float> coneVertices;
+
+        coneVertices.push_back( 0.0f );
+        coneVertices.push_back( 0.0f );
+        coneVertices.push_back( 0.0f );
+
+        coneVertices.push_back( 0.0f );
+        coneVertices.push_back( 0.0f );
+
+        std::vector<uint32_t> coneIndices;
+        auto sides = 32.0f;
+        auto radius = 1.0f;
+        auto height = 1.0f;
+
+        float stepAngle = ( float )( ( 2 * glm::pi<float>() ) / sides );
+        for ( int i = 0; i <= sides; i++ ) {
+            float r = stepAngle * i;
+            float x = ( float )glm::cos( r ) * radius;
+            float z = ( float )glm::sin( r ) * radius;
+
+            coneVertices.push_back( x );
+            coneVertices.push_back( -1.0f );
+            coneVertices.push_back( z );
+
+            coneVertices.push_back( 0.0f );
+            coneVertices.push_back( 0.0f );
+        }
+
+        for ( int i = 0; i < sides + 1; i++ ) {
+            coneIndices.push_back( 0 );
+            coneIndices.push_back( i );
+            coneIndices.push_back( i + 1 );
+        }
+
+        // Generate top and sides
+        coneVertices.push_back( 0.0f );
+        coneVertices.push_back( height );
+        coneVertices.push_back( 0.0f );
+
+        coneVertices.push_back( 0.0f );
+        coneVertices.push_back( 0.0f );
+
+        int topInd = ( int )coneIndices.size() - 1;
+
+        for ( int i = 0; i < sides + 1; i++ ) {
+            coneIndices.push_back( topInd );
+            coneIndices.push_back( i );
+            coneIndices.push_back( i + 1 );
+        }
+
+        BufferDesc vertexVbo;
+        vertexVbo.Type = BufferDesc::VERTEX_BUFFER;
+        vertexVbo.Size = coneVertices.size() * sizeof( float );
+        vertexVbo.Stride = 5 * sizeof( float );
+
+        BufferDesc vertexIbo;
+        vertexIbo.Type = BufferDesc::INDICE_BUFFER;
+        vertexIbo.Size = coneIndices.size() * sizeof( uint32_t );
+        vertexIbo.Stride = sizeof( uint32_t );
+
+        coneIndiceCount = coneIndices.size();
+
+        coneVbo.reset( new Buffer() );
+        coneVbo->create( renderDevice, vertexVbo, ( void* )coneVertices.data() );
+
+        coneIbo.reset( new Buffer() );
+        coneIbo->create( renderDevice, vertexIbo, ( void* )coneIndices.data() );
+
+        coneVao->create( renderDevice, coneVbo.get(), coneIbo.get() );
+
+        VertexLayout_t coneVertexLayout = {
+            { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
+            { 1, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // UVMAP0
+        };
+
+        coneVao->setVertexLayout( renderDevice, coneVertexLayout );
+    }
 }
 
 void WorldRenderer::sortDrawCmds( void )
@@ -576,6 +785,24 @@ VertexArrayObject* WorldRenderer::getRectanglePrimitive( uint32_t& indiceCount )
 {
     indiceCount = rectangleIndiceCount;
     return rectangleVao.get();
+}
+
+VertexArrayObject* WorldRenderer::getCirclePrimitive( uint32_t& indiceCount ) const
+{
+    indiceCount = circleIndiceCount;
+    return circleVao.get();
+}
+
+VertexArrayObject* WorldRenderer::getBoxPrimitive( uint32_t& indiceCount ) const
+{
+    indiceCount = boxIndiceCount;
+    return boxVao.get();
+}
+
+VertexArrayObject* WorldRenderer::getConePrimitive( uint32_t& indiceCount ) const
+{
+    indiceCount = coneIndiceCount;
+    return coneVao.get();
 }
 #endif
 

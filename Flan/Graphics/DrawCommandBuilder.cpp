@@ -135,6 +135,9 @@ DrawCommandBuilder::DrawCommandBuilder()
     , meshInstancesCount( 0 )
     , wireMeshInstancesCount( 0 )
     , sphereMatriceCount( 0 )
+    , aabbMatriceCount( 0 )
+    , coneMatriceCount( 0 )
+    , circleMatriceCount( 0 )
     , envProbeCaptureCount( 0 )
     , envProbeConvolutionCount( 0 )
     , hudRectangleMatriceCount( 0 )
@@ -215,6 +218,49 @@ void DrawCommandBuilder::addWireframeSphere( const glm::vec3& positionWorldSpace
 
     sphereMatrices[sphereMatriceCount] = translationMatrix * scaleMatrix;
     sphereMatriceCount++;
+}
+
+void DrawCommandBuilder::addWireframeAABB( const glm::vec3& positionWorldSpace, const glm::vec3& halfDimensions, const glm::vec4& wireColor )
+{
+    glm::mat4 translationMatrix = glm::translate( glm::mat4( 1.0 ), positionWorldSpace );
+    glm::mat4 scaleMatrix = glm::scale( glm::mat4( 1.0 ), halfDimensions );
+
+    aabb[aabbMatriceCount].center = positionWorldSpace;
+
+    aabb[aabbMatriceCount].radius = halfDimensions.x;        
+    if ( aabb[aabbMatriceCount].radius < halfDimensions.y ) aabb[aabbMatriceCount].radius = halfDimensions.y;
+    if ( aabb[aabbMatriceCount].radius < halfDimensions.z ) aabb[aabbMatriceCount].radius = halfDimensions.z;
+
+    aabbMatrices[aabbMatriceCount] = translationMatrix * scaleMatrix;
+    aabbMatriceCount++;
+}
+
+void DrawCommandBuilder::addWireframeCone( const glm::vec3& positionWorldSpace, const glm::vec3& scale, const glm::quat& rotation, const glm::vec4& wireColor )
+{
+    glm::mat4 translationMatrix = glm::translate( glm::mat4( 1.0 ), positionWorldSpace );
+    glm::mat4 scaleMatrix = glm::scale( glm::mat4( 1.0 ), scale );
+    glm::mat4 rotationMatrix = glm::mat4_cast( rotation );
+
+    cone[coneMatriceCount].center = positionWorldSpace;
+
+    cone[coneMatriceCount].radius = scale.x;
+    if ( cone[coneMatriceCount].radius < scale.y ) cone[coneMatriceCount].radius = scale.y;
+    if ( cone[coneMatriceCount].radius < scale.z ) cone[coneMatriceCount].radius = scale.z;
+
+    coneMatrices[coneMatriceCount] = translationMatrix * rotationMatrix * scaleMatrix;
+    coneMatriceCount++;
+}
+
+void DrawCommandBuilder::addWireframeCircle( const glm::vec3& positionWorldSpace, const float radius, const glm::quat& rotation, const glm::vec4& wireColor )
+{
+    glm::mat4 translationMatrix = glm::translate( glm::mat4( 1.0 ), positionWorldSpace );
+    glm::mat4 scaleMatrix = glm::scale( glm::mat4( 1.0 ), glm::vec3( radius ) );
+
+    circle[sphereMatriceCount].center = positionWorldSpace;
+    circle[sphereMatriceCount].radius = radius;
+
+    circleMatrices[circleMatriceCount] = translationMatrix * scaleMatrix;
+    circleMatriceCount++;
 }
 
 void DrawCommandBuilder::addLineToRender( const glm::vec3& from, const glm::vec3& to, const float thickness, const glm::vec4& color )
@@ -407,6 +453,9 @@ FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
     meshInstancesCount = 0;
     wireMeshInstancesCount = 0;
     sphereMatriceCount = 0;
+    aabbMatriceCount = 0;
+    coneMatriceCount = 0;
+    circleMatriceCount = 0;
     hudRectangleMatriceCount = 0;
 }
 
@@ -516,6 +565,77 @@ void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldV
         }
     }
 
+    uint32_t aabbIndiceCount = 0;
+    auto boxVao = worldRenderer->getBoxPrimitive( aabbIndiceCount );
+    for ( int debugPrimIdx = 0; debugPrimIdx < aabbMatriceCount; debugPrimIdx++ ) {
+        if ( CullSphereInfReversedZ( viewportFrustum, aabb[debugPrimIdx].center, aabb[debugPrimIdx].radius ) > 0 ) {
+            auto distanceToCamera = glm::distance( aabb[debugPrimIdx].center, worldViewport.worldPosition );
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEBUG;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
+            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+            drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
+
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = wireframeMat;
+            drawCmdGeo.vao = boxVao;
+            drawCmdGeo.indiceBufferOffset = 0u;
+            drawCmdGeo.indiceBufferCount = aabbIndiceCount;
+            drawCmdGeo.modelMatrix = &aabbMatrices[debugPrimIdx];
+
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+        }
+    }
+
+    uint32_t coneIndiceCount = 0;
+    auto coneVao = worldRenderer->getConePrimitive( coneIndiceCount );
+    for ( int debugPrimIdx = 0; debugPrimIdx < coneMatriceCount; debugPrimIdx++ ) {
+        if ( CullSphereInfReversedZ( viewportFrustum, cone[debugPrimIdx].center, cone[debugPrimIdx].radius ) > 0 ) {
+            auto distanceToCamera = glm::distance( cone[debugPrimIdx].center, worldViewport.worldPosition );
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEBUG;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
+            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+            drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
+
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = wireframeMat;
+            drawCmdGeo.vao = coneVao;
+            drawCmdGeo.indiceBufferOffset = 0u;
+            drawCmdGeo.indiceBufferCount = coneIndiceCount;
+            drawCmdGeo.modelMatrix = &coneMatrices[debugPrimIdx];
+
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+        }
+    }
+
+    uint32_t circleIndiceCount = 0;
+    auto circleVao = worldRenderer->getCirclePrimitive( circleIndiceCount );
+    for ( int debugPrimIdx = 0; debugPrimIdx < circleMatriceCount; debugPrimIdx++ ) {
+        if ( CullSphereInfReversedZ( viewportFrustum, circle[debugPrimIdx].center, circle[debugPrimIdx].radius ) > 0 ) {
+            auto distanceToCamera = glm::distance( circle[debugPrimIdx].center, worldViewport.worldPosition );
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEBUG;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
+            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+            drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
+
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = wireframeMat;
+            drawCmdGeo.vao = circleVao;
+            drawCmdGeo.indiceBufferOffset = 0u;
+            drawCmdGeo.indiceBufferCount = circleIndiceCount;
+            drawCmdGeo.modelMatrix = &circleMatrices[debugPrimIdx];
+
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+        }
+    }
     for ( int i = 0; i < wireMeshInstancesCount; i++ ) {
         auto* meshInstance = wireMeshInstances[i];
         auto& subMeshes = meshInstance->meshAsset->getSubMeshVector();

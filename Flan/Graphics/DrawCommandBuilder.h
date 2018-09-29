@@ -65,6 +65,9 @@ public:
     void    addEnvProbeToCapture( EnvironmentProbe* envProbe );
 
     void    addWireframeSphere( const glm::vec3& positionWorldSpace, const float radius, const glm::vec4& wireColor = glm::vec4( 1, 1, 0, 1 ) );
+    void    addWireframeAABB( const glm::vec3& positionWorldSpace, const glm::vec3& halfDimensions, const glm::vec4& wireColor = glm::vec4( 1, 1, 0, 1 ) );
+    void    addWireframeCone( const glm::vec3& positionWorldSpace, const glm::vec3& scale, const glm::quat& rotation, const glm::vec4& wireColor = glm::vec4( 1, 1, 0, 1 ) );
+    void    addWireframeCircle( const glm::vec3& positionWorldSpace, const float radius, const glm::quat& rotation, const glm::vec4& wireColor = glm::vec4( 1, 1, 0, 1 ) );
 
     void    addLineToRender( const glm::vec3& from, const glm::vec3& to, const float thickness, const glm::vec4& color );
 
@@ -101,6 +104,18 @@ private:
     BoundingSphere                          spheres[1024];
     glm::mat4x4                             sphereMatrices[1024];
     int                                     sphereMatriceCount;
+
+    BoundingSphere                          aabb[1024];
+    glm::mat4x4                             aabbMatrices[1024];
+    int                                     aabbMatriceCount;
+
+    BoundingSphere                          cone[1024];
+    glm::mat4x4                             coneMatrices[1024];
+    int                                     coneMatriceCount;
+
+    BoundingSphere                          circle[1024];
+    glm::mat4x4                             circleMatrices[1024];
+    int                                     circleMatriceCount;
 
     struct HUDRectangleCmd
     {

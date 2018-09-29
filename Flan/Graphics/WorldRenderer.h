@@ -93,6 +93,9 @@ public:
 
     VertexArrayObject* getSpherePrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getRectanglePrimitive( uint32_t& indiceCount ) const;
+    VertexArrayObject* getCirclePrimitive( uint32_t& indiceCount ) const;
+    VertexArrayObject* getBoxPrimitive( uint32_t& indiceCount ) const;
+    VertexArrayObject* getConePrimitive( uint32_t& indiceCount ) const;
 #endif
 
 private:
@@ -141,7 +144,22 @@ private:
     std::unique_ptr<Buffer>                 rectangleIbo;
     std::unique_ptr<VertexArrayObject>      rectangleVao;
     uint32_t                                rectangleIndiceCount;
-    
+
+    std::unique_ptr<Buffer>                 circleVbo;
+    std::unique_ptr<Buffer>                 circleIbo;
+    std::unique_ptr<VertexArrayObject>      circleVao;
+    uint32_t                                circleIndiceCount;
+
+    std::unique_ptr<Buffer>                 boxVbo;
+    std::unique_ptr<Buffer>                 boxIbo;
+    std::unique_ptr<VertexArrayObject>      boxVao;
+    uint32_t                                boxIndiceCount;
+
+    std::unique_ptr<Buffer>                 coneVbo;
+    std::unique_ptr<Buffer>                 coneIbo;
+    std::unique_ptr<VertexArrayObject>      coneVao;
+    uint32_t                                coneIndiceCount;
+
     BRDFInputs                              brdfInputs;
 
 private:
