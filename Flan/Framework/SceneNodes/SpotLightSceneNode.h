@@ -56,6 +56,7 @@ struct SpotLightSceneNode : public SceneNode
         , light( nodeLight )
     {
         canCollectRenderKeys = true;
+        canCollectDebugRenderKeys = true;
 
 #if FLAN_DEVBUILD
         activeColorMode = flan::editor::eColorMode::COLOR_MODE_SRGB;
@@ -122,6 +123,17 @@ struct SpotLightSceneNode : public SceneNode
 
         flan::editor::PanelLuminousIntensity( lightData.lightPower );
         flan::editor::PanelColor( activeColorMode, lightData.colorRGB );
+    }
+
+    virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
+    {
+        auto& lightData = light->getLightData();
+
+        glm::quat rotationQuaternion = glm::rotate( glm::quat( 1.0f, 0.0f, 0.0f, 0.0f ), glm::radians( 90.0f * lightData.lightDirection.x ), glm::vec3( 1, 0, 0 ) );
+        rotationQuaternion = glm::rotate( rotationQuaternion, glm::radians( 90.0f * lightData.lightDirection.y ), glm::vec3( 0, 1, 0 ) );
+        rotationQuaternion = glm::rotate( rotationQuaternion, glm::radians( 90.0f * lightData.lightDirection.z ), glm::vec3( 0, 0, 1 ) );
+
+        drawCommandBuilder->addWireframeCone( lightData.worldPosition, glm::vec3( lightData.radius ), rotationQuaternion );
     }
 #endif
 };

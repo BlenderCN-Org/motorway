@@ -66,6 +66,7 @@ public:
     {
         canCollectRenderKeys = true;
         canDrawInEditor = true;
+        canCollectDebugRenderKeys = true;
     }
 
     DiskLightSceneNode( DiskLightSceneNode& node )
@@ -85,44 +86,17 @@ public:
 
         ImGui::LabelText( "##DiskLightName", "Disk Light" );
 
-        static ImGuizmo::MODE mCurrentGizmoMode( ImGuizmo::WORLD );
-        static bool useSnap = false;
-        static int activeManipulationMode = 0;
-        static float snap[3] = { 1.f, 1.f, 1.f };
+        if ( ImGui::DragFloat3( "Position (world)", &lightData.worldPosition[0] ) ) {
+            transform.setLocalTranslation( lightData.worldPosition );
+        } else {
+            lightData.worldPosition = transform.getWorldTranslation();
+        }
 
-        if ( ImGui::RadioButton( "Local", mCurrentGizmoMode == ImGuizmo::LOCAL ) )
-            mCurrentGizmoMode = ImGuizmo::LOCAL;
-
-        ImGui::SameLine();
-
-        if ( ImGui::RadioButton( "World", mCurrentGizmoMode == ImGuizmo::WORLD ) )
-            mCurrentGizmoMode = ImGuizmo::WORLD;
-
-        ImGui::Checkbox( "", &useSnap );
-        ImGui::SameLine();
-        ImGui::InputFloat( "Snap", &snap[0] );
-
-        ImGui::RadioButton( "Translate", &activeManipulationMode, 0 );
-        ImGui::SameLine();
-        ImGui::RadioButton( "Rotation", &activeManipulationMode, 1 );
-        ImGui::SameLine();
-        ImGui::RadioButton( "Scale", &activeManipulationMode, 2 );
-
-        FLAN_IMPORT_VAR_PTR( dev_GuizmoViewMatrix, float* )
-        FLAN_IMPORT_VAR_PTR( dev_GuizmoProjMatrix, float* )
-            
-        glm::mat4 modelMatrix( 1 );
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
-        ImGuizmo::Manipulate( *dev_GuizmoViewMatrix, *dev_GuizmoProjMatrix, static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, ( float* )&modelMatrix[0][0], NULL, useSnap ? &snap[0] : NULL );
-
-        glm::vec3 scaleDecomposed;
-        glm::quat rotationDecomposed;
-        glm::vec3 skewDecomposed;
-        glm::vec4 perspectiveDecomposed;
-        glm::decompose( modelMatrix, scaleDecomposed, rotationDecomposed, lightData.worldPosition, skewDecomposed, perspectiveDecomposed );
-
-        lightData.radius = glm::min( 0.01f, scaleDecomposed.x );
+        if ( ImGui::DragFloat( "Radius", &lightData.radius, 0.01f, 0.01f, 64.0f ) ) {
+            transform.setLocalScale( glm::vec3( lightData.radius ) );
+        } else {
+            lightData.radius = transform.getWorldBiggestScale();
+        }
 
         ImGui::DragFloat3( "Position (world)", &lightData.worldPosition[0] );
         ImGui::DragFloat3( "Plane Normal (world)", &lightData.planeNormal[0] );
@@ -130,6 +104,16 @@ public:
 
         flan::editor::PanelLuminousIntensity( lightData.lightPower );
         flan::editor::PanelColor( activeColorMode, lightData.colorRGB );
+    }
+
+    virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
+    {
+        const auto& lightData = light->getLightData();
+        glm::quat rotationMatrix = glm::rotate( glm::quat( 1.0f, 0.0f, 0.0f, 0.0f ), glm::radians( 90.0f * lightData.planeNormal.x ), glm::vec3( 1, 0, 0 ) );
+        rotationMatrix = glm::rotate( rotationMatrix, glm::radians( 90.0f * lightData.planeNormal.y ), glm::vec3( 0, 1, 0 ) );
+        rotationMatrix = glm::rotate( rotationMatrix, glm::radians( 90.0f * lightData.planeNormal.z ), glm::vec3( 0, 0, 1 ) );
+
+        drawCommandBuilder->addWireframeCircle( lightData.worldPosition, lightData.radius, rotationMatrix );
     }
 #endif
 
@@ -158,34 +142,4 @@ public:
         light = renderableEntityManager->createDiskLight( {} );
         light->restore( stream );
     }
-
-    /*virtual void DrawInWorld( WorldRenderer* WorldRenderer, bool isSelected = false ) override
-    {
-        DrawCommand& drawCommand = WorldRenderer->AddCircleWireframeDrawCall();
-        drawCommand.SortKey.MeshHashcode = PA_STRING_HASH( "DBG_CIRCLE" );
-        drawCommand.ModelMatrix = light->GetModelMatrix();
-    }
-
-    virtual bool Intersects( const Ray& ray, float& hitDistance ) const override
-    {
-        const auto& lightData = light->GetLightData();
-
-        auto lightRadius = GetLightScaledRadius();
-        return pa::maths::RayDiskIntersectionTest( lightData.WorldPosition, lightRadius, lightData.PlaneNormal, ray, hitDistance );
-    }
-
-    virtual void ComputeBounds( const glm::vec3& planeNormal, float& nearBound, float& farBound ) const override
-    {
-        const auto& lightPosition = light->GetLightData().WorldPosition;
-        auto lightRadius = GetLightScaledRadius();
-
-        auto minPoint = lightPosition - lightRadius;
-        auto maxPoint = lightPosition + lightRadius;
-
-        float d = glm::dot( planeNormal, minPoint );
-        nearBound = ( d < nearBound ) ? d : nearBound;
-
-        d = glm::dot( planeNormal, maxPoint );
-        farBound = ( d > farBound ) ? d : nearBound;
-    }*/
 };

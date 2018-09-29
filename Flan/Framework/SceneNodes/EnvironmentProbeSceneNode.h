@@ -68,7 +68,7 @@ public:
         , Probe( nodeProbe )
     {
         canCollectRenderKeys = true;
-        //CanDrawInWorld = true;
+        canCollectDebugRenderKeys = true;
     }
 
     EnvironmentProbeSceneNode( EnvironmentProbeSceneNode& node )
@@ -99,6 +99,11 @@ public:
         if ( Probe->IsDynamic ) {
             ImGui::InputInt( "Update Frequency (in frames)", ( int* )&Probe->CaptureFrequency );
         }
+    }
+
+    virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
+    {
+        drawCommandBuilder->addWireframeAABB( Probe->Sphere.center, glm::vec3( Probe->Sphere.radius ) );
     }
 #endif
 

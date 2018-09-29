@@ -71,6 +71,7 @@ public:
         activeColorMode = flan::editor::eColorMode::COLOR_MODE_SRGB;
 #endif
 
+        canCollectDebugRenderKeys = true;
         canBeIntersected = true;
     }
 

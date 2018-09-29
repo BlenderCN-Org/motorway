@@ -84,6 +84,7 @@ struct RectangleLightSceneNode : public SceneNode
         , light( nodeLight )
     {
         canCollectRenderKeys = true;
+        canCollectDebugRenderKeys = true;
 
 #if FLAN_DEVBUILD
         activeColorMode = flan::editor::eColorMode::COLOR_MODE_SRGB;
@@ -153,6 +154,12 @@ struct RectangleLightSceneNode : public SceneNode
 
         flan::editor::PanelLuminousIntensity( lightData.lightPower );
         flan::editor::PanelColor( activeColorMode, lightData.colorRGB );
+    }
+
+    virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
+    {
+        auto& lightData = light->getLightData();
+        drawCommandBuilder->addWireframeAABB( lightData.worldPosition, glm::vec3( lightData.width, lightData.radius, lightData.height ) );
     }
 #endif
 };
