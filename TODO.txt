@@ -4,6 +4,7 @@ Stuff todo for the project
 
 [Editor]
     <Road Network Editor>
+        (Get Terrain Working first)
         > TopDown View ('Map' like view)
         > Road Generation (Bezier Curve and shiet)
         > 'Road Profile' (material, AI node, etc.)
@@ -13,8 +14,8 @@ Stuff todo for the project
         > Fix layer blending for edge cases (see bug reports)
         > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
         > Allow custom sampler parameters (tex coordinates addressing; custom blend state)
-    > Wireframe primitives for renderable entities (light sources, probes, etc.)
-    
+    > Fix scene deletion command issue (figure out how to copy a renderable entity and hide it until the deleted cmd is reverted)
+
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
@@ -58,6 +59,7 @@ DONE
         > Fix Depth shaders (blend layers alphas)
         > Reimplement refraction in shader (dynamic/resolved branching)
     > Split Client and Editor contexts
+    > Wireframe primitives for renderable entities (light sources, probes, etc.)
     
 [Engine]
     > Fix AutoExposure glitches (tip: do calibration with EV100 rule)
