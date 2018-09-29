@@ -148,7 +148,9 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         
         if ( isWorldMaterial ) {
             depthStencilDesc.enableDepthTest = true;
-            depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_EQUAL;
+            depthStencilDesc.depthComparisonFunc = ( editableMaterialData.EnableAlphaBlend )
+                                                ? flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GEQUAL
+                                                : flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_EQUAL;
         } else {
             depthStencilDesc.enableDepthTest = false;
             depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_ALWAYS;
@@ -202,7 +204,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             pipelineStateProbe->create( renderDevice, descriptor );
         }
 
-        // Reversed Depth Only Pipeline State
+        // Depth Only Pipeline State
         descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
 
         if ( editableMaterialData.EnableAlphaTest )
@@ -229,15 +231,19 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         depthPipelineState->create( renderDevice, descriptor );
 
-        // Depth Only
-        depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GREATER;   
-        descriptor.depthStencilState = new DepthStencilState();
-        descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
-        rasterDesc.cullMode = ( editableMaterialData.IsDoubleFace ) 
-            ? flan::rendering::eCullMode::CULL_MODE_NONE 
-            : flan::rendering::eCullMode::CULL_MODE_FRONT;
+        // Reversed Depth Only
+        if ( !editableMaterialData.EnableAlphaBlend ) {
+            depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GREATER;
+            descriptor.depthStencilState = new DepthStencilState();
+            descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
+            rasterDesc.cullMode = ( editableMaterialData.IsDoubleFace )
+                ? flan::rendering::eCullMode::CULL_MODE_NONE
+                : flan::rendering::eCullMode::CULL_MODE_FRONT;
 
-        reversedDepthPipelineState->create( renderDevice, descriptor );
+            reversedDepthPipelineState->create( renderDevice, descriptor );
+        } else {
+            reversedDepthPipelineState.reset( nullptr );
+        }
     } else {
         isEditable = false;
 
@@ -534,8 +540,13 @@ void Material::bind( CommandList* cmdList ) const
     }
 }
 
-void Material::bindReversedDepthOnly( CommandList* cmdList ) const
+bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
 {
+    // Alpha blended surfaces (e.g. glass) should skip z prepass
+    if ( reversedDepthPipelineState == nullptr ) {
+        return false;
+    }
+
     cmdList->bindPipelineStateCmd( reversedDepthPipelineState.get() );
 
     for ( auto& textureSlot : textureSet ) {
@@ -546,6 +557,8 @@ void Material::bindReversedDepthOnly( CommandList* cmdList ) const
         editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
+
+    return true;
 }
 
 void Material::bindDepthOnly( CommandList* cmdList ) const
@@ -923,10 +936,10 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
 
                 displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), false );
+                displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ) );
 
-                if ( editableMaterialData.EnableAlphaTest == 1 ) {
-                    displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ) );
 
+                if ( editableMaterialData.EnableAlphaTest == 1u ) {
                     ImGui::LabelText( "##hidden_AlphaCutoff_0", "Alpha Cutoff" );
                     ImGui::SameLine( 128.0f );
                     ImGui::DragFloat( "##hidden_AlphaCutoff", &layer.AlphaCutoff );

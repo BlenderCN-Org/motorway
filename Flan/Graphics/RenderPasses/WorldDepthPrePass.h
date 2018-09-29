@@ -144,7 +144,9 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
                     previousModelMatrix = drawCmd.modelMatrix;
                 }
 
-                drawCmd.material->bindReversedDepthOnly( cmdList );
+                if ( !drawCmd.material->bindReversedDepthOnly( cmdList ) ) {
+                    continue;
+                }
 
                 cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
             }

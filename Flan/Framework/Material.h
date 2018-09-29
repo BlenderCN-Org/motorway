@@ -50,7 +50,7 @@ public:
 
     void                        bind( CommandList* cmdList ) const;
     // Reversed Z rendering (e.g. depth prepass)
-    void                        bindReversedDepthOnly( CommandList* cmdList ) const;
+    bool                        bindReversedDepthOnly( CommandList* cmdList ) const;
     // Regular Z rendering (e.g. shadow rendering, hi-z pyramid compute, etc.)
     void                        bindDepthOnly( CommandList* cmdList ) const;
     void                        bindForProbeRendering( CommandList* cmdList ) const;

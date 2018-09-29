@@ -512,8 +512,8 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
 void EvaluateIBL(
     inout float3 diffuseSum,
     inout float3 specularSum,
-    inout uint nNextLightIndex,
-    inout int scaledTileIndex,
+    in uint nNextLightIndex,
+    in int scaledTileIndex,
     in float NoV,
     in float roughness,
     in float linearRoughness,
@@ -781,19 +781,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         float3 spotLightIlluminance = GetSpotLightIlluminance( SpotLights[nLightIndex], surface, VertexStage.depth, L );
         LightContribution.rgb += DoShading( L, surface ) * spotLightIlluminance;
     }
-    
-    // // Refraction
-    // if ( BaseLayer.Refraction > 0.0f ) {
-        // float3 I = normalize( VertexStage.positionWS.xyz - WorldPosition.xyz );
-        // float NoI = saturate( dot( surface.N, I ) );
-        // float Fc = pow( 1 - NoI, 5.0f );
-        // float RefractionFresnel = Fc + ( 1 - Fc ) * surface.FresnelColor;
-        // float refractionIor = lerp( 1.0f, BaseLayer.RefractionIor, RefractionFresnel );
-        // float refractionRatio = 1.00f / BaseLayer.RefractionIor;
-        // float3 RefractionVector = refract( V, surface.N, refractionRatio );
-        // LightContribution.rgb += ( evaluateIBLSpecular( surface.FresnelColor, surface.F90, surface.N, RefractionVector, surface.LinearRoughness, surface.Roughness, surface.NoV, 0 ) * BaseLayer.Refraction );
-    // }
-
+  
     // Emissive surface
     LightContribution.rgb += ( LightContribution.rgb * BaseLayer.Emissivity );
     
@@ -838,6 +826,31 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
     LightContribution.rgb += iblClearCoat;
 #endif
+#endif
+  
+    // Refraction
+#if PA_EDITOR
+#define PA_USE_REFRACTION 1
+    if ( BaseLayer.Refraction > 0.0f ) {
+#endif
+
+#if PA_USE_REFRACTION
+        float3 I = normalize( VertexStage.positionWS.xyz - WorldPosition.xyz );
+        float NoI = saturate( dot( surface.N, I ) );
+        float Fc = pow( 1 - NoI, 5.0f );
+        float RefractionFresnel = Fc + ( 1 - Fc ) * surface.FresnelColor;
+        float refractionIor = lerp( 1.0f, BaseLayer.RefractionIor, RefractionFresnel );
+        float refractionRatio = 1.00f / BaseLayer.RefractionIor;
+        float3 RefractionVector = refract( V, surface.N, refractionRatio );
+        
+        float3 refractionDiffuse, refractionSpecular;
+        EvaluateIBL( refractionDiffuse, refractionSpecular, nNextLightIndex, scaledTileIndex, surface.NoV, surface.Roughness, surface.LinearRoughness, surface.N, surface.V, RefractionVector, surface.PositionWorldSpace, surface.AmbientOcclusion, surface.Albedo, surface.FresnelColor, surface.F90 );
+
+        LightContribution.rgb += ( refractionSpecular * BaseLayer.Refraction );
+#endif
+
+#if PA_EDITOR    
+    }
 #endif
 
 #ifndef PA_PROBE_CAPTURE
@@ -921,14 +934,48 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	return output;
 }
 
+void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float alphaCutoff, in float nextAlphaMask, in float nextAlphaCutoff )
+{
+    alphaMask = lerp( alphaMask, nextAlphaMask, blendMask );
+    alphaCutoff = lerp( alphaCutoff, nextAlphaCutoff, blendMask );
+}
+
 void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
 #if PA_EDITOR
-    float AlphaMask = 1.0f; //ReadInput1D( VertexStage.uvCoord, g_AlphaMask, g_AlphaMaskSampler, g_TexAlphaMask, 1.0f );
+#define PA_ENABLE_ALPHA_TEST 1
+    bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
+    bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
+    
+    float alphaCutoff = g_Layers[0].AlphaCutoff;
+    float alphaMask = ReadInput1D( g_Layers[0].AlphaMask, g_TexAlphaMask0, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[0].LayerOffset ) * g_Layers[0].LayerScale, 1.0f );
+    
+    // NOTE Only use the double branch for material realtime edition
+    // Otherwise, resolve branches offline at compile time
+    if ( g_LayerCount > 1 ) {
+        float alphaCutoff1 = g_Layers[1].AlphaCutoff;
+        float alphaMask1 = ReadInput1D( g_Layers[1].AlphaMask, g_TexAlphaMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
+        
+        // Blend layers
+        float blendMask1 = ReadInput1D( g_Layers[1].BlendMask, g_TexBlendMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
+        BlendDepthLayers( blendMask1, alphaMask, alphaCutoff, alphaMask1, alphaCutoff1 );
+        
+        if ( g_LayerCount > 2 ) {
+            float alphaCutoff2 = g_Layers[2].AlphaCutoff;
+            float alphaMask2 = ReadInput1D(g_Layers[2].AlphaMask, g_TexAlphaMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale,  1.0f );
+            
+            // Blend layers
+            float blendMask2 = ReadInput1D( g_Layers[2].BlendMask, g_TexBlendMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale, 1.0f );
+            BlendDepthLayers( blendMask2, alphaMask, alphaCutoff, alphaMask2, alphaCutoff2 );
+        }
+    }
+#else
+	FLAN_BUILD_DEPTH_LAYERS
+#endif
 
 #if PA_ENABLE_ALPHA_TEST
-    if ( AlphaMask < g_AlphaCutoff ) discard;
-#endif
-#else
+    if ( alphaMask < alphaCutoff ) {
+        discard;
+    }
 #endif
 }
