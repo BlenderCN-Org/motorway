@@ -14,8 +14,9 @@ Stuff todo for the project
         > Fix layer blending for edge cases (see bug reports)
         > Proper Material compilation (compute shader permutations; compute antialiased normals/roughness; etc.)
         > Allow custom sampler parameters (tex coordinates addressing; custom blend state)
+        > Auto save material (dont make manual save mandatory on scene asset save)
     > Fix scene deletion command issue (figure out how to copy a renderable entity and hide it until the deleted cmd is reverted)
-
+    
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
