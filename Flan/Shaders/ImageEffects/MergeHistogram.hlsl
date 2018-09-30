@@ -1,7 +1,7 @@
 // From https://github.com/Patapom/GodComplex
 
 #include <Colormetry.hlsli>
-#include <SharedAutoExposure.hlsli>
+#include "SharedAutoExposure.hlsli"
 
 cbuffer PassData : register( b2 )
 {

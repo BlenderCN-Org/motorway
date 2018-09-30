@@ -1,7 +1,7 @@
 // From https://github.com/Patapom/GodComplex
 
 #include <Colormetry.hlsli>
-#include <SharedAutoExposure.hlsli>
+#include "SharedAutoExposure.hlsli"
 
 #define NUMTHREADX	32	// Tiles of 32x4 pixels
 #define NUMTHREADY	4
