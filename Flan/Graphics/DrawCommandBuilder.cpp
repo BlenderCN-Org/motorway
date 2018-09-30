@@ -26,6 +26,7 @@
 #include <Core/Maths/Transform.h>
 #include <Rendering/RenderDevice.h>
 #include <Framework/Material.h>
+#include <Framework/Terrain.h>
 
 #include "GraphicsAssetManager.h"
 #include "WorldRenderer.h"
@@ -133,6 +134,8 @@ DrawCommandBuilder::DrawCommandBuilder()
     , renderableEntityManager( nullptr )
     , meshInstances{ nullptr }
     , meshInstancesCount( 0 )
+    , terrainInstances{ nullptr }
+    , terrainInstancesCount( 0 )
     , wireMeshInstancesCount( 0 )
     , sphereMatriceCount( 0 )
     , aabbMatriceCount( 0 )
@@ -167,6 +170,11 @@ void DrawCommandBuilder::addCamera( Camera* camera )
 void DrawCommandBuilder::addMeshToRender( MeshInstance* meshInstance )
 {
     meshInstances[meshInstancesCount++] = meshInstance;
+}
+
+void DrawCommandBuilder::addTerrainToRender( TerrainInstance* terrainInstance )
+{
+    terrainInstances[terrainInstancesCount++] = terrainInstance;
 }
 
 void DrawCommandBuilder::addWireframeMeshToRender( MeshInstance* meshInstance )
@@ -395,7 +403,7 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
     }
 
     // TODO It sucks.
-        // Make this better (since CSM is viewport dependant, this is quite complicated to implement seamlessly...)
+    // Make this better (since CSM is viewport dependant, this is quite complicated to implement seamlessly...)
     auto directionalLight = renderableEntityManager->getDirectionalLightByIndex( 0 );
     for ( auto& camera : cameras ) {
         if ( directionalLight != nullptr
@@ -451,6 +459,7 @@ FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
 
     cameras.clear();
     meshInstancesCount = 0;
+    terrainInstancesCount = 0;
     wireMeshInstancesCount = 0;
     sphereMatriceCount = 0;
     aabbMatriceCount = 0;
@@ -461,6 +470,33 @@ FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
 
 void DrawCommandBuilder::addGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
 {
+    // TODO Terrain/Frustum visibility (per tile or per patch culling?)
+    for ( int i = 0; i < terrainInstancesCount; i++ ) {
+        auto* terrainInstance = terrainInstances[i];
+
+        auto* terrain = terrainInstance->terrainAsset;
+        auto* terrainMaterial = terrain->getMaterial();
+
+        auto distanceToCamera = 0.0f; // glm::distance( sphere.center, worldViewport.worldPosition );
+
+        DrawCommandKey drawCmdKey;
+        drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_WORLD;
+        drawCmdKey.bitfield.viewportId = viewportIndex;
+        drawCmdKey.bitfield.viewportLayer = viewportLayer;
+        drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
+        drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+        drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
+
+        DrawCommandInfos drawCmdGeo;
+        drawCmdGeo.material = terrainMaterial;
+        drawCmdGeo.vao = terrain->getVertexArrayObject();
+        drawCmdGeo.indiceBufferOffset = 0;
+        drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
+        drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+
+        worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+    }
+
     for ( int i = 0; i < meshInstancesCount; i++ ) {
         auto* meshInstance = meshInstances[i];
         auto& subMeshes = meshInstance->meshAsset->getSubMeshVector();
@@ -501,6 +537,33 @@ void DrawCommandBuilder::addGeometryForViewport( const Camera::Data& worldViewpo
 
 void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
 {
+    // TODO Terrain/Frustum visibility (per tile or per patch culling?)
+    for ( int i = 0; i < terrainInstancesCount; i++ ) {
+        auto* terrainInstance = terrainInstances[i];
+
+        auto* terrain = terrainInstance->terrainAsset;
+        auto* terrainMaterial = terrain->getMaterial();
+
+        auto distanceToCamera = 0.0f; // glm::distance( sphere.center, worldViewport.worldPosition );
+
+        DrawCommandKey drawCmdKey;
+        drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEPTH;
+        drawCmdKey.bitfield.viewportId = viewportIndex;
+        drawCmdKey.bitfield.viewportLayer = viewportLayer;
+        drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
+        drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+        drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
+
+        DrawCommandInfos drawCmdGeo;
+        drawCmdGeo.material = terrainMaterial;
+        drawCmdGeo.vao = terrain->getVertexArrayObject();
+        drawCmdGeo.indiceBufferOffset = 0;
+        drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
+        drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+
+        worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+    }
+
     for ( int i = 0; i < meshInstancesCount; i++ ) {
         auto* meshInstance = meshInstances[i];
         auto& subMeshes = meshInstance->meshAsset->getSubMeshVector();

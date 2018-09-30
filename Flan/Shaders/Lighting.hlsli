@@ -33,7 +33,7 @@ struct LightSurfaceInfos
     float3  R;
     float   DisneyRoughness;
 
-    float3  ClearCoatNormalMap;
+    float3  SecondaryNormal;
     float   NoV;
 
     float   ClearCoat;

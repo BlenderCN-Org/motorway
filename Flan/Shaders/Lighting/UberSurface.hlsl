@@ -12,11 +12,9 @@ struct VertexStageData
     float4 position		: SV_POSITION;
     float4 positionWS   : POSITION0;
     float4 previousPosition : POSITION1;
-    float2 uvCoord      : TEXCOORD0;
-    float depth         : DEPTH;
     float3 normal       : NORMAL0;
-    float3 tangent      : TANGENT0;
-    float3 binormal		: BINORMAL0;
+    float depth         : DEPTH;
+    float2 uvCoord      : TEXCOORD0;
 };
 
 struct VertexDepthOnlyStageShaderData
@@ -90,11 +88,11 @@ Texture2D g_TexClearCoatNormal2 : register( t47 );
 Texture2D g_TexBlendMask2                : register( t48 );
 
 // Shading Model BRDF
-#if PA_SHADING_MODEL == SHADING_MODEL_STANDARD
+#if PA_SHADING_MODEL_SHADING_MODEL_STANDARD
 #include "ShadingModels/Standard.hlsl"
-#elif PA_SHADING_MODEL == SHADING_MODEL_CLEAR_COAT
+#elif PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT
 #include "ShadingModels/ClearCoat.hlsl"
-#elif PA_SHADING_MODEL == SHADING_EMISSIVE
+#elif PA_SHADING_MODEL_SHADING_EMISSIVE
 #include "ShadingModels/Emissive.hlsl"
 #else
 #include "ShadingModels/Debug.hlsl"
@@ -256,25 +254,29 @@ cbuffer MaterialEdition : register( b8 )
 
 float3 ReadInput3D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float3 defaultValue )
 {
+    float3 input = defaultValue;
+    
     if ( materialInput.Type == INPUT_TYPE_1D ) {
-        return materialInput.Input1D.rrr;
+        input = materialInput.Input1D.rrr;
     } else if ( materialInput.Type == INPUT_TYPE_3D ) {
-        return materialInput.Input3D.rgb;
+        input = materialInput.Input3D.rgb;
     } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
-        return textureSampler.Sample( texSampler, uvCoordinates ).rgb;
+        input = textureSampler.Sample( texSampler, uvCoordinates ).rgb;
     }
     
-    return defaultValue;
+    return input;
 }
 
 float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float defaultValue )
 {
+    float input = defaultValue;
+    
     if ( materialInput.Type == INPUT_TYPE_1D ) {
-        return materialInput.Input1D.r;
+        input = materialInput.Input1D.r;
     } else if ( materialInput.Type == INPUT_TYPE_3D ) {
-        return materialInput.Input3D.r;
+        input = materialInput.Input3D.r;
     } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
-        return textureSampler.Sample( texSampler, uvCoordinates ).r;
+        input = textureSampler.Sample( texSampler, uvCoordinates ).r;
     }
     
     return defaultValue;
@@ -715,6 +717,10 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float4 LightContribution = float4( 0, 0, 0, 1 );
     float3 L = float3( 0, 0, 0 );
     
+#if PA_SHADING_MODEL_SHADING_EMISSIVE
+    LightContribution.rgb += DoShading( L, surface );
+    LightContribution.rgb += ( LightContribution.rgb * BaseLayer.Emissivity );
+#else
     // Directional Lights
     [loop]
     for ( uint i = 0; i < DirectionalLightCount; ++i ) {
@@ -790,13 +796,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
     
 #ifndef PA_PROBE_CAPTURE
-#if PA_SHADING_MODEL == SHADING_MODEL_STANDARD
+#if PA_SHADING_MODEL_SHADING_MODEL_STANDARD
     float3 diffuseSum, specularSum;
     EvaluateIBL( diffuseSum, specularSum, nNextLightIndex, scaledTileIndex, surface.NoV, surface.Roughness, surface.LinearRoughness, surface.N, surface.V, surface.R, surface.PositionWorldSpace, surface.AmbientOcclusion, surface.Albedo, surface.FresnelColor, surface.F90 );
 
     // Add indirect contribution to output
     LightContribution.rgb += ( diffuseSum.rgb + specularSum.rgb );
-#elif PA_SHADING_MODEL == SHADING_MODEL_CLEAR_COAT
+#elif PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT
     float3 IndirectDiffuse, SpecularReflections;
     EvaluateIBL( IndirectDiffuse, SpecularReflections, nNextLightIndex, scaledTileIndex, surface.NoV, surface.Roughness, surface.LinearRoughness, surface.N, surface.V, surface.R, surface.PositionWorldSpace, surface.AmbientOcclusion, surface.Albedo, surface.FresnelColor, surface.F90 );
 
@@ -903,8 +909,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
     }
+#endif    
 #endif
-    
 
 	// PA_WRITE_VELOCITY
     float2 Velocity = float2( 0, 0 );

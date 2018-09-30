@@ -375,7 +375,7 @@ if not is_first_layer:
 # Build macro list to resolve branches
 define_list = {}
 
-define_list["PA_SHADING_MODEL"] = material_shading_model
+define_list["PA_SHADING_MODEL_" + material_shading_model] = "1"
 
 if material_write_velocity:
     define_list["PA_WRITE_VELOCITY"] = "1"

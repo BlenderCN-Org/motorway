@@ -66,7 +66,8 @@ Material::Material( Material& material )
     , builderVersion( material.builderVersion )
     , sortKey( material.sortKey )
     , shadingModel( material.shadingModel )
-    , textureSet( material.textureSet )
+    , pixelTextureSet( material.pixelTextureSet )
+    , vertexTextureSet( material.vertexTextureSet )
     , editableMaterialData( material.editableMaterialData )
 {
 
@@ -92,7 +93,15 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         depthPipelineState.reset( new PipelineState() );
         reversedDepthPipelineState.reset( new PipelineState() );
 
-        bool isWorldMaterial = true;
+        // Enum helper to figure out which vertex stage should be used
+        enum class MaterialType
+        {
+            SURFACE,
+            TERRAIN,
+            HUD
+        };
+
+        MaterialType materialType = MaterialType::SURFACE;
         fnString_t compiledPixelStage = FLAN_STRING( "Surface" ),
                    compiledProbePixelStage = FLAN_STRING( "SurfaceProbeCapture" );
 
@@ -112,32 +121,47 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             compiledProbePixelStage = FLAN_STRING( "SurfaceClearCoatProbeCapture" );
             break;
 
+        case flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD:
+            compiledPixelStage = FLAN_STRING( "SurfaceTerrain" );
+            compiledProbePixelStage = FLAN_STRING( "SurfaceTerrainProbeCapture" );
+
+            materialType = MaterialType::TERRAIN;
+            break;
+
         case flan::graphics::eShadingModel::SHADING_MODEL_HUD_STANDARD:
             compiledPixelStage = FLAN_STRING( "Primitive2D" );
             compiledProbePixelStage = FLAN_STRING( "" );
 
-            isWorldMaterial = false;
+            materialType = MaterialType::HUD;
             break;
 
         default:
             break;
         };
 
+        const bool isWorldMaterial = ( materialType != MaterialType::HUD );
+
         PipelineStateDesc descriptor;
-        if ( isWorldMaterial ) {
+        if ( materialType == MaterialType::SURFACE ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( ( scaleUVByModelScale )
                 ? FLAN_STRING( "SurfaceScaledUVNormalMapping" )
                 : FLAN_STRING( "SurfaceNormalMapping" ), SHADER_STAGE_VERTEX );
-        } else {
+        } else if ( materialType == MaterialType::TERRAIN ) {
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( ( scaleUVByModelScale )
+                ? FLAN_STRING( "HeightfieldScaledUV" )
+                : FLAN_STRING( "Heightfield" ), SHADER_STAGE_VERTEX );
+        } else if ( materialType == MaterialType::HUD ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Primitive2D" ), SHADER_STAGE_VERTEX );
         }
 
         descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledPixelStage.c_str(), SHADER_STAGE_PIXEL );
-        descriptor.primitiveTopology = flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        descriptor.primitiveTopology = ( materialType == MaterialType::TERRAIN )
+            ? flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
+            : flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         RasterizerStateDesc rasterDesc;
         rasterDesc.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
-        rasterDesc.cullMode = ( isWorldMaterial ) 
+        rasterDesc.cullMode = ( isWorldMaterial )
             ? ( editableMaterialData.IsDoubleFace ) ? flan::rendering::eCullMode::CULL_MODE_NONE : flan::rendering::eCullMode::CULL_MODE_BACK
             : flan::rendering::eCullMode::CULL_MODE_FRONT;
         rasterDesc.useTriangleCCW = true;
@@ -167,8 +191,6 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
                 { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" },
                 { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" },
                 { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" },
-                { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "TANGENT" },
-                { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "BINORMAL" },
             };
         } else {
             descriptor.inputLayout = {
@@ -209,6 +231,8 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         if ( editableMaterialData.EnableAlphaTest )
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
+        else
+            descriptor.pixelStage = nullptr;
 
         depthStencilDesc = {};
         depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_LESS;
@@ -264,7 +288,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
     sortKeyInfos.useTranslucidity = ( sortKeyInfos.isAlphaTested || sortKeyInfos.isAlphaBlended );
 }
 
-void Material::readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent )
+void Material::readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent, fnTextureSet_t& textureSet )
 {
     auto valueHashcode = flan::core::CRC32( materialInputLine.c_str() );
     const bool isNone = ( valueHashcode == FLAN_STRING_HASH( "None" ) ) || materialInputLine.empty();
@@ -302,10 +326,12 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 {
 #define FLAN_CASE_READ_MATERIAL_FLAG( streamLine, variable ) case FLAN_STRING_HASH( #variable ): editableMaterialData.variable = flan::core::StringToBoolean( streamLine ); break;
 #define FLAN_CASE_READ_MATERIAL_FLOAT( streamLine, layerIndex, variable ) case FLAN_STRING_HASH( #variable ): editableMaterialData.layers[layerIndex].variable = std::stof( dictionaryValue.c_str() ); break;
-#define FLAN_CASE_READ_LAYER_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): readEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable ); break;
+#define FLAN_CASE_READ_LAYER_PIXEL_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): readEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, pixelTextureSet ); break;
+#define FLAN_CASE_READ_LAYER_VERTEX_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): readEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, vertexTextureSet ); break;
 
     // Reset material inputs (incase of hot reloading)
-    textureSet.clear();
+    vertexTextureSet.clear();
+    pixelTextureSet.clear();
 
     fnString_t streamLine, dictionaryKey, dictionaryValue;
 
@@ -393,17 +419,21 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, AlphaToCoverage );
 
                 // Shading Model Inputs
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 3 ), Roughness )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 4 ), Metalness )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 5 ), AmbientOcclusion )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 6 ), Normal )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 7 ), Emissivity )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 1 ), AlphaMask )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 8 ), Displacement )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 9 ), SecondaryNormal )
-                FLAN_CASE_READ_LAYER_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 10 ), BlendMask )
+                if ( currentLayerIndex == 0 ) {
+                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, Heightmap )
+                }
+
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 3 ), Roughness )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 4 ), Metalness )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 5 ), AmbientOcclusion )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 6 ), Normal )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 7 ), Emissivity )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 1 ), AlphaMask )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 8 ), Displacement )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 9 ), SecondaryNormal )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 10 ), BlendMask )
 
                 // Misc. / Blending Inputs
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, Refraction )
@@ -454,7 +484,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 
 void Material::serialize( FileSystemObject* file ) const
 {
-    auto WriteInput = [this]( const MaterialEditionInput& input, const uint32_t inputIndex ) {
+    auto WriteInput = [this]( const MaterialEditionInput& input, const uint32_t inputIndex, const fnTextureSet_t& textureSet ) {
         switch ( input.InputType ) {
         case MaterialEditionInput::COLOR_3D:
             return "{ " + std::to_string( input.Input3D.r ) + ", " + std::to_string( input.Input3D.g ) + ", " + std::to_string( input.Input3D.b ) + " }";
@@ -481,7 +511,8 @@ void Material::serialize( FileSystemObject* file ) const
     file->writeString( "ReceiveShadow:" + std::to_string( editableMaterialData.ReceiveShadow ) + "\n\n" );
     file->writeString( "ScaleUVByModelScale:" + std::to_string( scaleUVByModelScale ) + "\n\n" );
 
-#define FLAN_WRITE_INPUT( input, inputIdx ) file->writeString( "\t" #input## ": " + WriteInput( layer.input, inputIdx ) + "\n" );
+#define FLAN_WRITE_INPUT_PIXEL( input, inputIdx ) file->writeString( "\t" #input## ": " + WriteInput( layer.input, inputIdx, pixelTextureSet ) + "\n" );
+#define FLAN_WRITE_INPUT_VERTEX( input, inputIdx ) file->writeString( "\t" #input## ": " + WriteInput( layer.input, inputIdx, vertexTextureSet ) + "\n" );
 #define FLAN_WRITE_VARIABLE( input ) file->writeString( "\t" #input## ": " +std::to_string( layer.input ) + "\n" );
 
     for ( uint32_t i = 0; i < editableMaterialData.LayerCount; i++ ) {
@@ -490,17 +521,21 @@ void Material::serialize( FileSystemObject* file ) const
 
         file->writeString( "Layer\n{\n" );
 
-        FLAN_WRITE_INPUT( BaseColor, slotBaseIndex )
-        FLAN_WRITE_INPUT( Reflectance, ( slotBaseIndex + 2 ) )
-        FLAN_WRITE_INPUT( Roughness, ( slotBaseIndex + 3 ) )
-        FLAN_WRITE_INPUT( Metalness, ( slotBaseIndex + 4 ) )
-        FLAN_WRITE_INPUT( AmbientOcclusion, ( slotBaseIndex + 5 ) )
-        FLAN_WRITE_INPUT( Normal, ( slotBaseIndex + 6 ) )
-        FLAN_WRITE_INPUT( Emissivity, ( slotBaseIndex + 7 ) )
-        FLAN_WRITE_INPUT( AlphaMask, ( slotBaseIndex + 1 ) )
-        FLAN_WRITE_INPUT( Displacement, ( slotBaseIndex + 8 ) )
-        FLAN_WRITE_INPUT( SecondaryNormal, ( slotBaseIndex + 9 ) )
-        FLAN_WRITE_INPUT( BlendMask, ( slotBaseIndex + 10 ) )
+        if ( i == 0 ) {
+            FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 )
+        }
+
+        FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
+        FLAN_WRITE_INPUT_PIXEL( Reflectance, ( slotBaseIndex + 2 ) )
+        FLAN_WRITE_INPUT_PIXEL( Roughness, ( slotBaseIndex + 3 ) )
+        FLAN_WRITE_INPUT_PIXEL( Metalness, ( slotBaseIndex + 4 ) )
+        FLAN_WRITE_INPUT_PIXEL( AmbientOcclusion, ( slotBaseIndex + 5 ) )
+        FLAN_WRITE_INPUT_PIXEL( Normal, ( slotBaseIndex + 6 ) )
+        FLAN_WRITE_INPUT_PIXEL( Emissivity, ( slotBaseIndex + 7 ) )
+        FLAN_WRITE_INPUT_PIXEL( AlphaMask, ( slotBaseIndex + 1 ) )
+        FLAN_WRITE_INPUT_PIXEL( Displacement, ( slotBaseIndex + 8 ) )
+        FLAN_WRITE_INPUT_PIXEL( SecondaryNormal, ( slotBaseIndex + 9 ) )
+        FLAN_WRITE_INPUT_PIXEL( BlendMask, ( slotBaseIndex + 10 ) )
 
         FLAN_WRITE_VARIABLE( Refraction )
         FLAN_WRITE_VARIABLE( RefractionIor )
@@ -530,7 +565,11 @@ void Material::bind( CommandList* cmdList ) const
 {
     cmdList->bindPipelineStateCmd( pipelineState.get() );
 
-    for ( auto& textureSlot : textureSet ) {
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
     }
 
@@ -549,7 +588,11 @@ bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
 
     cmdList->bindPipelineStateCmd( reversedDepthPipelineState.get() );
 
-    for ( auto& textureSlot : textureSet ) {
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
     }
 
@@ -565,7 +608,11 @@ void Material::bindDepthOnly( CommandList* cmdList ) const
 {
     cmdList->bindPipelineStateCmd( depthPipelineState.get() );
 
-    for ( auto& textureSlot : textureSet ) {
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
     }
 
@@ -579,7 +626,11 @@ void Material::bindForProbeRendering( CommandList* cmdList ) const
 {
     cmdList->bindPipelineStateCmd( pipelineStateProbe.get() );
 
-    for ( auto& textureSlot : textureSet ) {
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
     }
 
@@ -610,7 +661,7 @@ const fnString_t& Material::getName() const
 #include <Core/Environment.h>
 #include <Graphics/TextureSaveTools.h>
 
-void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetManager, const std::string& displayName, MaterialEditionInput& input, const uint32_t inputTextureBindIndex, const bool saturate )
+void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetManager, const std::string& displayName, MaterialEditionInput& input, const uint32_t inputTextureBindIndex, fnTextureSet_t& textureSet, const bool saturate )
 {
     static constexpr char* SlotInputTypeLabels[MaterialEditionInput::EDITABLE_MATERIAL_COMPONENT_TYPE_COUNT] = {
         "None",
@@ -658,7 +709,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         std::string imageInfos = "No texture selected...";
 
         auto textureSetIterator = textureSet.find( inputTextureBindIndex );
-        if ( textureSetIterator != textureSet.end() 
+        if ( textureSetIterator != textureSet.end()
             && textureSetIterator->second != nullptr ) {
             // Build Image Infos Text
             imageInfos.clear();
@@ -685,7 +736,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
                     input.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
-                    textureSet[inputTextureBindIndex] = input.InputTexture;
+                    pixelTextureSet[inputTextureBindIndex] = input.InputTexture;
                 }
             }
         } else {
@@ -868,7 +919,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 layer.Roughness.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + roughnessMapName + FLAN_STRING( ".dds" ) ).c_str(), true );
                 layer.Roughness.SamplingFlags = MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE;
 
-                textureSet[( slotBaseIndex + 3 )] = layer.Roughness.InputTexture;
+                pixelTextureSet[( slotBaseIndex + 3 )] = layer.Roughness.InputTexture;
 
                 rebuildSpecularAAMaps[i] = 0;
             }
@@ -908,41 +959,45 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     rebuildSpecularAAMaps[i] = 1;
                 }
 
+                displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
 
-                displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex );
+                displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex, pixelTextureSet );
                 bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );
                 if ( ImGui::Checkbox( "sRGB Input", &isSRGBInput ) ) {
                     layer.BaseColor.SamplingFlags = ( isSRGBInput ) ? MaterialEditionInput::SRGB_SOURCE : MaterialEditionInput::LINEAR_SOURCE;
                 }
+                
+                displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), pixelTextureSet, false );
 
-                displayInputConfiguration( graphicsAssetManager, "Reflectance", layer.Reflectance, ( slotBaseIndex + 2 ) );
-                displayInputConfiguration( graphicsAssetManager, "Roughness", layer.Roughness, ( slotBaseIndex + 3 ) );
-                bool isAlphaRoughness = ( layer.Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE );
-                if ( ImGui::Checkbox( "Alpha Roughness Input", &isAlphaRoughness ) ) {
-                    layer.Roughness.SamplingFlags = ( isAlphaRoughness ) ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE : MaterialEditionInput::ROUGHNESS_SOURCE;
-                }
+                if ( shadingModel != flan::graphics::eShadingModel::SHADING_MODEL_EMISSIVE ) {
+                    displayInputConfiguration( graphicsAssetManager, "Reflectance", layer.Reflectance, ( slotBaseIndex + 2 ), pixelTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "Roughness", layer.Roughness, ( slotBaseIndex + 3 ), pixelTextureSet );
+                    bool isAlphaRoughness = ( layer.Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE );
+                    if ( ImGui::Checkbox( "Alpha Roughness Input", &isAlphaRoughness ) ) {
+                        layer.Roughness.SamplingFlags = ( isAlphaRoughness ) ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE : MaterialEditionInput::ROUGHNESS_SOURCE;
+                    }
 
-                displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ) );
-                displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ) );
-                displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ) );
-                bool isTangentSpace = ( layer.Normal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
-                if ( ImGui::Checkbox( "Tangent Space Input##Normal", &isTangentSpace ) ) {
-                    layer.Normal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
-                }
+                    displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ), pixelTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ), pixelTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ), pixelTextureSet );
+                    bool isTangentSpace = ( layer.Normal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
+                    if ( ImGui::Checkbox( "Tangent Space Input##Normal", &isTangentSpace ) ) {
+                        layer.Normal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                    }
 
-                ImGui::SliderFloat( "Normal Map Strength", &layer.NormalMapStrength, 0.0f, 1.0f );
+                    ImGui::SliderFloat( "Normal Map Strength", &layer.NormalMapStrength, 0.0f, 1.0f );
 
-                displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ) );
-                ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
+                    displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ), pixelTextureSet );
+                    ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
 
-                displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), false );
-                displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ) );
+                    displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ), pixelTextureSet );
 
 
-                if ( editableMaterialData.EnableAlphaTest == 1u ) {
-                    ImGui::LabelText( "##hidden_AlphaCutoff_0", "Alpha Cutoff" );
-                    ImGui::SameLine( 128.0f );
-                    ImGui::DragFloat( "##hidden_AlphaCutoff", &layer.AlphaCutoff );
+                    if ( editableMaterialData.EnableAlphaTest == 1u ) {
+                        ImGui::LabelText( "##hidden_AlphaCutoff_0", "Alpha Cutoff" );
+                        ImGui::SameLine( 128.0f );
+                        ImGui::DragFloat( "##hidden_AlphaCutoff", &layer.AlphaCutoff );
+                    }
                 }
 
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_CLEAR_COAT ) {
@@ -956,7 +1011,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     ImGui::DragFloat( "##hidden_ClearCoatGlossinessInput", &layer.ClearCoatGlossiness, 0.001f, 0.0f, 1.0f );
                     ImGui::PopItemWidth();
 
-                    displayInputConfiguration( graphicsAssetManager, "Secondary NormalMap", layer.SecondaryNormal, ( slotBaseIndex + 9 ) );
+                    displayInputConfiguration( graphicsAssetManager, "Secondary NormalMap", layer.SecondaryNormal, ( slotBaseIndex + 9 ), pixelTextureSet );
                     bool isTangentSpace = ( layer.SecondaryNormal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
                     if ( ImGui::Checkbox( "Tangent Space Input##SecondaryNormal", &isTangentSpace ) ) {
                         layer.SecondaryNormal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
@@ -966,7 +1021,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 }
 
                 if ( i != 0 ) {
-                    displayInputConfiguration( graphicsAssetManager, "BlendMask", layer.BlendMask, ( slotBaseIndex + 10 ) );
+                    displayInputConfiguration( graphicsAssetManager, "BlendMask", layer.BlendMask, ( slotBaseIndex + 10 ), pixelTextureSet );
 
                     ImGui::LabelText( "##hidden_DiffuseContribution", "Diffuse Contribution" );
                     ImGui::SameLine( 200.0f );

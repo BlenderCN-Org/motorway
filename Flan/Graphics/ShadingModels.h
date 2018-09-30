@@ -29,7 +29,8 @@ namespace flan
         model( SHADING_MODEL_STANDARD )\
         model( SHADING_MODEL_HUD_STANDARD )\
         model( SHADING_MODEL_EMISSIVE )\
-        model( SHADING_MODEL_CLEAR_COAT )
+        model( SHADING_MODEL_CLEAR_COAT )\
+        model( SHADING_MODEL_TERRAIN_STANDARD )
 
         FLAN_LAZY_ENUM( ShadingModel )
 #undef ShadingModel

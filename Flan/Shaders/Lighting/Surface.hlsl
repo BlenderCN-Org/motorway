@@ -24,13 +24,16 @@ cbuffer MatricesBuffer : register( b3 )
     float4x4	ModelMatrix;
 };
 
+#if PA_HEIGHTFIELD
+Texture2D g_TexHeightmap    : register( t0 );
+sampler g_TexHeightmapSampler    : register( s0 );
+#endif
+
 struct VertexBufferData
 {
 	float3 Position         : POSITION0;
 	float3 Normal           : NORMAL0;
 	float2 TexCoordinates   : TEXCOORD0;
-	float3 Tangent          : TANGENT0;
-	float3 Binormal		    : BINORMAL0;
 };
 
 struct VertexStageData
@@ -38,38 +41,44 @@ struct VertexStageData
     float4 position		: SV_POSITION;
     float4 positionWS   : POSITION0;
     float4 previousPosition : POSITION1;
-    float2 uvCoord      : TEXCOORD0;
-    float depth         : DEPTH;
     float3 normal       : NORMAL0;
-    float3 tangent      : TANGENT0;
-    float3 binormal		: BINORMAL0;
+    float depth         : DEPTH;
+    float2 uvCoord      : TEXCOORD0;
 };
 
 VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
 {
     VertexStageData output = (VertexStageData)0;
 
-    output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
-    output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
-    output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ).xywz;
-   
-    output.uvCoord = VertexBuffer.TexCoordinates;
-
+    float2 uvCoordinates =  VertexBuffer.TexCoordinates;
+    
 #if PH_SCALE_UV_BY_MODEL_SCALE
     // TODO Make UV Scaling as an option?   
     float scaleX = length( float3( ModelMatrix._11, ModelMatrix._12, ModelMatrix._13 ) );
     float scaleY = length( float3( ModelMatrix._21, ModelMatrix._22, ModelMatrix._23 ) );
 
-    output.uvCoord *= float2( scaleX, scaleY );
+    uvCoordinates *= float2( scaleX, scaleY );
 #endif
 
+    output.uvCoord = uvCoordinates;
+
+#if PA_HEIGHTFIELD
+    float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
+    
+    float height = g_TexHeightmap.SampleLevel( g_TexHeightmapSampler, heightCoords, 0.0f ).r;
+    output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position.x, height, VertexBuffer.Position.z, 1.0f ) );
+#else
+    output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
+#endif
+    
+    output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
+    output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ).xywz;
+   
     float4 PositionVS = mul( float4( output.positionWS.xyz, 1.0f ), ViewMatrix );
     output.depth = ( PositionVS.z / PositionVS.w );
 
 #if PH_USE_NORMAL_MAPPING
     output.normal = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
-    output.tangent = normalize( mul( ModelMatrix, float4( VertexBuffer.Tangent, 0.0f ) ) ).xyz;
-    output.binormal = normalize( mul( ModelMatrix, float4( VertexBuffer.Binormal, 0.0f ) ) ).xyz;
 #endif
 
 	return output;

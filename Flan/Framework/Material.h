@@ -91,7 +91,11 @@ private:
     };
 
     flan::graphics::eShadingModel           shadingModel;
-    std::unordered_map<int32_t, Texture*>   textureSet;
+
+    using fnTextureSet_t = std::unordered_map<int32_t, Texture*>;
+    fnTextureSet_t   pixelTextureSet;
+    fnTextureSet_t   vertexTextureSet;
+
     std::unique_ptr<PipelineState>          pipelineState;
     std::unique_ptr<PipelineState>          depthPipelineState;
     std::unique_ptr<PipelineState>          reversedDepthPipelineState;
@@ -118,6 +122,6 @@ private:
     RenderTarget* roughnessMapRT[MAX_LAYER_COUNT];
 
 private:
-    void readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent );
-    void displayInputConfiguration( GraphicsAssetManager* graphicsAssetManager, const std::string& displayName, MaterialEditionInput& input, const uint32_t inputTextureBindIndex, const bool saturate = true );
+    void readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent, fnTextureSet_t& textureSet );
+    void displayInputConfiguration( GraphicsAssetManager* graphicsAssetManager, const std::string& displayName, MaterialEditionInput& input, const uint32_t inputTextureBindIndex, fnTextureSet_t& textureSet, const bool saturate = true );
 };

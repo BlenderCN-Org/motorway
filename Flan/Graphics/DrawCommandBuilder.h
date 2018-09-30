@@ -33,6 +33,7 @@ class GraphicsAssetManager;
 #include <functional>
 
 class Mesh;
+class Terrain;
 class Transform;
 class WorldRenderer;
 class Camera;
@@ -43,6 +44,12 @@ struct EnvironmentProbe;
 struct MeshInstance
 {
     Mesh*       meshAsset;
+    Transform*  meshTransform;
+};
+
+struct TerrainInstance
+{
+    Terrain*    terrainAsset;
     Transform*  meshTransform;
 };
 
@@ -60,6 +67,7 @@ public:
 
     void    addCamera( Camera* camera );
     void    addMeshToRender( MeshInstance* meshInstance );
+    void    addTerrainToRender( TerrainInstance* meshInstance );
     void    addWireframeMeshToRender( MeshInstance* meshInstance );
     void    addEntityToUpdate( const fnRenderKey_t renderKey );
     void    addEnvProbeToCapture( EnvironmentProbe* envProbe );
@@ -92,6 +100,9 @@ private:
     GraphicsAssetManager*                   graphicsAssetManager;
     RenderableEntityManager*                renderableEntityManager;
     WorldRenderer*                          worldRenderer;
+
+    TerrainInstance*                        terrainInstances[16];
+    int                                     terrainInstancesCount;
 
     MeshInstance*                           meshInstances[1024 * 16];
     int                                     meshInstancesCount;
