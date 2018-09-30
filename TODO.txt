@@ -24,6 +24,7 @@ Stuff todo for the project
         | See presentations: FarCry5 Terrain; Battlefield 3 (quadtree based system seems nice)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
+    > Decals Support
     > Jobify CPU work
         | Resources:
         | http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf
