@@ -292,6 +292,14 @@ static void DisplayMenuBar()
                 *PickedNode = sceneNode;
             }
 
+            if ( ImGui::MenuItem( "Terrain" ) ) {
+                auto terrain = new Terrain();
+                terrain->create( g_RenderDevice.get(), g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ) );
+
+                auto sceneNode = scene->createTerrain( terrain );
+                *PickedNode = sceneNode;
+            }
+
             ImGui::Separator();
 
             if ( ImGui::MenuItem( "Directional Light" ) ) {
