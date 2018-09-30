@@ -34,10 +34,10 @@ static fnPipelineMutableResHandle_t AddCopyTexturePass( RenderPipeline* renderPi
     auto RenderPass = renderPipeline->addRenderPass(
         "Copy Texture",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
-            passData.input[0] = ( input == -1u ) ? renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) )
+            passData.input[0] = ( input == -1 ) ? renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) )
                                                  : renderPipelineBuilder->readRenderTarget( input );
 
-            if ( output == -1u ) {
+            if ( output == -1 ) {
                 RenderPassTextureDesc passRenderTargetDesc = {};
                 passRenderTargetDesc.resourceToCopy = passData.input[0];
                 passRenderTargetDesc.copyResource = true;
@@ -117,10 +117,10 @@ static fnPipelineMutableResHandle_t AddCopyTextureUAVPass( RenderPipeline* rende
     auto RenderPass = renderPipeline->addRenderPass(
         "Copy Texture (UAV)",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
-            passData.input[0] = ( input == -1u ) ? renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) )
+            passData.input[0] = ( input == -1 ) ? renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainColorRT" ) )
                 : renderPipelineBuilder->readRenderTarget( input );
 
-            if ( output == -1u ) {
+            if ( output == -1 ) {
                 BufferDesc passRenderTargetDesc = {};
                 passRenderTargetDesc.Type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
                 passData.output[0] = renderPipelineBuilder->allocateBuffer( passRenderTargetDesc );
