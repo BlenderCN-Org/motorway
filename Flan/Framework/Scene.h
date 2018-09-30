@@ -42,6 +42,7 @@
 #include "SceneNodes/FirstPersonCameraSceneNode.h"
 #include "SceneNodes/LookAtCameraSceneNode.h"
 #include "SceneNodes/GameObjectNode.h"
+#include "SceneNodes/TerrainSceneNode.h"
 
 #include "Mesh.h"
 #include "Light.h"
@@ -86,6 +87,7 @@ public:
     FLAN_SCENE_CREATE_NODE_FUNC( FirstPersonCamera )
     FLAN_SCENE_CREATE_NODE_FUNC( LookAtCamera )
     FLAN_SCENE_CREATE_NODE_FUNC( GameObject )
+    FLAN_SCENE_CREATE_NODE_FUNC( Terrain )
         
     SceneNode*                      addNode( SceneNode* node );
     void                            clearNodes();
@@ -128,3 +130,4 @@ FLAN_FACTORY_REGISTER_ENTITY( SceneNode*, EnvironmentProbe )
 FLAN_FACTORY_REGISTER_ENTITY( SceneNode*, FirstPersonCamera )
 FLAN_FACTORY_REGISTER_ENTITY( SceneNode*, LookAtCamera )
 FLAN_FACTORY_REGISTER_ENTITY( SceneNode*, GameObject )
+FLAN_FACTORY_REGISTER_ENTITY( SceneNode*, Terrain )
