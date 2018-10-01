@@ -227,7 +227,9 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         }
 
         // Depth Only Pipeline State
-        descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
+        descriptor.vertexStage = ( materialType == MaterialType::SURFACE ) 
+            ? shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX )
+            : shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
 
         if ( editableMaterialData.EnableAlphaTest )
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
@@ -447,6 +449,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, NormalMapStrength )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, SecondaryNormalMapStrength )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, DisplacementMapStrength )
+                FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, HeightmapWorldHeight )
 
                 // Layer Scaling
                 case FLAN_STRING_HASH( "Offset" ):

@@ -24,7 +24,7 @@ cbuffer MatricesBuffer : register( b3 )
     float4x4	ModelMatrix;
 };
 
-#if PA_HEIGHTFIELD
+#if PH_HEIGHTFIELD
 Texture2D g_TexHeightmap    : register( t0 );
 sampler g_TexHeightmapSampler    : register( s0 );
 #endif
@@ -53,7 +53,6 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
     float2 uvCoordinates =  VertexBuffer.TexCoordinates;
     
 #if PH_SCALE_UV_BY_MODEL_SCALE
-    // TODO Make UV Scaling as an option?   
     float scaleX = length( float3( ModelMatrix._11, ModelMatrix._12, ModelMatrix._13 ) );
     float scaleY = length( float3( ModelMatrix._21, ModelMatrix._22, ModelMatrix._23 ) );
 
@@ -62,11 +61,13 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
 
     output.uvCoord = uvCoordinates;
 
-#if PA_HEIGHTFIELD
+#if PH_HEIGHTFIELD
     float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
     
+	float3 positionModelSpace = VertexBuffer.Position;
     float height = g_TexHeightmap.SampleLevel( g_TexHeightmapSampler, heightCoords, 0.0f ).r;
-    output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position.x, height, VertexBuffer.Position.z, 1.0f ) );
+
+    output.positionWS       = mul( ModelMatrix, float4( positionModelSpace.x, height * 10.0f, positionModelSpace.z, 1.0f ) );
 #else
     output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
 #endif

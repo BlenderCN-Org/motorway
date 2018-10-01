@@ -246,6 +246,7 @@ compile_shader_VS( "Common/FullscreenQuad.hlsl", "FullscreenQuad", "EntryPointVS
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTrianglePresent", "EntryPointVS", {}, True )
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTriangle", "EntryPointVS", {}, False )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWrite" )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmap", "EntryPointVS", { "PH_HEIGHTFIELD" : "1" } )
 compile_shader_PS( "Common/CopyTexture.hlsl", "CopyTexture" )
 
 compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve1", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1", "PH_USE_TAA": "0" } )
@@ -287,8 +288,8 @@ compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", {
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceNormalMapping", "EntryPointVS", { "PH_USE_NORMAL_MAPPING": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVNormalMapping", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING": "1" } )
 
-compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointVS", { "PA_HEIGHTFIELD": "1", "PH_USE_NORMAL_MAPPING" : "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "HeightfieldScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING" : "1", "PA_HEIGHTFIELD": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointVS", { "PH_HEIGHTFIELD": "1", "PH_USE_NORMAL_MAPPING" : "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "HeightfieldScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING" : "1", "PH_HEIGHTFIELD": "1" } )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointHeatMapPS", { "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1" } )

@@ -62,6 +62,7 @@ static const int MAX_LAYER_COUNT = 3;
 struct MaterialLayer 
 {
     MaterialEditionInput   Heightmap;
+
     MaterialEditionInput   BaseColor;
     MaterialEditionInput   Reflectance;
     MaterialEditionInput   Roughness;
@@ -82,7 +83,7 @@ struct MaterialLayer
     float                  NormalMapStrength;
     float                  SecondaryNormalMapStrength;
     float                  DisplacementMapStrength;
-    uint                   __PADDING__;
+    float                  HeightmapWorldHeight; // Heightmap height (in world space units)
 
     float                  DiffuseContribution;
     float                  SpecularContribution;
