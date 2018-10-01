@@ -422,7 +422,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 
                 // Shading Model Inputs
                 if ( currentLayerIndex == 0 ) {
-                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, Heightmap )
+                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
                 }
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
@@ -577,7 +577,7 @@ void Material::bind( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }
@@ -600,7 +600,7 @@ bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 
@@ -620,7 +620,7 @@ void Material::bindDepthOnly( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }
@@ -638,7 +638,7 @@ void Material::bindForProbeRendering( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }
@@ -963,6 +963,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 }
 
                 displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
+                ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
 
                 displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex, pixelTextureSet );
                 bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );

@@ -42,9 +42,12 @@ Terrain::~Terrain()
 
 void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 {
-    constexpr float width = 8.0f;
-    constexpr float height = 8.0f;
-    constexpr float tileRes = 16.0f; 
+    constexpr float width = 1024.0f;
+    constexpr float height = 1024.0f;
+    constexpr float tileRes = 16.0f;
+
+    constexpr float halfWidth = ( ( float )width - 1.0f ) / 2.0f;
+    constexpr float halfLength = ( ( float )height - 1.0f ) / 2.0f;
 
     // TODO Pool Grid and instantiate it per heightmap drawcall?
     struct VertexLayout
@@ -57,11 +60,8 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
     std::vector<VertexLayout> vertices( width * height );
     for ( int z = 0; z < height; z++ ) {
         for ( int x = 0; x < width; x++ ) {
-            float halfWidth = ( ( float )width - 1.0f ) / 2.0f;
-            float halfLength = ( ( float )height - 1.0f ) / 2.0f;
-
             vertices[z * height + x] = {
-                glm::vec3( ( float )x - halfWidth, 0.0f, ( float )z - halfLength ),
+                glm::vec3( (float)( x - halfWidth ), 0.0f, ( float )( z - halfLength ) ),
                 glm::vec3( 0, 1, 0 ),
                 glm::vec2( ( float )x / ( width - 1 ), ( float )z / ( height - 1 ) )
             };

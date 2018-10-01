@@ -819,7 +819,7 @@ fnPipelineResHandle_t WorldRenderer::addProbeCaptureSavePass( RenderPipeline* re
         }
     );
 
-    return -1u;
+    return -1;
 }
 
 fnPipelineResHandle_t WorldRenderer::addProbeConvolutionPass( RenderPipeline* renderPipeline )
@@ -846,7 +846,7 @@ fnPipelineResHandle_t WorldRenderer::addProbeConvolutionPass( RenderPipeline* re
         }
     );
 
-    return static_cast<uint32_t>( -1u );
+    return static_cast<uint32_t>( -1 );
 }
 
 fnPipelineResHandle_t WorldRenderer::addAAPass( RenderPipeline* renderPipeline, const int32_t samplerCount, const bool useTemporalAA )

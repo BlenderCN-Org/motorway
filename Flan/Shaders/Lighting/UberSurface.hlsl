@@ -875,7 +875,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		atmosphereTransmittance 
 	);
 
-	LightContribution.rgb = LightContribution.rgb * atmosphereTransmittance + atmosphereInScatter;
+	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
 #endif
 
     // PA_ENABLE_ALPHA_BLEND
