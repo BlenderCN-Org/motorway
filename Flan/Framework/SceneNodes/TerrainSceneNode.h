@@ -81,9 +81,11 @@ struct TerrainSceneNode : public SceneNode
 
         ImGui::LabelText( "##terrainNode", "Terrain" );
 
-        if ( ImGui::SmallButton( ( flan::core::WideStringToString( instance.terrainAsset->getMaterial()->getName() ) ).c_str() ) ) {
-            FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
-            *dev_EditorPickedMaterial = instance.terrainAsset->getMaterial();
+        if ( instance.terrainAsset != nullptr ) {
+            if ( ImGui::SmallButton( ( flan::core::WideStringToString( instance.terrainAsset->getMaterial()->getName() ) ).c_str() ) ) {
+                FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
+                *dev_EditorPickedMaterial = instance.terrainAsset->getMaterial();
+            }
         }
     }
 
