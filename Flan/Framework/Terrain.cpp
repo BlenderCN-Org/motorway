@@ -58,10 +58,10 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
         glm::vec2 texCoordinates;
     };
 
-    std::vector<VertexLayout> vertices( width * height );
+    std::vector<VertexLayout> vertices( static_cast<std::size_t>( width * height ) );
     for ( int z = 0; z < height; z++ ) {
         for ( int x = 0; x < width; x++ ) {
-            vertices[z * height + x] = {
+            vertices[static_cast<std::size_t>( z * height + x )] = {
                 glm::vec3( static_cast<float>( x * texelScale ), 0.0f, static_cast<float>( z * texelScale ) ),
                 glm::vec3( 0.0f, 1.0f, 0.0f ),
                 glm::vec2( static_cast<float>( x ) / ( width - 1 ), static_cast<float>( z ) / ( height - 1 ) )
@@ -69,7 +69,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
         }
     }
 
-    int numIndices = ( width * 2 ) * ( height - 1 ) + ( height - 2 );
+    int numIndices = static_cast<int>( ( width * 2 ) * ( height - 1 ) + ( height - 2 ) );
 
     std::vector<uint32_t> indices( numIndices );
 
@@ -80,23 +80,23 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
             // Even row
             int x;
             for ( x = 0; x < width; x++ ) {
-               indices[index++] = x + ( z * width );
-               indices[index++] = x + ( z * width ) + width;
+               indices[index++] = x + static_cast<int>( z * width );
+               indices[index++] = x + static_cast<int>( z * width ) + width;
             }
             // Insert degenerate vertex if this isn't the last row
             if ( z != height - 2 ) {
-               indices[index++] = --x + ( z * width );
+               indices[index++] = --x + static_cast<int>( z * width );
             }
         } else {
             // Odd row
             int x;
             for ( x = width - 1; x >= 0; x-- ) {
-               indices[index++] = x + ( z * width );
-               indices[index++] = x + ( z * width ) + width;
+               indices[index++] = x + static_cast<int>( z * width );
+               indices[index++] = x + static_cast<int>( z * width ) + width;
             }
             // Insert degenerate vertex if this isn't the last row
             if ( z != height - 2 ) {
-               indices[index++] = ++x + ( z * width );
+               indices[index++] = ++x + static_cast<int>( z * width );
             }
         }
     }
