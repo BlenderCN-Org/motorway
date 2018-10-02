@@ -55,26 +55,54 @@ struct MaterialEditionInput
 
     Texture* InputTexture;
 };
+#else
+struct MaterialEditionInput
+{
+    // Input can have 4 states:
+    //      0: none
+    //      1: constant 1d value
+    //      2: constant 3d vector    
+    //      3: texture input
+    float3  Input3D;
+    float   Input1D;
+    
+    int     Type;
+    uint    SamplingMode;
+    float2  EXPLICIT_PADDING; // Holds Texture pointer on CPU side
+};
 #endif
+
+#define INPUT_TYPE_NONE 0
+#define INPUT_TYPE_1D 1
+#define INPUT_TYPE_3D 2
+#define INPUT_TYPE_TEXTURE 3
+
+#define SAMPLING_MODE_SRGB 0
+#define SAMPLING_MODE_LINEAR 1
+
+#define SAMPLING_MODE_ALPHA_ROUGHNESS 0
+#define SAMPLING_MODE_ROUGHNESS 1
+
+#define SAMPLING_MODE_TANGENT_SPACE 0
+#define SAMPLING_MODE_WORLD_SPACE 1
 
 static const int MAX_LAYER_COUNT = 3;
     
 struct MaterialLayer 
 {
-    MaterialEditionInput   Heightmap;
-    MaterialEditionInput   HeightmapNormal;
-
     MaterialEditionInput   BaseColor;
     MaterialEditionInput   Reflectance;
-    MaterialEditionInput   Roughness;
+    MaterialEditionInput   Roughness;   
     MaterialEditionInput   Metalness;
     MaterialEditionInput   AmbientOcclusion;
-    MaterialEditionInput   Normal;
+    MaterialEditionInput   Normal;  
     MaterialEditionInput   Emissivity;
     MaterialEditionInput   AlphaMask;
-    MaterialEditionInput   Displacement;
+    MaterialEditionInput   Displacement;    
     MaterialEditionInput   SecondaryNormal;
-    MaterialEditionInput   BlendMask;
+    MaterialEditionInput   BlendMask;    
+    MaterialEditionInput   Heightmap;
+    MaterialEditionInput   HeightmapNormal;
 
     float                  Refraction;
     float                  RefractionIor;

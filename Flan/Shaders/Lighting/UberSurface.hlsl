@@ -206,34 +206,6 @@ float2 ApplyParallaxMapping( in float2 uvCoordinates, in float3 V, in float3 N, 
 }
 
 #if PA_EDITOR
-#define INPUT_TYPE_NONE 0
-#define INPUT_TYPE_1D 1
-#define INPUT_TYPE_3D 2
-#define INPUT_TYPE_TEXTURE 3
-
-#define SAMPLING_MODE_SRGB 0
-#define SAMPLING_MODE_LINEAR 1
-
-#define SAMPLING_MODE_ALPHA_ROUGHNESS 0
-#define SAMPLING_MODE_ROUGHNESS 1
-
-#define SAMPLING_MODE_TANGENT_SPACE 0
-#define SAMPLING_MODE_WORLD_SPACE 1
-
-struct MaterialEditionInput
-{
-    // Input can have 4 states:
-    //      0: none
-    //      1: constant 1d value
-    //      2: constant 3d vector    
-    //      3: texture input
-    float3  Input3D;
-    float   Input1D;
-    
-    int     Type;
-    uint    SamplingMode;
-    float2  EXPLICIT_PADDING; // Holds Texture pointer on CPU side
-};
 #include <MaterialsShared.h>
 
 cbuffer MaterialEdition : register( b8 )
@@ -279,7 +251,7 @@ float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampl
         input = textureSampler.Sample( texSampler, uvCoordinates ).r;
     }
     
-    return defaultValue;
+    return input;
 }
     
 #define READ_LAYER_FUNC( layerIdx )\
@@ -298,7 +270,7 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     }\
     layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
-    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_LUTSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
+    layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_RoughnessSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
         layer.Roughness = ( layer.Roughness * layer.Roughness );\
     }\
@@ -844,7 +816,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         float3 I = normalize( VertexStage.positionWS.xyz - WorldPosition.xyz );
         float NoI = saturate( dot( surface.N, I ) );
         float Fc = pow( 1 - NoI, 5.0f );
-        float RefractionFresnel = Fc + ( 1 - Fc ) * surface.FresnelColor;
+        float RefractionFresnel = Fc + ( 1 - Fc ) * surface.FresnelColor.r;
         float refractionIor = lerp( 1.0f, BaseLayer.RefractionIor, RefractionFresnel );
         float refractionRatio = 1.00f / BaseLayer.RefractionIor;
         float3 RefractionVector = refract( V, surface.N, refractionRatio );
@@ -875,7 +847,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		atmosphereTransmittance 
 	);
 
-	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
+	LightContribution.rgb = LightContribution.rgb * atmosphereTransmittance + atmosphereInScatter;
 #endif
 
     // PA_ENABLE_ALPHA_BLEND

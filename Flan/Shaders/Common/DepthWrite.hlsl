@@ -20,20 +20,6 @@ cbuffer MatricesBuffer : register( b3 )
 #if PH_HEIGHTFIELD
 Texture2D g_TexHeightmap    : register( t0 );
 
-struct MaterialEditionInput
-{
-    // Input can have 4 states:
-    //      0: none
-    //      1: constant 1d value
-    //      2: constant 3d vector    
-    //      3: texture input
-    float3  Input3D;
-    float   Input1D;
-    
-    int     Type;
-    uint    SamplingMode;
-    float2  EXPLICIT_PADDING; // Holds Texture pointer on CPU side
-};
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
 {
