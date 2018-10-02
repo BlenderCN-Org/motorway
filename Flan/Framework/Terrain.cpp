@@ -42,9 +42,10 @@ Terrain::~Terrain()
 
 void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 {
-    constexpr float width = 1024.0f;
-    constexpr float height = 1024.0f;
+    constexpr float width = 128.0f;
+    constexpr float height = 128.0f;
     constexpr float tileRes = 16.0f;
+    constexpr float texelScale = 1024.0f / width;
 
     constexpr float halfWidth = ( ( float )width - 1.0f ) / 2.0f;
     constexpr float halfLength = ( ( float )height - 1.0f ) / 2.0f;
@@ -61,9 +62,9 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
     for ( int z = 0; z < height; z++ ) {
         for ( int x = 0; x < width; x++ ) {
             vertices[z * height + x] = {
-                glm::vec3( (float)( x - halfWidth ), 0.0f, ( float )( z - halfLength ) ),
-                glm::vec3( 0, 1, 0 ),
-                glm::vec2( ( float )x / ( width - 1 ), ( float )z / ( height - 1 ) )
+                glm::vec3( static_cast<float>( x * texelScale ), 0.0f, static_cast<float>( z * texelScale ) ),
+                glm::vec3( 0.0f, 1.0f, 0.0f ),
+                glm::vec2( static_cast<float>( x ) / ( width - 1 ), static_cast<float>( z ) / ( height - 1 ) )
             };
         }
     }

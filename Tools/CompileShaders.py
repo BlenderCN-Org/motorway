@@ -230,6 +230,7 @@ compile_shader_VS( "Editor/IBLConvolution.hlsl", "IBLConvolution", "EntryPointVS
 compile_shader_PS( "Editor/IBLConvolution.hlsl", "IBLConvolution" )
 compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolver" )
 compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolverTextureMapInput", "EntryPointCS", { "FLAN_TEX_INPUT" : "1" } )
+compile_shader_CS( "Editor/HeightmapNormalGeneration.hlsl", "HeightmapNormalGeneration" )
 
 # Debug
 compile_shader_PS( "Debug/Wireframe.hlsl", "Wireframe" )

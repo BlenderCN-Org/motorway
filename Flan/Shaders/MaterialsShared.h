@@ -62,6 +62,7 @@ static const int MAX_LAYER_COUNT = 3;
 struct MaterialLayer 
 {
     MaterialEditionInput   Heightmap;
+    MaterialEditionInput   HeightmapNormal;
 
     MaterialEditionInput   BaseColor;
     MaterialEditionInput   Reflectance;

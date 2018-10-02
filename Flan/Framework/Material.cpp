@@ -51,6 +51,7 @@ Material::Material( const fnString_t& materialName )
     , sortKey( 0 )
     , shadingModel( flan::graphics::eShadingModel::SHADING_MODEL_STANDARD )
     , rebuildSpecularAAMaps{ 0 }
+    , rebuildHMapNormalMaps{ 0 }
 {
     editableMaterialData = { 0 };
     editableMaterialData.LayerCount = 1;
@@ -423,6 +424,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 // Shading Model Inputs
                 if ( currentLayerIndex == 0 ) {
                     FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
+                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
                 }
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
@@ -525,7 +527,8 @@ void Material::serialize( FileSystemObject* file ) const
         file->writeString( "Layer\n{\n" );
 
         if ( i == 0 ) {
-            FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 )
+            FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
+            FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
         }
 
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
@@ -739,7 +742,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
                     input.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
-                    pixelTextureSet[inputTextureBindIndex] = input.InputTexture;
+                    textureSet[inputTextureBindIndex] = input.InputTexture;
                 }
             }
         } else {
@@ -863,6 +866,10 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
             auto& addedLayer = editableMaterialData.layers[( editableMaterialData.LayerCount - 1 )];
 
+            addedLayer.Heightmap.InputType = MaterialEditionInput::NONE;
+            addedLayer.HeightmapNormal.InputType = MaterialEditionInput::NONE;
+            addedLayer.HeightmapWorldHeight = 0.0f;
+
             addedLayer.BaseColor.InputType = MaterialEditionInput::COLOR_3D;
             addedLayer.BaseColor.Input3D = { 0.42f, 0.42f, 0.42f };
 
@@ -909,6 +916,23 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
             auto& layer = editableMaterialData.layers[i];
             auto layerLabel = "Layer" + std::to_string( i );
+
+            if ( rebuildHMapNormalMaps[i] == 1 ) {
+                fnString_t normalMapName = name + FLAN_STRING( "_LayerHMap" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Normal" );
+                worldRenderer->saveTexture( heightmapNormalMapRT[i], normalMapName );
+
+                rebuildHMapNormalMaps[i] = 2;
+            } else if ( rebuildHMapNormalMaps[i] == 2 ) {
+                fnString_t normalMapName = name + FLAN_STRING( "_LayerHMap" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Normal" );
+
+                layer.HeightmapNormal.InputType = MaterialEditionInput::TEXTURE;
+                layer.HeightmapNormal.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + normalMapName + FLAN_STRING( ".dds" ) ).c_str(), true );
+                layer.HeightmapNormal.SamplingFlags = MaterialEditionInput::WORLD_SPACE_SOURCE;
+
+                vertexTextureSet[1] = layer.HeightmapNormal.InputTexture;
+
+                rebuildHMapNormalMaps[i] = 0;
+            }
 
             if ( rebuildSpecularAAMaps[i] == 1 ) {
                 fnString_t roughnessMapName = name + FLAN_STRING( "_Layer" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Roughness" );
@@ -962,8 +986,31 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     rebuildSpecularAAMaps[i] = 1;
                 }
 
-                displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
-                ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
+                if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
+                    displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
+                    displayInputConfiguration( graphicsAssetManager, "Heightmap Normal", layer.HeightmapNormal, 1, vertexTextureSet );
+
+                    ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
+
+                    if ( ImGui::Button( "Compute Terrain Normal Map" )
+                        && layer.Heightmap.InputType == MaterialEditionInput::TEXTURE ) {
+                        heightmapNormalMapRT[i] = new RenderTarget();
+
+                        auto& nmDesc = layer.Heightmap.InputTexture->getDescription();
+                        TextureDescription renderTargetDesc;
+                        renderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+                        renderTargetDesc.width = nmDesc.width;
+                        renderTargetDesc.height = nmDesc.height;
+                        renderTargetDesc.depth = 1;
+                        renderTargetDesc.arraySize = 1;
+                        renderTargetDesc.mipCount = 1;
+                        renderTargetDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+                        heightmapNormalMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
+
+                        worldRenderer->computeHMapNormalMap( layer.Heightmap.InputTexture, heightmapNormalMapRT[i] );
+                        rebuildHMapNormalMaps[i] = 1;
+                    }
+                }
 
                 displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex, pixelTextureSet );
                 bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );

@@ -26,6 +26,7 @@ cbuffer MatricesBuffer : register( b3 )
 
 #if PH_HEIGHTFIELD
 Texture2D g_TexHeightmap    : register( t0 );
+Texture2D g_TexHeightmapNormal : register( t1 );
 
 struct MaterialEditionInput
 {
@@ -95,11 +96,21 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
     float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
     
 	float3 positionModelSpace = VertexBuffer.Position;
-    float height = g_TexHeightmap[abs( heightCoords )].r;
+    float height = g_TexHeightmap[heightCoords].r;
 
     output.positionWS       = mul( ModelMatrix, float4( positionModelSpace.x, height * g_Layers[0].HeightmapWorldHeight, positionModelSpace.z, 1.0f ) );
+
+#if PH_USE_NORMAL_MAPPING
+	float3 hmapNormalWS = g_TexHeightmapNormal[heightCoords].rgb;
+	//float3 normalWorldSpace = normalize( mul( ModelMatrix, float4( hmapNormalWS, 0.0f ) ) ).xyz;
+	
+	// Unpack normal map
+	float3 normalWorldSpace = hmapNormalWS; //normalize( hmapNormalWS * 2.0f - 1.0f );
+#endif		
 #else
     output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
+	
+	float3 normalWorldSpace = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
 #endif
     
     output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
@@ -109,7 +120,7 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
     output.depth = ( PositionVS.z / PositionVS.w );
 
 #if PH_USE_NORMAL_MAPPING
-    output.normal = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
+    output.normal = normalWorldSpace;
 #endif
 
 	return output;

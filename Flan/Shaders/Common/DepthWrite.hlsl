@@ -60,7 +60,7 @@ PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
     float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
     
 	float3 positionModelSpace = VertexBuffer.Position;
-    float height = g_TexHeightmap[( VertexBuffer.uvCoord )].r;
+    float height = g_TexHeightmap[heightCoords].r;
 
     float4 positionWS       = mul( ModelMatrix, float4( positionModelSpace.x, height * g_Layers[0].HeightmapWorldHeight, positionModelSpace.z, 1.0f ) );
 #else

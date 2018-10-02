@@ -30,13 +30,7 @@
 #include <Shaders/Shared.h>
 #include <Rendering/CommandList.h>
 
-// Computes a compute shader dispatch size given a thread group size, and number of elements to process
-uint32_t DispatchSize( uint32_t tgSize, uint32_t numElements )
-{
-    uint32_t dispatchSize = numElements / tgSize;
-    dispatchSize += ( numElements % tgSize > 0 ) ? 1 : 0;
-    return dispatchSize;
-}
+#include <Graphics/ComputeHelpers.h>
 
 struct VMFResolveOutput
 {

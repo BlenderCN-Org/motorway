@@ -119,6 +119,8 @@ private:
     FLAN_IS_MEMORY_ALIGNED( 16, Material::editableMaterialData );
     std::unique_ptr<Buffer> editableMaterialBuffer;
     int rebuildSpecularAAMaps[MAX_LAYER_COUNT];
+    int rebuildHMapNormalMaps[MAX_LAYER_COUNT];
+    RenderTarget* heightmapNormalMapRT[MAX_LAYER_COUNT];
     RenderTarget* roughnessMapRT[MAX_LAYER_COUNT];
 
 private:

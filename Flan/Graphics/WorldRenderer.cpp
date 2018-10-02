@@ -407,6 +407,7 @@ float WorldRenderer::getTimeDelta() const
 }
 
 #include "RenderPasses/VMFMapComputeRenderPass.h"
+#include "RenderPasses/HMapNormalMapComputeRenderPass.h"
 #include "RenderPasses/WriteTextureToDiskPass.h"
 
 void WorldRenderer::saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName )
@@ -435,6 +436,14 @@ void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, Re
     for ( int mipLevel = 0; mipLevel < resolvedVMF.generatedMipCount; mipLevel++ ) {
         AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
     }
+}
+
+void WorldRenderer::computeHMapNormalMap( Texture* heightmap, RenderTarget* outputNormalMap )
+{
+    auto normalHmap = AddHMapNormalMapComputePass( renderPipeline.get(), heightmap );
+
+    auto normalHmapRT = renderPipeline->importRenderTarget( outputNormalMap );
+    AddCopyTextureUAVPass( renderPipeline.get(), false, 0, 0, normalHmapRT, normalHmap );
 }
 
 void WorldRenderer::createRenderTargets( void )
