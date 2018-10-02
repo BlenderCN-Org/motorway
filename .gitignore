@@ -327,3 +327,5 @@ ThirdParty/imgui/*
 ThirdParty/ImGuizmo/*
 ThirdParty/OpenAL/*
 ThirdParty/DirectXTex/*
+
+Tools/tmp/*
