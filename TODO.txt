@@ -8,7 +8,7 @@ Stuff todo for the project
         > TopDown View ('Map' like view)
         > Road Generation (Bezier Curve and shiet)
         > 'Road Profile' (material, AI node, etc.)
-        > Procedural road generation (noise based?)
+        > Procedural road generation (anisotropic path finding seems to give nice result; see Inria paper and Ghost Recon presentation)
     > Better mouse picking (color buffer instead of bounding geometry?)
     <Material Editor Unfuckery>
         > Fix layer blending for edge cases (see bug reports)
@@ -20,8 +20,14 @@ Stuff todo for the project
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
-        > Still need to figure out stuff (check state of art)
-        | See presentations: FarCry5 Terrain; Battlefield 3 (quadtree based system seems nice)
+        > Texture Splatting (3 levels should be enough)
+        > Biome Presets / Define
+        > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
+        > GeoClipping / or something even more basic for LODing
+        > Terrain Tile streaming 
+        > Terrain Hiearchal Structure (quadtree?)
+        > Heightmap collision (built in Bullet's, just need to read the doc)
+    > Grass rendering (see Boulanger paper)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
     > Decals Support
@@ -32,7 +38,6 @@ Stuff todo for the project
         | http://adruab.net/wp-images/GDC14_infamous_second_son_engine_postmortem.pdf      
     > Implement Instanciation (should help for Vulkan port)
     > Better physics
-    > Grass rendering (see Boulanger paper)
 	> Data Oriented Design (GameLogic/Framework wise)
     > Vectorify draw commands building as much as possible (see profiler output on stress test)
 	> Punctual/Spot light shadow map support
