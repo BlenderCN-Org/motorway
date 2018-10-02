@@ -228,9 +228,10 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         }
 
         // Depth Only Pipeline State
-        descriptor.vertexStage = ( materialType == MaterialType::SURFACE ) 
-            ? shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX )
-            : shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
+        if ( materialType == MaterialType::SURFACE )
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
+        else if ( materialType == MaterialType::TERRAIN )
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
 
         if ( editableMaterialData.EnableAlphaTest )
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
@@ -291,7 +292,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
     sortKeyInfos.useTranslucidity = ( sortKeyInfos.isAlphaTested || sortKeyInfos.isAlphaBlended );
 }
 
-void Material::readEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent, fnTextureSet_t& textureSet )
+void ReadEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent, fnTextureSet_t& textureSet )
 {
     auto valueHashcode = flan::core::CRC32( materialInputLine.c_str() );
     const bool isNone = ( valueHashcode == FLAN_STRING_HASH( "None" ) ) || materialInputLine.empty();
@@ -329,8 +330,8 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 {
 #define FLAN_CASE_READ_MATERIAL_FLAG( streamLine, variable ) case FLAN_STRING_HASH( #variable ): editableMaterialData.variable = flan::core::StringToBoolean( streamLine ); break;
 #define FLAN_CASE_READ_MATERIAL_FLOAT( streamLine, layerIndex, variable ) case FLAN_STRING_HASH( #variable ): editableMaterialData.layers[layerIndex].variable = std::stof( dictionaryValue.c_str() ); break;
-#define FLAN_CASE_READ_LAYER_PIXEL_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): readEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, pixelTextureSet ); break;
-#define FLAN_CASE_READ_LAYER_VERTEX_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): readEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, vertexTextureSet ); break;
+#define FLAN_CASE_READ_LAYER_PIXEL_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, pixelTextureSet ); break;
+#define FLAN_CASE_READ_LAYER_VERTEX_INPUT( streamLine, layerIndex, variableIndex, variable )  case FLAN_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetManager, editableMaterialData.layers[layerIndex].variable, vertexTextureSet ); break;
 
     // Reset material inputs (incase of hot reloading)
     vertexTextureSet.clear();
@@ -422,10 +423,8 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLAG( dictionaryValue, AlphaToCoverage );
 
                 // Shading Model Inputs
-                if ( currentLayerIndex == 0 ) {
-                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
-                    FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
-                }
+                FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
+                FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
@@ -526,10 +525,8 @@ void Material::serialize( FileSystemObject* file ) const
 
         file->writeString( "Layer\n{\n" );
 
-        if ( i == 0 ) {
-            FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
-            FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
-        }
+        FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
+        FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
 
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( Reflectance, ( slotBaseIndex + 2 ) )
