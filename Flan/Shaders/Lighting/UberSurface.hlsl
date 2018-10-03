@@ -1,5 +1,6 @@
 #include <Shared.h>
 #include <Colormetry.hlsli>
+#include <Sampling.hlsli>
 
 cbuffer PerPass : register( b2 )
 {
@@ -39,11 +40,17 @@ TextureCubeArray    g_EnvProbeDiffuseArray         : register( t12 );
 Texture2DArray 		g_TerrainBaseColorReflectanceArray : register( t6 );
 Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
 
+struct SamplingParameter
+{
+    float4 samplingParameters;
+    uint splatIndex;
+    uint3 EXPLICIT_PADDING;
+};
+
 cbuffer Terrain : register( b7 )
 {
-	uint g_TerrainStreamedSplatIndexes[256];
-	float4 g_TerrainSamplingParameters[256];
-}
+	SamplingParameter g_TerrainMaterials[256];
+};
 
 sampler  g_BaseColorSampler                 : register( s0 );
 sampler  g_ReflectanceSampler               : register( s1 );
@@ -618,22 +625,23 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	float splatIndex = g_TexSplatMap.SampleLevel( g_LUTSampler, VertexStage.uvCoord, 0.0f ).r;
 	
 	// Retrieve texture coordinates
-	float4 samplingParameters = g_TerrainSamplingParameters[splatIndex]; // xy offset; zw scale
+
+	float4 samplingParameters = g_TerrainMaterials[splatIndex].samplingParameters; // xy offset; zw scale
 	float2 samplingCoordinates = ( VertexStage.uvCoord + samplingParameters.xy ) * samplingParameters.zw;
 	
-	uint streamedTextureIndex = g_TerrainStreamedSplatIndexes[splatIndex];
+	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
 	
 	float4 baseColor = g_TerrainBaseColorReflectanceArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) );
 	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) );
 	
 	MaterialReadLayer BaseLayer;
-	BaseLayer.BaseColor = float3( 1, 0, 0 ); //accurateSRGBToLinear( baseColor.rgb );
+	BaseLayer.BaseColor = accurateSRGBToLinear( baseColor.rgb );
 	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
 	BaseLayer.Roughness = 0; //normalAndRoughness.a;
 	BaseLayer.Metalness = 0.0f;
 	BaseLayer.AmbientOcclusion = 1.0f;
 	BaseLayer.Emissivity = 0.0f;
-	BaseLayer.Normal = N; // normalAndRoughness.rgb;
+	BaseLayer.Normal = normalAndRoughness.rgb;
 	BaseLayer.AlphaMask = 1.0f;
 	BaseLayer.SecondaryNormal = N;
 	BaseLayer.BlendMask = 1.0f;
