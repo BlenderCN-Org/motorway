@@ -127,6 +127,12 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
             passData.buffers[4] = renderPipelineBuilder->allocateBuffer( atmosphereBuffer );
 
+            BufferDesc terrainStreamingBuffer = {};
+            terrainStreamingBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            terrainStreamingBuffer.Size = sizeof( TerrainStreaming::terrainMaterialStreaming );
+
+            passData.buffers[5] = renderPipelineBuilder->allocateBuffer( terrainStreamingBuffer );
+            
             // Texture (geometry stuff) Sampler
             SamplerDesc matSamplerDesc;
             matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
@@ -231,6 +237,14 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             auto atmosphereBuffer = renderPipelineResources->getBuffer( passData.buffers[4] );
             atmosphereBuffer->updateAsynchronous( cmdList, atmosphereData, sizeof( AtmosphereModule::Parameters ) );
             atmosphereBuffer->bind( cmdList, CBUFFER_INDEX_ATMOSPHERE );
+
+            auto terrrainStreamingData = renderPipelineResources->getWellKnownImportedResource<TerrainStreaming>();
+            auto terrainStreamingBuffer = renderPipelineResources->getBuffer( passData.buffers[5] );
+            terrainStreamingBuffer->updateAsynchronous( cmdList, &terrrainStreamingData->terrainMaterialStreaming, sizeof( TerrainStreaming::terrainMaterialStreaming ) );
+            terrainStreamingBuffer->bind( cmdList, 7, SHADER_STAGE_PIXEL );
+
+            terrrainStreamingData->baseColorStreamed->bind( cmdList, 6, SHADER_STAGE_PIXEL );
+            terrrainStreamingData->normalStreamed->bind( cmdList, 7, SHADER_STAGE_PIXEL );
 
             // Bind Samplers
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
