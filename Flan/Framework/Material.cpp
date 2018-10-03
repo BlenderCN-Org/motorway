@@ -919,17 +919,6 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
             if ( rebuildHMapNormalMaps[i] == 1 ) {
                 fnString_t normalMapName = name + FLAN_STRING( "_LayerHMap" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Normal" );
                 worldRenderer->saveTexture( heightmapNormalMapRT[i], normalMapName );
-
-                rebuildHMapNormalMaps[i] = 2;
-            } else if ( rebuildHMapNormalMaps[i] == 2 ) {
-                fnString_t normalMapName = name + FLAN_STRING( "_LayerHMap" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Normal" );
-
-                layer.HeightmapNormal.InputType = MaterialEditionInput::TEXTURE;
-                layer.HeightmapNormal.InputTexture = graphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + normalMapName + FLAN_STRING( ".dds" ) ).c_str(), true );
-                layer.HeightmapNormal.SamplingFlags = MaterialEditionInput::WORLD_SPACE_SOURCE;
-
-                vertexTextureSet[1] = layer.HeightmapNormal.InputTexture;
-
                 rebuildHMapNormalMaps[i] = 0;
             }
 
@@ -959,35 +948,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
             ImGui::SameLine( 200.0f );
             if ( ImGui::TreeNode( layerLabel.c_str() ) ) {
-                ImGui::SameLine();
-                if ( ImGui::Button( "Precompute Anti-Aliased Roughness Map" )
-                    && layer.Normal.InputType == MaterialEditionInput::TEXTURE ) {
-                    roughnessMapRT[i] = new RenderTarget();
-
-                    auto& nmDesc = layer.Normal.InputTexture->getDescription();
-                    TextureDescription renderTargetDesc;
-                    renderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-                    renderTargetDesc.width = nmDesc.width;
-                    renderTargetDesc.height = nmDesc.height;
-                    renderTargetDesc.depth = 1;
-                    renderTargetDesc.arraySize = 1;
-                    renderTargetDesc.mipCount = flan::rendering::ComputeMipCount( nmDesc.width, nmDesc.height );
-                    renderTargetDesc.flags.useHardwareMipGen = 1;
-                    renderTargetDesc.format = IMAGE_FORMAT_R8_UNORM;
-                    roughnessMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
-
-                    if ( layer.Roughness.InputType == MaterialEditionInput::TEXTURE )
-                        worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.InputTexture, roughnessMapRT[i] );
-                    else
-                        worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, roughnessMapRT[i] );
-
-                    // Post pone render target retrieval to the next frame (wait for previous cmd list to complete)
-                    rebuildSpecularAAMaps[i] = 1;
-                }
-
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
                     displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
-                    displayInputConfiguration( graphicsAssetManager, "Heightmap Normal", layer.HeightmapNormal, 1, vertexTextureSet );
                     displayInputConfiguration( graphicsAssetManager, "Heightmap SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
 
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
@@ -1010,98 +972,123 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                         worldRenderer->computeHMapNormalMap( layer.Heightmap.InputTexture, heightmapNormalMapRT[i] );
                         rebuildHMapNormalMaps[i] = 1;
                     }
-                }
+                } else {
+                    if ( ImGui::Button( "Precompute Anti-Aliased Roughness Map" )
+                        && layer.Normal.InputType == MaterialEditionInput::TEXTURE ) {
+                        roughnessMapRT[i] = new RenderTarget();
 
-                displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex, pixelTextureSet );
-                bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );
-                if ( ImGui::Checkbox( "sRGB Input", &isSRGBInput ) ) {
-                    layer.BaseColor.SamplingFlags = ( isSRGBInput ) ? MaterialEditionInput::SRGB_SOURCE : MaterialEditionInput::LINEAR_SOURCE;
-                }
-                
-                displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), pixelTextureSet, false );
+                        auto& nmDesc = layer.Normal.InputTexture->getDescription();
+                        TextureDescription renderTargetDesc;
+                        renderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+                        renderTargetDesc.width = nmDesc.width;
+                        renderTargetDesc.height = nmDesc.height;
+                        renderTargetDesc.depth = 1;
+                        renderTargetDesc.arraySize = 1;
+                        renderTargetDesc.mipCount = flan::rendering::ComputeMipCount( nmDesc.width, nmDesc.height );
+                        renderTargetDesc.flags.useHardwareMipGen = 1;
+                        renderTargetDesc.format = IMAGE_FORMAT_R8_UNORM;
+                        roughnessMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
 
-                if ( shadingModel != flan::graphics::eShadingModel::SHADING_MODEL_EMISSIVE ) {
-                    displayInputConfiguration( graphicsAssetManager, "Reflectance", layer.Reflectance, ( slotBaseIndex + 2 ), pixelTextureSet );
-                    displayInputConfiguration( graphicsAssetManager, "Roughness", layer.Roughness, ( slotBaseIndex + 3 ), pixelTextureSet );
-                    bool isAlphaRoughness = ( layer.Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE );
-                    if ( ImGui::Checkbox( "Alpha Roughness Input", &isAlphaRoughness ) ) {
-                        layer.Roughness.SamplingFlags = ( isAlphaRoughness ) ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE : MaterialEditionInput::ROUGHNESS_SOURCE;
+                        if ( layer.Roughness.InputType == MaterialEditionInput::TEXTURE )
+                            worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.InputTexture, roughnessMapRT[i] );
+                        else
+                            worldRenderer->precomputeVMF( layer.Normal.InputTexture, layer.Roughness.Input1D, roughnessMapRT[i] );
+
+                        // Post pone render target retrieval to the next frame (wait for previous cmd list to complete)
+                        rebuildSpecularAAMaps[i] = 1;
                     }
 
-                    displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ), pixelTextureSet );
-                    displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ), pixelTextureSet );
-                    displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ), pixelTextureSet );
-                    bool isTangentSpace = ( layer.Normal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
-                    if ( ImGui::Checkbox( "Tangent Space Input##Normal", &isTangentSpace ) ) {
-                        layer.Normal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                    displayInputConfiguration( graphicsAssetManager, "BaseColor", layer.BaseColor, slotBaseIndex, pixelTextureSet );
+                    bool isSRGBInput = ( layer.BaseColor.SamplingFlags == MaterialEditionInput::SRGB_SOURCE );
+                    if ( ImGui::Checkbox( "sRGB Input", &isSRGBInput ) ) {
+                        layer.BaseColor.SamplingFlags = ( isSRGBInput ) ? MaterialEditionInput::SRGB_SOURCE : MaterialEditionInput::LINEAR_SOURCE;
                     }
 
-                    ImGui::SliderFloat( "Normal Map Strength", &layer.NormalMapStrength, 0.0f, 1.0f );
+                    displayInputConfiguration( graphicsAssetManager, "Emissivity", layer.Emissivity, ( slotBaseIndex + 8 ), pixelTextureSet, false );
 
-                    displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ), pixelTextureSet );
-                    ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
+                    if ( shadingModel != flan::graphics::eShadingModel::SHADING_MODEL_EMISSIVE ) {
+                        displayInputConfiguration( graphicsAssetManager, "Reflectance", layer.Reflectance, ( slotBaseIndex + 2 ), pixelTextureSet );
+                        displayInputConfiguration( graphicsAssetManager, "Roughness", layer.Roughness, ( slotBaseIndex + 3 ), pixelTextureSet );
+                        bool isAlphaRoughness = ( layer.Roughness.SamplingFlags == MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE );
+                        if ( ImGui::Checkbox( "Alpha Roughness Input", &isAlphaRoughness ) ) {
+                            layer.Roughness.SamplingFlags = ( isAlphaRoughness ) ? MaterialEditionInput::ALPHA_ROUGHNESS_SOURCE : MaterialEditionInput::ROUGHNESS_SOURCE;
+                        }
 
-                    displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ), pixelTextureSet );
+                        displayInputConfiguration( graphicsAssetManager, "Metalness", layer.Metalness, ( slotBaseIndex + 4 ), pixelTextureSet );
+                        displayInputConfiguration( graphicsAssetManager, "AmbientOcclusion", layer.AmbientOcclusion, ( slotBaseIndex + 5 ), pixelTextureSet );
+                        displayInputConfiguration( graphicsAssetManager, "Normal", layer.Normal, ( slotBaseIndex + 6 ), pixelTextureSet );
+                        bool isTangentSpace = ( layer.Normal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
+                        if ( ImGui::Checkbox( "Tangent Space Input##Normal", &isTangentSpace ) ) {
+                            layer.Normal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                        }
+
+                        ImGui::SliderFloat( "Normal Map Strength", &layer.NormalMapStrength, 0.0f, 1.0f );
+
+                        displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ), pixelTextureSet );
+                        ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
+
+                        displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ), pixelTextureSet );
 
 
-                    if ( editableMaterialData.EnableAlphaTest == 1u ) {
-                        ImGui::LabelText( "##hidden_AlphaCutoff_0", "Alpha Cutoff" );
-                        ImGui::SameLine( 128.0f );
-                        ImGui::DragFloat( "##hidden_AlphaCutoff", &layer.AlphaCutoff );
+                        if ( editableMaterialData.EnableAlphaTest == 1u ) {
+                            ImGui::LabelText( "##hidden_AlphaCutoff_0", "Alpha Cutoff" );
+                            ImGui::SameLine( 128.0f );
+                            ImGui::DragFloat( "##hidden_AlphaCutoff", &layer.AlphaCutoff );
+                        }
                     }
-                }
 
-                if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_CLEAR_COAT ) {
-                    ImGui::LabelText( "##hidden_ClearCoat", "ClearCoat" );
-                    ImGui::SameLine( 200.0f );
-                    ImGui::PushItemWidth( 318.0f + 64.0f + 10.0f + 155.0f );
-                    ImGui::DragFloat( "##hidden_ClearCoatInput", &layer.ClearCoat, 0.001f, 0.0f, 1.0f );
+                    if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_CLEAR_COAT ) {
+                        ImGui::LabelText( "##hidden_ClearCoat", "ClearCoat" );
+                        ImGui::SameLine( 200.0f );
+                        ImGui::PushItemWidth( 318.0f + 64.0f + 10.0f + 155.0f );
+                        ImGui::DragFloat( "##hidden_ClearCoatInput", &layer.ClearCoat, 0.001f, 0.0f, 1.0f );
 
-                    ImGui::LabelText( "##hidden_ClearCoatGlossiness", "ClearCoat Glossiness" );
-                    ImGui::SameLine( 200.0f );
-                    ImGui::DragFloat( "##hidden_ClearCoatGlossinessInput", &layer.ClearCoatGlossiness, 0.001f, 0.0f, 1.0f );
-                    ImGui::PopItemWidth();
+                        ImGui::LabelText( "##hidden_ClearCoatGlossiness", "ClearCoat Glossiness" );
+                        ImGui::SameLine( 200.0f );
+                        ImGui::DragFloat( "##hidden_ClearCoatGlossinessInput", &layer.ClearCoatGlossiness, 0.001f, 0.0f, 1.0f );
+                        ImGui::PopItemWidth();
 
-                    displayInputConfiguration( graphicsAssetManager, "Secondary NormalMap", layer.SecondaryNormal, ( slotBaseIndex + 9 ), pixelTextureSet );
-                    bool isTangentSpace = ( layer.SecondaryNormal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
-                    if ( ImGui::Checkbox( "Tangent Space Input##SecondaryNormal", &isTangentSpace ) ) {
-                        layer.SecondaryNormal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                        displayInputConfiguration( graphicsAssetManager, "Secondary NormalMap", layer.SecondaryNormal, ( slotBaseIndex + 9 ), pixelTextureSet );
+                        bool isTangentSpace = ( layer.SecondaryNormal.SamplingFlags == MaterialEditionInput::TANGENT_SPACE_SOURCE );
+                        if ( ImGui::Checkbox( "Tangent Space Input##SecondaryNormal", &isTangentSpace ) ) {
+                            layer.SecondaryNormal.SamplingFlags = ( isTangentSpace ) ? MaterialEditionInput::TANGENT_SPACE_SOURCE : MaterialEditionInput::WORLD_SPACE_SOURCE;
+                        }
+
+                        ImGui::SliderFloat( "Secondary NormalMap Strength", &layer.SecondaryNormalMapStrength, 0.0f, 1.0f );
                     }
 
-                    ImGui::SliderFloat( "Secondary NormalMap Strength", &layer.SecondaryNormalMapStrength, 0.0f, 1.0f );
+                    if ( i != 0 ) {
+                        displayInputConfiguration( graphicsAssetManager, "BlendMask", layer.BlendMask, ( slotBaseIndex + 10 ), pixelTextureSet );
+
+                        ImGui::LabelText( "##hidden_DiffuseContribution", "Diffuse Contribution" );
+                        ImGui::SameLine( 200.0f );
+                        ImGui::SliderFloat( "##hidden_DiffuseContributionInput", &layer.DiffuseContribution, 0.0f, 1.0f );
+
+                        ImGui::LabelText( "##hidden_SpecularContribution", "Specular Contribution" );
+                        ImGui::SameLine( 200.0f );
+                        ImGui::SliderFloat( "##hidden_SpecularContributionInput", &layer.SpecularContribution, 0.0f, 1.0f );
+
+                        ImGui::LabelText( "##hidden_NormalMapContribution", "NormalMap Contribution" );
+                        ImGui::SameLine( 200.0f );
+                        ImGui::SliderFloat( "##hidden_NormalMapContributionInput", &layer.NormalContribution, 0.0f, 1.0f );
+                    }
+
+                    ImGui::LabelText( "##hidden_Refraction_0", "Refraction" );
+                    ImGui::SameLine( 128.0f );
+                    ImGui::DragFloat( "##hidden_Refraction", &layer.Refraction );
+
+                    ImGui::LabelText( "##hidden_RefractionIor_0", "Refraction Ior" );
+                    ImGui::SameLine( 128.0f );
+                    ImGui::DragFloat( "##hidden_RefractionIor", &layer.RefractionIor, 0.01f, 0.0f );
+
+                    ImGui::LabelText( "##hidden_LayerScale_0", "Layer Scale" );
+                    ImGui::SameLine( 128.0f );
+                    ImGui::DragFloat2( "##hidden_LayerScale", &layer.LayerScale[0], 0.01f, 0.01f, 1024.0f );
+
+                    ImGui::LabelText( "##hidden_LayerScale_0", "Layer Offset" );
+                    ImGui::SameLine( 128.0f );
+                    ImGui::DragFloat2( "##hidden_LayerOffset", &layer.LayerOffset[0], 0.01f, 0.01f, 1024.0f );
                 }
-
-                if ( i != 0 ) {
-                    displayInputConfiguration( graphicsAssetManager, "BlendMask", layer.BlendMask, ( slotBaseIndex + 10 ), pixelTextureSet );
-
-                    ImGui::LabelText( "##hidden_DiffuseContribution", "Diffuse Contribution" );
-                    ImGui::SameLine( 200.0f );
-                    ImGui::SliderFloat( "##hidden_DiffuseContributionInput", &layer.DiffuseContribution, 0.0f, 1.0f );
-
-                    ImGui::LabelText( "##hidden_SpecularContribution", "Specular Contribution" );
-                    ImGui::SameLine( 200.0f );
-                    ImGui::SliderFloat( "##hidden_SpecularContributionInput", &layer.SpecularContribution, 0.0f, 1.0f );
-
-                    ImGui::LabelText( "##hidden_NormalMapContribution", "NormalMap Contribution" );
-                    ImGui::SameLine( 200.0f );
-                    ImGui::SliderFloat( "##hidden_NormalMapContributionInput", &layer.NormalContribution, 0.0f, 1.0f );
-                }
-
-                ImGui::LabelText( "##hidden_Refraction_0", "Refraction" );
-                ImGui::SameLine( 128.0f );
-                ImGui::DragFloat( "##hidden_Refraction", &layer.Refraction );
-
-                ImGui::LabelText( "##hidden_RefractionIor_0", "Refraction Ior" );
-                ImGui::SameLine( 128.0f );
-                ImGui::DragFloat( "##hidden_RefractionIor", &layer.RefractionIor, 0.01f, 0.0f );
-
-                ImGui::LabelText( "##hidden_LayerScale_0", "Layer Scale" );
-                ImGui::SameLine( 128.0f );
-                ImGui::DragFloat2( "##hidden_LayerScale", &layer.LayerScale[0], 0.01f, 0.01f, 1024.0f );
-
-                ImGui::LabelText( "##hidden_LayerScale_0", "Layer Offset" );
-                ImGui::SameLine( 128.0f );
-                ImGui::DragFloat2( "##hidden_LayerOffset", &layer.LayerOffset[0], 0.01f, 0.01f, 1024.0f );
 
                 // End of Layer
                 ImGui::TreePop();
