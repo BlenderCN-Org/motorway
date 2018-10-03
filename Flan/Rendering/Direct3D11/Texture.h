@@ -39,10 +39,18 @@ struct NativeTextureObject
     };
 
     ID3D11ShaderResourceView*		textureShaderResourceView;
+    uint32_t textureWidth;
+    uint32_t textureHeight;
+    uint32_t textureMipCount;
+    uint32_t textureArraySize;
 
     NativeTextureObject()
         : textureResource( nullptr )
         , textureShaderResourceView( nullptr )
+        , textureWidth( 0 )
+        , textureHeight( 0 )
+        , textureMipCount( 0 )
+        , textureArraySize( 0 )
     {
 
     }
@@ -60,7 +68,9 @@ namespace flan
 
         void BindTextureCmdImpl( NativeCommandList* nativeCmdList, NativeTextureObject* textureObject, const uint32_t bindingIndex, const uint32_t shaderStagesToBindTo );
         void UnbindTextureCmdImpl( NativeCommandList* nativeCmdList, NativeTextureObject* textureObject, const uint32_t bindingIndex, const uint32_t shaderStagesToBindTo );
+        void CopySubresouceRegionAsynchronousImpl( NativeCommandList* nativeCmdList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
 
+        void CopySubresouceRegionImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
         void SetTextureDebugNameImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const std::string& debugName );
 
         void RetrieveTextureTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<uint8_t>& texels );

@@ -27,6 +27,77 @@
 #include <d3d11.h>
 #include <vector>
 
+ID3D11Texture2D* RetrieveStagingTexture( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description )
+{
+    ID3D11Texture2D* stagingTex = nullptr;
+
+    auto nativeDevice = nativeRenderContext->nativeDevice;
+    auto nativeDeviceContext = nativeRenderContext->nativeDeviceContext;
+
+    D3D11_TEXTURE2D_DESC texDesc;
+    textureObject->texture2D->GetDesc( &texDesc );
+
+    if ( description.samplerCount > 1 ) {
+        // MSAA content must be resolved before being copied to a staging texture
+        texDesc.SampleDesc.Count = 1;
+        texDesc.SampleDesc.Quality = 0;
+
+        ID3D11Texture2D* tmpTex = nullptr;
+        auto hr = nativeDevice->CreateTexture2D( &texDesc, 0, &tmpTex );
+        if ( FAILED( hr ) ) {
+            return nullptr;
+        }
+
+        DXGI_FORMAT fmt = texDesc.Format;
+
+        UINT support = 0;
+        hr = nativeDevice->CheckFormatSupport( fmt, &support );
+        if ( FAILED( hr ) ) {
+            return nullptr;
+        }
+
+        if ( !( support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE ) ) {
+            return nullptr;
+        }
+
+        for ( UINT item = 0; item < texDesc.ArraySize; ++item ) {
+            for ( UINT level = 0; level < texDesc.MipLevels; ++level ) {
+                UINT index = D3D11CalcSubresource( level, item, texDesc.MipLevels );
+                nativeDeviceContext->ResolveSubresource( tmpTex, index, textureObject->textureResource, index, fmt );
+            }
+        }
+
+        texDesc.BindFlags = 0;
+        texDesc.MiscFlags &= D3D11_RESOURCE_MISC_TEXTURECUBE;
+        texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        texDesc.Usage = D3D11_USAGE_STAGING;
+
+        hr = nativeDevice->CreateTexture2D( &texDesc, 0, &stagingTex );
+        if ( FAILED( hr ) ) {
+            return nullptr;
+        }
+
+        nativeDeviceContext->CopyResource( stagingTex, tmpTex );
+
+        tmpTex->Release();
+    } else {
+        // Otherwise, create a staging texture from the non-MSAA source
+        texDesc.BindFlags = 0;
+        texDesc.MiscFlags &= D3D11_RESOURCE_MISC_TEXTURECUBE;
+        texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        texDesc.Usage = D3D11_USAGE_STAGING;
+
+        auto hr = nativeDevice->CreateTexture2D( &texDesc, 0, &stagingTex );
+        if ( FAILED( hr ) ) {
+            return nullptr;
+        }
+
+        nativeDeviceContext->CopyResource( stagingTex, textureObject->textureResource );
+    }
+
+    return stagingTex;
+}
+
 bool IsUsingCompressedFormat( const eImageFormat format )
 {
     return format == IMAGE_FORMAT_BC1_TYPELESS
@@ -384,6 +455,14 @@ void GetSubResourceDescriptor( std::vector<D3D11_SUBRESOURCE_DATA>& subResourceD
     }
 }
 
+void UpdateNativeTextureDescription( const TextureDescription& description, NativeTextureObject* textureObject )
+{
+    textureObject->textureWidth = description.width;
+    textureObject->textureHeight = description.height;
+    textureObject->textureMipCount = description.mipCount;
+    textureObject->textureArraySize = description.arraySize;
+}
+
 NativeTextureObject* flan::rendering::CreateTexture1DImpl( NativeRenderContext* nativeRenderContext, const TextureDescription& description, void* initialData, const std::size_t initialDataSize )
 {
     // Generate bind flag set
@@ -431,6 +510,8 @@ NativeTextureObject* flan::rendering::CreateTexture1DImpl( NativeRenderContext* 
     }
 
     nativeDevice->CreateShaderResourceView( textureObject->texture1D, &shaderResourceViewDesc, &textureObject->textureShaderResourceView );
+
+    UpdateNativeTextureDescription( description, textureObject );
 
     return textureObject;
 }
@@ -530,7 +611,8 @@ NativeTextureObject* flan::rendering::CreateTexture2DImpl( NativeRenderContext* 
         return nullptr;
     }
    
-  
+    UpdateNativeTextureDescription( description, nativeTextureObject );
+
     return nativeTextureObject;
 }
 
@@ -583,6 +665,7 @@ NativeTextureObject* flan::rendering::CreateTexture3DImpl( NativeRenderContext* 
 
     nativeDevice->CreateShaderResourceView( textureObject->texture3D, &shaderResourceViewDesc, &textureObject->textureShaderResourceView );
 
+    UpdateNativeTextureDescription( description, textureObject );
     return textureObject;
 }
 
@@ -643,80 +726,29 @@ void flan::rendering::UnbindTextureCmdImpl( NativeCommandList* nativeCmdList, Na
     }
 }
 
+void flan::rendering::CopySubresouceRegionImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+    auto nativeDeviceContext = nativeRenderContext->nativeDeviceContext;
+
+    auto srcSubResource = D3D11CalcSubresource( mipSrc, arrayIdxSrc, srcTextureObject->textureMipCount );
+    auto dstSubResource = D3D11CalcSubresource( mipDst, arrayIdxDst, dstTextureObject->textureMipCount );
+
+    nativeDeviceContext->CopySubresourceRegion( dstTextureObject->textureResource, dstSubResource, 0, 0, 0, srcTextureObject->textureResource, srcSubResource, nullptr );
+}
+
+void flan::rendering::CopySubresouceRegionAsynchronousImpl( NativeCommandList* nativeCmdList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+    auto nativeDeviceContext = nativeCmdList->deferredContext;
+
+    auto srcSubResource = D3D11CalcSubresource( mipSrc, arrayIdxSrc, srcTextureObject->textureMipCount );;
+    auto dstSubResource = D3D11CalcSubresource( mipDst, arrayIdxDst, dstTextureObject->textureMipCount );
+
+    nativeDeviceContext->CopySubresourceRegion( dstTextureObject->textureResource, dstSubResource, 0, 0, 0, srcTextureObject->textureResource, srcSubResource, nullptr );
+}
+
 void flan::rendering::SetTextureDebugNameImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const std::string& debugName )
 {
     textureObject->textureResource->SetPrivateData( WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str() );
-}
-
-ID3D11Texture2D* RetrieveStagingTexture( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description )
-{
-    ID3D11Texture2D* stagingTex = nullptr;
-
-    auto nativeDevice = nativeRenderContext->nativeDevice;
-    auto nativeDeviceContext = nativeRenderContext->nativeDeviceContext;
-
-    D3D11_TEXTURE2D_DESC texDesc;
-    textureObject->texture2D->GetDesc( &texDesc );
-
-    if ( description.samplerCount > 1 ) {
-        // MSAA content must be resolved before being copied to a staging texture
-        texDesc.SampleDesc.Count = 1;
-        texDesc.SampleDesc.Quality = 0;
-
-        ID3D11Texture2D* tmpTex = nullptr;
-        auto hr = nativeDevice->CreateTexture2D( &texDesc, 0, &tmpTex );
-        if ( FAILED( hr ) ) {
-            return nullptr;
-        }
-
-        DXGI_FORMAT fmt = texDesc.Format;
-
-        UINT support = 0;
-        hr = nativeDevice->CheckFormatSupport( fmt, &support );
-        if ( FAILED( hr ) ) {
-            return nullptr;
-        }
-
-        if ( !( support & D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE ) ) {
-            return nullptr;
-        }
-
-        for ( UINT item = 0; item < texDesc.ArraySize; ++item ) {
-            for ( UINT level = 0; level < texDesc.MipLevels; ++level ) {
-                UINT index = D3D11CalcSubresource( level, item, texDesc.MipLevels );
-                nativeDeviceContext->ResolveSubresource( tmpTex, index, textureObject->textureResource, index, fmt );
-            }
-        }
-
-        texDesc.BindFlags = 0;
-        texDesc.MiscFlags &= D3D11_RESOURCE_MISC_TEXTURECUBE;
-        texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        texDesc.Usage = D3D11_USAGE_STAGING;
-
-        hr = nativeDevice->CreateTexture2D( &texDesc, 0, &stagingTex );
-        if ( FAILED( hr ) ) {
-            return nullptr;
-        }
-
-        nativeDeviceContext->CopyResource( stagingTex, tmpTex );
-
-        tmpTex->Release();
-    } else {
-        // Otherwise, create a staging texture from the non-MSAA source
-        texDesc.BindFlags = 0;
-        texDesc.MiscFlags &= D3D11_RESOURCE_MISC_TEXTURECUBE;
-        texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        texDesc.Usage = D3D11_USAGE_STAGING;
-
-        auto hr = nativeDevice->CreateTexture2D( &texDesc, 0, &stagingTex );
-        if ( FAILED( hr ) ) {
-            return nullptr;
-        }
-
-        nativeDeviceContext->CopyResource( stagingTex, textureObject->textureResource );
-    }
-
-    return stagingTex;
 }
 
 void flan::rendering::RetrieveTextureTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<uint8_t>& texels )
