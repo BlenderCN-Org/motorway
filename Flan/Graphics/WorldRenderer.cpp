@@ -397,6 +397,13 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     //delete descriptor.rasterizerState;
     //delete descriptor.depthStencilState;
 #endif
+
+    auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmap_test.dds" ) );
+    auto& terrainBaseColorDesc = terrainBaseColor0->getDescription();
+
+    for ( int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor0, i, 0, i, 0 );
+    }
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
