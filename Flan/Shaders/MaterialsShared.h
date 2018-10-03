@@ -100,9 +100,10 @@ struct MaterialLayer
     MaterialEditionInput   AlphaMask;
     MaterialEditionInput   Displacement;    
     MaterialEditionInput   SecondaryNormal;
-    MaterialEditionInput   BlendMask;    
+    MaterialEditionInput   BlendMask;
     MaterialEditionInput   Heightmap;
     MaterialEditionInput   HeightmapNormal;
+    MaterialEditionInput   TerrainSplatMap;
 
     float                  Refraction;
     float                  RefractionIor;

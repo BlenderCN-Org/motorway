@@ -36,6 +36,15 @@ Buffer<uint>        g_LightIndexBuffer             : register( t9 );
 Texture2D           g_DFGLUTStandard               : register( t10 );
 TextureCubeArray    g_EnvProbeDiffuseArray         : register( t12 );
 
+Texture2DArray 		g_TerrainBaseColorReflectanceArray : register( t6 );
+Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
+
+cbuffer Terrain : register( b7 )
+{
+	uint g_TerrainStreamedSplatIndexes[256];
+	float4 g_TerrainSamplingParameters[256];
+}
+
 sampler  g_BaseColorSampler                 : register( s0 );
 sampler  g_ReflectanceSampler               : register( s1 );
 sampler  g_RoughnessSampler                 : register( s2 );
@@ -49,6 +58,9 @@ SamplerComparisonState  g_ShadowMapSampler  : register( s15 );
 sampler  g_LUTSampler                       : register( s10 );
 sampler  g_DiffuseEnvProbeSampler           : register( s12 );
 
+#if PA_TERRAIN
+Texture2D g_TexSplatMap : register( t17 );
+#else
 // Layer0
 Texture2D g_TexBaseColor0 : register( t17 );
 Texture2D g_TexAlphaMask0 : register( t18 );
@@ -86,6 +98,7 @@ Texture2D g_TexDisplacement2 : register( t45 );
 Texture2D g_TexEmissivity2 : register( t46 );
 Texture2D g_TexClearCoatNormal2 : register( t47 );
 Texture2D g_TexBlendMask2                : register( t48 );
+#endif
 
 // Shading Model BRDF
 #if PA_SHADING_MODEL_SHADING_MODEL_STANDARD
@@ -206,6 +219,7 @@ float2 ApplyParallaxMapping( in float2 uvCoordinates, in float3 V, in float3 N, 
 }
 
 #if PA_EDITOR
+
 #include <MaterialsShared.h>
 
 cbuffer MaterialEdition : register( b8 )
@@ -224,6 +238,7 @@ cbuffer MaterialEdition : register( b8 )
     MaterialLayer           g_Layers[MAX_LAYER_COUNT];
 };
 
+#ifndef PA_TERRAIN
 float3 ReadInput3D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float3 defaultValue )
 {
     float3 input = defaultValue;
@@ -334,7 +349,7 @@ READ_LAYER_FUNC( 2 )
     READ_LAYER_BLEND_MASK( 2 )
     READ_LAYER_FUNC_END( 2 )
 }
-
+#endif
 #endif
 
 float3x3 compute_tangent_frame(float3 N, float3 P, float2 UV, out float3 T, out float3 B)
@@ -597,8 +612,40 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
     float3 t, b;
     float3x3 TBNMatrix = compute_tangent_frame( N, VertexStage.positionWS.xyz, VertexStage.uvCoord, t, b );
-    
+
 #if PA_EDITOR
+#if PA_TERRAIN
+	float splatIndex = g_TexSplatMap.SampleLevel( g_LUTSampler, VertexStage.uvCoord, 0.0f ).r;
+	
+	// Retrieve texture coordinates
+	float4 samplingParameters = g_TerrainSamplingParameters[splatIndex]; // xy offset; zw scale
+	float2 samplingCoordinates = ( VertexStage.uvCoord + samplingParameters.xy ) * samplingParameters.zw;
+	
+	uint streamedTextureIndex = g_TerrainStreamedSplatIndexes[splatIndex];
+	
+	float4 baseColor = g_TerrainBaseColorReflectanceArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) );
+	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) );
+	
+	MaterialReadLayer BaseLayer;
+	BaseLayer.BaseColor = float3( 1, 0, 0 ); //accurateSRGBToLinear( baseColor.rgb );
+	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
+	BaseLayer.Roughness = 0; //normalAndRoughness.a;
+	BaseLayer.Metalness = 0.0f;
+	BaseLayer.AmbientOcclusion = 1.0f;
+	BaseLayer.Emissivity = 0.0f;
+	BaseLayer.Normal = N; // normalAndRoughness.rgb;
+	BaseLayer.AlphaMask = 1.0f;
+	BaseLayer.SecondaryNormal = N;
+	BaseLayer.BlendMask = 1.0f;
+	BaseLayer.Refraction = 0.0f;
+	BaseLayer.RefractionIor = 0.0f;
+	BaseLayer.ClearCoat = 0.0f;
+	BaseLayer.ClearCoatGlossiness = 0.0f;
+	BaseLayer.DiffuseContribution = 0.0f;
+	BaseLayer.SpecularContribution = 0.0f;
+	BaseLayer.NormalContribution = 0.0f;
+	BaseLayer.AlphaCutoff = 0.0f;
+#else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
     
@@ -622,9 +669,10 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
   
     const bool needUnpackAndTBNMultSecondary = ( needSecondaryNormalMapUnpack0 || needSecondaryNormalMapUnpack1 || needSecondaryNormalMapUnpack2 );
-     if ( needUnpackAndTBNMult ) {
+    if ( needUnpackAndTBNMult ) {
         BaseLayer.SecondaryNormal = normalize( mul( BaseLayer.SecondaryNormal, TBNMatrix ) );
     }
+#endif
 #else
 	FLAN_BUILD_LAYERS
 #endif
@@ -921,6 +969,7 @@ void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float al
 void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
 #if PA_EDITOR
+#ifndef PA_TERRAIN
 #define PA_ENABLE_ALPHA_TEST 1
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
@@ -947,6 +996,7 @@ void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
             BlendDepthLayers( blendMask2, alphaMask, alphaCutoff, alphaMask2, alphaCutoff2 );
         }
     }
+#endif
 #else
 	FLAN_BUILD_DEPTH_LAYERS
 #endif
