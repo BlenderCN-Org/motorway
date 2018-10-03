@@ -55,6 +55,18 @@ struct BRDFInputs
     RenderTarget*   envProbeSpecular;
 };
 
+struct TerrainStreaming
+{
+    struct {
+        glm::vec4 terrainSamplingParameters;
+        uint32_t  terrainSampledSplatIndexes;
+        uint32_t  __PADDING__[3];
+    } terrainMaterialStreaming[256];
+
+    Texture*        baseColorStreamed;
+    Texture*        normalStreamed;
+};
+
 // Rendering gluing class
 // This is a high level view of the rendering features (meaning that it should not contain API specific stuff)
 class WorldRenderer
@@ -135,9 +147,12 @@ private:
 
     std::unique_ptr<RenderTarget>           environmentProbes[3];
     std::unique_ptr<Material>               wireframeMaterial;
+
     std::unique_ptr<Texture>                terrainStreamedBaseColor;
     std::unique_ptr<Texture>                terrainStreamedNormal;
+    TerrainStreaming                        terrainStreaming;
 
+    // TODO Move this
     std::unique_ptr<Buffer>                 sphereVbo;
     std::unique_ptr<Buffer>                 sphereIbo;
     std::unique_ptr<VertexArrayObject>      sphereVao;

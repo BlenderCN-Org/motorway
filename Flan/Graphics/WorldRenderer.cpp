@@ -348,11 +348,16 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
         FLAN_STRING_HASH( "SSAAResolvePass" ),
         [=]( RenderPipeline* renderPipeline ) { return addSSAAResolvePass( renderPipeline ); } );
     
+    // Import Global Resources into the main render pipeline
     brdfInputs.dfgLut = dfgLut;
     brdfInputs.envProbeCapture = environmentProbes[0].get();
     brdfInputs.envProbeDiffuse = environmentProbes[1].get();
     brdfInputs.envProbeSpecular = environmentProbes[2].get();  
     renderPipeline->importWellKnownResource( &brdfInputs );
+
+    terrainStreaming.baseColorStreamed = terrainStreamedBaseColor.get();
+    terrainStreaming.normalStreamed = terrainStreamedNormal.get();
+    renderPipeline->importWellKnownResource( &terrainStreaming );
 
 #if FLAN_DEVBUILD
     // Create debug resources
@@ -398,12 +403,23 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     //delete descriptor.depthStencilState;
 #endif
 
+    // TEST Create Fake Material With Global ID0, being loaded at localID 0
+    // localID: location in textureArray
+    // globalID: splat map texel value, identifying the material (hence the 256 limit)
     auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmap_test.dds" ) );
     auto& terrainBaseColorDesc = terrainBaseColor0->getDescription();
-
     for ( int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor0, i, 0, i, 0 );
     }
+
+    auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmapnm_test.dds" ) );
+    auto& terrainNormalDesc = terrainNormal0->getDescription();
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 0 );
+    }
+
+    terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
+    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
