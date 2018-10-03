@@ -426,6 +426,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
 
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, TerrainSplatMap )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 3 ), Roughness )
@@ -527,7 +528,8 @@ void Material::serialize( FileSystemObject* file ) const
 
         FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
         FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
-
+        
+        FLAN_WRITE_INPUT_PIXEL( TerrainSplatMap, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( Reflectance, ( slotBaseIndex + 2 ) )
         FLAN_WRITE_INPUT_PIXEL( Roughness, ( slotBaseIndex + 3 ) )
@@ -986,6 +988,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
                     displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
                     displayInputConfiguration( graphicsAssetManager, "Heightmap Normal", layer.HeightmapNormal, 1, vertexTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "Heightmap SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
 
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
 
