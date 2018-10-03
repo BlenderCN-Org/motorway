@@ -56,6 +56,9 @@
 #include "RenderPasses/CopyTexturePass.h"
 #include "RenderPasses/UIRenderPass.h"
 #include "RenderPasses/EnvironmentProbeConvolutionPass.h"
+#include "RenderPasses/VMFMapComputeRenderPass.h"
+#include "RenderPasses/HMapNormalMapComputeRenderPass.h"
+#include "RenderPasses/WriteTextureToDiskPass.h"
 
 using namespace flan::rendering;
 
@@ -406,10 +409,6 @@ float WorldRenderer::getTimeDelta() const
     return renderInfos.timeDelta;
 }
 
-#include "RenderPasses/VMFMapComputeRenderPass.h"
-#include "RenderPasses/HMapNormalMapComputeRenderPass.h"
-#include "RenderPasses/WriteTextureToDiskPass.h"
-
 void WorldRenderer::saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName )
 {
     auto renderTarget = renderPipeline->importRenderTarget( outputTarget );
@@ -482,6 +481,24 @@ void WorldRenderer::createRenderTargets( void )
 
     previousFrameRenderTarget.reset( new RenderTarget() );
     previousFrameRenderTarget->createAsRenderTarget2D( renderDevice, previousFrameDesc );
+
+    static constexpr int TERRAIN_TEXTURE_DIMENSIONS = 1024;
+    TextureDescription terrainTextureStreamingDesc;
+    terrainTextureStreamingDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC1_UNORM;
+    terrainTextureStreamingDesc.width = TERRAIN_TEXTURE_DIMENSIONS;
+    terrainTextureStreamingDesc.height = TERRAIN_TEXTURE_DIMENSIONS;
+    terrainTextureStreamingDesc.depth = 1;
+    terrainTextureStreamingDesc.arraySize = 32;
+    terrainTextureStreamingDesc.mipCount = flan::rendering::ComputeMipCount( TERRAIN_TEXTURE_DIMENSIONS, TERRAIN_TEXTURE_DIMENSIONS );
+    terrainTextureStreamingDesc.samplerCount = 1;
+
+    terrainStreamedBaseColor.reset( new Texture() );
+    terrainStreamedBaseColor->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
+
+    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC3_UNORM;
+    terrainStreamedNormal.reset( new Texture() );
+    terrainStreamedNormal->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
 }
 
 void WorldRenderer::createPrimitives( void )

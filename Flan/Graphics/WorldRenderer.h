@@ -135,6 +135,8 @@ private:
 
     std::unique_ptr<RenderTarget>           environmentProbes[3];
     std::unique_ptr<Material>               wireframeMaterial;
+    std::unique_ptr<Texture>                terrainStreamedBaseColor;
+    std::unique_ptr<Texture>                terrainStreamedNormal;
 
     std::unique_ptr<Buffer>                 sphereVbo;
     std::unique_ptr<Buffer>                 sphereIbo;
