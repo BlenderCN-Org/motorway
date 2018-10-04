@@ -52,6 +52,9 @@ public:
     void        retrieveTexelsLDR( RenderDevice* renderDevice, std::vector<uint8_t>& texels );
     void        retrieveTexelsHDR( RenderDevice* renderDevice, std::vector<float>& texels );
 
+    void        copyResource( RenderDevice* renderDevice, const Texture* resourceToCopy );
+    void        copyResourceAsynchronous( CommandList* cmdList, const Texture* resourceToCopy );
+
     void        copySubresource( RenderDevice* renderDevice, const Texture* resourceToCopy, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
     void        copySubresourceAsynchronous( CommandList* cmdList, const Texture* resourceToCopy, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
 

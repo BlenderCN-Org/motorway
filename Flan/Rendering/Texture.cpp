@@ -128,6 +128,16 @@ void Texture::retrieveTexelsHDR( RenderDevice* renderDevice, std::vector<float>&
     flan::rendering::RetrieveTextureTexelsHDRImpl( renderDevice->getNativeRenderContext(), nativeTextureObject.get(), textureDescription, texels );
 }
 
+void Texture::copyResource( RenderDevice* renderDevice, const Texture* resourceToCopy )
+{
+    flan::rendering::CopyResouceImpl( renderDevice->getNativeRenderContext(), resourceToCopy->getNativeObject(), getNativeObject() );
+}
+
+void Texture::copyResourceAsynchronous( CommandList* cmdList, const Texture* resourceToCopy )
+{
+    flan::rendering::CopyResouceAsynchronousImpl( cmdList->getNativeCommandList(), resourceToCopy->getNativeObject(), getNativeObject() );
+}
+
 void Texture::copySubresource( RenderDevice* renderDevice, const Texture* resourceToCopy, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
 {
     flan::rendering::CopySubresouceRegionImpl( renderDevice->getNativeRenderContext(), resourceToCopy->getNativeObject(), getNativeObject(), mipSrc, arrayIdxSrc, mipDst, arrayIdxDst );

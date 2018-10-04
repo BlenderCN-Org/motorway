@@ -746,6 +746,20 @@ void flan::rendering::CopySubresouceRegionAsynchronousImpl( NativeCommandList* n
     nativeDeviceContext->CopySubresourceRegion( dstTextureObject->textureResource, dstSubResource, 0, 0, 0, srcTextureObject->textureResource, srcSubResource, nullptr );
 }
 
+void flan::rendering::CopyResouceImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+    auto nativeDeviceContext = nativeRenderContext->nativeDeviceContext;
+
+    nativeDeviceContext->CopyResource( dstTextureObject->textureResource, srcTextureObject->textureResource );
+}
+
+void flan::rendering::CopyResouceAsynchronousImpl( NativeCommandList* nativeCommandList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+    auto nativeDeviceContext = nativeCommandList->deferredContext;
+
+    nativeDeviceContext->CopyResource( dstTextureObject->textureResource, srcTextureObject->textureResource );
+}
+
 void flan::rendering::SetTextureDebugNameImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const std::string& debugName )
 {
     textureObject->textureResource->SetPrivateData( WKPDID_D3DDebugObjectName, (UINT)debugName.size(), debugName.c_str() );
