@@ -17,7 +17,7 @@ struct VertexStageData
     float depth         : DEPTH;
     float2 uvCoord      : TEXCOORD0;
 #if PA_TERRAIN
-    float4 positionMS   : POSITION2;
+    float3 positionMS   : POSITION2;
 #endif
 };
 
@@ -633,8 +633,8 @@ MaterialReadLayer FetchTerrainMaterial( const float2 texCoordinates, const float
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColor );
-	layer.Reflectance = 1.0f; // baseColor.a;	
-	layer.Roughness = 0; //normalAndRoughness.a;
+	layer.Reflectance = 0.0f; // baseColor.a;	
+	layer.Roughness = 1; //normalAndRoughness.a;
 	layer.Metalness = 0.0f;
 	layer.AmbientOcclusion = 1.0f;
 	layer.Emissivity = 0.0f;

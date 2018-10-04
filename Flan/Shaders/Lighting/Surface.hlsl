@@ -64,7 +64,7 @@ struct VertexStageData
     float2 uvCoord      : TEXCOORD0;
 	
 #if PH_HEIGHTFIELD
-    float4 positionMS   : POSITION2;
+    float3 positionMS   : POSITION2;
 #endif
 };
 
