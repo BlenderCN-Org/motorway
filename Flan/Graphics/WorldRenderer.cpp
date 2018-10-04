@@ -406,10 +406,22 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     // TEST Create Fake Material With Global ID0, being loaded at localID 0
     // localID: location in textureArray
     // globalID: splat map texel value, identifying the material (hence the 256 limit)
-    auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmap_test.dds" ) );
+    auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor0.dds" ) );
     auto& terrainBaseColorDesc = terrainBaseColor0->getDescription();
     for ( int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor0, i, 0, i, 0 );
+    }
+
+    auto terrainBaseColor128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor1.dds" ) );
+    auto& terrainBaseColor128Desc = terrainBaseColor128->getDescription();
+    for ( int i = 0; i < terrainBaseColor128Desc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor128, i, 1, i, 1 );
+    }
+
+    auto terrainBaseColor64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor2.dds" ) );
+    auto& terrainBaseColor64Desc = terrainBaseColor64->getDescription();
+    for ( int i = 0; i < terrainBaseColor64Desc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor64, i, 2, i, 2 );
     }
 
     auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmapnm_test.dds" ) );
@@ -417,9 +429,21 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 0 );
     }
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 2, i, 2 );
+    }
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 1, i, 1 );
+    }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
     terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
+
+    terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
+    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
+
+    terrainStreaming.terrainMaterialStreaming[128].terrainSampledSplatIndexes = 2;
+    terrainStreaming.terrainMaterialStreaming[128].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
