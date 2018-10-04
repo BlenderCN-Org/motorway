@@ -62,6 +62,10 @@ struct VertexStageData
     float3 normal       : NORMAL0;
     float depth         : DEPTH;
     float2 uvCoord      : TEXCOORD0;
+	
+#if PH_HEIGHTFIELD
+    float4 positionMS   : POSITION2;
+#endif
 };
 
 VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
@@ -82,11 +86,11 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
 #if PH_HEIGHTFIELD
     float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
     
-	float3 positionModelSpace = VertexBuffer.Position;
+	output.positionMS = VertexBuffer.Position;
+	
     float height = g_TexHeightmap[heightCoords].r;
 
-    output.positionWS       = mul( ModelMatrix, float4( positionModelSpace.x, height * g_Layers[0].HeightmapWorldHeight, positionModelSpace.z, 1.0f ) );
-
+    output.positionWS       = mul( ModelMatrix, float4( output.positionMS.x, height * g_Layers[0].HeightmapWorldHeight, output.positionMS.z, 1.0f ) );
 #if PH_USE_NORMAL_MAPPING
 	// Unpack normal map
 	float3 normalWorldSpace = g_TexHeightmapNormal[heightCoords].rgb;
