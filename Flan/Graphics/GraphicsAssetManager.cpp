@@ -145,7 +145,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         int w;
         int h;
         int comp;
-        unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_rgb_alpha );
+        unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, 0 );
 
         if ( !alreadyExists ) {
             textureMap[assetHashcode] = std::make_unique<Texture>();
@@ -166,7 +166,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
             break;
         case 2:
             desc.format = eImageFormat::IMAGE_FORMAT_R8G8_UINT;
-            break;
+            break;  
         case 3:
         case 4:
             desc.format = eImageFormat::IMAGE_FORMAT_R8G8B8A8_UNORM;
