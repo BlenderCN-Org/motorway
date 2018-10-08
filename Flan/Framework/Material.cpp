@@ -736,7 +736,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
             if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
 #endif
                 fnString_t filenameBuffer;
-                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga)\0*.dds;*.jpg;*.png;*.tga\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
+                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
                     fnString_t assetPath;
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
@@ -747,7 +747,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         } else {
             if ( ImGui::Button( ( "+##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), ImVec2( 64, 64 ) ) ) {
                 fnString_t filenameBuffer;
-                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga)\0*.dds;*.jpg;*.png;*.tga\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
+                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
                     fnString_t assetPath;
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
@@ -950,7 +950,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
             if ( ImGui::TreeNode( layerLabel.c_str() ) ) {
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
                     displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
-                    displayInputConfiguration( graphicsAssetManager, "Heightmap SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "NormalMap", layer.HeightmapNormal, 1, vertexTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
 
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
 
