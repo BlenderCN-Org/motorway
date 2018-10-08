@@ -69,7 +69,7 @@ sampler  g_LUTSampler                       : register( s10 );
 sampler  g_DiffuseEnvProbeSampler           : register( s12 );
 
 #if PA_TERRAIN
-Texture2D g_TexSplatMap : register( t17 );
+Texture2D<uint> g_TexSplatMap : register( t17 );
 #else
 // Layer0
 Texture2D g_TexBaseColor0 : register( t17 );
@@ -615,21 +615,18 @@ FLAN_LAYERS_READ
 #endif
 
 #if PA_TERRAIN
-MaterialReadLayer FetchTerrainMaterial( const float2 texCoordinates, const float3 N )
+MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float3 N )
 {
-	// 1..0 to 0..255 range
-	uint splatIndex = (uint)( g_TexSplatMap.SampleLevel( g_LUTSampler, texCoordinates, 0.0f ).r * 255.0f + 0.5f );
+	uint splatIndex = g_TexSplatMap[positionMS.xz];
 	
 	// Retrieve texture coordinates
 	float4 samplingParameters = g_TerrainMaterials[splatIndex].samplingParameters; // xy offset; zw scale
-	float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
+	//float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
 		
 	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
-	
-	float3 normal = g_TerrainNormalRoughnessArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) ); //TriplanarSample3D( g_TerrainBaseColorReflectanceArray, g_BaseColorSampler, streamedTextureIndex, VertexStage.positionMS, float3( 0, 1, 0 ) );
-	float3 baseColor = g_TerrainBaseColorReflectanceArray.Sample( g_BaseColorSampler, float3( samplingCoordinates, streamedTextureIndex ) );
-	
-	//TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, VertexStage.positionMS, normal );
+		
+	float3 normal = TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
+	float3 baseColor =  TriplanarSample3D( g_TerrainBaseColorReflectanceArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normal );
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColor );
@@ -666,16 +663,19 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.uvCoord.xy + float2( 0, 0 ), N );
+	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) /*VertexStage.positionMS*/, N );
 	
-	MaterialReadLayer Material0 = FetchTerrainMaterial( VertexStage.uvCoord.xy + float2( 1, 0 ), N );
-	BlendLayers( BaseLayer, Material0 );
+	MaterialReadLayer eastFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 1, 0, 0 ) /*VertexStage.positionMS*/, N );
+	eastFetch.BlendMask = 0.15;
+	BlendLayers( BaseLayer, eastFetch );
 	
-	MaterialReadLayer Material1 = FetchTerrainMaterial( VertexStage.uvCoord.xy + float2( 0, 1 ), N );
-	BlendLayers( BaseLayer, Material1 );
+	MaterialReadLayer southEastFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 1, 0, 1 ) /*VertexStage.positionMS*/, N );
+	southEastFetch.BlendMask = 0.15;	
+	BlendLayers( BaseLayer, southEastFetch );
 	
-	MaterialReadLayer Material2 = FetchTerrainMaterial( VertexStage.uvCoord.xy + float2( 1, 1 ), N );
-	BlendLayers( BaseLayer, Material2 );
+	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 0, 0, 1 ) /*VertexStage.positionMS*/, N );
+	southFetch.BlendMask = 0.15;	
+	BlendLayers( BaseLayer, southFetch );
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
