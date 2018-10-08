@@ -13,8 +13,8 @@ ScaleUVByModelScale: True
 
 Layer 
 {
-    BaseColor: "GameData/Textures/default.dds"
-	Heightmap: "GameData/Textures/default.dds"
+	Heightmap: "GameData/Textures/heightmap_test.dds"
+	TerrainSplatMap: "GameData/Textures/splatmaptest.png"
     AlphaMask: None
     Reflectance: 0.00
     Refraction: 0.000000
