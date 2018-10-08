@@ -424,16 +424,20 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor64, i, 0, i, 2 );
     }
 
-    auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmapnm_test.dds" ) );
+    auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm0.dds" ) );
     auto& terrainNormalDesc = terrainNormal0->getDescription();
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 0 );
     }
+
+    auto terrainNormal128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm1.dds" ) );
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
-        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 2 );
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal128, i, 0, i, 1 );
     }
+
+    auto terrainNormal64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm2.dds" ) );
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
-        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 1 );
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal64, i, 0, i, 2 );
     }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
