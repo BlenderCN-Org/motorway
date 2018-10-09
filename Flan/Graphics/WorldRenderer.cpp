@@ -434,20 +434,20 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal128, i, 0, i, 1 );
     }
-
+    
     auto terrainNormal64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm2.dds" ) );
     for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal64, i, 0, i, 2 );
     }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
-    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
+    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
 
     terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
-    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
+    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
 
     terrainStreaming.terrainMaterialStreaming[128].terrainSampledSplatIndexes = 2;
-    terrainStreaming.terrainMaterialStreaming[128].terrainSamplingParameters = glm::vec4( 0, 0, 1.0f, 1.0f );
+    terrainStreaming.terrainMaterialStreaming[128].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
