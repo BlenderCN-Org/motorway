@@ -292,7 +292,7 @@ compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVNormalMapping", "Ent
 compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointVS", { "PH_HEIGHTFIELD": "1", "PH_USE_NORMAL_MAPPING" : "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "HeightfieldScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING" : "1", "PH_HEIGHTFIELD": "1" } )
 
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointHeatMapPS", { "PA_EDITOR": "1" } )
+compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointPS", { "PA_EDITOR": "1", "FLAN_DEBUG_TILE_HEAT": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoat", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_EDITOR": "1" } )

@@ -43,6 +43,12 @@
 #include <Rendering/Vulkan/Texture.h>
 #endif
 
+#if FLAN_DEVBUILD
+static PipelineState* g_TileHeatDebugPSO = nullptr;
+#endif
+
+FLAN_DEV_VAR( DisplayTileHeat, "Display Tile Lighting Heat", false, bool )
+
 Material::Material( const fnString_t& materialName )
     : name( materialName )
     , isEditable( true )
@@ -220,6 +226,16 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         }
 
         pipelineState->create( renderDevice, descriptor );
+
+#if FLAN_DEVBUILD
+        // TODO Cleaner Init?
+        if ( g_TileHeatDebugPSO == nullptr ) {
+            descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDebugTileHeat" ), SHADER_STAGE_PIXEL );
+
+            g_TileHeatDebugPSO = new PipelineState();
+            g_TileHeatDebugPSO->create( renderDevice, descriptor );
+        }
+#endif
 
         // Probe Pipeline State
         if ( isWorldMaterial ) {
@@ -568,6 +584,13 @@ void Material::serialize( FileSystemObject* file ) const
 
 void Material::bind( CommandList* cmdList ) const
 {
+#if FLAN_DEVBUILD
+    if ( DisplayTileHeat ) {
+        cmdList->bindPipelineStateCmd( g_TileHeatDebugPSO );
+        return;
+    }
+#endif
+
     cmdList->bindPipelineStateCmd( pipelineState.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {

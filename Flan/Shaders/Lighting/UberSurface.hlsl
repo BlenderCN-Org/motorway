@@ -117,6 +117,8 @@ Texture2D g_TexBlendMask2                : register( t48 );
 #include "ShadingModels/ClearCoat.hlsl"
 #elif PA_SHADING_MODEL_SHADING_EMISSIVE
 #include "ShadingModels/Emissive.hlsl"
+#elif PA_SHADING_MODEL_SHADING_TILE_HEAT
+#include "ShadingModels/TileHeat.hlsl"
 #else
 #include "ShadingModels/Debug.hlsl"
 #endif
@@ -425,51 +427,23 @@ uint GetEntityCountForCurrentTile( float2 positionScreenSpace )
     return tileHeat;
 }
 
-static const float4 kRadarColors[14] = 
+static const float3 kRadarColors[14] = 
 {
-    {0,0.9255,0.9255,1},   // cyan
-    {0,0.62745,0.9647,1},  // light blue
-    {0,0,0.9647,1},        // blue
-    {0,1,0,1},             // bright green
-    {0,0.7843,0,1},        // green
-    {0,0.5647,0,1},        // dark green
-    {1,1,0,1},             // yellow
-    {0.90588,0.75294,0,1}, // yellow-orange
-    {1,0.5647,0,1},        // orange
-    {1,0,0,1},             // bright red
-    {0.8392,0,0,1},        // red
-    {0.75294,0,0,1},       // dark red
-    {1,0,1,1},             // magenta
-    {0.6,0.3333,0.7882,1}, // purple
+    {0,0.9255,0.9255},   // cyan
+    {0,0.62745,0.9647},  // light blue
+    {0,0,0.9647},        // blue
+    {0,1,0},             // bright green
+    {0,0.7843,0},        // green
+    {0,0.5647,0},        // dark green
+    {1,1,0},             // yellow
+    {0.90588,0.75294,0}, // yellow-orange
+    {1,0.5647,0},        // orange
+    {1,0,0},             // bright red
+    {0.8392,0,0},        // red
+    {0.75294,0,0},       // dark red
+    {1,0,1},             // magenta
+    {0.6,0.3333,0.7882}, // purple
 };
-
-PixelStageData EntryPointHeatMapPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
-{
-    PixelStageData output;
-    output.Buffer1 = float2( 0, 0 );
-    
-    uint entityCount = GetEntityCountForCurrentTile( VertexStage.position.xy );
-    
-    uint maxNumLightPerTile = GetMaxNumLightsPerTile();
-    
-    uint2 screenPos = uint2( VertexStage.position.x, VertexStage.position.y );
-
-    if ( entityCount == 0 
-    || ( screenPos.x % TILE_RES ) == 0 
-    || ( screenPos.y % TILE_RES ) == 0 ) {
-        output.Buffer0 = float4(0,0,0,1);
-    } else if( entityCount == maxNumLightPerTile ) {
-        output.Buffer0 = float4( 0.847, 0.745, 0.921, 1 );
-    } else if ( entityCount > maxNumLightPerTile ) {
-        output.Buffer0 = float4( 1, 1, 1, 1 );
-    } else {
-        float fLogBase = exp2(0.07142857f*log2((float)maxNumLightPerTile));
-        uint nColorIndex = floor(log2((float)entityCount) / log2(fLogBase));
-        output.Buffer0 = kRadarColors[nColorIndex];
-    }
-    
-    return output;
-}
 
 float3 BlendNormals_UDN( in float3 baseNormal, in float3 topNormal )
 {
@@ -615,27 +589,29 @@ FLAN_LAYERS_READ
 #endif
 
 #if PA_TERRAIN
-MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float3 N )
+MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 texCoordinates, const float3 N )
 {
 	uint splatIndex = g_TexSplatMap[positionMS.xz];
 	
 	// Retrieve texture coordinates
 	float4 samplingParameters = g_TerrainMaterials[splatIndex].samplingParameters; // xy offset; zw scale
-	//float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
+	float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
 		
 	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
 		
-	float3 normal = TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
-	float3 baseColor =  TriplanarSample3D( g_TerrainBaseColorReflectanceArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normal );
+	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ); //TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
+	float3 baseColor = g_TerrainBaseColorReflectanceArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ).rgb;
+	
+	//TriplanarSample3D( g_TerrainBaseColorReflectanceArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColor );
-	layer.Reflectance = 0.0f; // baseColor.a;	
-	layer.Roughness = 1; //normalAndRoughness.a;
+	layer.Reflectance = 0.50f; // baseColor.a;	
+	layer.Roughness = normalAndRoughness.a;
 	layer.Metalness = 0.0f;
 	layer.AmbientOcclusion = 1.0f;
 	layer.Emissivity = 0.0f;
-	layer.Normal = normal;
+	layer.Normal = normalize( normalAndRoughness.rgb * 2.0f - 1.0f );
 	layer.AlphaMask = 1.0f;
 	layer.SecondaryNormal = N;
 	layer.BlendMask = 1.0f;
@@ -643,9 +619,9 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float3 N 
 	layer.RefractionIor = 0.0f;
 	layer.ClearCoat = 0.0f;
 	layer.ClearCoatGlossiness = 0.0f;
-	layer.DiffuseContribution = 0.50f;
-	layer.SpecularContribution = 0.50f;
-	layer.NormalContribution = 0.50f;
+	layer.DiffuseContribution = 1.00f;
+	layer.SpecularContribution = 1.00f;
+	layer.NormalContribution = 1.00f;
 	layer.AlphaCutoff = 0.0f;
 	
 	return layer;
@@ -663,19 +639,21 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) /*VertexStage.positionMS*/, N );
+	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS, VertexStage.uvCoord.xy, N );
 	
-	MaterialReadLayer eastFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 1, 0, 0 ) /*VertexStage.positionMS*/, N );
+	MaterialReadLayer eastFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 0 ), VertexStage.uvCoord.xy, N );
 	eastFetch.BlendMask = 0.15;
 	BlendLayers( BaseLayer, eastFetch );
 	
-	MaterialReadLayer southEastFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 1, 0, 1 ) /*VertexStage.positionMS*/, N );
+	MaterialReadLayer southEastFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 1 ), VertexStage.uvCoord.xy, N );
 	southEastFetch.BlendMask = 0.15;	
 	BlendLayers( BaseLayer, southEastFetch );
 	
-	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.uvCoord.xyy * float3( 1024.0f, 1024.0f, 1024.0f ) + float3( 0, 0, 1 ) /*VertexStage.positionMS*/, N );
+	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 1 ), VertexStage.uvCoord.xy, N );
 	southFetch.BlendMask = 0.15;	
 	BlendLayers( BaseLayer, southFetch );
+	
+	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
@@ -703,12 +681,32 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     if ( needUnpackAndTBNMult ) {
         BaseLayer.SecondaryNormal = normalize( mul( BaseLayer.SecondaryNormal, TBNMatrix ) );
     }
+#endif 
+#if FLAN_DEBUG_TILE_HEAT
+    uint entityCount = GetEntityCountForCurrentTile( VertexStage.position.xy );
+    
+    uint dbgmaxNumLightPerTile = GetMaxNumLightsPerTile();
+    
+    uint2 screenPos = uint2( VertexStage.position.x, VertexStage.position.y );
+
+    if ( entityCount == 0 
+    || ( screenPos.x % TILE_RES ) == 0 
+    || ( screenPos.y % TILE_RES ) == 0 ) {
+        BaseLayer.BaseColor = float3(0,0,0);
+    } else if( entityCount == dbgmaxNumLightPerTile ) {
+        BaseLayer.BaseColor = float3( 0.847, 0.745, 0.921 );
+    } else if ( entityCount > dbgmaxNumLightPerTile ) {
+        BaseLayer.BaseColor = float3( 1, 1, 1 );
+    } else {
+        float fLogBase = exp2(0.07142857f*log2((float)dbgmaxNumLightPerTile));
+        uint nColorIndex = floor(log2((float)entityCount) / log2(fLogBase));
+        BaseLayer.BaseColor = kRadarColors[nColorIndex];
+    }  
 #endif
 #else
 	FLAN_BUILD_LAYERS
 #endif
-
-    
+  
 	N = BaseLayer.Normal;
 	
 #if PA_EDITOR
@@ -845,7 +843,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     scaledTileIndex++;
     nNextLightIndex = g_LightIndexBuffer[scaledTileIndex];
 
-    
 #ifndef PA_PROBE_CAPTURE
 #if PA_SHADING_MODEL_SHADING_MODEL_STANDARD
     float3 diffuseSum, specularSum;
@@ -914,8 +911,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
 
-    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, max( WorldPosition.y, 0.0f )  );
-    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z,  max( VertexStage.positionWS.y, 0.0f ) );
+    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, max( WorldPosition.y, 0.0f )  ) * 0.001f;
+    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z,  max( VertexStage.positionWS.y, 0.0f ) ) * 0.001f;
       
 	float3 atmosphereInScatter = GetSkyRadianceToPoint
 	( 
@@ -926,7 +923,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		atmosphereTransmittance 
 	);
 
-	LightContribution.rgb = LightContribution.rgb * atmosphereTransmittance + atmosphereInScatter;
+	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
 #endif
 
     // PA_ENABLE_ALPHA_BLEND

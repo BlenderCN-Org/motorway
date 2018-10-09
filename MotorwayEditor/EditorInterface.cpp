@@ -138,6 +138,7 @@ static void DisplayMenuBar()
     FLAN_IMPORT_VAR_PTR( EnableVSync, bool )
     FLAN_IMPORT_VAR_PTR( EnableDebugPhysicsColliders, bool )
     FLAN_IMPORT_VAR_PTR( EnableFXAA, bool )
+    FLAN_IMPORT_VAR_PTR( DisplayTileHeat, bool )
     FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
     FLAN_IMPORT_VAR_PTR( CopiedNode, SceneNode* )
 
@@ -412,7 +413,8 @@ static void DisplayMenuBar()
             ImGui::Checkbox( "Enable RenderPipeline Profiler Print", EnablePipelineProfiling );
             ImGui::Checkbox( "Enable CPU Framerate Print", EnableCPUFPSPrint );
             ImGui::Checkbox( "Display Dynamics World Colliders", EnableDebugPhysicsColliders );
-
+            ImGui::Checkbox( "Display Tile Heat", DisplayTileHeat );
+            
             ImGui::EndMenu();
         }
 
