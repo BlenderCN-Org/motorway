@@ -297,11 +297,11 @@ compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoat", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "Surface", "EntryPointPS", { "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1" } )
+compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_TERRAIN": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDepth", "EntryPointDepthPS", { "PA_EDITOR": "1" } )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandardProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissiveProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_EDITOR": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_PROBE_CAPTURE" : "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1", "PA_PROBE_CAPTURE" : "1"  } )
+compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_PROBE_CAPTURE" : "1"  } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )

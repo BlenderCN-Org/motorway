@@ -40,7 +40,7 @@ Buffer<uint>        g_LightIndexBuffer             : register( t9 );
 Texture2D           g_DFGLUTStandard               : register( t10 );
 TextureCubeArray    g_EnvProbeDiffuseArray         : register( t12 );
 
-Texture2DArray 		g_TerrainBaseColorReflectanceArray : register( t6 );
+Texture2DArray 		g_TerrainBaseColorHeightArray : register( t6 );
 Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
 
 struct TerrainSamplingParameter
@@ -452,21 +452,54 @@ float3 BlendNormals_UDN( in float3 baseNormal, in float3 topNormal )
     return normalize( blendedNormals );
 }
 
+float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)  
+{  
+    float depth = 0.2;  
+    float ma = max(texture1.a + a1, texture2.a + a2) - depth;  
+  
+    float b1 = max(texture1.a + a1 - ma, 0);  
+    float b2 = max(texture2.a + a2 - ma, 0);  
+  
+    return (texture1.rgb * b1 + texture2.rgb * b2) / (b1 + b2);  
+}
+
 void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLayer )
 {
-    baseLayer.BaseColor = lerp( baseLayer.BaseColor, nextLayer.BaseColor, nextLayer.BlendMask * nextLayer.DiffuseContribution );
-    baseLayer.Reflectance = lerp( baseLayer.Reflectance, nextLayer.Reflectance, nextLayer.BlendMask * nextLayer.SpecularContribution );
-    
+#if PA_TERRAIN
+    baseLayer.BaseColor = TerrainDepthBlend( 
+            float4( baseLayer.BaseColor, baseLayer.AlphaCutoff ), 
+            baseLayer.BlendMask, 
+            float4( nextLayer.BaseColor, nextLayer.AlphaCutoff ), 
+            nextLayer.BlendMask * nextLayer.DiffuseContribution );
+          
+    baseLayer.Roughness = TerrainDepthBlend( 
+            float4( baseLayer.Roughness, baseLayer.Roughness, baseLayer.Roughness, baseLayer.AlphaCutoff ), 
+            baseLayer.BlendMask, 
+            float4( nextLayer.Roughness, nextLayer.Roughness, nextLayer.Roughness, nextLayer.AlphaCutoff ), 
+            nextLayer.BlendMask * nextLayer.SpecularContribution ).r;
+          
+    baseLayer.Normal = TerrainDepthBlend( 
+            float4( baseLayer.Normal, baseLayer.AlphaCutoff ), 
+            baseLayer.BlendMask, 
+            float4( nextLayer.Normal, nextLayer.AlphaCutoff ), 
+            nextLayer.BlendMask * nextLayer.NormalContribution );              
+#else
+    baseLayer.BaseColor = lerp( baseLayer.BaseColor, nextLayer.BaseColor, nextLayer.BlendMask * nextLayer.DiffuseContribution );  
+    baseLayer.Normal = BlendNormals_UDN( baseLayer.Normal, nextLayer.Normal * nextLayer.NormalContribution * nextLayer.BlendMask );
+    baseLayer.AlphaCutoff = nextLayer.AlphaCutoff;
+    baseLayer.BlendMask = nextLayer.BlendMask;
     baseLayer.Roughness = lerp( baseLayer.Roughness, nextLayer.Roughness, nextLayer.BlendMask * nextLayer.SpecularContribution );
+#endif
+        
+    baseLayer.Reflectance = lerp( baseLayer.Reflectance, nextLayer.Reflectance, nextLayer.BlendMask * nextLayer.SpecularContribution );
+
     baseLayer.Metalness = lerp( baseLayer.Metalness, nextLayer.Metalness, nextLayer.BlendMask * nextLayer.SpecularContribution );
     baseLayer.AmbientOcclusion = lerp( baseLayer.AmbientOcclusion, nextLayer.AmbientOcclusion, nextLayer.BlendMask );
     baseLayer.Emissivity = lerp( baseLayer.Emissivity, nextLayer.Emissivity, nextLayer.BlendMask );
-    baseLayer.Normal = BlendNormals_UDN( baseLayer.Normal, nextLayer.Normal * nextLayer.NormalContribution * nextLayer.BlendMask );
-        
+          
     baseLayer.AlphaMask = lerp( baseLayer.AlphaMask, nextLayer.AlphaMask, nextLayer.BlendMask );
     
     baseLayer.SecondaryNormal = nextLayer.SecondaryNormal * nextLayer.NormalContribution;
-    baseLayer.BlendMask = nextLayer.BlendMask;
     
     baseLayer.Refraction = lerp( baseLayer.Refraction, nextLayer.Refraction, nextLayer.BlendMask * nextLayer.SpecularContribution );
     baseLayer.RefractionIor = lerp( baseLayer.RefractionIor, nextLayer.RefractionIor, nextLayer.BlendMask );   
@@ -476,7 +509,6 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
     baseLayer.DiffuseContribution = nextLayer.DiffuseContribution;
     baseLayer.SpecularContribution = nextLayer.SpecularContribution;
     baseLayer.NormalContribution = nextLayer.NormalContribution;
-    baseLayer.AlphaCutoff = nextLayer.AlphaCutoff;
 }
 
 #define DFG_TEXTURE_SIZE 512.0f
@@ -599,14 +631,14 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 		
 	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
 		
-	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ); //TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
-	float3 baseColor = g_TerrainBaseColorReflectanceArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ).rgb;
+	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ); //TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
+	float4 baseColorAndHeight = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
 	
-	//TriplanarSample3D( g_TerrainBaseColorReflectanceArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
+	//TriplanarSample3D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
 	
 	MaterialReadLayer layer;
-	layer.BaseColor = accurateSRGBToLinear( baseColor );
-	layer.Reflectance = 0.50f; // baseColor.a;	
+	layer.BaseColor = accurateSRGBToLinear( baseColorAndHeight.rgb );
+	layer.Reflectance = 1.00f; // baseColor.a;	
 	layer.Roughness = normalAndRoughness.a;
 	layer.Metalness = 0.0f;
 	layer.AmbientOcclusion = 1.0f;
@@ -619,10 +651,10 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 	layer.RefractionIor = 0.0f;
 	layer.ClearCoat = 0.0f;
 	layer.ClearCoatGlossiness = 0.0f;
-	layer.DiffuseContribution = 1.00f;
-	layer.SpecularContribution = 1.00f;
-	layer.NormalContribution = 1.00f;
-	layer.AlphaCutoff = 0.0f;
+	layer.DiffuseContribution = 0.250f;
+	layer.SpecularContribution = 0.250f;
+	layer.NormalContribution = 0.250f;
+	layer.AlphaCutoff = baseColorAndHeight.a;
 	
 	return layer;
 }
@@ -639,19 +671,18 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS, VertexStage.uvCoord.xy, N );
-	
-	MaterialReadLayer eastFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 0 ), VertexStage.uvCoord.xy, N );
-	eastFetch.BlendMask = 0.15;
-	BlendLayers( BaseLayer, eastFetch );
-	
-	MaterialReadLayer southEastFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 1 ), VertexStage.uvCoord.xy, N );
-	southEastFetch.BlendMask = 0.15;	
-	BlendLayers( BaseLayer, southEastFetch );
-	
-	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 1 ), VertexStage.uvCoord.xy, N );
-	southFetch.BlendMask = 0.15;	
-	BlendLayers( BaseLayer, southFetch );
+	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS, VertexStage.uvCoord, N );
+	// MaterialReadLayer westFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, 0 ), VertexStage.uvCoord, N );
+	// MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, -1 ), VertexStage.uvCoord, N );
+	// MaterialReadLayer northFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 1 ), VertexStage.uvCoord, N );
+    
+	// westFetch.BlendMask = 0.5f;
+	// southFetch.BlendMask = 0.5f;
+	// northFetch.BlendMask = 0.5f;
+    
+	// BlendLayers( BaseLayer, westFetch );
+	// BlendLayers( BaseLayer, southFetch );
+	// BlendLayers( BaseLayer, northFetch );
 	
 	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
 #else
