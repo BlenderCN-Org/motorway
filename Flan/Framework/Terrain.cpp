@@ -40,12 +40,13 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
+
 void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 {
     constexpr float width = 512.0f;
     constexpr float height = 512.0f;
     constexpr float tileRes = 16.0f;
-    constexpr float texelScale = 4096.0f / width;
+    constexpr float texelScale = 1024.0f / width;
 
     constexpr float halfWidth = ( ( float )width - 1.0f ) / 2.0f;
     constexpr float halfLength = ( ( float )height - 1.0f ) / 2.0f;
