@@ -20,7 +20,7 @@ Stuff todo for the project
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
-        > Texture Splatting (3 levels should be enough)
+        > Terrain Material Blending (depth based)
         > Biome Presets / Define
         > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
         > GeoClipping / or something even more basic for LODing
@@ -42,7 +42,6 @@ Stuff todo for the project
     > Vectorify draw commands building as much as possible (see profiler output on stress test)
 	> Punctual/Spot light shadow map support
     > Automatic exposure override (to properly handle night time)
-    > EQAA (not sure about the results; should be investigated)
     
 [Client]
     > Implement Client to Server connection (see old code)
@@ -75,6 +74,8 @@ DONE
         > Editor Panel (material editor only or dedicated one?)
         > How should it be saved? Draft idea: compute both rt at frame N, save to disk at frame N+1 (basically wait for 
           the previous cmdlist to be finished)
+    <Terrain Rendering/Physics>
+        > Texture Splatting (3 levels should be enough)
     > SSAA Implementation
     
 [Client]

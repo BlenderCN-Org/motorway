@@ -631,14 +631,15 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 		
 	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
 		
-	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ); //TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
+	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
 	float4 baseColorAndHeight = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-	
+    
+	//TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
 	//TriplanarSample3D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColorAndHeight.rgb );
-	layer.Reflectance = 1.00f; // baseColor.a;	
+	layer.Reflectance = 0.25f; // baseColor.a;	
 	layer.Roughness = normalAndRoughness.a;
 	layer.Metalness = 0.0f;
 	layer.AmbientOcclusion = 1.0f;
@@ -651,9 +652,9 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 	layer.RefractionIor = 0.0f;
 	layer.ClearCoat = 0.0f;
 	layer.ClearCoatGlossiness = 0.0f;
-	layer.DiffuseContribution = 0.250f;
-	layer.SpecularContribution = 0.250f;
-	layer.NormalContribution = 0.250f;
+	layer.DiffuseContribution = 1.0f;
+	layer.SpecularContribution = 1.0f;
+	layer.NormalContribution = 1.0f;
 	layer.AlphaCutoff = baseColorAndHeight.a;
 	
 	return layer;
@@ -671,18 +672,18 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS, VertexStage.uvCoord, N );
-	// MaterialReadLayer westFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, 0 ), VertexStage.uvCoord, N );
-	// MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, -1 ), VertexStage.uvCoord, N );
-	// MaterialReadLayer northFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 1 ), VertexStage.uvCoord, N );
+	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS + float3( 2, 0, 0 ), VertexStage.uvCoord, N );
+	MaterialReadLayer westFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( -2, 0, 0 ), VertexStage.uvCoord, N );
+	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, -2 ), VertexStage.uvCoord, N );
+	MaterialReadLayer northFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 2 ), VertexStage.uvCoord, N );
     
 	// westFetch.BlendMask = 0.5f;
 	// southFetch.BlendMask = 0.5f;
 	// northFetch.BlendMask = 0.5f;
     
-	// BlendLayers( BaseLayer, westFetch );
-	// BlendLayers( BaseLayer, southFetch );
-	// BlendLayers( BaseLayer, northFetch );
+	BlendLayers( BaseLayer, westFetch );
+	BlendLayers( BaseLayer, southFetch );
+	BlendLayers( BaseLayer, northFetch );
 	
 	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
 #else
@@ -942,8 +943,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
 
-    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, max( WorldPosition.y, 0.0f )  ) * 0.001f;
-    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z,  max( VertexStage.positionWS.y, 0.0f ) ) * 0.001f;
+    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, max( WorldPosition.y, 0.0f )  );
+    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z,  max( VertexStage.positionWS.y, 0.0f ) );
       
 	float3 atmosphereInScatter = GetSkyRadianceToPoint
 	( 
