@@ -698,6 +698,18 @@ int App::initialize()
 
     g_PhysicsDebugDraw->create( g_DynamicsWorld.get(), g_DrawCommandBuilder.get() );
 
+    DirectionalLightData sunLight = {};
+    sunLight.isSunLight = true;
+    sunLight.intensityInLux = 100000.0f;
+    sunLight.angularRadius = 0.007f;
+    const float solidAngle = ( 2.0f * glm::pi<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
+
+    sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
+    sunLight.sphericalCoordinates = glm::vec2( 1.0f, 0.5f );
+    sunLight.direction = flan::core::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
+    auto sunLightEntity = g_RenderableEntityManager->createDirectionalLight( std::move( sunLight ) );
+    auto sunLightNode = g_CurrentScene->createDirectionalLight( sunLightEntity );
+
     // Initialize ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
