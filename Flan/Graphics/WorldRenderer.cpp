@@ -441,13 +441,19 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
-    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
+    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
 
     terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
-    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
+    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
 
-    terrainStreaming.terrainMaterialStreaming[128].terrainSampledSplatIndexes = 2;
-    terrainStreaming.terrainMaterialStreaming[128].terrainSamplingParameters = glm::vec4( 0, 0, 2048.0f, 2048.0f );
+    terrainStreaming.terrainMaterialStreaming[63].terrainSampledSplatIndexes = 2;
+    terrainStreaming.terrainMaterialStreaming[63].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
+
+    terrainStreaming.terrainMaterialStreaming[62].terrainSampledSplatIndexes = 2;
+    terrainStreaming.terrainMaterialStreaming[62].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
+
+    terrainStreaming.terrainMaterialStreaming[65].terrainSampledSplatIndexes = 2;
+    terrainStreaming.terrainMaterialStreaming[65].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
@@ -536,7 +542,7 @@ void WorldRenderer::createRenderTargets( void )
     static constexpr int TERRAIN_TEXTURE_DIMENSIONS = 1024;
     TextureDescription terrainTextureStreamingDesc;
     terrainTextureStreamingDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC1_UNORM;
+    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC3_UNORM;
     terrainTextureStreamingDesc.width = TERRAIN_TEXTURE_DIMENSIONS;
     terrainTextureStreamingDesc.height = TERRAIN_TEXTURE_DIMENSIONS;
     terrainTextureStreamingDesc.depth = 1;
