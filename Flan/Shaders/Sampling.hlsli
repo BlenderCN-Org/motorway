@@ -10,9 +10,9 @@ float TriplanarSample1D(Texture2D tex, float3 texcoord, float3 N)
 	float b = blending.x + blending.y + blending.z;
     blending /= float3( b, b, b );
  
-    float3 x = tex[texcoord.yz].r;
-    float3 y = tex[texcoord.xz].r;
-    float3 z = tex[texcoord.xy].r;
+    float x = tex[texcoord.yz].r;
+    float y = tex[texcoord.xz].r;
+    float z = tex[texcoord.xy].r;
  
     return x * blending.x + y * blending.y + z * blending.z;
 }
