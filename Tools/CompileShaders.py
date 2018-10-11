@@ -336,13 +336,9 @@ compile_shader_PS( "ImageEffects/FXAA.hlsl", "FXAA" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
 
+compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointHeightfieldVS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "Surface" )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceNormalMapping", "EntryPointVS", { "PH_USE_NORMAL_MAPPING": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVNormalMapping", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING": "1" } )
-
-compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointVS", { "PH_HEIGHTFIELD": "1", "PH_USE_NORMAL_MAPPING" : "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "HeightfieldScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_USE_NORMAL_MAPPING" : "1", "PH_HEIGHTFIELD": "1" } )
 
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointDS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )

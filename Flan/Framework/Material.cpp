@@ -151,12 +151,12 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         PipelineStateDesc descriptor;
         if ( materialType == MaterialType::SURFACE ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( ( scaleUVByModelScale )
-                ? FLAN_STRING( "SurfaceScaledUVNormalMapping" )
-                : FLAN_STRING( "SurfaceNormalMapping" ), SHADER_STAGE_VERTEX );
+                ? FLAN_STRING( "SurfaceScaledUV" )
+                : FLAN_STRING( "Surface" ), SHADER_STAGE_VERTEX );
         } else if ( materialType == MaterialType::TERRAIN ) {
-            descriptor.vertexStage = shaderStageManager->getOrUploadStage( ( scaleUVByModelScale )
-                ? FLAN_STRING( "HeightfieldScaledUV" )
-                : FLAN_STRING( "Heightfield" ), SHADER_STAGE_VERTEX );
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_VERTEX );
+            descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_TESSELATION_CONTROL );
+            descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_TESSELATION_EVALUATION );
         } else if ( materialType == MaterialType::HUD ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Primitive2D" ), SHADER_STAGE_VERTEX );
         }
@@ -755,7 +755,6 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
             auto nativeObj = textureSetIterator->second->getNativeObject();
             if ( ImGui::ImageButton( nativeObj->textureShaderResourceView, ImVec2( 58, 58 ) ) ) {
 #elif defined( FLAN_VULKAN ) || defined( FLAN_GL460 )
-            auto nativeObj = textures[textureIndex]->getNativeObject();
             if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
 #endif
                 fnString_t filenameBuffer;
