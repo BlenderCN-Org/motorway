@@ -74,9 +74,16 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 
     std::vector<uint32_t> indices( numIndices );
 
-    int index = 0;
-    for ( int z = 0; z < height - 1; z++ ) {
+    int i = 0;
+    for ( int y = 0; y < height - 1; y++ ) {
         for ( int x = 0; x < width - 1; x++ ) {
+            indices[i++] = x + y * width;
+            indices[i++] = x + 1 + y * width;
+            indices[i++] = x + ( y + 1 ) * width;
+
+            indices[i++] = x + 1 + y * width;
+            indices[i++] = x + 1 + ( y + 1 ) * width;
+            indices[i++] = x + ( y + 1 ) * width;
         }
     }
     //    // Even rows move left to right, odd rows move right to left.

@@ -1,60 +1,20 @@
-/*
-    Copyright (C) 2018 Team Horsepower
-    https://github.com/ProjectHorsepower
-
-    This file is part of Project Horsepower source code.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-#include <CameraData.hlsli>
-
-cbuffer MatricesBuffer : register( b3 )
-{
-    float4x4	ModelMatrix;
-};
-
-#if PH_HEIGHTFIELD
-Texture2D g_TexHeightmap    : register( t0 );
-Texture2D g_TexHeightmapNormal : register( t1 );
-
-#include <MaterialsShared.h>
-
-cbuffer MaterialEdition : register( b8 )
-{
-    // Flags
-    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
-    uint                    g_EnableAlphaTest;
-    uint                    g_EnableAlphaBlend;
-    uint                    g_IsDoubleFace;
-    
-    uint                    g_CastShadow;
-    uint                    g_ReceiveShadow;
-    uint                    g_EnableAlphaToCoverage;
-    uint                    g_LayerCount;
-    
-    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
-};
-#endif
-
-struct VertexBufferData
-{
-	float3 Position         : POSITION0;
-	float3 Normal           : NORMAL0;
-	float2 TexCoordinates   : TEXCOORD0;
-};
-
 struct VertexStageData
+{
+    float4 positionWS   : POSITION0;
+    float3 normal       : NORMAL0;
+    float2 uvCoord      : TEXCOORD0;
+    float3 positionMS   : POSITION1;
+};
+
+struct HullStageData
+{
+    float4 positionWS   : POSITION0;
+    float3 normal       : NORMAL0;
+    float2 uvCoord      : TEXCOORD0;
+    float3 positionMS   : POSITION1;
+};
+
+struct DomainStageData
 {
     float4 position		: SV_POSITION;
     float4 positionWS   : POSITION0;
@@ -68,48 +28,73 @@ struct VertexStageData
 #endif
 };
 
-VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
+// Output patch constant data.
+struct HS_CONSTANT_DATA_OUTPUT
 {
-    VertexStageData output = (VertexStageData)0;
+    float EdgeTessFactor[3]         : SV_TessFactor; // e.g. would be [4] for a quad domain
+    float InsideTessFactor          : SV_InsideTessFactor; // e.g. would be Inside[2] for a quad domain
+};
+ 
+#define NUM_CONTROL_POINTS 3
+ 
+// Patch Constant Function
+HS_CONSTANT_DATA_OUTPUT ComputeHeightfieldPatchConstants( InputPatch<VertexStageData, NUM_CONTROL_POINTS> ip, uint PatchID : SV_PrimitiveID )
+{
+    HS_CONSTANT_DATA_OUTPUT output;
+ 
+    // Insert code to compute output here
+    output.EdgeTessFactor[0] = 4;
+    output.EdgeTessFactor[1] = 4;
+    output.EdgeTessFactor[2] = 4;
+    output.InsideTessFactor = 4; 
+ 
+    return output;
+}
 
-    float2 uvCoordinates =  VertexBuffer.TexCoordinates;
+[domain("tri")]
+[partitioning("fractional_even")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("ComputeHeightfieldPatchConstants")]
+HullStageData EntryPointHS( InputPatch<VertexStageData, NUM_CONTROL_POINTS> ip, uint i : SV_OutputControlPointID, uint PatchID : SV_PrimitiveID )
+{
+    HullStageData output;
+ 
+    // Passthrough function
+    output.positionWS = ip[i].positionWS;
+    output.normal = ip[i].normal;
+    output.uvCoord = ip[i].uvCoord;
+    output.positionMS = ip[i].positionMS;
+ 
+    return output;
+}
+
+#define NUM_CONTROL_POINTS 3
+ 
+#include <CameraData.hlsli>
+
+[domain("tri")]
+DomainStageData EntryPointDS(
+    HS_CONSTANT_DATA_OUTPUT input,
+    float3 domain : SV_DomainLocation,
+    const OutputPatch<HullStageData, NUM_CONTROL_POINTS> patch)
+{
+    DomainStageData output;
+ 
+    output.positionMS = float4(patch[0].positionMS.xyz*domain.x + patch[1].positionMS.xyz*domain.y + patch[2].positionMS.xyz*domain.z, 1.0f);
     
-#if PH_SCALE_UV_BY_MODEL_SCALE
-    float scaleX = length( float3( ModelMatrix._11, ModelMatrix._12, ModelMatrix._13 ) );
-    float scaleY = length( float3( ModelMatrix._21, ModelMatrix._22, ModelMatrix._23 ) );
-
-    uvCoordinates *= float2( scaleX, scaleY );
-#endif
-
-    output.uvCoord = uvCoordinates;
-
-#if PH_HEIGHTFIELD
-    float2 heightCoords = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
-    
-	output.positionMS = VertexBuffer.Position;
-	
-    float height = g_TexHeightmap[heightCoords].r;
-
-    output.positionWS       = mul( ModelMatrix, float4( output.positionMS.x, height * g_Layers[0].HeightmapWorldHeight, output.positionMS.z, 1.0f ) );
-#if PH_USE_NORMAL_MAPPING
-	// Unpack normal map
-	float3 normalWorldSpace = g_TexHeightmapNormal[heightCoords].rgb;
-#endif		
-#else
-    output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
-	
-	float3 normalWorldSpace = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
-#endif
-    
-    output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
-    output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ).xywz;
+    float4 positionWS = float4( patch[0].positionWS.xyz * domain.x + patch[1].positionWS.xyz * domain.y + patch[2].positionWS.xyz * domain.z, 1.0f );
+ 
+    output.position = mul( float4( positionWS.xyz, 1.0f ), ViewProjectionMatrix );
+    output.previousPosition = mul( float4( positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ); //.xywz;
    
-    float4 PositionVS = mul( float4( output.positionWS.xyz, 1.0f ), ViewMatrix );
+    output.positionWS = positionWS;
+    output.normal = float4(patch[0].normal.xyz*domain.x + patch[1].normal.xyz*domain.y + patch[2].normal.xyz*domain.z, 1.0f);
+    
+    float4 PositionVS = mul( float4( positionWS.xyz, 1.0f ), ViewMatrix );
     output.depth = ( PositionVS.z / PositionVS.w );
-
-#if PH_USE_NORMAL_MAPPING
-    output.normal = normalWorldSpace;
-#endif
-
-	return output;
+    
+    output.uvCoord = patch[0].uvCoord;
+     
+    return output;
 }

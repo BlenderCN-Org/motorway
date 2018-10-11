@@ -102,10 +102,10 @@ Shader* ShaderStageManager::getOrUploadStage( const fnString_t& shaderFilename, 
             filenameWithExtension.append( FLAN_STRING( ".cso" ) );
             break;
         case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
-            filenameWithExtension.append( FLAN_STRING( ".tco" ) );
+            filenameWithExtension.append( FLAN_STRING( ".hso" ) );
             break;
         case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
-            filenameWithExtension.append( FLAN_STRING( ".teo" ) );
+            filenameWithExtension.append( FLAN_STRING( ".dso" ) );
             break;
         }
 #endif
