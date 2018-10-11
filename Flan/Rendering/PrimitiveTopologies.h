@@ -28,7 +28,8 @@ namespace flan
 #define PrimitiveTopology( option )\
         option( PRIMITIVE_TOPOLOGY_TRIANGLELIST )\
         option( PRIMITIVE_TOPOLOGY_TRIANGLESTRIP )\
-        option( PRIMITIVE_TOPOLOGY_LINELIST )
+        option( PRIMITIVE_TOPOLOGY_LINELIST )\
+        option( PRIMITIVE_TOPOLOGY_PATCH )
 
         FLAN_LAZY_ENUM( PrimitiveTopology )
 #undef PrimitiveTopology
