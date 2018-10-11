@@ -140,4 +140,25 @@ void flan::rendering::RetrieveTextureLayerTexelsLDRImpl( NativeRenderContext* na
 void flan::rendering::RetrieveTextureTexelsHDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<float>& texels )
 {
 }
+
+void flan::rendering::CopySubresouceRegionImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+
+}
+
+void flan::rendering::CopySubresouceRegionAsynchronousImpl( NativeCommandList* nativeCmdList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+
+}
+
+void flan::rendering::CopyResouceImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+
+}
+
+void flan::rendering::CopyResouceAsynchronousImpl( NativeCommandList* nativeCommandList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+
+}
+
 #endif

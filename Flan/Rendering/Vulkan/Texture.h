@@ -44,6 +44,11 @@ namespace flan
         void UnbindTextureCmdImpl( NativeCommandList* nativeCmdList, NativeTextureObject* textureObject, const uint32_t bindingIndex, const uint32_t shaderStagesToBindTo );
 
         void SetTextureDebugNameImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const std::string& debugName );
+        void CopySubresouceRegionAsynchronousImpl( NativeCommandList* nativeCmdList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
+        void CopyResouceImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject );
+        void CopyResouceAsynchronousImpl( NativeCommandList* nativeCommandList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject );
+
+        void CopySubresouceRegionImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
 
         void RetrieveTextureTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<uint8_t>& texels );
         void RetrieveTextureLayerTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, const unsigned int layerIndex, const unsigned int mipLevel, std::vector<uint8_t>& texels );
