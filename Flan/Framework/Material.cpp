@@ -163,7 +163,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledPixelStage.c_str(), SHADER_STAGE_PIXEL );
         descriptor.primitiveTopology = ( materialType == MaterialType::TERRAIN )
-            ? flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
+            ? flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_PATCH
             : flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         RasterizerStateDesc rasterDesc;

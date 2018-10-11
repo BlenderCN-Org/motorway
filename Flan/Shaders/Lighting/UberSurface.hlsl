@@ -465,32 +465,12 @@ float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)
 
 void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLayer )
 {
-#if PA_TERRAIN
-    baseLayer.BaseColor = TerrainDepthBlend( 
-            float4( baseLayer.BaseColor, baseLayer.AlphaCutoff ), 
-            baseLayer.BlendMask, 
-            float4( nextLayer.BaseColor, nextLayer.AlphaCutoff ), 
-            nextLayer.BlendMask * nextLayer.DiffuseContribution );
-          
-    baseLayer.Roughness = TerrainDepthBlend( 
-            float4( baseLayer.Roughness, baseLayer.Roughness, baseLayer.Roughness, baseLayer.AlphaCutoff ), 
-            baseLayer.BlendMask, 
-            float4( nextLayer.Roughness, nextLayer.Roughness, nextLayer.Roughness, nextLayer.AlphaCutoff ), 
-            nextLayer.BlendMask * nextLayer.SpecularContribution ).r;
-          
-    baseLayer.Normal = TerrainDepthBlend( 
-            float4( baseLayer.Normal, baseLayer.AlphaCutoff ), 
-            baseLayer.BlendMask, 
-            float4( nextLayer.Normal, nextLayer.AlphaCutoff ), 
-            nextLayer.BlendMask * nextLayer.NormalContribution );              
-#else
     baseLayer.BaseColor = lerp( baseLayer.BaseColor, nextLayer.BaseColor, nextLayer.BlendMask * nextLayer.DiffuseContribution );  
     baseLayer.Normal = BlendNormals_UDN( baseLayer.Normal, nextLayer.Normal * nextLayer.NormalContribution * nextLayer.BlendMask );
     baseLayer.AlphaCutoff = nextLayer.AlphaCutoff;
     baseLayer.BlendMask = nextLayer.BlendMask;
     baseLayer.Roughness = lerp( baseLayer.Roughness, nextLayer.Roughness, nextLayer.BlendMask * nextLayer.SpecularContribution );
-#endif
-        
+    
     baseLayer.Reflectance = lerp( baseLayer.Reflectance, nextLayer.Reflectance, nextLayer.BlendMask * nextLayer.SpecularContribution );
 
     baseLayer.Metalness = lerp( baseLayer.Metalness, nextLayer.Metalness, nextLayer.BlendMask * nextLayer.SpecularContribution );
@@ -661,6 +641,50 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 }
 #endif
 
+float BilinearInterpolation1D( float3 positionMS, const float southWest, const float southEast, const float northWest, const float northEast )
+{    
+	float x  = positionMS.x;
+	float y  = positionMS.z;
+	
+	float x1 = positionMS.x - 1.0f;
+	float x2 = positionMS.x + 1.0f;
+	
+	float y1 = positionMS.z - 1.0f;
+	float y2 = positionMS.z + 1.0f;
+	
+	float south = ((x2 - x)/(x2 - x1))*southWest + ((x - x1)/(x2 - x1))*southEast;
+	float north = ((x2 - x)/(x2 - x1))*northWest + ((x - x1)/(x2 - x1))*northEast;
+	float east = ((y2 - y)/(y2 - y1))*southEast + ((y - y1)/(y2 - y1))*northEast;
+	float west = ((y2 - y)/(y2 - y1))*southWest + ((y - y1)/(y2 - y1))*northWest;
+
+	return ((y2 - y)/(y2 - y1)) * south 
+		+ ((y - y1)/(y2 - y1)) * north
+		+ ((x2 - x)/(x2 - x1)) * east
+		+ ((x - x1)/(x2 - x1)) * west;	
+} 
+    
+float3 BilinearInterpolation( float3 positionMS, const float3 southWest, const float3 southEast, const float3 northWest, const float3 northEast )
+{    
+	float x  = positionMS.x;
+	float y  = positionMS.z;
+	
+	float x1 = positionMS.x - 1.0f;
+	float x2 = positionMS.x + 1.0f;
+	
+	float y1 = positionMS.z - 1.0f;
+	float y2 = positionMS.z + 1.0f;
+	
+	float3 south = ((x2 - x)/(x2 - x1))*southWest + ((x - x1)/(x2 - x1))*southEast;
+	float3 north = ((x2 - x)/(x2 - x1))*northWest + ((x - x1)/(x2 - x1))*northEast;
+	float3 east = ((y2 - y)/(y2 - y1))*southEast + ((y - y1)/(y2 - y1))*northEast;
+	float3 west = ((y2 - y)/(y2 - y1))*southWest + ((y - y1)/(y2 - y1))*northWest;
+
+	return ((y2 - y)/(y2 - y1)) * south 
+		+ ((y - y1)/(y2 - y1)) * north
+		+ ((x2 - x)/(x2 - x1)) * east
+		+ ((x - x1)/(x2 - x1)) * west;	
+}      
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     // Compute common terms from vertex stage variables
@@ -672,20 +696,15 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS + float3( 2, 0, 0 ), VertexStage.uvCoord, N );
-	MaterialReadLayer westFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( -2, 0, 0 ), VertexStage.uvCoord, N );
-	MaterialReadLayer southFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, -2 ), VertexStage.uvCoord, N );
-	MaterialReadLayer northFetch = FetchTerrainMaterial( VertexStage.positionMS + float3( 0, 0, 2 ), VertexStage.uvCoord, N );
-    
-	// westFetch.BlendMask = 0.5f;
-	// southFetch.BlendMask = 0.5f;
-	// northFetch.BlendMask = 0.5f;
-    
-	BlendLayers( BaseLayer, westFetch );
-	BlendLayers( BaseLayer, southFetch );
-	BlendLayers( BaseLayer, northFetch );
-	
-	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) );
+	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 1 ), VertexStage.uvCoord, N ); // North East
+	MaterialReadLayer northWest = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, 1 ), VertexStage.uvCoord, N );
+	MaterialReadLayer southEast = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, -1 ), VertexStage.uvCoord, N );
+	MaterialReadLayer southWest = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, -1 ), VertexStage.uvCoord, N );
+   
+	BaseLayer.BaseColor = BilinearInterpolation( VertexStage.positionMS, southWest.BaseColor, southEast.BaseColor, northWest.BaseColor, BaseLayer.BaseColor );
+	BaseLayer.Roughness = BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
+	BaseLayer.Normal = BilinearInterpolation( VertexStage.positionMS, southWest.Normal, southEast.Normal, northWest.Normal, BaseLayer.Normal );
+	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;

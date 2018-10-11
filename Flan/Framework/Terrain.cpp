@@ -70,37 +70,40 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
         }
     }
 
-    int numIndices = static_cast<int>( ( width * 2 ) * ( height - 1 ) + ( height - 2 ) );
+    int numIndices = static_cast<int>( ( width - 1 ) * ( height - 1 ) * 6 );
 
     std::vector<uint32_t> indices( numIndices );
 
     int index = 0;
     for ( int z = 0; z < height - 1; z++ ) {
-        // Even rows move left to right, odd rows move right to left.
-        if ( z % 2 == 0 ) {
-            // Even row
-            int x;
-            for ( x = 0; x < width; x++ ) {
-               indices[index++] = x + static_cast<int>( z * width );
-               indices[index++] = x + static_cast<int>( z * width ) + width;
-            }
-            // Insert degenerate vertex if this isn't the last row
-            if ( z != height - 2 ) {
-               indices[index++] = --x + static_cast<int>( z * width );
-            }
-        } else {
-            // Odd row
-            int x;
-            for ( x = width - 1; x >= 0; x-- ) {
-               indices[index++] = x + static_cast<int>( z * width );
-               indices[index++] = x + static_cast<int>( z * width ) + width;
-            }
-            // Insert degenerate vertex if this isn't the last row
-            if ( z != height - 2 ) {
-               indices[index++] = ++x + static_cast<int>( z * width );
-            }
+        for ( int x = 0; x < width - 1; x++ ) {
         }
     }
+    //    // Even rows move left to right, odd rows move right to left.
+    //    if ( z % 2 == 0 ) {
+    //        // Even row
+    //        int x;
+    //        for ( x = 0; x < width; x++ ) {
+    //           indices[index++] = x + static_cast<int>( z * width );
+    //           indices[index++] = x + static_cast<int>( z * width ) + width;
+    //        }
+    //        // Insert degenerate vertex if this isn't the last row
+    //        if ( z != height - 2 ) {
+    //           indices[index++] = --x + static_cast<int>( z * width );
+    //        }
+    //    } else {
+    //        // Odd row
+    //        int x;
+    //        for ( x = width - 1; x >= 0; x-- ) {
+    //           indices[index++] = x + static_cast<int>( z * width );
+    //           indices[index++] = x + static_cast<int>( z * width ) + width;
+    //        }
+    //        // Insert degenerate vertex if this isn't the last row
+    //        if ( z != height - 2 ) {
+    //           indices[index++] = ++x + static_cast<int>( z * width );
+    //        }
+    //    }
+    //}
 
     // Create GPU Buffers
     const auto vertexCount = vertices.size() * 8;
