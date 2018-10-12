@@ -238,6 +238,12 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 #endif
 
         // Probe Pipeline State
+        descriptor.tesselationControlStage = nullptr;
+        descriptor.tesselationEvalStage = nullptr;
+        descriptor.primitiveTopology = ( materialType == MaterialType::TERRAIN )
+            ? flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST
+            : flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
         if ( isWorldMaterial ) {
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledProbePixelStage.c_str(), SHADER_STAGE_PIXEL );
             pipelineStateProbe->create( renderDevice, descriptor );
@@ -594,7 +600,7 @@ void Material::bind( CommandList* cmdList ) const
     cmdList->bindPipelineStateCmd( pipelineState.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
-        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
     }
 
     for ( auto& textureSlot : pixelTextureSet ) {
@@ -602,7 +608,7 @@ void Material::bind( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_ALL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }
@@ -617,7 +623,7 @@ bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
     cmdList->bindPipelineStateCmd( reversedDepthPipelineState.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
-        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
     }
 
     for ( auto& textureSlot : pixelTextureSet ) {
@@ -625,7 +631,7 @@ bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 
@@ -637,7 +643,7 @@ void Material::bindDepthOnly( CommandList* cmdList ) const
     cmdList->bindPipelineStateCmd( depthPipelineState.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
-        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
     }
 
     for ( auto& textureSlot : pixelTextureSet ) {
@@ -645,7 +651,7 @@ void Material::bindDepthOnly( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }
@@ -655,7 +661,7 @@ void Material::bindForProbeRendering( CommandList* cmdList ) const
     cmdList->bindPipelineStateCmd( pipelineStateProbe.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
-        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX );
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
     }
 
     for ( auto& textureSlot : pixelTextureSet ) {
@@ -663,7 +669,7 @@ void Material::bindForProbeRendering( CommandList* cmdList ) const
     }
 
     if ( isEditable ) {
-        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
         editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
     }
 }

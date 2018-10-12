@@ -43,8 +43,8 @@ Terrain::~Terrain()
 
 void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 {
-    constexpr float width = 512.0f;
-    constexpr float height = 512.0f;
+    constexpr float width = 256;
+    constexpr float height = 256;
     constexpr float tileRes = 16.0f;
     constexpr float texelScale = 1024.0f / width;
 
@@ -135,7 +135,8 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 
     VertexLayout_t defaultTerrainLayout = {
         { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
-        { 1, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // UVMAP0
+        { 1, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // POSITION
+        { 2, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 6 * sizeof( float ) }, // UVMAP0
     };
 
     vertexArrayObject->setVertexLayout( renderDevice, defaultTerrainLayout );
