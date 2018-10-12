@@ -43,13 +43,12 @@ Terrain::~Terrain()
 
 void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
 {
-    constexpr float width = 256;
-    constexpr float height = 256;
-    constexpr float tileRes = 16.0f;
-    constexpr float texelScale = 1024.0f / width;
+    constexpr float width = 1024.0f;
+    constexpr float height = 1024.0f;
+    constexpr float tessFactor = 4.0f;
 
-    constexpr float halfWidth = ( ( float )width - 1.0f ) / 2.0f;
-    constexpr float halfLength = ( ( float )height - 1.0f ) / 2.0f;
+    constexpr float scalePatchX = width / tessFactor;
+    constexpr float scalePatchY = height / tessFactor;
 
     // TODO Pool Grid and instantiate it per heightmap drawcall?
     struct VertexLayout
@@ -59,58 +58,30 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
         glm::vec2 texCoordinates;
     };
 
-    std::vector<VertexLayout> vertices( static_cast<std::size_t>( width * height ) );
-    for ( int z = 0; z < height; z++ ) {
-        for ( int x = 0; x < width; x++ ) {
-            vertices[static_cast<std::size_t>( z * height + x )] = {
-                glm::vec3( static_cast<float>( x * texelScale ), 0.0f, static_cast<float>( z * texelScale ) ),
+    std::vector<VertexLayout> vertices( static_cast<std::size_t>( scalePatchX * scalePatchY ) );
+    for ( int z = 0; z < scalePatchY; z++ ) {
+        for ( int x = 0; x < scalePatchX; x++ ) {
+            vertices[static_cast<std::size_t>( z * scalePatchX + x )] = {
+                glm::vec3( static_cast<float>( x * tessFactor ), 0.0f, static_cast<float>( z * tessFactor ) ),
                 glm::vec3( 0.0f, 1.0f, 0.0f ),
-                glm::vec2( static_cast<float>( x ) / ( width - 1 ), static_cast<float>( z ) / ( height - 1 ) )
+                glm::vec2( static_cast<float>( x ) / scalePatchX, static_cast<float>( z ) / scalePatchY )
             };
         }
     }
 
-    int numIndices = static_cast<int>( ( width - 1 ) * ( height - 1 ) * 6 );
+    int numIndices = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) * 4 );
 
     std::vector<uint32_t> indices( numIndices );
 
     int i = 0;
-    for ( int y = 0; y < height - 1; y++ ) {
-        for ( int x = 0; x < width - 1; x++ ) {
-            indices[i++] = x + y * width;
-            indices[i++] = x + 1 + y * width;
-            indices[i++] = x + ( y + 1 ) * width;
-
-            indices[i++] = x + 1 + y * width;
-            indices[i++] = x + 1 + ( y + 1 ) * width;
-            indices[i++] = x + ( y + 1 ) * width;
+    for ( int y = 0; y < scalePatchY - 1; y++ ) {
+        for ( int x = 0; x < scalePatchX - 1; x++ ) {
+            indices[i++] = x + y * scalePatchX;
+            indices[i++] = x + 1 + y * scalePatchX;
+            indices[i++] = x + ( y + 1 ) * scalePatchX;
+            indices[i++] = x + 1 + ( y + 1 ) * scalePatchX;
         }
     }
-    //    // Even rows move left to right, odd rows move right to left.
-    //    if ( z % 2 == 0 ) {
-    //        // Even row
-    //        int x;
-    //        for ( x = 0; x < width; x++ ) {
-    //           indices[index++] = x + static_cast<int>( z * width );
-    //           indices[index++] = x + static_cast<int>( z * width ) + width;
-    //        }
-    //        // Insert degenerate vertex if this isn't the last row
-    //        if ( z != height - 2 ) {
-    //           indices[index++] = --x + static_cast<int>( z * width );
-    //        }
-    //    } else {
-    //        // Odd row
-    //        int x;
-    //        for ( x = width - 1; x >= 0; x-- ) {
-    //           indices[index++] = x + static_cast<int>( z * width );
-    //           indices[index++] = x + static_cast<int>( z * width ) + width;
-    //        }
-    //        // Insert degenerate vertex if this isn't the last row
-    //        if ( z != height - 2 ) {
-    //           indices[index++] = ++x + static_cast<int>( z * width );
-    //        }
-    //    }
-    //}
 
     // Create GPU Buffers
     const auto vertexCount = vertices.size() * 8;
