@@ -238,27 +238,25 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 #endif
 
         // Probe Pipeline State
-        descriptor.tesselationControlStage = nullptr;
-        descriptor.tesselationEvalStage = nullptr;
-        descriptor.primitiveTopology = ( materialType == MaterialType::TERRAIN )
-            ? flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST
-            : flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
         if ( isWorldMaterial ) {
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledProbePixelStage.c_str(), SHADER_STAGE_PIXEL );
             pipelineStateProbe->create( renderDevice, descriptor );
         }
 
         // Depth Only Pipeline State
-        if ( materialType == MaterialType::SURFACE )
+        if ( materialType == MaterialType::SURFACE ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
-        else if ( materialType == MaterialType::TERRAIN )
+            descriptor.tesselationControlStage = nullptr;
+            descriptor.tesselationEvalStage = nullptr;
+        } else if ( materialType == MaterialType::TERRAIN ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
+            descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_CONTROL );
+            descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_EVALUATION );
+        }
 
-        if ( editableMaterialData.EnableAlphaTest )
-            descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
-        else
-            descriptor.pixelStage = nullptr;
+        descriptor.pixelStage = ( editableMaterialData.EnableAlphaTest ) 
+                                ? shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL )
+                                : nullptr;
 
         depthStencilDesc = {};
         depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_LESS;
@@ -274,6 +272,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         rasterDesc.cullMode = ( editableMaterialData.IsDoubleFace ) 
             ? flan::rendering::eCullMode::CULL_MODE_NONE 
             : flan::rendering::eCullMode::CULL_MODE_FRONT;
+
         rasterDesc.useTriangleCCW = true;
 
         descriptor.rasterizerState = new RasterizerState();
