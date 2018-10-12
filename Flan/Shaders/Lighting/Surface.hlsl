@@ -34,7 +34,7 @@ struct VertexBufferData
 #if PH_HEIGHTFIELD
 struct VertexStageHeightfieldData
 {
-    float3 positionMS   : POSITION;
+    float4 positionMS   : POSITION;
     float2 uvCoord      : TEXCOORD;
 };
 
@@ -42,7 +42,7 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
 {
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
-	output.positionMS = VertexBuffer.Position;
+	output.positionMS = float4( VertexBuffer.Position, 1.0f );
     output.uvCoord = VertexBuffer.TexCoordinates;
     
     return output;

@@ -353,6 +353,8 @@ compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", {
 
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointDS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )
+compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
+compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointPS", { "PA_EDITOR": "1", "FLAN_DEBUG_TILE_HEAT": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1" } )
