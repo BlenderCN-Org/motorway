@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
-#	
-#	Copyright (C) 2018 Team Motorway
-#	
-#	This file is part of Project Motorway source code.
-#	
-#	This program is free software: you can redistribute it and/or modify
-#	it under the terms of the GNU General Public License as published by
-#	the Free Software Foundation, either version 3 of the License, or
-#	(at your option) any later version.
-#	
-#	This program is distributed in the hope that it will be useful,
-#	but WITHOUT ANY WARRANTY; without even the implied warranty of
-#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#	GNU General Public License for more details.
-#	
-#	You should have received a copy of the GNU General Public License
-#	along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#	
+#    
+#    Copyright (C) 2018 Team Motorway
+#    
+#    This file is part of Project Motorway source code.
+#    
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#    
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#    
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#    
 
 import sys, string, os, argparse, platform, codecs
 from pathlib import Path
@@ -106,9 +106,12 @@ def compile_shader_VS( filename_input, filename_output, entrypoint = 'EntryPoint
             flag_list = build_flag_list( flags )
 
         if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T vs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".vso"
+            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T vs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".vso"
             if isProd:
-                cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+            else:
+                cmdLine = cmdLine + " /O1"
+                
             os.system( cmdLine )
             
         if compileSPIRV:
@@ -123,14 +126,14 @@ def compile_shader_VS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S vert -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvv -D ./tmp/" + filename_output + ".unroll"  )	
+            os.system( glslang_exe + " -S vert -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvv -D ./tmp/" + filename_output + ".unroll"  )    
             
             if flip_y:
                 os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --flip-vert-y --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
             else:
                 os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
           
-            os.system( glslang_exe + " -S vert -G -o " + compiled_shader_folder + filename_output + ".gl.spvv ./tmp/" + filename_output + ".vert.glsl"  )	
+            os.system( glslang_exe + " -S vert -G -o " + compiled_shader_folder + filename_output + ".gl.spvv ./tmp/" + filename_output + ".vert.glsl"  )    
 
 def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPointPS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".pso" ):
@@ -138,9 +141,11 @@ def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPoint
             flag_list = build_flag_list( flags )
             
         if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T ps_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".pso"
+            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T ps_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".pso"
             if isProd:
-                cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+            else:
+                cmdLine = cmdLine + " /O1"     
             os.system( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -154,9 +159,9 @@ def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S frag -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvp -D ./tmp/" + filename_output + ".unroll"  )	
+            os.system( glslang_exe + " -S frag -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvp -D ./tmp/" + filename_output + ".unroll"  )    
             os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvp --output ./tmp/" + filename_output + ".frag.glsl" )
-            os.system( glslang_exe + " -S frag -G -o " + compiled_shader_folder + filename_output + ".gl.spvp ./tmp/" + filename_output + ".frag.glsl"  )	
+            os.system( glslang_exe + " -S frag -G -o " + compiled_shader_folder + filename_output + ".gl.spvp ./tmp/" + filename_output + ".frag.glsl"  )    
 
 def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPointCS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".cso" ):
@@ -164,9 +169,11 @@ def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPoint
             flag_list = build_flag_list( flags )
             
         if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T cs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".cso"
+            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T cs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".cso"
             if isProd:
-                cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+            else:
+                cmdLine = cmdLine + " /O1"
             os.system( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -180,9 +187,9 @@ def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S comp -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvc -D ./tmp/" + filename_output + ".unroll"  )	
+            os.system( glslang_exe + " -S comp -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvc -D ./tmp/" + filename_output + ".unroll"  )    
             os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvc --output ./tmp/" + filename_output + ".comp.glsl" )
-            os.system( glslang_exe + " -S comp -G -o " + compiled_shader_folder + filename_output + ".gl.spvc ./tmp/" + filename_output + ".comp.glsl"  )	
+            os.system( glslang_exe + " -S comp -G -o " + compiled_shader_folder + filename_output + ".gl.spvc ./tmp/" + filename_output + ".comp.glsl"  )    
  
 def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPointHS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".hso" ):
@@ -190,9 +197,11 @@ def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPoint
             flag_list = build_flag_list( flags )
             
         if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T hs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".hso"
+            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T hs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".hso"
             if isProd:
-                cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+            else:
+                cmdLine = cmdLine + " /O1"          
             os.system( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -206,9 +215,9 @@ def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S tesc -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvh -D ./tmp/" + filename_output + ".unroll"  )	
+            os.system( glslang_exe + " -S tesc -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvh -D ./tmp/" + filename_output + ".unroll"  )    
             os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvh --output ./tmp/" + filename_output + ".hull.glsl" )
-            os.system( glslang_exe + " -S tesc -G -o " + compiled_shader_folder + filename_output + ".gl.spvh ./tmp/" + filename_output + ".hull.glsl"  )	
+            os.system( glslang_exe + " -S tesc -G -o " + compiled_shader_folder + filename_output + ".gl.spvh ./tmp/" + filename_output + ".hull.glsl"  )    
     
 def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPointDS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".dso" ):
@@ -216,9 +225,11 @@ def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPoint
             flag_list = build_flag_list( flags )
             
         if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /O3 /T ds_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".dso"
+            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T ds_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".dso"
             if isProd:
-                cmdLine = cmdLine + " /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"          
+                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+            else:
+                cmdLine = cmdLine + " /O1"
             os.system( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -232,9 +243,9 @@ def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S tese -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvd -D ./tmp/" + filename_output + ".unroll"  )	
+            os.system( glslang_exe + " -S tese -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvd -D ./tmp/" + filename_output + ".unroll"  )    
             os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvd --output ./tmp/" + filename_output + ".domain.glsl" )
-            os.system( glslang_exe + " -S tese -G -o " + compiled_shader_folder + filename_output + ".gl.spvd ./tmp/" + filename_output + ".domain.glsl"  )	
+            os.system( glslang_exe + " -S tese -G -o " + compiled_shader_folder + filename_output + ".gl.spvd ./tmp/" + filename_output + ".domain.glsl"  )    
             
 # Parse script args
 parser = argparse.ArgumentParser(description='Flan Game Engine. Compile shaders permutations for Graphics backends.')
@@ -250,7 +261,7 @@ parser.add_argument('--prod', dest='isProd', action='store_const',
 parser.add_argument('--force-recompile', dest='forceRecompile', action='store_const',
                    const=True, default=False,
                    help='force shaders recompilation (skip timestamp cache lookup)')
-				   
+                   
 args = parser.parse_args()
 
 isProd = args.isProd
