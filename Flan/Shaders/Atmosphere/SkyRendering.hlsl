@@ -71,7 +71,7 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
     float3 radiance = GetSkyRadiance( float3( WorldPosition.xz * 0.10, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
 
     autoExposure_t currentExposure = ReadAutoExposureParameters();
-    float4 color = float4( 1.0 - exp( -radiance / 1.0f * ( currentExposure.EngineLuminanceFactor * 6.0f ) ), 1.0f );
+    float4 color = float4( 1.0 - exp( -radiance / 1.0f * ( currentExposure.EngineLuminanceFactor * 16.0f ) ), 1.0f );
     //float4 color = float4( 1.0 - exp( -radiance / 1.0f * ( 1.50f * 6.0f ) ), 1.0f );
 
 #if PA_RENDER_SUN_DISC
