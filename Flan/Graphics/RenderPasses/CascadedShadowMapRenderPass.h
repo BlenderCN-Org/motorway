@@ -98,7 +98,7 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 
             // Get Constant Buffer 
             auto matricesConstantBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
-            matricesConstantBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_VERTEX );
+            matricesConstantBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
 
             MatricesBuffer matrices;
             matrices.ModelMatrix = glm::mat4( 1 );

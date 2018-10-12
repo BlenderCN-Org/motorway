@@ -92,6 +92,12 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
 
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( passBuffer );
 
+            BufferDesc cameraBuffer = {};
+            cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            cameraBuffer.Size = sizeof( Camera::Data );
+
+            passData.buffers[3] = renderPipelineBuilder->allocateBuffer( cameraBuffer );
+
             // Texture (geometry stuff) Sampler
             SamplerDesc matSamplerDesc;
             matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
@@ -119,6 +125,11 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             matricesConstantBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES );
 
             auto& cameraData = renderPipelineResources->getActiveCamera();
+
+            // Bind Camera Buffer
+            auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[3] );
+            cameraCbuffer->updateAsynchronous( cmdList, &cameraData, sizeof( Camera::Data ) );
+            cameraCbuffer->bind( cmdList, 0 );
 
             MatricesBuffer matrices;
             matrices.ModelMatrix = glm::mat4( 1 );

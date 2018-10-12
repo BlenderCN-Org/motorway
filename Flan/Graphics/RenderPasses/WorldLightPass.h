@@ -226,7 +226,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
             // Get Constant Buffer 
             auto modelMatrixBuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
-            modelMatrixBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_VERTEX );
+            modelMatrixBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_ALL );
 
             // Bind Camera Buffer
             auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[3] );

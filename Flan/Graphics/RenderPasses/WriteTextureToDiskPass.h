@@ -44,6 +44,7 @@ static void AddWriteBufferedTextureToDiskPass( RenderPipeline* renderPipeline, R
             // Get Input Target
             auto texture = renderPipelineResources->getRenderTarget( passData.input[0] );
 
+#if FLAN_D3D11
             // Save the texture using DirectXTex
             // TODO Make this API independant
             DirectX::ScratchImage textureToSave;
@@ -53,6 +54,7 @@ static void AddWriteBufferedTextureToDiskPass( RenderPipeline* renderPipeline, R
                                     textureToSave.GetMetadata(),
                                     static_cast<DWORD>( 0 ),
                                     ( FLAN_STRING( "./data/Textures/" ) + ( ( filename.empty() ) ? FLAN_STRING( "PipelineResource_" ) + std::to_wstring( passData.input[0] ) : filename ) + FLAN_STRING( ".dds" ) ).c_str() );
+#endif
         }
     );
 }
