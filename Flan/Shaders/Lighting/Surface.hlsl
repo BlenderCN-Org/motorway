@@ -24,28 +24,6 @@ cbuffer MatricesBuffer : register( b3 )
     float4x4	ModelMatrix;
 };
 
-#if PH_HEIGHTFIELD
-Texture2D g_TexHeightmap    : register( t0 );
-Texture2D g_TexHeightmapNormal : register( t1 );
-
-#include <MaterialsShared.h>
-cbuffer MaterialEdition : register( b8 )
-{
-    // Flags
-    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
-    uint                    g_EnableAlphaTest;
-    uint                    g_EnableAlphaBlend;
-    uint                    g_IsDoubleFace;
-    
-    uint                    g_CastShadow;
-    uint                    g_ReceiveShadow;
-    uint                    g_EnableAlphaToCoverage;
-    uint                    g_LayerCount;
-    
-    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
-};
-#endif
-
 struct VertexBufferData
 {
 	float3 Position         : POSITION0;
@@ -54,32 +32,23 @@ struct VertexBufferData
 };
 
 #if PH_HEIGHTFIELD
-struct VertexStageData
+struct VertexStageHeightfieldData
 {
-    float4 positionWS   : POSITION0;
-    float3 normal       : NORMAL0;
-    float2 uvCoord      : TEXCOORD0;
-    float3 positionMS   : POSITION1;
+    float3 positionMS   : POSITION;
+    float2 uvCoord      : TEXCOORD;
 };
 
-VertexStageData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
+VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
 {
-    const float2 sampleCoordinates = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
-    
-    // NOTE World space position should be computed after the tessellation stage (pre pixel shader in the gfx pipeline)
-    VertexStageData output = (VertexStageData)0;
+    VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
 	output.positionMS = VertexBuffer.Position;
-	
-    float height = g_TexHeightmap[sampleCoordinates].r;
-
-    output.positionWS = mul( ModelMatrix, float4( output.positionMS.x, height * g_Layers[0].HeightmapWorldHeight, output.positionMS.z, 1.0f ) );
-	output.normal = normalize( mul( ModelMatrix, float4( g_TexHeightmapNormal[sampleCoordinates].xyz, 0.0f ) ) ).xyz;
     output.uvCoord = VertexBuffer.TexCoordinates;
     
     return output;
 }
-#else
+#endif
+
 struct VertexStageData
 {
     float4 position		: SV_POSITION;
@@ -114,4 +83,3 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
     
 	return output;
 }
-#endif
