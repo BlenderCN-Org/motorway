@@ -25,6 +25,7 @@ struct Frustum
 {
     glm::vec4 planes[6];
 };
+static_assert( std::is_pod<Frustum>(), "Frustum must be POD (since it is used on the GPU side; see Camera constant buffer declaration" );
 
 namespace flan
 {
