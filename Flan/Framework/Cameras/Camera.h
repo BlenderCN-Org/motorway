@@ -67,13 +67,16 @@ public:
         glm::mat4	previousViewMatrix;
         glm::vec2   jitteringOffset;
         glm::vec2   previousJitteringOffset;
+
+        Frustum     frustum;
     };
+    FLAN_IS_MEMORY_ALIGNED( 16, Data );
 
 public:
     inline const Data&                          GetData() const { return data; }
     inline Data&                                GetDataRW() { return data; }
     inline const std::vector<fnStringHash_t>*   getRenderPassList() const { return &renderPasses; }
-    inline const Frustum*                       getFrustum() const { return &frustum; }
+    inline const Frustum*                       getFrustum() const { return &data.frustum; }
 
 public:
     Camera()
@@ -111,7 +114,6 @@ public:
 
 protected:
     Data                                data;
-    Frustum                             frustum;
     std::vector<fnStringHash_t>         renderPasses;
     std::map<fnStringHash_t, void*>     renderPassesArgs;
 };
