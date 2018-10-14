@@ -19,4 +19,5 @@ cbuffer ActiveCameraBuffer : register( b0 )
     float4x4    g_PreviousViewMatrix;
     float2      g_CameraJitteringOffset;
     float2      g_CameraPreviousJitteringOffset;
+    float4      g_CameraFrustumPlanes[6];
 };
