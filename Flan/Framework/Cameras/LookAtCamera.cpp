@@ -107,7 +107,7 @@ void LookAtCamera::Update( const float frameTime )
     data.inverseViewProjectionMatrix = glm::inverse( data.viewProjectionMatrix );
 
     // Update frustum with the latest view projection matrix
-    flan::core::UpdateFrustumPlanes( data.depthViewProjectionMatrix, frustum );
+    flan::core::UpdateFrustumPlanes( data.depthViewProjectionMatrix, data.frustum );
 
     // Update camera frame number
     data.cameraFrameNumber++;
@@ -166,7 +166,7 @@ void LookAtCamera::setProjectionMatrix( const float fieldOfView, const float scr
 
     data.projectionMatrix = flan::core::MakeInfReversedZProj( glm::radians( fieldOfView ), aspectRatio, zNear );
     data.inverseProjectionMatrix = glm::transpose( glm::inverse( data.projectionMatrix ) );
-    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 1.0f, 125.0f );
+    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 0.1f, 512.0f );
 }
 
 void LookAtCamera::onMouseUpdate( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept

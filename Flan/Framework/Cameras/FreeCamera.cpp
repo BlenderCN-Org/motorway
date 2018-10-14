@@ -144,7 +144,7 @@ void FreeCamera::Update( const float frameTime )
     data.inverseViewProjectionMatrix = glm::inverse( data.viewProjectionMatrix );
 
     // Update frustum with the latest view projection matrix
-    flan::core::UpdateFrustumPlanes( data.depthViewProjectionMatrix, frustum );
+    flan::core::UpdateFrustumPlanes( data.depthViewProjectionMatrix, data.frustum );
 
     // Update camera frame number
     data.cameraFrameNumber++;
@@ -209,7 +209,7 @@ void FreeCamera::SetProjectionMatrix( const float fieldOfView, const float scree
 
     data.projectionMatrix = flan::core::MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = glm::transpose( glm::inverse( data.projectionMatrix ) );
-    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 1.0f, 125.0f );
+    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 0.1f, 512.0f );
 }
 
 void FreeCamera::OnMouseUpdate( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept
