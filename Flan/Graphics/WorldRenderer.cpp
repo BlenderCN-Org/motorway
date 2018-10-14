@@ -441,19 +441,10 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
-    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
+    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 96.0f, 96.0f );
 
     terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
-    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
-
-    terrainStreaming.terrainMaterialStreaming[63].terrainSampledSplatIndexes = 2;
-    terrainStreaming.terrainMaterialStreaming[63].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
-
-    terrainStreaming.terrainMaterialStreaming[62].terrainSampledSplatIndexes = 2;
-    terrainStreaming.terrainMaterialStreaming[62].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
-
-    terrainStreaming.terrainMaterialStreaming[65].terrainSampledSplatIndexes = 2;
-    terrainStreaming.terrainMaterialStreaming[65].terrainSamplingParameters = glm::vec4( 0, 0, 128.0f, 128.0f );
+    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 96.0f, 96.0f );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const

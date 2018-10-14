@@ -446,6 +446,7 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 // Shading Model Inputs
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
+                FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 2, HeightmapDisplacement )
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, TerrainSplatMap )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
@@ -549,6 +550,7 @@ void Material::serialize( FileSystemObject* file ) const
 
         FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
         FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
+        FLAN_WRITE_INPUT_VERTEX( HeightmapDisplacement, 1 );
         
         FLAN_WRITE_INPUT_PIXEL( TerrainSplatMap, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
@@ -763,7 +765,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
             if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
 #endif
                 fnString_t filenameBuffer;
-                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
+                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
                     fnString_t assetPath;
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
@@ -774,7 +776,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         } else {
             if ( ImGui::Button( ( "+##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), ImVec2( 64, 64 ) ) ) {
                 fnString_t filenameBuffer;
-                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, L"All (*.dds, *.jpg, *.png, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0", L"/.", L"Select a Texture..." ) ) {
+                if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
                     fnString_t assetPath;
                     flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
 
@@ -894,6 +896,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
             addedLayer.Heightmap.InputType = MaterialEditionInput::NONE;
             addedLayer.HeightmapNormal.InputType = MaterialEditionInput::NONE;
+            addedLayer.HeightmapDisplacement.InputType = MaterialEditionInput::NONE;
+            
             addedLayer.HeightmapWorldHeight = 0.0f;
 
             addedLayer.BaseColor.InputType = MaterialEditionInput::COLOR_3D;
@@ -978,6 +982,7 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
                     displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
                     displayInputConfiguration( graphicsAssetManager, "NormalMap", layer.HeightmapNormal, 1, vertexTextureSet );
+                    displayInputConfiguration( graphicsAssetManager, "DisplacementMap", layer.HeightmapDisplacement, 2, vertexTextureSet );
                     displayInputConfiguration( graphicsAssetManager, "SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
 
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );

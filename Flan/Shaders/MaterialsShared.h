@@ -103,6 +103,7 @@ struct MaterialLayer
     MaterialEditionInput   BlendMask;
     MaterialEditionInput   Heightmap;
     MaterialEditionInput   HeightmapNormal;
+    MaterialEditionInput   HeightmapDisplacement;
     MaterialEditionInput   TerrainSplatMap;
 
     float                  Refraction;
