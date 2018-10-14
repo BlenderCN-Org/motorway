@@ -23,7 +23,6 @@ Stuff todo for the project
         > Terrain Material Blending (depth based)
         > Biome Presets / Define
         > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
-        > GeoClipping / or something even more basic for LODing
         > Terrain Tile streaming 
         > Terrain Hiearchal Structure (quadtree?)
         > Heightmap collision (built in Bullet's, just need to read the doc)
@@ -76,6 +75,7 @@ DONE
           the previous cmdlist to be finished)
     <Terrain Rendering/Physics>
         > Texture Splatting (3 levels should be enough)
+        > GeoClipping / or something even more basic for LODing
     > SSAA Implementation
     
 [Client]
