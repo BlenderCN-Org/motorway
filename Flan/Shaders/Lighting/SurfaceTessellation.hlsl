@@ -2,8 +2,7 @@ struct VertexStageHeightfieldData
 {
     float4 positionMS   : POSITION; // NOTE Declared as 4D vector to allow compatibility with depthwrite shader
     float2 uvCoord      : TEXCOORD;
-    float  tesselationFactor : TESS;
-    float2 vertexBounds : POSITION1;
+    float4 tileInfos    : POSITION1; // xy tile height bounds z skirt id w tileInfos.w
 };
 
 struct HullStageData
@@ -17,6 +16,7 @@ struct HS_CONSTANT_DATA_OUTPUT
 {
     float EdgeTessFactor[4]         : SV_TessFactor; // e.g. would be [4] for a quad domain
     float InsideTessFactor[2]       : SV_InsideTessFactor; // e.g. would be Inside[2] for a quad domain
+    uint Skirt : SKIRT;
 };
  
 #include <CameraData.hlsli>
@@ -84,12 +84,14 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 {
     HS_CONSTANT_DATA_OUTPUT output;
 
+	output.Skirt = (uint)ip[0].tileInfos.z;
+    
 	// build axis-aligned bounding box. 
 	// ip[0] is lower left corner
 	// ip[3] is upper right corner
 	// get z value from boundsZ variable. Correct value will be in ip[0].
-	float3 vMin = float3(ip[0].positionMS.x, ip[0].vertexBounds.x, ip[0].positionMS.z);
-	float3 vMax = float3(ip[3].positionMS.x, ip[0].vertexBounds.y, ip[3].positionMS.z);
+	float3 vMin = float3(ip[0].positionMS.x, ip[0].tileInfos.x, ip[0].positionMS.z);
+	float3 vMax = float3(ip[3].positionMS.x, ip[0].tileInfos.y, ip[3].positionMS.z);
 	
 	// center/extents representation.
 	float3 boxCenter = 0.5f * (vMin + vMax);
@@ -106,11 +108,31 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 		return output;
 	}
     
-    output.EdgeTessFactor[0] = 0.5f * ( ip[0].tesselationFactor + ip[2].tesselationFactor );
-    output.EdgeTessFactor[1] = 0.5f * ( ip[0].tesselationFactor + ip[1].tesselationFactor );
-    output.EdgeTessFactor[2] = 0.5f * ( ip[1].tesselationFactor + ip[3].tesselationFactor );
-    output.EdgeTessFactor[3] = 0.5f * ( ip[2].tesselationFactor + ip[3].tesselationFactor );
-    output.InsideTessFactor[0] = 0.25f * ( ip[0].tesselationFactor + ip[1].tesselationFactor + ip[2].tesselationFactor + ip[3].tesselationFactor );
+    if (output.Skirt == 0) {
+        output.EdgeTessFactor[0] = 1.0f;
+        output.EdgeTessFactor[1] = 1.0f;
+        output.EdgeTessFactor[2] = 1.0f;
+        output.EdgeTessFactor[3] = 1.0f;
+        output.InsideTessFactor[0] = 1.0f;
+        output.InsideTessFactor[1] = 1.0f;
+        
+        return output;
+    } else if (output.Skirt < 5) {
+        output.EdgeTessFactor[0] = 1.0f;
+        output.EdgeTessFactor[1] = 1.0f;
+        output.EdgeTessFactor[2] = 1.0f;
+        output.EdgeTessFactor[3] = 0.5f * (ip[2].tileInfos.w + ip[3].tileInfos.w);
+        output.InsideTessFactor[0] = 1.0f;
+        output.InsideTessFactor[1] = 1.0f;
+
+        return output;
+    }
+    
+    output.EdgeTessFactor[0] = 0.5f * ( ip[0].tileInfos.w + ip[2].tileInfos.w );
+    output.EdgeTessFactor[1] = 0.5f * ( ip[0].tileInfos.w + ip[1].tileInfos.w );
+    output.EdgeTessFactor[2] = 0.5f * ( ip[1].tileInfos.w + ip[3].tileInfos.w );
+    output.EdgeTessFactor[3] = 0.5f * ( ip[2].tileInfos.w + ip[3].tileInfos.w );
+    output.InsideTessFactor[0] = 0.25f * ( ip[0].tileInfos.w + ip[1].tileInfos.w + ip[2].tileInfos.w + ip[3].tileInfos.w );
     output.InsideTessFactor[1] = output.InsideTessFactor[0];
 
     return output;
@@ -183,10 +205,17 @@ DomainStageData EntryPointDS(
             lerp( patch[2].positionMS, patch[3].positionMS, domain.x ), 
             domain.y );
     
-    const float2 sampleCoordinates = float2( positionMS.x, positionMS.z );
-    uint height = g_TexHeightmap[sampleCoordinates].r;
-    
-    positionMS.y = ( height / 65535.0f ) * 32.0f; // * g_Layers[0].HeightmapWorldHeight;
+    if (input.Skirt < 5) {
+        if (input.Skirt > 0 && domain.y == 1) {
+            const float2 sampleCoordinates = float2( positionMS.x, positionMS.z );
+            uint height = g_TexHeightmap[sampleCoordinates].r;       
+            positionMS.y = ( height / 65535.0f ) * 32.0f; // * g_Layers[0].HeightmapWorldHeight;
+        }
+	} else {
+        const float2 sampleCoordinates = float2( positionMS.x, positionMS.z );
+        uint height = g_TexHeightmap[sampleCoordinates].r;       
+        positionMS.y = ( height / 65535.0f ) * 32.0f; // * g_Layers[0].HeightmapWorldHeight;
+	}
     
 	float4 positionWS = mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );
    

@@ -1,7 +1,7 @@
 struct VertexStageData
 {
     float3 Position     : POSITION;
-    float3 normal       : NORMAL;
+    float3 Normal       : NORMAL;
     float2 uvCoord      : TEXCOORD0;
 };
 
@@ -19,8 +19,7 @@ struct PixelDepthShaderData
     float2 uvCoord      : TEXCOORD0;
     
 #if PH_HEIGHTFIELD
-    float  tesselationFactor : TESS;
-    float2 vertexBounds : POSITION1;
+    float4 tileInfos    : POSITION1; // xy tile height bounds z skirt id w tesselationFactor
 #endif
 };
 
@@ -37,8 +36,7 @@ PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
 #if PH_HEIGHTFIELD
     // Send position in model space (projection into depth space should be done at Domain stage)
     output.position = float4( VertexBuffer.Position, 1.0f ); 
-    output.tesselationFactor = CalcTessFactor( VertexBuffer.Position );
-    output.vertexBounds = VertexBuffer.normal.xy;
+    output.tileInfos = float4( VertexBuffer.Normal, CalcTessFactor( VertexBuffer.Position ) );
 #else
     float4 positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
     

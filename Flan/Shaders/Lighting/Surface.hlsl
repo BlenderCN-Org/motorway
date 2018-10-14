@@ -38,8 +38,7 @@ struct VertexStageHeightfieldData
 {
     float4 positionMS   : POSITION;
     float2 uvCoord      : TEXCOORD;
-    float  tesselationFactor : TESS;
-    float2 vertexBounds : POSITION1;
+    float4 tileInfos    : POSITION1; // xy tile height bounds z skirt id w tesselationFactor
 };
 
 VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
@@ -48,8 +47,7 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
 
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
     output.uvCoord = VertexBuffer.TexCoordinates;
-    output.tesselationFactor = CalcTessFactor( VertexBuffer.Position );
-    output.vertexBounds = VertexBuffer.Normal.xy;
+    output.tileInfos = float4( VertexBuffer.Normal, CalcTessFactor( VertexBuffer.Position ) );
     
     return output;
 }

@@ -42,7 +42,7 @@ Terrain::~Terrain()
 
 constexpr float width = 512;
 constexpr float height = 512;
-constexpr float tessFactor = 16.0f;
+constexpr float tessFactor = 32.0f;
 
 constexpr float heightScale = width / 16.0f;
 
@@ -77,11 +77,11 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
 {
     struct VertexLayout {
         glm::vec3 positionWorldSpace;
-        glm::vec3 normalWorldSpace;
+        glm::vec3 patchBoundsAndSkirtIndex;
         glm::vec2 texCoordinates;
     };
 
-    std::vector<VertexLayout> vertices( static_cast<std::size_t>( scalePatchX * scalePatchY ) );
+    std::vector<VertexLayout> vertices( static_cast<std::size_t>( scalePatchX * scalePatchY + scalePatchX * 4 ) );
     for ( int z = 0; z < scalePatchY; z++ ) {
         for ( int x = 0; x < scalePatchX; x++ ) {
             vertices[static_cast<std::size_t>( z * scalePatchX + x )] = {
@@ -92,7 +92,54 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
         }
     }
 
-    const int numTiles = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) );
+    const int lod0VertexCount = ( scalePatchX * scalePatchY );
+    glm::vec2 zBounds = CalcYBounds( heightmapTexels, vertices[0].positionWorldSpace, vertices[lod0VertexCount - 1].positionWorldSpace );
+    
+    const auto heightBase = ( zBounds.x - 10.0f );
+
+    // Generate vertices for skirt levels
+    int vertexIdx = lod0VertexCount;
+    for ( int x = 0; x < scalePatchX; ++x ) {
+        vertices[vertexIdx] = {
+            glm::vec3( static_cast<float>( x * tessFactor ), heightBase, 0.0f ),
+            glm::vec3( 0.0f, 0.0f, 1.0f ),
+            glm::vec2( static_cast<float>( x ) / scalePatchX, 0.0f )
+        };
+
+        vertexIdx++;
+    }
+
+    for ( int x = 0; x < scalePatchX; ++x ) {
+        vertices[vertexIdx] = {
+            glm::vec3( static_cast<float>( x * tessFactor ), heightBase, static_cast<float>( height - tessFactor ) ),
+            glm::vec3( 0.0f, 0.0f, 2.0f ),
+            glm::vec2( static_cast<float>( x ) / scalePatchX, 0.0f )
+        };
+
+        vertexIdx++;
+    }
+
+    for ( int y = 0; y < scalePatchY; ++y ) {
+        vertices[vertexIdx] = {
+            glm::vec3( 0.0f, heightBase, static_cast<float>( y * tessFactor ) ),
+            glm::vec3( 0.0f, 0.0f, 3.0f ),
+            glm::vec2( 0.0f, static_cast<float>( y ) / scalePatchY )
+        };
+
+        vertexIdx++;
+    }
+
+    for ( int y = 0; y < scalePatchY; ++y ) {
+        vertices[vertexIdx] = {
+            glm::vec3( static_cast<float>( width - tessFactor ), heightBase, static_cast<float>( y * tessFactor ) ),
+            glm::vec3( 0.0f, 0.0f, 4.0f ),
+            glm::vec2( 0.0f, static_cast<float>( y ) / scalePatchY )
+        };
+
+        vertexIdx++;
+    }
+
+    const int numTiles = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) ) * 4 + 2 * 4 * ( scalePatchX - 1 ) + 2 * 4 * ( scalePatchY - 1 ) + 4;
     const int numIndices = numTiles * 4;
 
     std::vector<uint32_t> indices( numIndices );
@@ -112,11 +159,69 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
             auto& vertex3 = vertices[indices[i + 3]];
           
             glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertex0.positionWorldSpace, vertex3.positionWorldSpace );
-            vertex0.normalWorldSpace = glm::vec3( boundsZ, 0.0f );
+            vertex0.patchBoundsAndSkirtIndex = glm::vec3( boundsZ, 5.0f );
 
             i += 4;
         }
     }
+
+    vertexIdx = lod0VertexCount;
+    for ( int x = 0; x < scalePatchX - 1; ++x ) {
+        indices[i++] = vertexIdx;		// control point 0
+        indices[i++] = vertexIdx + 1;	// control point 1
+        indices[i++] = x;				// control point 2
+        indices[i++] = x + 1;			// control point 3
+
+        glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[x].positionWorldSpace, vertices[x + 1].positionWorldSpace );
+        vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
+        vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
+    }
+
+    ++vertexIdx;
+    for ( int x = 0; x < scalePatchX - 1; ++x ) {
+        indices[i++] = vertexIdx + 1;
+        indices[i++] = vertexIdx;
+
+        int offset = scalePatchX * ( scalePatchY - 1 );
+        indices[i++] = x + offset + 1;
+        indices[i++] = x + offset;
+
+        glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[x + offset].positionWorldSpace, vertices[x + offset + 1].positionWorldSpace );
+        vertices[++vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
+        vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
+    }
+
+    ++vertexIdx;
+    for ( int y = 0; y < scalePatchY - 1; ++y ) {
+        indices[i++] = vertexIdx + 1;
+        indices[i++] = vertexIdx;
+        indices[i++] = ( y + 1 ) * scalePatchX;
+        indices[i++] = y * scalePatchX;
+
+        glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[y * scalePatchX].positionWorldSpace, vertices[( y + 1 ) * scalePatchX].positionWorldSpace );
+        vertices[++vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
+        vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
+    }
+
+    ++vertexIdx;
+    for ( int y = 0; y < scalePatchY - 1; ++y ) {
+        indices[i++] = vertexIdx;
+        indices[i++] = vertexIdx + 1;
+        indices[i++] = y * scalePatchX + scalePatchX - 1;
+        indices[i++] = ( y + 1 ) * scalePatchX + scalePatchX - 1;
+
+        glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[y * scalePatchX + scalePatchX - 1].positionWorldSpace, vertices[( y + 1 ) * scalePatchX + scalePatchX - 1].positionWorldSpace );
+        vertices[++vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
+        vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
+    }
+
+
+    indices[i++] = lod0VertexCount + scalePatchX - 1;
+    indices[i++] = lod0VertexCount;
+    indices[i++] = lod0VertexCount + scalePatchX + scalePatchX - 1;
+    indices[i++] = lod0VertexCount + scalePatchX;
+
+    vertices[lod0VertexCount + scalePatchX - 1].patchBoundsAndSkirtIndex = glm::vec3( heightBase, heightBase, 0.0f );
 
     // Create GPU Buffers
     const auto vertexCount = vertices.size() * 8;
