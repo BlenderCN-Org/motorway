@@ -20,16 +20,16 @@ Stuff todo for the project
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
-        > Terrain Material Blending (depth based)
+        > Terrain Material Blending (ghost recon stuff; not sure if mega texturing is worth implementing atm)
         > Biome Presets / Define
         > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
-        > Terrain Tile streaming 
-        > Terrain Hiearchal Structure (quadtree?)
+        > Terrain Tile streaming w/ Hiearchal Structure (use a quadtree; check which terrain instance to stream from disk but cull on GPU at domain stage)
         > Heightmap collision (built in Bullet's, just need to read the doc)
-    > Grass rendering (see Boulanger paper)
+        > Grass rendering (see Boulanger paper)
+        > Terrain Height snapping (for assets/roads/etc.)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
-    > Decals Support
+    > Decals Support (might be useless if megatexture?)
     > Jobify CPU work
         | Resources:
         | http://advances.realtimerendering.com/destiny/gdc_2015/Tatarchuk_GDC_2015__Destiny_Renderer_web.pdf
