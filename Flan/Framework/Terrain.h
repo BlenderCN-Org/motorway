@@ -37,16 +37,23 @@ public:
                                 Terrain& operator = ( Terrain& Terrain ) = default;
                                 ~Terrain();
 
-    void                        create( RenderDevice* renderDevice, Material* terrainMaterial );
+    void                        create( RenderDevice* renderDevice, Material* terrainMaterial, uint16_t* heightmapTexels );
 
     const VertexArrayObject*    getVertexArrayObject() const;
     Material*                   getMaterial();
     const uint32_t              getIndiceCount() const;
 
 private:
+    struct Tile
+    {
+        BoundingSphere  boundingSphere;
+    };
+
+private:
     fnString_t                          name;
     Material*                           material;
 
+    std::vector<Tile>                   terrainTiles;
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
     std::unique_ptr<VertexArrayObject>  vertexArrayObject;

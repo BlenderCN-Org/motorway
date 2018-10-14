@@ -129,6 +129,49 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         }
     } break;
 
+    case FLAN_STRING_HASH( "png16" ):
+    case FLAN_STRING_HASH( "hmap" ): {
+        stbi_io_callbacks callbacks;
+        callbacks.read = stbi_readcallback;
+        callbacks.skip = stbi_skipcallback;
+        callbacks.eof = stbi_eofcallback;
+
+        int w;
+        int h;
+        int comp;
+        auto* image = stbi_load_16_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
+        
+        if ( !alreadyExists ) {
+            textureMap[assetHashcode] = std::make_unique<Texture>();
+        }
+
+        TextureDescription desc;
+        desc.width = w;
+        desc.height = h;
+        desc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+        desc.arraySize = 1;
+        desc.mipCount = 1;
+        desc.samplerCount = 1;
+        desc.depth = 0;
+
+        switch ( comp ) {
+        case 1:
+            desc.format = eImageFormat::IMAGE_FORMAT_R16_UINT;
+            break;
+        case 2:
+            desc.format = eImageFormat::IMAGE_FORMAT_R16G16_UINT;
+            break;  
+        case 3:
+        case 4:
+            desc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_UNORM;
+            break;
+        }
+
+        textureMap[assetHashcode]->createAsTexture2D( renderDevice, desc, image, w * comp );
+
+        stbi_image_free( image );
+    } break;
+    
     case FLAN_STRING_HASH( "jpg" ):
     case FLAN_STRING_HASH( "jpeg" ):
     case FLAN_STRING_HASH( "png" ):
@@ -145,8 +188,8 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         int w;
         int h;
         int comp;
-        unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, 0 );
-
+        unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
+        
         if ( !alreadyExists ) {
             textureMap[assetHashcode] = std::make_unique<Texture>();
         }
@@ -366,4 +409,37 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
     }
 
     return modelInstance;
+}
+
+void* GraphicsAssetManager::getImageTexels( const fnChar_t* assetName, std::size_t& bytePerTexel )
+{
+    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
+    if ( file == nullptr ) {
+        FLAN_CERR << "'" << assetName << "' does not exist!" << std::endl;
+        return nullptr;
+    }
+
+    auto texFileFormat = GetFileExtensionFromPath( assetName );
+    StringToLower( texFileFormat );
+    auto texFileFormatHashcode = CRC32( texFileFormat );
+
+    switch ( texFileFormatHashcode ) {
+    case FLAN_STRING_HASH( "png16" ):
+    case FLAN_STRING_HASH( "hmap" ):
+    {
+        stbi_io_callbacks callbacks;
+        callbacks.read = stbi_readcallback;
+        callbacks.skip = stbi_skipcallback;
+        callbacks.eof = stbi_eofcallback;
+
+        int w;
+        int h;
+        int comp;
+
+        stbi_us* image = stbi_load_16_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
+        bytePerTexel = sizeof( stbi_us );
+
+        return image;
+    } break;
+    }
 }

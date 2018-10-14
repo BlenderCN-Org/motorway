@@ -48,6 +48,9 @@ public:
     Mesh*           getMesh( const fnChar_t* assetName, const bool forceReload = false );
     Model*          getModel( const fnChar_t* assetName, const bool forceReload = false );
 
+    // WARNING (for now) you are responsible of releasing the memory (which is a bad thing)
+    void*           getImageTexels( const fnChar_t* assetName, std::size_t& bytePerTexel );
+    
 private:
     RenderDevice*       renderDevice;
     ShaderStageManager* shaderStageManager;

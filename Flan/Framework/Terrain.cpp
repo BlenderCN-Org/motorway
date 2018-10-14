@@ -40,19 +40,42 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
+constexpr float width = 512;
+constexpr float height = 512;
+constexpr float tessFactor = 16.0f;
 
-void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
+constexpr float heightScale = width / 16.0f;
+
+constexpr float scalePatchX = width / tessFactor;
+constexpr float scalePatchY = height / tessFactor;
+
+glm::vec2 CalcYBounds( uint16_t* texels, const glm::vec3& bottomLeft, const glm::vec3& topRight )
 {
-    constexpr float width = 1024.0f;
-    constexpr float height = 1024.0f;
-    constexpr float tessFactor = 4.0f;
+    float max = -std::numeric_limits<float>::max();
+    float min = std::numeric_limits<float>::max();
 
-    constexpr float scalePatchX = width / tessFactor;
-    constexpr float scalePatchY = height / tessFactor;
+    int bottomLeftX = ( bottomLeft.x == 0 ) ? ( int )bottomLeft.x : ( ( int )bottomLeft.x - 1 );
+    int bottomLeftY = ( bottomLeft.z == 0 ) ? ( int )bottomLeft.z : ( ( int )bottomLeft.z - 1 );
+    int topRightX = ( topRight.x >= width ) ? ( int )topRight.x : ( ( int )topRight.x + 1 );
+    int topRightY = ( topRight.z >= width ) ? ( int )topRight.z : ( ( int )topRight.z + 1 );
 
-    // TODO Pool Grid and instantiate it per heightmap drawcall?
-    struct VertexLayout
-    {
+    for ( int y = bottomLeftY; y <= topRightY; y++ ) {
+        for ( int x = bottomLeftX; x <= topRightX; x++ ) {
+            uint16_t texelUi = texels[static_cast< int >( y * width + x )];
+            float texel = texelUi / static_cast< float >( std::numeric_limits<uint16_t>::max() );
+            float z = texel * heightScale;
+
+            max = std::max( max, z );
+            min = std::min( min, z );
+        }
+    }
+
+    return glm::vec2( min, max );
+}
+
+void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uint16_t* heightmapTexels )
+{
+    struct VertexLayout {
         glm::vec3 positionWorldSpace;
         glm::vec3 normalWorldSpace;
         glm::vec2 texCoordinates;
@@ -63,23 +86,35 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial )
         for ( int x = 0; x < scalePatchX; x++ ) {
             vertices[static_cast<std::size_t>( z * scalePatchX + x )] = {
                 glm::vec3( static_cast<float>( x * tessFactor ), 0.0f, static_cast<float>( z * tessFactor ) ),
-                glm::vec3( 0.0f, 1.0f, 0.0f ),
+                glm::vec3( 0.0f, 0.0f, 0.0f ),
                 glm::vec2( static_cast<float>( x ) / scalePatchX, static_cast<float>( z ) / scalePatchY )
             };
         }
     }
 
-    int numIndices = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) * 4 );
+    const int numTiles = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) );
+    const int numIndices = numTiles * 4;
 
     std::vector<uint32_t> indices( numIndices );
+    terrainTiles.resize( numTiles );
 
+    int tileIndex = 0;
     int i = 0;
     for ( int y = 0; y < scalePatchY - 1; y++ ) {
         for ( int x = 0; x < scalePatchX - 1; x++ ) {
-            indices[i++] = x + y * scalePatchX;
-            indices[i++] = x + 1 + y * scalePatchX;
-            indices[i++] = x + ( y + 1 ) * scalePatchX;
-            indices[i++] = x + 1 + ( y + 1 ) * scalePatchX;
+            indices[i + 0] = x + y * scalePatchX;
+            indices[i + 1] = x + 1 + y * scalePatchX;
+            indices[i + 2] = x + ( y + 1 ) * scalePatchX;
+            indices[i + 3] = x + 1 + ( y + 1 ) * scalePatchX;
+
+            // Compute Tile Bounding Sphere
+            auto& vertex0 = vertices[indices[i + 0]];
+            auto& vertex3 = vertices[indices[i + 3]];
+          
+            glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertex0.positionWorldSpace, vertex3.positionWorldSpace );
+            vertex0.normalWorldSpace = glm::vec3( boundsZ, 0.0f );
+
+            i += 4;
         }
     }
 

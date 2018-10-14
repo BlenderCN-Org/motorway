@@ -295,7 +295,10 @@ static void DisplayMenuBar()
 
             if ( ImGui::MenuItem( "Terrain" ) ) {
                 auto terrain = new Terrain();
-                terrain->create( g_RenderDevice.get(), g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ) );
+                std::size_t dontcare;
+                terrain->create( g_RenderDevice.get(), 
+                    g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
+                    (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ) );
 
                 auto sceneNode = scene->createTerrain( terrain );
                 *PickedNode = sceneNode;
