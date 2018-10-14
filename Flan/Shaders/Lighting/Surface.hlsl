@@ -32,18 +32,24 @@ struct VertexBufferData
 };
 
 #if PH_HEIGHTFIELD
+#include <Tessellation.hlsli>
+
 struct VertexStageHeightfieldData
 {
     float4 positionMS   : POSITION;
     float2 uvCoord      : TEXCOORD;
+    float  tesselationFactor : TESS;
+    float2 vertexBounds : POSITION1;
 };
 
 VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
 {
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
-	output.positionMS = float4( VertexBuffer.Position, 1.0f );
+	output.positionMS = float4( VertexBuffer.Position, 0.0f );
     output.uvCoord = VertexBuffer.TexCoordinates;
+    output.tesselationFactor = CalcTessFactor( VertexBuffer.Position );
+    output.vertexBounds = VertexBuffer.Normal.xy;
     
     return output;
 }

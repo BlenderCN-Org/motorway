@@ -704,6 +704,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	BaseLayer.BaseColor = BilinearInterpolation( VertexStage.positionMS, southWest.BaseColor, southEast.BaseColor, northWest.BaseColor, BaseLayer.BaseColor );
 	BaseLayer.Roughness = BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
 	BaseLayer.Normal = BilinearInterpolation( VertexStage.positionMS, southWest.Normal, southEast.Normal, northWest.Normal, BaseLayer.Normal );
+    
 	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
@@ -958,6 +959,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
 
+#if 0
 #ifndef PA_PROBE_CAPTURE
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
@@ -975,6 +977,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	);
 
 	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
+#endif
 #endif
 
     // PA_ENABLE_ALPHA_BLEND
