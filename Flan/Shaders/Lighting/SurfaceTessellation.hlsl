@@ -1,3 +1,20 @@
+#include <MaterialsShared.h>
+cbuffer MaterialEdition : register( b8 )
+{
+    // Flags
+    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
+    uint                    g_EnableAlphaTest;
+    uint                    g_EnableAlphaBlend;
+    uint                    g_IsDoubleFace;
+    
+    uint                    g_CastShadow;
+    uint                    g_ReceiveShadow;
+    uint                    g_EnableAlphaToCoverage;
+    uint                    g_LayerCount;
+    
+    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
+};
+
 struct VertexStageHeightfieldData
 {
     float4 positionMS   : POSITION; // NOTE Declared as 4D vector to allow compatibility with depthwrite shader
@@ -90,8 +107,8 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 	// ip[0] is lower left corner
 	// ip[3] is upper right corner
 	// get z value from boundsZ variable. Correct value will be in ip[0].
-	float3 vMin = float3(ip[0].positionMS.x, ip[0].tileInfos.x, ip[0].positionMS.z);
-	float3 vMax = float3(ip[3].positionMS.x, ip[0].tileInfos.y, ip[3].positionMS.z);
+	float3 vMin = float3(ip[0].positionMS.x, ip[0].tileInfos.x * g_Layers[0].HeightmapWorldHeight, ip[0].positionMS.z);
+	float3 vMax = float3(ip[3].positionMS.x, ip[0].tileInfos.y * g_Layers[0].HeightmapWorldHeight, ip[3].positionMS.z);
 	
 	// center/extents representation.
 	float3 boxCenter = 0.5f * (vMin + vMax);
@@ -161,23 +178,6 @@ Texture2D<uint> g_TexHeightmap    : register( t0 );
 Texture2D g_TexHeightmapNormal : register( t1 );
 Texture2D<uint> g_TexHeightmapDisplacement : register( t2 );
 
-#include <MaterialsShared.h>
-cbuffer MaterialEdition : register( b8 )
-{
-    // Flags
-    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
-    uint                    g_EnableAlphaTest;
-    uint                    g_EnableAlphaBlend;
-    uint                    g_IsDoubleFace;
-    
-    uint                    g_CastShadow;
-    uint                    g_ReceiveShadow;
-    uint                    g_EnableAlphaToCoverage;
-    uint                    g_LayerCount;
-    
-    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
-};
-
 float3 estimateNormal(float2 texcoord) {
 	float2 leftTex = texcoord + float2(-1.0f / (float)512, 0.0f);
 	float2 rightTex = texcoord + float2(1.0f / (float)512, 0.0f);
@@ -209,12 +209,12 @@ DomainStageData EntryPointDS(
         if (input.Skirt > 0 && domain.y == 1) {
             const float2 sampleCoordinates = float2( positionMS.x, positionMS.z );
             uint height = g_TexHeightmap[sampleCoordinates].r;       
-            positionMS.y = ( height / 65535.0f ) * 32.0f; // * g_Layers[0].HeightmapWorldHeight;
+            positionMS.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
         }
 	} else {
         const float2 sampleCoordinates = float2( positionMS.x, positionMS.z );
         uint height = g_TexHeightmap[sampleCoordinates].r;       
-        positionMS.y = ( height / 65535.0f ) * 32.0f; // * g_Layers[0].HeightmapWorldHeight;
+        positionMS.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
 	}
     
 	float4 positionWS = mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );

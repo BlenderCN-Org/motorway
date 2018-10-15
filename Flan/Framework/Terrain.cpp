@@ -42,9 +42,7 @@ Terrain::~Terrain()
 
 constexpr float width = 512;
 constexpr float height = 512;
-constexpr float tessFactor = 32.0f;
-
-constexpr float heightScale = width / 16.0f;
+constexpr float tessFactor = 16.0f;
 
 constexpr float scalePatchX = width / tessFactor;
 constexpr float scalePatchY = height / tessFactor;
@@ -63,10 +61,9 @@ glm::vec2 CalcYBounds( uint16_t* texels, const glm::vec3& bottomLeft, const glm:
         for ( int x = bottomLeftX; x <= topRightX; x++ ) {
             uint16_t texelUi = texels[static_cast< int >( y * width + x )];
             float texel = texelUi / static_cast< float >( std::numeric_limits<uint16_t>::max() );
-            float z = texel * heightScale;
-
-            max = std::max( max, z );
-            min = std::min( min, z );
+           
+            max = std::max( max, texel );
+            min = std::min( min, texel );
         }
     }
 
@@ -173,7 +170,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
         indices[i++] = x + 1;			// control point 3
 
         glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[x].positionWorldSpace, vertices[x + 1].positionWorldSpace );
-        vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
+        vertices[++vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
         vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
     }
 
@@ -214,7 +211,6 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
         vertices[++vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
         vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
     }
-
 
     indices[i++] = lod0VertexCount + scalePatchX - 1;
     indices[i++] = lod0VertexCount;

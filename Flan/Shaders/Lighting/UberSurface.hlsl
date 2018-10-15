@@ -610,12 +610,15 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 	float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
 		
 	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
-		
-	float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-	float4 baseColorAndHeight = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-    
-	//TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
-	//TriplanarSample3D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
+	
+	float4 baseColorAndHeight, normalAndRoughness;
+	/*if ( cos( positionMS.y ) > 1.0f ) {		
+		normalAndRoughness.rgb = TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
+		baseColorAndHeight.rgb = TriplanarSample3D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
+	} else {*/
+		baseColorAndHeight = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
+		normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );    
+	//}
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColorAndHeight.rgb );
@@ -701,7 +704,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	MaterialReadLayer southEast = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, -1 ), VertexStage.uvCoord, N );
 	MaterialReadLayer southWest = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, -1 ), VertexStage.uvCoord, N );
    
-	BaseLayer.BaseColor = BilinearInterpolation( VertexStage.positionMS, southWest.BaseColor, southEast.BaseColor, northWest.BaseColor, BaseLayer.BaseColor );
+	   
+	BaseLayer.BaseColor = BilinearInterpolation( VertexStage.positionMS, 
+												 southWest.BaseColor * southWest.AlphaCutoff, 
+												 southEast.BaseColor * southEast.AlphaCutoff, 
+												 northWest.BaseColor * northWest.AlphaCutoff, 
+												 BaseLayer.BaseColor * BaseLayer.AlphaCutoff );
+												 
 	BaseLayer.Roughness = BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
 	BaseLayer.Normal = BilinearInterpolation( VertexStage.positionMS, southWest.Normal, southEast.Normal, northWest.Normal, BaseLayer.Normal );
     
@@ -959,7 +968,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
 
-#if 0
 #ifndef PA_PROBE_CAPTURE
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
@@ -977,7 +985,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	);
 
 	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
-#endif
 #endif
 
     // PA_ENABLE_ALPHA_BLEND
