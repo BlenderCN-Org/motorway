@@ -76,7 +76,7 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
 #if PA_RENDER_SUN_DISC
     [branch]
     if ( dot( viewDirection, g_SunDirection ) > g_SunSizeY ) {
-        color.rgb += ( transmittance * GetSolarRadiance() * 0.005f );
+        color.rgb += ( transmittance * GetSolarRadiance() * 0.00001f );
     }
 #endif
 
