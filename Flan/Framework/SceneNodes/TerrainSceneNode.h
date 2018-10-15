@@ -91,7 +91,13 @@ struct TerrainSceneNode : public SceneNode
 
     virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
     {
+        if ( DrawBoundingPrimitive ) {
+            const auto& boundingBox = instance.terrainAsset->getAxisAlignedBoundingBox();
+            auto center = boundingBox.minPoint + boundingBox.maxPoint;
+            auto extent = boundingBox.maxPoint - boundingBox.minPoint;
 
+            drawCommandBuilder->addWireframeAABB( center, extent );
+        }
     }
 #endif
 

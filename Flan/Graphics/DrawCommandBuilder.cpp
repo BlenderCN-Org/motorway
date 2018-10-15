@@ -82,6 +82,45 @@ float CullSphere( const Frustum* frustum, glm::vec3 vCenter, float fRadius )
     return glm::min( glm::min( dist01, dist23 ), dist45 ) + fRadius;
 }
 
+bool CullAABB( const Frustum* frustum, const AABB& boundingBox )
+{
+    for ( int i = 0; i < 6; i++ ) {
+        const auto& plane = frustum->planes[i];
+
+        glm::vec3 vmin, vmax;
+
+        if ( plane.x > 0 ) {
+            vmin.x = boundingBox.minPoint.x;
+            vmax.x =  boundingBox.maxPoint.x;
+        } else {
+            vmin.x =  boundingBox.maxPoint.x;
+            vmax.x = boundingBox.minPoint.x;
+        }
+        // Y axis 
+        if ( plane.y > 0 ) {
+            vmin.y = boundingBox.minPoint.y;
+            vmax.y =  boundingBox.maxPoint.y;
+        } else {
+            vmin.y =  boundingBox.maxPoint.y;
+            vmax.y = boundingBox.minPoint.y;
+        }
+        // Z axis 
+        if ( plane.z > 0 ) {
+            vmin.z = boundingBox.minPoint.z;
+            vmax.z =  boundingBox.maxPoint.z;
+        } else {
+            vmin.z =  boundingBox.maxPoint.z;
+            vmax.z = boundingBox.minPoint.z;
+        }
+
+        if ( glm::dot( glm::vec3( plane ), vmin ) + plane.w > 0 ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 glm::mat4x4 GetProbeCaptureViewMatrix( const glm::vec3& probePositionWorldSpace, const eProbeCaptureStep captureStep )
 {
     switch ( captureStep ) {
@@ -544,24 +583,29 @@ void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldV
         auto* terrain = terrainInstance->terrainAsset;
         auto* terrainMaterial = terrain->getMaterial();
 
-        auto distanceToCamera = 0.0f; // glm::distance( sphere.center, worldViewport.worldPosition );
+        const auto& aabb = terrain->getAxisAlignedBoundingBox();
+        if ( CullAABB( viewportFrustum, aabb ) ) {
+            auto center = aabb.minPoint + aabb.maxPoint;
 
-        DrawCommandKey drawCmdKey;
-        drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEPTH;
-        drawCmdKey.bitfield.viewportId = viewportIndex;
-        drawCmdKey.bitfield.viewportLayer = viewportLayer;
-        drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
-        drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
-        drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
+            auto distanceToCamera = glm::distance( center, worldViewport.worldPosition );
 
-        DrawCommandInfos drawCmdGeo;
-        drawCmdGeo.material = terrainMaterial;
-        drawCmdGeo.vao = terrain->getVertexArrayObject();
-        drawCmdGeo.indiceBufferOffset = 0;
-        drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
-        drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEPTH;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
+            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+            drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
 
-        worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = terrainMaterial;
+            drawCmdGeo.vao = terrain->getVertexArrayObject();
+            drawCmdGeo.indiceBufferOffset = 0;
+            drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
+            drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+        }
     }
 
     for ( int i = 0; i < meshInstancesCount; i++ ) {
