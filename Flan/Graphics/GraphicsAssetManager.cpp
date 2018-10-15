@@ -441,5 +441,7 @@ void* GraphicsAssetManager::getImageTexels( const fnChar_t* assetName, std::size
 
         return image;
     } break;
+    default:
+        return nullptr;
     }
 }
