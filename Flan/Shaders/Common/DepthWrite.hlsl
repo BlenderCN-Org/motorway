@@ -8,6 +8,27 @@ struct VertexStageData
 #include <CameraData.hlsli>
 #include <Tessellation.hlsli>
 
+#if PH_HEIGHTFIELD
+Texture2D<uint> g_TexHeightmap    : register( t0 );
+#include <MaterialsShared.h>
+cbuffer MaterialEdition : register( b8 )
+{
+    // Flags
+    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
+    uint                    g_EnableAlphaTest;
+    uint                    g_EnableAlphaBlend;
+    uint                    g_IsDoubleFace;
+    
+    uint                    g_CastShadow;
+    uint                    g_ReceiveShadow;
+    uint                    g_EnableAlphaToCoverage;
+    uint                    g_LayerCount;
+    
+    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
+};
+
+#endif
+
 struct PixelDepthShaderData
 {
 // NOTE Use SV_POSITION semantic after the tesselation step of the pipeline
@@ -34,9 +55,13 @@ PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
     PixelDepthShaderData output = ( PixelDepthShaderData )0;
 
 #if PH_HEIGHTFIELD
+    const float2 sampleCoordinates = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
+    
     // Send position in model space (projection into depth space should be done at Domain stage)
     output.position = float4( VertexBuffer.Position, 1.0f ); 
-    output.tileInfos = float4( VertexBuffer.Normal, CalcTessFactor( VertexBuffer.Position ) );
+    uint height = g_TexHeightmap[sampleCoordinates].r;       
+    output.position.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
+    output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
 #else
     float4 positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
     

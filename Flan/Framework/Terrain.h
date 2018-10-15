@@ -42,18 +42,13 @@ public:
     const VertexArrayObject*    getVertexArrayObject() const;
     Material*                   getMaterial();
     const uint32_t              getIndiceCount() const;
-
-private:
-    struct Tile
-    {
-        BoundingSphere  boundingSphere;
-    };
+    const AABB&                 getAxisAlignedBoundingBox() const;
 
 private:
     fnString_t                          name;
     Material*                           material;
+    AABB                                aabb;
 
-    std::vector<Tile>                   terrainTiles;
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
     std::unique_ptr<VertexArrayObject>  vertexArrayObject;

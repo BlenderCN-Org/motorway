@@ -32,7 +32,24 @@ struct VertexBufferData
 };
 
 #if PH_HEIGHTFIELD
-#include <Tessellation.hlsli>
+#include <MaterialsShared.h>
+cbuffer MaterialEdition : register( b8 )
+{
+    // Flags
+    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
+    uint                    g_EnableAlphaTest;
+    uint                    g_EnableAlphaBlend;
+    uint                    g_IsDoubleFace;
+    
+    uint                    g_CastShadow;
+    uint                    g_ReceiveShadow;
+    uint                    g_EnableAlphaToCoverage;
+    uint                    g_LayerCount;
+    
+    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
+};
+
+Texture2D<uint> g_TexHeightmap    : register( t0 );
 
 struct VertexStageHeightfieldData
 {
@@ -43,11 +60,15 @@ struct VertexStageHeightfieldData
 
 VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
 {
+    const float2 sampleCoordinates = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
+    
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
+    uint height = g_TexHeightmap[sampleCoordinates].r;       
+    output.positionMS.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
     output.uvCoord = VertexBuffer.TexCoordinates;
-    output.tileInfos = float4( VertexBuffer.Normal, CalcTessFactor( VertexBuffer.Position ) );
+    output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
     
     return output;
 }

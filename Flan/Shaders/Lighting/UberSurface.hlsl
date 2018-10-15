@@ -622,7 +622,7 @@ MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 te
 	
 	MaterialReadLayer layer;
 	layer.BaseColor = accurateSRGBToLinear( baseColorAndHeight.rgb );
-	layer.Reflectance = 0.25f; // baseColor.a;	
+	layer.Reflectance = 1.0f; // baseColor.a;	
 	layer.Roughness = normalAndRoughness.a;
 	layer.Metalness = 0.0f;
 	layer.AmbientOcclusion = 1.0f;
@@ -688,6 +688,12 @@ float3 BilinearInterpolation( float3 positionMS, const float3 southWest, const f
 		+ ((x - x1)/(x2 - x1)) * west;	
 }      
 
+float overlayBlend(float value1, float value2, float opacity)
+{
+ float blend = value1 < 0.5 ? 2*value1*value2 : 1 - 2*(1-value1)*(1-value2);
+ return lerp(value1, blend, opacity);
+} 
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     // Compute common terms from vertex stage variables
@@ -711,7 +717,12 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 												 northWest.BaseColor * northWest.AlphaCutoff, 
 												 BaseLayer.BaseColor * BaseLayer.AlphaCutoff );
 												 
-	BaseLayer.Roughness = BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
+	float blend0 = overlayBlend( southWest.Roughness, southEast.Roughness, southWest.AlphaCutoff );
+	float blend1 = overlayBlend( northWest.Roughness, blend0, northWest.AlphaCutoff );
+	BaseLayer.Roughness = overlayBlend( BaseLayer.Roughness, blend1, BaseLayer.AlphaCutoff );
+    
+    
+    //BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
 	BaseLayer.Normal = BilinearInterpolation( VertexStage.positionMS, southWest.Normal, southEast.Normal, northWest.Normal, BaseLayer.Normal );
     
 	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
@@ -968,6 +979,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
 
+#if 0
 #ifndef PA_PROBE_CAPTURE
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
@@ -979,12 +991,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	( 
 		atmosphereSamplingPos - g_EarthCenter,
 		atmosphereVertexPos - g_EarthCenter,
-		0.001f,
+		0.0f,
 		g_SunDirection,
 		atmosphereTransmittance 
 	);
 
 	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
+#endif
 #endif
 
     // PA_ENABLE_ALPHA_BLEND
