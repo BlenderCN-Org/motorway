@@ -37,7 +37,7 @@ namespace
     static constexpr float MinDistance = 0.0f;
     static constexpr float MaxDistance = 1.0f;
 
-    static constexpr float nearClip = 0.1f;
+    static constexpr float nearClip = 1.0f;
     static constexpr float farClip = 512.0f;
     static constexpr float clipRange = farClip - nearClip;
 

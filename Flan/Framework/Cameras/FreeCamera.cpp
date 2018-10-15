@@ -209,7 +209,7 @@ void FreeCamera::SetProjectionMatrix( const float fieldOfView, const float scree
 
     data.projectionMatrix = flan::core::MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = glm::transpose( glm::inverse( data.projectionMatrix ) );
-    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 0.1f, 512.0f );
+    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 1.0f, 512.0f );
 }
 
 void FreeCamera::OnMouseUpdate( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept
