@@ -878,6 +878,11 @@ VertexArrayObject* WorldRenderer::getConePrimitive( uint32_t& indiceCount ) cons
     indiceCount = coneIndiceCount;
     return coneVao.get();
 }
+
+TerrainStreaming& WorldRenderer::getTerrainStreamingInfos()
+{
+    return terrainStreaming;
+}
 #endif
 
 fnPipelineResHandle_t WorldRenderer::addProbeCaptureSavePass( RenderPipeline* renderPipeline )

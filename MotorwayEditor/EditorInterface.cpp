@@ -42,6 +42,7 @@
 #include <imgui/examples/imgui_impl_win32.h>
 
 #include <FileSystem/VirtualFileSystem.h>
+#include <Core/PathHelpers.h>
 
 #if FLAN_D3D11
 #include <Rendering/Direct3D11/CommandList.h>
@@ -503,6 +504,36 @@ static void RebuildRigidBody( RigidBody* rigidBody )
     g_DynamicsWorld->addRigidBody( rigidBody );
 }
 
+#include <Rendering/Texture.h>
+#include <Rendering/Direct3D11/Texture.h>
+
+void DisplayBiomeInput( Texture* texture, const std::string& displayName, const int inputTextureBindIndex )
+{
+    ImGui::LabelText( ( "##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), displayName.c_str() );
+
+    ImGui::PushItemWidth( 100.0f );
+    ImGui::SameLine( 128.0f );
+
+#if FLAN_D3D11
+    auto nativeObj = texture->getNativeObject();
+    if ( ImGui::ImageButton( nativeObj->textureShaderResourceView, ImVec2( 58, 58 ) ) ) {
+#elif defined( FLAN_VULKAN ) || defined( FLAN_GL460 )
+    if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
+#endif
+        fnString_t filenameBuffer;
+        if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
+            fnString_t assetPath;
+            flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
+
+            auto tex = g_GraphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
+            auto& terrainDesc = tex->getDescription();
+            for ( int i = 0; i < terrainDesc.mipCount; i++ ) {
+                texture->copySubresource( g_RenderDevice.get(), tex, i, 0, i, inputTextureBindIndex );
+            }
+        }
+    }
+}
+
 void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 {
     const auto& nativeContext = g_RenderDevice->getNativeRenderContext();
@@ -550,6 +581,8 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
             PrintTab( "NodeEd", 0 );
             ImGui::SameLine( 0, 2 );
             PrintTab( "MaterialEd", 1 );
+            ImGui::SameLine( 0, 2 );
+            PrintTab( "BiomeEd", 2 );
 
             ImGui::End();
         }
@@ -636,6 +669,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                                 CONE,
                                 STATIC_PLANE,
                                 CONVEX_HULL,
+                                HEIGHTFIELD,
 
                                 COUNT
                             };
@@ -665,7 +699,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                                 UNSUPPORTED,
                                 UNSUPPORTED,
                                 UNSUPPORTED,
-                                UNSUPPORTED,
+                                HEIGHTFIELD,
                                 UNSUPPORTED,
                                 UNSUPPORTED,
                                 UNSUPPORTED,
@@ -673,7 +707,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                             };
 
                             static constexpr char* COLLISION_SHAPES_LABELS[eRigidBodyShape::COUNT] = {
-                                "(empty)", "Box", "Sphere", "Capsule", "Cylinder", "Cone", "Static Plane", "Convex Hull"
+                                "(empty)", "Box", "Sphere", "Capsule", "Cylinder", "Cone", "Static Plane", "Convex Hull", "Heightmap"
                             };
 
                             int genericShapeType = btToShape[shapeType];
@@ -720,7 +754,33 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 
                                         RebuildRigidBody( node->rigidBody );
                                     } } break;
+                                case eRigidBodyShape::HEIGHTFIELD:  {
+                                    fnString_t hmapFile;
+                                    if ( flan::core::DisplayFileOpenPrompt( hmapFile, FLAN_STRING( "Heightmap file (*.hmap)\0*.hmap" ), FLAN_STRING( "./" ), FLAN_STRING( "Select Heightmap file" ) ) ) {
+                                        fnString_t assetPath;
+                                        flan::core::ExtractFilenameFromPath( hmapFile, assetPath );
 
+                                        std::size_t hmapPrecision;
+                                        void* hmap = g_GraphicsAssetManager->getImageTexels( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str(), hmapPrecision );
+
+                                        std::vector<float> texels( 512 * 512 );
+                                        float minH = std::numeric_limits<float>::max(), maxH = -std::numeric_limits<float>::max();
+                                        for ( int texelId = 0; texelId < 512 * 512; texelId++ ) {
+                                            float height = ( ( uint16_t* )hmap )[texelId] / std::numeric_limits<float>::max();
+
+                                            minH = std::min( minH, height );
+                                            maxH = std::max( maxH, height );
+
+                                            texels[texelId] = height;
+                                        }
+
+                                        auto shape = new btHeightfieldTerrainShape( 512, 512, texels.data(), 1.0f, minH, maxH, 1, PHY_FLOAT, false );
+                                        
+                                        nativeObject->setCollisionShape( shape );
+
+                                        RebuildRigidBody( node->rigidBody );
+                                    } } break;
+                                
                                 default:
                                     break;
                                 }
@@ -815,6 +875,12 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                                 }
                             } break;
 
+                            case eRigidBodyShape::HEIGHTFIELD:
+                            {
+                                auto hmapShape = static_cast< btHeightfieldTerrainShape* >( nativeObject->getCollisionShape() );
+                            } break;
+
+
                             default:
                                 break;
                             };
@@ -862,6 +928,24 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                 } else {
                     if ( ImGui::Button( "New" ) ) {
                         dev_EditorPickedMaterial = new Material();
+                    }
+                }
+            } else if ( panelId == 2 ) {
+                auto& streamingInfos = g_WorldRenderer->getTerrainStreamingInfos();
+
+                for ( int i = 0; i < 256; i++ ) {
+                    if ( ImGui::TreeNode( ( "SplatId_" + std::to_string( i ) ).c_str() ) ) {
+                        ImGui::LabelText( "##hidden_LayerScale_0", "Layer Scale" );
+                        ImGui::SameLine( 128.0f );
+                        ImGui::DragFloat2( "##hidden_LayerScale", &streamingInfos.terrainMaterialStreaming[i].terrainSamplingParameters[0], 0.01f, 0.01f, 1024.0f );
+
+                        ImGui::LabelText( "##hidden_LayerScale_0", "Layer Offset" );
+                        ImGui::SameLine( 128.0f );
+                        ImGui::DragFloat2( "##hidden_LayerOffset", &streamingInfos.terrainMaterialStreaming[i].terrainSamplingParameters[2], 0.01f, 0.01f, 1024.0f );
+                        
+                        DisplayBiomeInput( streamingInfos.baseColorStreamed, "BaseColor", i );
+
+                        ImGui::TreePop();
                     }
                 }
             }

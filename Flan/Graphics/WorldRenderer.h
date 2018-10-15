@@ -109,6 +109,8 @@ public:
     VertexArrayObject* getCirclePrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getBoxPrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getConePrimitive( uint32_t& indiceCount ) const;
+    
+    TerrainStreaming& getTerrainStreamingInfos();
 #endif
 
 private:

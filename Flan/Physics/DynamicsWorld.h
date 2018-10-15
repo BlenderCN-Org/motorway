@@ -21,6 +21,7 @@
 #pragma once
 
 #include <bullet3/src/btBulletDynamicsCommon.h>
+#include <bullet3/src/BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 
 #include <vector>
 
