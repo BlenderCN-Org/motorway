@@ -9,7 +9,8 @@ struct VertexStageData
 #include <Tessellation.hlsli>
 
 #if PH_HEIGHTFIELD
-Texture2D<uint> g_TexHeightmap    : register( t0 );
+Texture2D g_TexHeightmap    : register( t0 );
+sampler g_HeightmapSampler : register( s7 );
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
 {
@@ -59,8 +60,8 @@ PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
     
     // Send position in model space (projection into depth space should be done at Domain stage)
     output.position = float4( VertexBuffer.Position, 1.0f ); 
-    uint height = g_TexHeightmap[sampleCoordinates].r;       
-    output.position.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
+    
+    output.position.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, VertexBuffer.uvCoord, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
 #else
     float4 positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );

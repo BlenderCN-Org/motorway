@@ -21,12 +21,19 @@
 #include "Shared.h"
 #include "Terrain.h"
 
-#include <Rendering/RenderDevice.h>
 #include <Rendering/VertexArrayObject.h>
+#include <Rendering/Texture.h>
+#include <Rendering/Buffer.h>
+
+#include "Material.h"
 
 Terrain::Terrain( const fnString_t& TerrainName )
     : name( TerrainName )
     , material( nullptr )
+    , aabb{}
+    , meshIndiceCount( 0 )
+    , heightmap( nullptr )
+    , heightmapTexture( nullptr )
     , vertexBuffer( nullptr )
     , indiceBuffer( nullptr )
     , vertexArrayObject( new VertexArrayObject() )
@@ -40,14 +47,7 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
-constexpr float width = 512;
-constexpr float height = 512;
-constexpr float tessFactor = 4.0f;
-
-constexpr float scalePatchX = width / tessFactor;
-constexpr float scalePatchY = height / tessFactor;
-
-glm::vec2 CalcYBounds( uint16_t* texels, const glm::vec3& bottomLeft, const glm::vec3& topRight )
+glm::vec2 CalcYBounds( const uint16_t* texels, const int width, const glm::vec3& bottomLeft, const glm::vec3& topRight )
 {
     float max = -std::numeric_limits<float>::max();
     float min = std::numeric_limits<float>::max();
@@ -70,7 +70,7 @@ glm::vec2 CalcYBounds( uint16_t* texels, const glm::vec3& bottomLeft, const glm:
     return glm::vec2( min, max );
 }
 
-void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uint16_t* heightmapTexels )
+void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     struct VertexLayout {
         glm::vec3 positionWorldSpace;
@@ -78,9 +78,32 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
         glm::vec2 texCoordinates;
     };
 
-    std::vector<VertexLayout> vertices( static_cast<std::size_t>( scalePatchX * scalePatchY /*+ scalePatchX * 4*/ ) );
-    for ( int z = 0; z < scalePatchY; z++ ) {
-        for ( int x = 0; x < scalePatchX; x++ ) {
+    // Preprocess heightmap texels (uint16 to float 0..1 range precision)
+    heightmap = new float[heightmapWidth * heightmapHeight];
+    for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ); texelIdx++ ) {
+        heightmap[texelIdx] = static_cast<float>( static_cast<float>( heightmapTexels[texelIdx] ) / std::numeric_limits<uint16_t>::max() );
+    }
+
+    // Create GPU resource
+    TextureDescription heightmapTextureDesc;
+    heightmapTextureDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+    heightmapTextureDesc.format = IMAGE_FORMAT_R32_FLOAT;
+    heightmapTextureDesc.width = heightmapWidth;
+    heightmapTextureDesc.height = heightmapHeight;
+    heightmapTextureDesc.mipCount = 1;
+    heightmapTextureDesc.samplerCount = 1;
+
+    heightmapTexture.reset( new Texture() );
+    heightmapTexture->createAsTexture2D( renderDevice, heightmapTextureDesc, heightmap, ( heightmapWidth * heightmapHeight * sizeof( float ) ) );
+
+    constexpr float tessFactor = 8.0f;
+
+    uint32_t scalePatchX = heightmapWidth / static_cast<uint32_t>( tessFactor );
+    uint32_t scalePatchY = heightmapHeight / static_cast<uint32_t>( tessFactor );
+
+    std::vector<VertexLayout> vertices( static_cast<std::size_t>( scalePatchX * scalePatchY ) );
+    for ( uint32_t z = 0; z < scalePatchY; z++ ) {
+        for ( uint32_t x = 0; x < scalePatchX; x++ ) {
             vertices[static_cast<std::size_t>( z * scalePatchX + x )] = {
                 glm::vec3( static_cast<float>( x * tessFactor ), 0.0f, static_cast<float>( z * tessFactor ) ),
                 glm::vec3( 0.0f, 0.0f, 0.0f ),
@@ -89,64 +112,17 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
         }
     }
 
-    const int lod0VertexCount = ( scalePatchX * scalePatchY );
-    glm::vec2 zBounds = CalcYBounds( heightmapTexels, vertices[0].positionWorldSpace, vertices[lod0VertexCount - 1].positionWorldSpace );
-    
-    const auto heightBase = ( zBounds.x - 10.0f );
+    // Update Terrain Bounding Geometry
+    const int lod0VertexCount = static_cast<int>( scalePatchX * scalePatchY );
+    glm::vec2 zBounds = CalcYBounds( heightmapTexels, heightmapWidth, vertices[0].positionWorldSpace, vertices[lod0VertexCount - 1].positionWorldSpace );
+    flan::core::CreateAABB( aabb, glm::vec3( 0, 0, 0 ), glm::vec3( heightmapWidth / 2.0f, zBounds.y - zBounds.x, heightmapHeight / 2.0f ) );
 
-    // Update TerrainBoundingSphere
-    flan::core::CreateAABB( aabb, glm::vec3( 0, 0, 0 ), glm::vec3( width / 2.0f, zBounds.y - zBounds.x, height / 2.0f ) );
+    meshIndiceCount = static_cast< uint32_t >( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) ) * 4;
 
-    //// Generate vertices for skirt levels
-    //int vertexIdx = lod0VertexCount;
-    //for ( int x = 0; x < scalePatchX; ++x ) {
-    //    vertices[vertexIdx] = {
-    //        glm::vec3( static_cast<float>( x * tessFactor ), heightBase, 0.0f ),
-    //        glm::vec3( 0.0f, 0.0f, 1.0f ),
-    //        glm::vec2( static_cast<float>( x ) / scalePatchX, 0.0f )
-    //    };
-
-    //    vertexIdx++;
-    //}
-
-    //for ( int x = 0; x < scalePatchX; ++x ) {
-    //    vertices[vertexIdx] = {
-    //        glm::vec3( static_cast<float>( x * tessFactor ), heightBase, static_cast<float>( height - tessFactor ) ),
-    //        glm::vec3( 0.0f, 0.0f, 2.0f ),
-    //        glm::vec2( static_cast<float>( x ) / scalePatchX, 0.0f )
-    //    };
-
-    //    vertexIdx++;
-    //}
-
-    //for ( int y = 0; y < scalePatchY; ++y ) {
-    //    vertices[vertexIdx] = {
-    //        glm::vec3( 0.0f, heightBase, static_cast<float>( y * tessFactor ) ),
-    //        glm::vec3( 0.0f, 0.0f, 3.0f ),
-    //        glm::vec2( 0.0f, static_cast<float>( y ) / scalePatchY )
-    //    };
-
-    //    vertexIdx++;
-    //}
-
-    //for ( int y = 0; y < scalePatchY; ++y ) {
-    //    vertices[vertexIdx] = {
-    //        glm::vec3( static_cast<float>( width - tessFactor ), heightBase, static_cast<float>( y * tessFactor ) ),
-    //        glm::vec3( 0.0f, 0.0f, 4.0f ),
-    //        glm::vec2( 0.0f, static_cast<float>( y ) / scalePatchY )
-    //    };
-
-    //    vertexIdx++;
-    //}
-
-    const int numIndices = static_cast<int>( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) ) * 4 /*+ 2 * 4 * ( scalePatchX - 1 ) + 2 * 4 * ( scalePatchY - 1 ) + 4*/;
-   
-    std::vector<uint32_t> indices( numIndices );
-
-    int tileIndex = 0;
     int i = 0;
-    for ( int y = 0; y < scalePatchY - 1; y++ ) {
-        for ( int x = 0; x < scalePatchX - 1; x++ ) {
+    std::vector<uint32_t> indices( meshIndiceCount );
+    for ( uint32_t y = 0; y < ( scalePatchY - 1 ); y++ ) {
+        for ( uint32_t x = 0; x < ( scalePatchX - 1 ); x++ ) {
             indices[i + 0] = x + y * scalePatchX;
             indices[i + 1] = x + 1 + y * scalePatchX;
             indices[i + 2] = x + ( y + 1 ) * scalePatchX;
@@ -156,78 +132,15 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
             auto& vertex0 = vertices[indices[i + 0]];
             auto& vertex3 = vertices[indices[i + 3]];
           
-            glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertex0.positionWorldSpace, vertex3.positionWorldSpace );
+            glm::vec2 boundsZ = CalcYBounds( heightmapTexels, heightmapWidth, vertex0.positionWorldSpace, vertex3.positionWorldSpace );
             vertex0.patchBoundsAndSkirtIndex = glm::vec3( boundsZ, 5.0f );
 
             i += 4;
         }
     }
 
-    //vertexIdx = lod0VertexCount;
-    //for ( int x = 0; x < scalePatchX - 1; ++x ) {
-    //    indices[i++] = vertexIdx;		// control point 0
-    //    indices[i++] = vertexIdx + 1;	// control point 1
-    //    indices[i++] = x;				// control point 2
-    //    indices[i++] = x + 1;			// control point 3
-
-    //    glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[x].positionWorldSpace, vertices[x + 1].positionWorldSpace );
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
-
-    //    vertexIdx++;
-    //}
-
-    //for ( int x = 0; x < scalePatchX - 1; ++x ) {
-    //    indices[i++] = vertexIdx + 1;
-    //    indices[i++] = vertexIdx;
-
-    //    int offset = scalePatchX * ( scalePatchY - 1 );
-    //    indices[i++] = x + offset + 1;
-    //    indices[i++] = x + offset;
-
-    //    glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[x + offset].positionWorldSpace, vertices[x + offset + 1].positionWorldSpace );
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
-
-    //    vertexIdx++;
-    //}
-
-    //for ( int y = 0; y < scalePatchY - 1; ++y ) {
-    //    indices[i++] = vertexIdx + 1;
-    //    indices[i++] = vertexIdx;
-    //    indices[i++] = ( y + 1 ) * scalePatchX;
-    //    indices[i++] = y * scalePatchX;
-
-    //    glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[y * scalePatchX].positionWorldSpace, vertices[( y + 1 ) * scalePatchX].positionWorldSpace );
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
-
-    //    vertexIdx++;
-    //}
-
-    //++vertexIdx;
-    //for ( int y = 0; y < scalePatchY - 1; ++y ) {
-    //    indices[i++] = vertexIdx;
-    //    indices[i++] = vertexIdx + 1;
-    //    indices[i++] = y * scalePatchX + scalePatchX - 1;
-    //    indices[i++] = ( y + 1 ) * scalePatchX + scalePatchX - 1;
-
-    //    glm::vec2 boundsZ = CalcYBounds( heightmapTexels, vertices[y * scalePatchX + scalePatchX - 1].positionWorldSpace, vertices[( y + 1 ) * scalePatchX + scalePatchX - 1].positionWorldSpace );
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.x = heightBase;
-    //    vertices[vertexIdx].patchBoundsAndSkirtIndex.y = boundsZ.y;
-
-    //    vertexIdx++;
-    //}
-
-    //indices[i++] = lod0VertexCount + scalePatchX - 1;
-    //indices[i++] = lod0VertexCount;
-    //indices[i++] = lod0VertexCount + scalePatchX + scalePatchX - 1;
-    //indices[i++] = lod0VertexCount + scalePatchX;
-
-    //vertices[lod0VertexCount + scalePatchX - 1].patchBoundsAndSkirtIndex = glm::vec3( heightBase, heightBase, 0.0f );
-
     // Create GPU Buffers
-    const auto vertexCount = vertices.size() * 8;
+    const std::size_t vertexCount = ( vertices.size() * 8 );
 
     BufferDesc vboDesc;
     vboDesc.Type = BufferDesc::VERTEX_BUFFER;
@@ -235,15 +148,15 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
     vboDesc.Stride = 8 * sizeof( float );
 
     vertexBuffer.reset( new Buffer() );
-    vertexBuffer->create( renderDevice, vboDesc, ( void* )vertices.data() );
+    vertexBuffer->create( renderDevice, vboDesc, vertices.data() );
 
     BufferDesc iboDesc;
     iboDesc.Type = BufferDesc::INDICE_BUFFER;
-    iboDesc.Size = numIndices * sizeof( uint32_t );
+    iboDesc.Size = meshIndiceCount * sizeof( uint32_t );
     iboDesc.Stride = sizeof( uint32_t );
 
     indiceBuffer.reset( new Buffer() );
-    indiceBuffer->create( renderDevice, iboDesc, ( void* )indices.data() );
+    indiceBuffer->create( renderDevice, iboDesc, indices.data() );
 
     vertexArrayObject->create( renderDevice, vertexBuffer.get(), indiceBuffer.get() );
 
@@ -256,6 +169,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, uin
     vertexArrayObject->setVertexLayout( renderDevice, defaultTerrainLayout );
 
     material = terrainMaterial;
+    material->setHeightmapTEST( heightmapTexture.get() );
 }
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const
@@ -270,12 +184,15 @@ Material* Terrain::getMaterial()
 
 const uint32_t Terrain::getIndiceCount() const
 {
-    const auto& bufferDesc = indiceBuffer->getDescription();
-
-    return static_cast< uint32_t >( bufferDesc.Size / bufferDesc.Stride );
+    return meshIndiceCount;
 }
 
 const AABB& Terrain::getAxisAlignedBoundingBox() const
 {
     return aabb;
+}
+
+float* Terrain::getHeightmapValues() const
+{
+    return heightmap;
 }

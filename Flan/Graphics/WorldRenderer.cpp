@@ -482,22 +482,6 @@ void WorldRenderer::createRenderTargets( void )
 
     previousFrameRenderTarget.reset( new RenderTarget() );
     previousFrameRenderTarget->createAsRenderTarget2D( renderDevice, previousFrameDesc );
-
-    static constexpr int TERRAIN_TEXTURE_DIMENSIONS_WIDTH = 1024 * 16;
-    static constexpr int TERRAIN_TEXTURE_DIMENSIONS_HEIGHT = 1024 * 8;
-
-    TextureDescription texturePoolDesc;
-    texturePoolDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-    texturePoolDesc.format = IMAGE_FORMAT_BC1_UNORM;
-    texturePoolDesc.width = TERRAIN_TEXTURE_DIMENSIONS_WIDTH;
-    texturePoolDesc.height = TERRAIN_TEXTURE_DIMENSIONS_HEIGHT;
-    texturePoolDesc.depth = 1;
-    texturePoolDesc.arraySize = 1;
-    texturePoolDesc.mipCount = 1;
-    texturePoolDesc.samplerCount = 1;
-
-    texturePool.reset( new Texture() );
-    texturePool->createAsTexture2D( renderDevice, texturePoolDesc );
 }
 
 void WorldRenderer::createPrimitives( void )

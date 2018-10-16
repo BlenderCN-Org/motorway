@@ -184,9 +184,11 @@ HullStageData EntryPointHS( InputPatch<VertexStageHeightfieldData, NUM_CONTROL_P
     return output;
 }
 
-Texture2D<uint> g_TexHeightmap    : register( t0 );
+Texture2D g_TexHeightmap    : register( t0 );
 Texture2D g_TexHeightmapNormal : register( t1 );
 Texture2D<uint> g_TexHeightmapDisplacement : register( t2 );
+
+sampler g_HeightmapSampler : register( s7 );
 
 float3 estimateNormal(float2 texcoord) {
 	float2 leftTex = texcoord + float2(-1.0f / (float)512, 0.0f);
@@ -215,10 +217,12 @@ DomainStageData EntryPointDS(
             lerp( patch[2].positionMS, patch[3].positionMS, domain.x ), 
             domain.y );
     
-	float4 positionWS = mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );
-   
     output.uvCoord =  lerp(lerp(patch[0].uvCoord, patch[1].uvCoord, domain.x), lerp(patch[2].uvCoord, patch[3].uvCoord, domain.x), domain.y);
     
+    positionMS.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, output.uvCoord, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
+   
+	float4 positionWS = mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );
+   
     float3 norm = estimateNormal( output.uvCoord );  
     // float disp = 2.0f * ( g_TexHeightmapDisplacement[output.uvCoord * 16.0f].r / 255.0f ) - 1.0f;
     // positionWS.xyz += norm * disp;

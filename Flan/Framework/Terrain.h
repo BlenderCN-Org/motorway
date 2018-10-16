@@ -23,31 +23,36 @@
 class RenderDevice;
 class VertexArrayObject;
 class Material;
+class Texture;
+class Buffer;
 
 #include <Core/Maths/AABB.h>
-#include <Rendering/Buffer.h>
-
-#include <vector>
 
 class Terrain
 {
 public:
-                                Terrain( const fnString_t& TerrainName = FLAN_STRING( "Terrain" ) );
-                                Terrain( Terrain& Terrain ) = default;
-                                Terrain& operator = ( Terrain& Terrain ) = default;
-                                ~Terrain();
+                                        Terrain( const fnString_t& TerrainName = FLAN_STRING( "Terrain" ) );
+                                        Terrain( Terrain& Terrain ) = default;
+                                        Terrain& operator = ( Terrain& Terrain ) = default;
+                                        ~Terrain();
 
-    void                        create( RenderDevice* renderDevice, Material* terrainMaterial, uint16_t* heightmapTexels );
+    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
-    const VertexArrayObject*    getVertexArrayObject() const;
-    Material*                   getMaterial();
-    const uint32_t              getIndiceCount() const;
-    const AABB&                 getAxisAlignedBoundingBox() const;
+    const VertexArrayObject*            getVertexArrayObject() const;
+    Material*                           getMaterial();
+    const uint32_t                      getIndiceCount() const;
+    const AABB&                         getAxisAlignedBoundingBox() const;
+    float*                              getHeightmapValues() const;
 
 private:
     fnString_t                          name;
     Material*                           material;
     AABB                                aabb;
+
+    uint32_t                            meshIndiceCount;
+
+    float*                              heightmap;
+    std::unique_ptr<Texture>            heightmapTexture;
 
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;

@@ -49,7 +49,8 @@ cbuffer MaterialEdition : register( b8 )
     MaterialLayer           g_Layers[MAX_LAYER_COUNT];
 };
 
-Texture2D<uint> g_TexHeightmap    : register( t0 );
+Texture2D g_TexHeightmap    : register( t0 );
+sampler g_HeightmapSampler : register( s7 );
 
 struct VertexStageHeightfieldData
 {
@@ -65,8 +66,7 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
-    uint height = g_TexHeightmap[sampleCoordinates].r;       
-    output.positionMS.y = ( height / 65535.0f ) * g_Layers[0].HeightmapWorldHeight;
+    output.positionMS.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, VertexBuffer.TexCoordinates, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
     output.uvCoord = VertexBuffer.TexCoordinates;
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
     

@@ -66,6 +66,8 @@ public:
     void                        drawInEditor( RenderDevice* renderDevice, ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager, WorldRenderer* worldRenderer );
 #endif
 
+    void setHeightmapTEST( Texture* tex ) { vertexTextureSet[0] = tex; editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  editableMaterialData.layers[0].Heightmap.InputTexture = tex; }
+
 private:
     fnString_t  name;
     bool        isEditable;
@@ -87,7 +89,7 @@ private:
             bool    useRefraction : 1;
             bool    useTranslucidity : 1;
 
-            uint32_t __PADDING__ : 20;
+            uint32_t : 0;
         } sortKeyInfos;
         uint32_t    sortKey;
     };

@@ -103,7 +103,7 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
             matSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
             matSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_16;
+            matSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matSamplerDesc );
         },

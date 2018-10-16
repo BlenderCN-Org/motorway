@@ -78,6 +78,14 @@ FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
 FLAN_DEV_VAR( dev_IsInputText, "Is Using a Text Input", false, bool )
 
+static void RebuildRigidBody( RigidBody* rigidBody )
+{
+    // 'It just werks'!
+    g_DynamicsWorld->removeRigidBody( rigidBody );
+    rigidBody->recomputeInertia();
+    g_DynamicsWorld->addRigidBody( rigidBody );
+}
+
 static void PrintNode( SceneNode* node )
 {
     FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
@@ -299,10 +307,21 @@ static void DisplayMenuBar()
                 std::size_t dontcare;
                 terrain->create( g_RenderDevice.get(), 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
-                    (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ) );
+                    (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ), 512, 512 );
 
                 auto sceneNode = scene->createTerrain( terrain );
                 *PickedNode = sceneNode;
+
+                sceneNode->rigidBody = new RigidBody( 0.0f, sceneNode->transform.getWorldTranslation(), sceneNode->transform.getWorldRotation() );
+
+                g_DynamicsWorld->addRigidBody( sceneNode->rigidBody );
+
+                auto shape = new btHeightfieldTerrainShape( 512, 512, terrain->getHeightmapValues(), 128.0f, 0.0f, 1.0f, 1, PHY_FLOAT, false );
+
+                auto nativeObject = sceneNode->rigidBody->getNativeObject();
+                nativeObject->setCollisionShape( shape );
+
+                RebuildRigidBody( sceneNode->rigidBody );
             }
 
             ImGui::Separator();
@@ -494,44 +513,6 @@ bool VectorOfStringGetter( void* data, int n, const char** out_text )
     }
 
     return true;
-}
-
-static void RebuildRigidBody( RigidBody* rigidBody )
-{
-    // 'It just werks'!
-    g_DynamicsWorld->removeRigidBody( rigidBody );
-    rigidBody->recomputeInertia();
-    g_DynamicsWorld->addRigidBody( rigidBody );
-}
-
-#include <Rendering/Texture.h>
-#include <Rendering/Direct3D11/Texture.h>
-
-void DisplayBiomeInput( Texture* texture, const std::string& displayName, const int inputTextureBindIndex )
-{
-    ImGui::LabelText( ( "##hidden_" + displayName + std::to_string( inputTextureBindIndex ) ).c_str(), displayName.c_str() );
-
-    ImGui::PushItemWidth( 100.0f );
-    ImGui::SameLine( 128.0f );
-
-#if FLAN_D3D11
-    auto nativeObj = texture->getNativeObject();
-    if ( ImGui::ImageButton( nativeObj->textureShaderResourceView, ImVec2( 58, 58 ) ) ) {
-#elif defined( FLAN_VULKAN ) || defined( FLAN_GL460 )
-    if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
-#endif
-        fnString_t filenameBuffer;
-        if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
-            fnString_t assetPath;
-            flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
-
-            auto tex = g_GraphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
-            auto& terrainDesc = tex->getDescription();
-            for ( int i = 0; i < terrainDesc.mipCount; i++ ) {
-                texture->copySubresource( g_RenderDevice.get(), tex, i, 0, i, inputTextureBindIndex );
-            }
-        }
-    }
 }
 
 void DrawEditorInterface( const float frameTime, CommandList* cmdList )

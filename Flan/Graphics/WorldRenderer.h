@@ -109,7 +109,6 @@ public:
     VertexArrayObject* getCirclePrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getBoxPrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getConePrimitive( uint32_t& indiceCount ) const;
-
 #endif
 
 private:
@@ -134,23 +133,21 @@ private:
     int                                     viewportToRenderCount;
 
     // Draw Commands (geom, jobs, etc.)
-    std::vector<DrawCommand>                drawCommands; // (front to back cmds)
-    std::vector<DrawCommand>                transparentDrawCommands; // (back to front cmds)
+    std::vector<DrawCommand>                drawCommands;               // (front to back cmds)
+    std::vector<DrawCommand>                transparentDrawCommands;    // (back to front cmds)
 
     // RenderModules; independant from any RenderPipeline
     std::unique_ptr<RenderPipeline>          renderPipeline;
     std::unique_ptr<TextRenderingModule>     textRenderingModule;
     std::unique_ptr<AtmosphereModule>        atmosphereRenderingModule;
     std::unique_ptr<AutomaticExposureModule> autoExposureModule;
-    std::unique_ptr<LineRenderingModule>    lineRenderingModule;
+    std::unique_ptr<LineRenderingModule>     lineRenderingModule;
 
+    // TODO Move this
     std::unique_ptr<RenderTarget>           previousFrameRenderTarget;
 
     std::unique_ptr<RenderTarget>           environmentProbes[3];
     std::unique_ptr<Material>               wireframeMaterial;
-
-    // TODO Move this
-    std::unique_ptr<Texture>                texturePool;
 
     std::unique_ptr<Buffer>                 sphereVbo;
     std::unique_ptr<Buffer>                 sphereIbo;
