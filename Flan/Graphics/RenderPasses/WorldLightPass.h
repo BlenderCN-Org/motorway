@@ -238,14 +238,6 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             atmosphereBuffer->updateAsynchronous( cmdList, atmosphereData, sizeof( AtmosphereModule::Parameters ) );
             atmosphereBuffer->bind( cmdList, CBUFFER_INDEX_ATMOSPHERE );
 
-            auto terrrainStreamingData = renderPipelineResources->getWellKnownImportedResource<TerrainStreaming>();
-            auto terrainStreamingBuffer = renderPipelineResources->getBuffer( passData.buffers[5] );
-            terrainStreamingBuffer->updateAsynchronous( cmdList, &terrrainStreamingData->terrainMaterialStreaming, sizeof( TerrainStreaming::terrainMaterialStreaming ) );
-            terrainStreamingBuffer->bind( cmdList, 7, SHADER_STAGE_PIXEL );
-
-            terrrainStreamingData->baseColorStreamed->bind( cmdList, 6, SHADER_STAGE_PIXEL );
-            terrrainStreamingData->normalStreamed->bind( cmdList, 7, SHADER_STAGE_PIXEL );
-
             // Bind Samplers
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             auto shadowSampler = renderPipelineResources->getSampler( passData.samplers[1] );

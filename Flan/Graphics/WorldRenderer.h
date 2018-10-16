@@ -109,8 +109,7 @@ public:
     VertexArrayObject* getCirclePrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getBoxPrimitive( uint32_t& indiceCount ) const;
     VertexArrayObject* getConePrimitive( uint32_t& indiceCount ) const;
-    
-    TerrainStreaming& getTerrainStreamingInfos();
+
 #endif
 
 private:
@@ -150,11 +149,9 @@ private:
     std::unique_ptr<RenderTarget>           environmentProbes[3];
     std::unique_ptr<Material>               wireframeMaterial;
 
-    std::unique_ptr<Texture>                terrainStreamedBaseColor;
-    std::unique_ptr<Texture>                terrainStreamedNormal;
-    TerrainStreaming                        terrainStreaming;
-
     // TODO Move this
+    std::unique_ptr<Texture>                texturePool;
+
     std::unique_ptr<Buffer>                 sphereVbo;
     std::unique_ptr<Buffer>                 sphereIbo;
     std::unique_ptr<VertexArrayObject>      sphereVao;

@@ -930,24 +930,6 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                         dev_EditorPickedMaterial = new Material();
                     }
                 }
-            } else if ( panelId == 2 ) {
-                auto& streamingInfos = g_WorldRenderer->getTerrainStreamingInfos();
-
-                for ( int i = 0; i < 256; i++ ) {
-                    if ( ImGui::TreeNode( ( "SplatId_" + std::to_string( i ) ).c_str() ) ) {
-                        ImGui::LabelText( "##hidden_LayerScale_0", "Layer Scale" );
-                        ImGui::SameLine( 128.0f );
-                        ImGui::DragFloat2( "##hidden_LayerScale", &streamingInfos.terrainMaterialStreaming[i].terrainSamplingParameters[0], 0.01f, 0.01f, 1024.0f );
-
-                        ImGui::LabelText( "##hidden_LayerScale_0", "Layer Offset" );
-                        ImGui::SameLine( 128.0f );
-                        ImGui::DragFloat2( "##hidden_LayerOffset", &streamingInfos.terrainMaterialStreaming[i].terrainSamplingParameters[2], 0.01f, 0.01f, 1024.0f );
-                        
-                        DisplayBiomeInput( streamingInfos.baseColorStreamed, "BaseColor", i );
-
-                        ImGui::TreePop();
-                    }
-                }
             }
         }
         

@@ -16,6 +16,7 @@ struct VertexStageData
     float3 normal       : NORMAL0;
     float depth         : DEPTH;
     float2 uvCoord      : TEXCOORD0;
+    
 #if PA_TERRAIN
     float3 positionMS   : POSITION2;
 #endif
@@ -40,21 +41,6 @@ Buffer<uint>        g_LightIndexBuffer             : register( t9 );
 Texture2D           g_DFGLUTStandard               : register( t10 );
 TextureCubeArray    g_EnvProbeDiffuseArray         : register( t12 );
 
-Texture2DArray 		g_TerrainBaseColorHeightArray : register( t6 );
-Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
-
-struct TerrainSamplingParameter
-{
-    float4 samplingParameters;
-    uint splatIndex;
-    uint3 EXPLICIT_PADDING;
-};
-
-cbuffer Terrain : register( b7 )
-{
-	TerrainSamplingParameter g_TerrainMaterials[256];
-};
-
 sampler  g_BaseColorSampler                 : register( s0 );
 sampler  g_ReflectanceSampler               : register( s1 );
 sampler  g_RoughnessSampler                 : register( s2 );
@@ -68,9 +54,8 @@ SamplerComparisonState  g_ShadowMapSampler  : register( s15 );
 sampler  g_LUTSampler                       : register( s10 );
 sampler  g_DiffuseEnvProbeSampler           : register( s12 );
 
-#if PA_TERRAIN
-Texture2D<uint> g_TexSplatMap : register( t17 );
-#else
+#ifndef PA_TERRAIN
+#if PA_EDITOR
 // Layer0
 Texture2D g_TexBaseColor0 : register( t17 );
 Texture2D g_TexAlphaMask0 : register( t18 );
@@ -94,7 +79,7 @@ Texture2D g_TexNormal1 : register( t33 );
 Texture2D g_TexDisplacement1 : register( t34 );
 Texture2D g_TexEmissivity1 : register( t35 );
 Texture2D g_TexClearCoatNormal1 : register( t36 );
-Texture2D g_TexBlendMask1                : register( t37 );
+Texture2D g_TexBlendMask1 : register( t37 );
 
 // Layer2
 Texture2D g_TexBaseColor2 : register( t38 );
@@ -107,7 +92,10 @@ Texture2D g_TexNormal2 : register( t44 );
 Texture2D g_TexDisplacement2 : register( t45 );
 Texture2D g_TexEmissivity2 : register( t46 );
 Texture2D g_TexClearCoatNormal2 : register( t47 );
-Texture2D g_TexBlendMask2                : register( t48 );
+Texture2D g_TexBlendMask2 : register( t48 );
+#else
+FLAN_BAKED_TEXTURE_SLOTS
+#endif
 #endif
 
 // Shading Model BRDF
@@ -150,6 +138,7 @@ struct MaterialReadLayer
     float   AlphaCutoff;
 };
 
+// Forward + Helpers
 uint GetNumTilesX()
 {
     return ( uint )( ( g_BackbufferDimension.x + TILE_RES - 1 ) / (float)TILE_RES );
@@ -231,7 +220,6 @@ float2 ApplyParallaxMapping( in float2 uvCoordinates, in float3 V, in float3 N, 
 }
 
 #if PA_EDITOR
-
 #include <MaterialsShared.h>
 
 cbuffer MaterialEdition : register( b8 )
@@ -452,17 +440,6 @@ float3 BlendNormals_UDN( in float3 baseNormal, in float3 topNormal )
     return normalize( blendedNormals );
 }
 
-float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)  
-{  
-    float depth = 0.2;  
-    float ma = max(texture1.a + a1, texture2.a + a2) - depth;  
-  
-    float b1 = max(texture1.a + a1 - ma, 0);  
-    float b2 = max(texture2.a + a2 - ma, 0);  
-  
-    return (texture1.rgb * b1 + texture2.rgb * b2) / (b1 + b2);  
-}
-
 void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLayer )
 {
     baseLayer.BaseColor = lerp( baseLayer.BaseColor, nextLayer.BaseColor, nextLayer.BlendMask * nextLayer.DiffuseContribution );  
@@ -600,100 +577,6 @@ void EvaluateIBL(
 FLAN_LAYERS_READ
 #endif
 
-#if PA_TERRAIN
-MaterialReadLayer FetchTerrainMaterial( const float3 positionMS, const float2 texCoordinates, const float3 N )
-{
-	uint splatIndex = g_TexSplatMap[positionMS.xz];
-	
-	// Retrieve texture coordinates
-	float4 samplingParameters = g_TerrainMaterials[splatIndex].samplingParameters; // xy offset; zw scale
-	float2 samplingCoordinates = ( texCoordinates.xy + samplingParameters.xy ) * samplingParameters.zw;
-		
-	uint streamedTextureIndex = g_TerrainMaterials[splatIndex].splatIndex;
-	
-	float4 baseColorAndHeight, normalAndRoughness;
-	/*if ( cos( positionMS.y ) > 1.0f ) {		
-		normalAndRoughness.rgb = TriplanarSample3D( g_TerrainNormalRoughnessArray, g_BaseColorSampler, streamedTextureIndex, positionMS, N );
-		baseColorAndHeight.rgb = TriplanarSample3D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, positionMS, normalAndRoughness.rgb );
-	} else {*/
-		baseColorAndHeight = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-		normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );    
-	//}
-	
-	MaterialReadLayer layer;
-	layer.BaseColor = accurateSRGBToLinear( baseColorAndHeight.rgb );
-	layer.Reflectance = 1.0f; // baseColor.a;	
-	layer.Roughness = normalAndRoughness.a;
-	layer.Metalness = 0.0f;
-	layer.AmbientOcclusion = 1.0f;
-	layer.Emissivity = 0.0f;
-	layer.Normal = normalize( normalAndRoughness.rgb * 2.0f - 1.0f );
-	layer.AlphaMask = 1.0f;
-	layer.SecondaryNormal = N;
-	layer.BlendMask = 1.0f;
-	layer.Refraction = 0.0f;
-	layer.RefractionIor = 0.0f;
-	layer.ClearCoat = 0.0f;
-	layer.ClearCoatGlossiness = 0.0f;
-	layer.DiffuseContribution = 1.0f;
-	layer.SpecularContribution = 1.0f;
-	layer.NormalContribution = 1.0f;
-	layer.AlphaCutoff = baseColorAndHeight.a;
-	
-	return layer;
-}
-#endif
-
-float BilinearInterpolation1D( float3 positionMS, const float southWest, const float southEast, const float northWest, const float northEast )
-{    
-	float x  = positionMS.x;
-	float y  = positionMS.z;
-	
-	float x1 = positionMS.x - 1.0f;
-	float x2 = positionMS.x + 1.0f;
-	
-	float y1 = positionMS.z - 1.0f;
-	float y2 = positionMS.z + 1.0f;
-	
-	float south = ((x2 - x)/(x2 - x1))*southWest + ((x - x1)/(x2 - x1))*southEast;
-	float north = ((x2 - x)/(x2 - x1))*northWest + ((x - x1)/(x2 - x1))*northEast;
-	float east = ((y2 - y)/(y2 - y1))*southEast + ((y - y1)/(y2 - y1))*northEast;
-	float west = ((y2 - y)/(y2 - y1))*southWest + ((y - y1)/(y2 - y1))*northWest;
-
-	return ((y2 - y)/(y2 - y1)) * south 
-		+ ((y - y1)/(y2 - y1)) * north
-		+ ((x2 - x)/(x2 - x1)) * east
-		+ ((x - x1)/(x2 - x1)) * west;	
-} 
-    
-float3 BilinearInterpolation( float3 positionMS, const float3 southWest, const float3 southEast, const float3 northWest, const float3 northEast )
-{    
-	float x  = positionMS.x;
-	float y  = positionMS.z;
-	
-	float x1 = positionMS.x - 1.0f;
-	float x2 = positionMS.x + 1.0f;
-	
-	float y1 = positionMS.z - 1.0f;
-	float y2 = positionMS.z + 1.0f;
-	
-	float3 south = ((x2 - x)/(x2 - x1))*southWest + ((x - x1)/(x2 - x1))*southEast;
-	float3 north = ((x2 - x)/(x2 - x1))*northWest + ((x - x1)/(x2 - x1))*northEast;
-	float3 east = ((y2 - y)/(y2 - y1))*southEast + ((y - y1)/(y2 - y1))*northEast;
-	float3 west = ((y2 - y)/(y2 - y1))*southWest + ((y - y1)/(y2 - y1))*northWest;
-
-	return ((y2 - y)/(y2 - y1)) * south 
-		+ ((y - y1)/(y2 - y1)) * north
-		+ ((x2 - x)/(x2 - x1)) * east
-		+ ((x - x1)/(x2 - x1)) * west;	
-}      
-
-float overlayBlend(float value1, float value2, float opacity)
-{
- float blend = value1 < 0.5 ? 2*value1*value2 : 1 - 2*(1-value1)*(1-value2);
- return lerp(value1, blend, opacity);
-} 
-
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     // Compute common terms from vertex stage variables
@@ -705,27 +588,25 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	MaterialReadLayer BaseLayer = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, 1 ), VertexStage.uvCoord, N ); // North East
-	MaterialReadLayer northWest = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, 1 ), VertexStage.uvCoord, N );
-	MaterialReadLayer southEast = FetchTerrainMaterial( VertexStage.positionMS + float3( 1, 0, -1 ), VertexStage.uvCoord, N );
-	MaterialReadLayer southWest = FetchTerrainMaterial( VertexStage.positionMS + float3( -1, 0, -1 ), VertexStage.uvCoord, N );
-   
-	   
-	BaseLayer.BaseColor = BilinearInterpolation( VertexStage.positionMS, 
-												 southWest.BaseColor * southWest.AlphaCutoff, 
-												 southEast.BaseColor * southEast.AlphaCutoff, 
-												 northWest.BaseColor * northWest.AlphaCutoff, 
-												 BaseLayer.BaseColor * BaseLayer.AlphaCutoff );
-												 
-	float blend0 = overlayBlend( southWest.Roughness, southEast.Roughness, southWest.AlphaCutoff );
-	float blend1 = overlayBlend( northWest.Roughness, blend0, northWest.AlphaCutoff );
-	BaseLayer.Roughness = overlayBlend( BaseLayer.Roughness, blend1, BaseLayer.AlphaCutoff );
-    
-    
-    //BilinearInterpolation1D( VertexStage.positionMS, southWest.Roughness, southEast.Roughness, northWest.Roughness, BaseLayer.Roughness );
-	BaseLayer.Normal = BilinearInterpolation( VertexStage.positionMS, southWest.Normal, southEast.Normal, northWest.Normal, BaseLayer.Normal );
-    
-	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
+	MaterialReadLayer BaseLayer;
+	BaseLayer.BaseColor = float3( 0.42, 0.42, 0.42 );
+	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
+	BaseLayer.Roughness = 0.50f;
+	BaseLayer.Metalness = 0.0f;
+	BaseLayer.AmbientOcclusion = 1.0f;
+	BaseLayer.Emissivity = 0.0f;
+	BaseLayer.Normal = N;
+	BaseLayer.SecondaryNormal = N;
+	BaseLayer.AlphaMask = 1.0f;
+	BaseLayer.BlendMask = 1.0f;
+	BaseLayer.Refraction = 0.0f;
+	BaseLayer.RefractionIor = 0.0f;
+	BaseLayer.ClearCoat = 0.0f;
+	BaseLayer.ClearCoatGlossiness = 0.0f;
+	BaseLayer.DiffuseContribution = 1.0f;
+	BaseLayer.SpecularContribution = 1.0f;
+	BaseLayer.NormalContribution = 1.0f;
+	BaseLayer.AlphaCutoff = 0.0f;
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
