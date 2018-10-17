@@ -86,6 +86,12 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( passBuffer );
 
+            BufferDesc cameraBuffer = {};
+            cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            cameraBuffer.Size = sizeof( Camera::Data );
+
+            passData.buffers[3] = renderPipelineBuilder->allocateBuffer( cameraBuffer );
+
             // Texture (geometry stuff) Sampler
             SamplerDesc matSamplerDesc;
             matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
@@ -117,6 +123,11 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 
             const auto backbufferViewport = cmdList->getViewportCmd();
             auto& cameraData = renderPipelineResources->getActiveCamera();
+
+            // Bind Camera Buffer
+            auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[3] );
+            cameraCbuffer->updateAsynchronous( cmdList, &cameraData, sizeof( Camera::Data ) );
+            cameraCbuffer->bind( cmdList, 0 );
 
             for ( int i = 0; i < CSM_SLICE_COUNT; i++ ) {
                 cmdList->setViewportCmd( CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS * i );
