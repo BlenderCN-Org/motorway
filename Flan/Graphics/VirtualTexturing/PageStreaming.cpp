@@ -18,38 +18,43 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <Shared.h>
-#include "PageTable.h"
+#include "PageStreaming.h"
 
 #include <Rendering/Texture.h>
 
-PageTable::PageTable()
-    : pageTableTexture( nullptr )
+PageStreaming::PageStreaming()
 {
 
 }
 
-PageTable::~PageTable()
+PageStreaming::~PageStreaming()
 {
 
 }
 
-void PageTable::destroy( RenderDevice* renderDevice )
+void PageStreaming::destroy( RenderDevice* renderDevice )
 {
-    pageTableTexture->destroy( renderDevice );
+    for ( auto& table : allocatedPageTables ) {
+        table.destroy( renderDevice );
+    }
+}
+/*
+PageTable& PageStreaming::allocatePageTable( RenderDevice* renderDevice )
+{   
+    allocatedPageTables.push_back( {} );
+
+    PageTable& pageTable = allocatedPageTables.back();
+    pageTable.create( renderDevice );
+
+    return pageTable;
+}
+*/
+void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
+{
+
 }
 
-void PageTable::create( RenderDevice* renderDevice )
+void PageStreaming::addAsynchronousPageLoading( const fnPageId_t pageIndex )
 {
-    TextureDescription pageTableDesc;
-    pageTableDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-    pageTableDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-    pageTableDesc.width = 16384;
-    pageTableDesc.height = 8192;
-    pageTableDesc.depth = 1;
-    pageTableDesc.arraySize = 1;
-    pageTableDesc.mipCount = 11;
-    pageTableDesc.samplerCount = 1;
 
-    pageTableTexture.reset( new Texture() );
-    pageTableTexture->createAsTexture2D( renderDevice, pageTableDesc );
 }

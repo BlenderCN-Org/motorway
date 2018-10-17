@@ -47,7 +47,7 @@ void PageIndirectionTable::create( RenderDevice* renderDevice )
     pageIndirectionTableDesc.height = 2048;
     pageIndirectionTableDesc.depth = 1;
     pageIndirectionTableDesc.arraySize = 1;
-    pageIndirectionTableDesc.mipCount = 1;
+    pageIndirectionTableDesc.mipCount = 11;
     pageIndirectionTableDesc.samplerCount = 1;
 
     pageIndirectionTableTexture.reset( new Texture() );
