@@ -78,6 +78,8 @@ namespace flan
         void RetrieveTextureTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<uint8_t>& texels );
         void RetrieveTextureLayerTexelsLDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, const unsigned int layerIndex, const unsigned int mipLevel, std::vector<uint8_t>& texels );
         void RetrieveTextureTexelsHDRImpl( NativeRenderContext* nativeRenderContext, NativeTextureObject* textureObject, const TextureDescription& description, std::vector<float>& texels );
+
+        void UpdateSubresourceImpl( NativeCommandList* nativeCommandList, NativeTextureObject* textureObject, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData );
     }
 }
 #endif

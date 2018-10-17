@@ -27,6 +27,14 @@ struct NativeTextureObject;
 #include <Rendering/ShaderStages.h>
 #include <vector>
 
+struct TextureCopyBox
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t arrayIndex;
+    uint32_t mipLevel;
+};
+
 class Texture
 {
 public:
@@ -57,6 +65,8 @@ public:
 
     void        copySubresource( RenderDevice* renderDevice, const Texture* resourceToCopy, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
     void        copySubresourceAsynchronous( CommandList* cmdList, const Texture* resourceToCopy, const uint32_t mipSrc = 0, const uint32_t arrayIdxSrc = 0, const uint32_t mipDst = 0, const uint32_t arrayIdxDst = 0 );
+
+    void        updateSubresource( CommandList* cmdList, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData );
 
 private:
     TextureDescription                   textureDescription;

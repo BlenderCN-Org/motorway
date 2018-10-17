@@ -740,7 +740,7 @@ void flan::rendering::CopySubresouceRegionAsynchronousImpl( NativeCommandList* n
 {
     auto nativeDeviceContext = nativeCmdList->deferredContext;
 
-    auto srcSubResource = D3D11CalcSubresource( mipSrc, arrayIdxSrc, srcTextureObject->textureMipCount );;
+    auto srcSubResource = D3D11CalcSubresource( mipSrc, arrayIdxSrc, srcTextureObject->textureMipCount );
     auto dstSubResource = D3D11CalcSubresource( mipDst, arrayIdxDst, dstTextureObject->textureMipCount );
 
     nativeDeviceContext->CopySubresourceRegion( dstTextureObject->textureResource, dstSubResource, 0, 0, 0, srcTextureObject->textureResource, srcSubResource, nullptr );
@@ -856,5 +856,21 @@ void flan::rendering::RetrieveTextureTexelsHDRImpl( NativeRenderContext* nativeR
     nativeDeviceContext->Unmap( stagingTex, 0 );
 
     stagingTex->Release();
+}
+
+void flan::rendering::UpdateSubresourceImpl( NativeCommandList* nativeCommandList, NativeTextureObject* textureObject, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData )
+{
+    D3D11_BOX box = { 0 };
+    box.front = 0;
+    box.back = 1;
+    box.left = copyBox.x;
+    box.top = copyBox.y;
+    box.right = copyBox.x + regionWidth;
+    box.bottom = copyBox.y + regionHeight;
+
+    auto subResource = D3D11CalcSubresource( copyBox.mipLevel, copyBox.arrayIndex, textureObject->textureMipCount );
+
+    auto deviceContext = nativeCommandList->deferredContext;
+    deviceContext->UpdateSubresource( textureObject->texture2D, subResource, &box, regionData, regionWidth * regionComposition, regionWidth * regionHeight * regionComposition );
 }
 #endif
