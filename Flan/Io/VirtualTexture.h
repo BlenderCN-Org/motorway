@@ -50,7 +50,15 @@ struct VirtualTextureFileQuadTree
 
     PageEntry& getPage( const uint32_t pageIndex )
     {
+        // Extract useful bytes to retrieve page entry
+        const int x = ( ( pageIndex & 0x000000FF ) >> 0 );
+        const int y = ( ( pageIndex & 0x0000FF00 ) >> 8 );
+        const int level = ( ( pageIndex & 0x00FF0000 ) >> 16 );
 
+        auto levelPage = levels[level];
+        const auto pageIndex = x + y * pageCountX[level];
+
+        return levelPage[pageIndex];
     }
 
     uint32_t pageCountX[11];
