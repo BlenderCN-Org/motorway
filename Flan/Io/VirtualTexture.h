@@ -48,6 +48,11 @@ struct VirtualTextureFileQuadTree
         levelPage[pageIndex].pageSizeInBytes = pageSize;
     }
 
+    PageEntry& getPage( const uint32_t pageIndex )
+    {
+
+    }
+
     uint32_t pageCountX[11];
     uint32_t pageCountY[11];
     std::vector<PageEntry*> levels;
