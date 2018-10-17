@@ -20,21 +20,6 @@
 
 #include <Shared.h>
 #include "Scene.h"
-//
-//#include <System/FileSystem/FileSystemObject.h>
-//#include <Game/Scene.h>
-//#include <Core/Maths/Camera.h>
-//#include <Core/Maths/FreeCamera.h>
-//#include <Core/Io/DictionaryHelpers.h>
-//#include <Graphics/Mesh.h>
-//#include <Graphics/Model.h>
-//
-//#include <Graphics/Lighting/DirectionalLight.h>
-//#include <Graphics/Lighting/DiskLight.h>
-//#include <Graphics/Lighting/PointLight.h>
-//#include <Graphics/Lighting/SpotLight.h>
-//#include <Graphics/Lighting/SphereLight.h>
-//#include <Graphics/Lighting/RectangleLight.h>
 
 #include <Graphics/GraphicsAssetManager.h>
 #include <Graphics/RenderableEntityManager.h>
