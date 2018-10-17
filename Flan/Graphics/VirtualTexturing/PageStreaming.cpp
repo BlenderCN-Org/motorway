@@ -35,20 +35,20 @@ PageStreaming::~PageStreaming()
 void PageStreaming::destroy( RenderDevice* renderDevice )
 {
     for ( auto& table : allocatedPageTables ) {
-        table.destroy( renderDevice );
+        table->destroy( renderDevice );
     }
 }
-/*
-PageTable& PageStreaming::allocatePageTable( RenderDevice* renderDevice )
+
+PageTable* PageStreaming::allocatePageTable( RenderDevice* renderDevice )
 {   
-    allocatedPageTables.push_back( {} );
+    PageTable* pageTable = new PageTable();
+    pageTable->create( renderDevice );
 
-    PageTable& pageTable = allocatedPageTables.back();
-    pageTable.create( renderDevice );
+    allocatedPageTables.push_back( pageTable );
 
-    return pageTable;
+    return allocatedPageTables.back();
 }
-*/
+
 void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
 {
 

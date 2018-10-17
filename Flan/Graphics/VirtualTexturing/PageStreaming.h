@@ -24,8 +24,7 @@ class RenderDevice;
 
 #include <vector>
 #include "PageTable.h"
-
-using fnPageId_t = uint32_t;
+#include "PageIndex.h"
 
 class PageStreaming
 {
@@ -37,12 +36,12 @@ public:
 
     void        destroy( RenderDevice* renderDevice );
     
-    PageTable&  allocatePageTable( RenderDevice* renderDevice );
+    PageTable*  allocatePageTable( RenderDevice* renderDevice );
 
     void        addPageRequest( const fnPageId_t pageIndex );
 
 private:
-    std::vector<PageTable>  allocatedPageTables;
+    std::vector<PageTable*>  allocatedPageTables;
 
 private:
     void    addAsynchronousPageLoading( const fnPageId_t pageIndex );

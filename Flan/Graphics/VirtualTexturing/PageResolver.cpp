@@ -23,6 +23,8 @@
 #include <Rendering/RenderTarget.h>
 #include <unordered_map>
 
+#include "PageIndex.h"
+
 PageResolver::PageResolver()
     : feedbackRenderTarget( nullptr )
 {
@@ -66,10 +68,9 @@ void PageResolver::readbackFromGPU( RenderDevice* renderDevice )
     std::unordered_map<fnPageId_t, uint32_t> pageUsage;
     const int pageCount = 256 * 128 * 4;
     for ( int i = 0; i < pageCount; i += 4 ) {
-        // Concat four bytes into a single page id
-        fnPageId_t pageIndex = ( indirectionTexels[i] << 24 | indirectionTexels[i + 1] << 16 | indirectionTexels[i + 2] << 8 | indirectionTexels[i + 3] );
+        fnPageId_t pageIndex = MakePageId( indirectionTexels[i], indirectionTexels[i + 1], indirectionTexels[i + 2], indirectionTexels[i + 3] );
 
-        if ( pageIndex != ~0 ) {
+        if ( pageIndex != INVALID_PAGEID ) {
             pageUsage[pageIndex]++;
         }
     }

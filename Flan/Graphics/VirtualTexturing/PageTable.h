@@ -21,17 +21,21 @@
 
 class Texture;
 class RenderDevice;
+class CommandList;
 
 class PageTable
 {
 public:
-            PageTable();
-            PageTable( PageTable& ) = default;
-            PageTable& operator = ( PageTable& ) = default;
-            ~PageTable();
+                PageTable();
+                PageTable( PageTable& ) = default;
+                PageTable& operator = ( PageTable& ) = default;
+                ~PageTable();
 
-    void    destroy( RenderDevice* renderDevice );
-    void    create( RenderDevice* renderDevice );
+    void        destroy( RenderDevice* renderDevice );
+    void        create( RenderDevice* renderDevice );
+
+    void        uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData );
+    Texture*    getTableTexture() const;
 
 private:
     std::unique_ptr<Texture> pageTableTexture;

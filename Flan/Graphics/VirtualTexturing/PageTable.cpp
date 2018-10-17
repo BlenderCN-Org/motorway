@@ -22,6 +22,10 @@
 
 #include <Rendering/Texture.h>
 
+static constexpr int PAGE_TABLE_MIP_COUNT = 11;
+static constexpr int PAGE_SIZE_IN_PIXELS = 128;
+static constexpr int PAGE_TABLE_PAGE_COUNT = 128;
+
 PageTable::PageTable()
     : pageTableTexture( nullptr )
 {
@@ -43,13 +47,29 @@ void PageTable::create( RenderDevice* renderDevice )
     TextureDescription pageTableDesc;
     pageTableDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
     pageTableDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-    pageTableDesc.width = 16384;
-    pageTableDesc.height = 8192;
+    pageTableDesc.width = ( PAGE_SIZE_IN_PIXELS * PAGE_TABLE_PAGE_COUNT );
+    pageTableDesc.height = ( PAGE_SIZE_IN_PIXELS * PAGE_TABLE_PAGE_COUNT ) / 2;
     pageTableDesc.depth = 1;
     pageTableDesc.arraySize = 1;
-    pageTableDesc.mipCount = 11;
+    pageTableDesc.mipCount = PAGE_TABLE_MIP_COUNT;
     pageTableDesc.samplerCount = 1;
 
     pageTableTexture.reset( new Texture() );
     pageTableTexture->createAsTexture2D( renderDevice, pageTableDesc );
+}
+
+void PageTable::uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData )
+{
+    TextureCopyBox copyBox;
+    copyBox.x = ( x * PAGE_SIZE_IN_PIXELS );
+    copyBox.y = ( y * PAGE_SIZE_IN_PIXELS );
+    copyBox.mipLevel = mipLevel;
+    copyBox.arrayIndex = 0;
+
+    pageTableTexture->updateSubresource( cmdList, copyBox, PAGE_SIZE_IN_PIXELS, PAGE_SIZE_IN_PIXELS, 4, pageData );
+}
+
+Texture* PageTable::getTableTexture() const
+{
+    return pageTableTexture.get();
 }
