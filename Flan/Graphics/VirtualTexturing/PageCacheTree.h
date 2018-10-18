@@ -19,26 +19,30 @@
 */
 #pragma once
 
-class Texture;
-class RenderDevice;
-class CommandList;
+#include "PageConstants.h"
+#include "PageIndex.h"
+#include "PageCacheEntry.h"
 
-#include <Rendering/ShaderStages.h>
+#include <vector>
+#include <array>
 
-class PageTable
+class PageCacheTree
 {
 public:
-                PageTable();
-                PageTable( PageTable& ) = default;
-                PageTable& operator = ( PageTable& ) = default;
-                ~PageTable();
+                        PageCacheTree();
+                        PageCacheTree( PageCacheTree& ) = default;
+                        PageCacheTree& operator = ( PageCacheTree& ) = default;
+                        ~PageCacheTree();
 
-    void        destroy( RenderDevice* renderDevice );
-    void        create( RenderDevice* renderDevice );
-
-    void        uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData );
-    void        bind( CommandList* cmdList, const uint32_t bindingIndex = 0, const uint32_t shaderStagesToBindTo = eShaderStage::SHADER_STAGE_ALL );
+    void                addToCache( const int level, const int x, const int y, CacheEntry* entry );
+    CacheEntry*         retrieveFromCache( const int level, const int x, const int y ) const;
 
 private:
-    std::unique_ptr<Texture> pageTableTexture;
+    std::vector<CacheEntry *>       cacheEntryPtrPool;
+    std::array<CacheEntry**, 11>    levels;
+
+    // Per-level page counts:
+    std::array<int, 11> numPagesX;
+    std::array<int, 11> numPagesY;
+};
 };

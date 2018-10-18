@@ -17,28 +17,31 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
+#include <Shared.h>
+#include "PageCacheTree.h"
 
-class Texture;
-class RenderDevice;
-class CommandList;
-
-#include <Rendering/ShaderStages.h>
-
-class PageTable
+PageCacheTree::PageCacheTree()
 {
-public:
-                PageTable();
-                PageTable( PageTable& ) = default;
-                PageTable& operator = ( PageTable& ) = default;
-                ~PageTable();
 
-    void        destroy( RenderDevice* renderDevice );
-    void        create( RenderDevice* renderDevice );
+}
 
-    void        uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData );
-    void        bind( CommandList* cmdList, const uint32_t bindingIndex = 0, const uint32_t shaderStagesToBindTo = eShaderStage::SHADER_STAGE_ALL );
+PageCacheTree::~PageCacheTree()
+{
 
-private:
-    std::unique_ptr<Texture> pageTableTexture;
-};
+}
+
+void PageCacheTree::addToCache( const int level, const int x, const int y, CacheEntry* entry )
+{
+    CacheEntry** levelPages = levels[level];
+    const int pageIndex = x + y * numPagesX[level];
+
+    levelPages[pageIndex] = entry;
+}
+
+CacheEntry* PageCacheTree::retrieveFromCache( const int level, const int x, const int y ) const
+{
+    CacheEntry** levelPages = levels[level];
+    const int pageIndex = ( x + y * numPagesX[level] );
+
+    return levelPages[pageIndex];
+}

@@ -41,9 +41,20 @@ void PageStreaming::create( TaskManager* taskManagerInstance )
 
 void PageStreaming::update( CommandList* cmdList )
 {
-    while ( !pageUploads.empty() ) {
-        auto& pageUpload = pageUploads.back();
-        pageUploads.pop();
+    // Process uploads (not sure if the lock is required at this point?)
+    {
+        std::unique_lock<std::mutex> pendingUpload = std::unique_lock<std::mutex>( pageUploadsMutex );
+
+        while ( !pageUploads.empty() ) {
+            auto& pageUpload = pageUploads.back();
+
+            auto pageTable = allocatedPageTables.back();
+            pageTable->uploadPage( cmdList, pageUpload.x, pageUpload.y, pageUpload.mipLevel, pageUpload.data );
+
+            delete[] pageUpload.data;
+
+            pageUploads.pop();
+        }
     }
 }
 
@@ -62,11 +73,6 @@ void PageStreaming::registerVirtualTexture( VirtualTexture* virtualTexture )
     virtualTextures.push_back( virtualTexture );
 }
 
-void PageStreaming::unregisterVirtualTexture( VirtualTexture* virtualTexture )
-{
-
-}
-
 void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
 {
     taskManager->addTask( [&]() {
@@ -81,6 +87,9 @@ void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
         virtualTexture->loadPage( pageIndex, pageData );
 
         // Defer upload until the rendering start
-        pageUploads.push( { ( pageIndex & 0x000000FF ), ( ( pageIndex & 0x0000FF00 ) >> 8 ), pageData } );
+        {
+            std::unique_lock<std::mutex> pendingUpload = std::unique_lock<std::mutex>( pageUploadsMutex );
+            pageUploads.push( { ( pageIndex & 0x000000FF ), ( ( pageIndex & 0x0000FF00 ) >> 8 ), level, 0, pageData } );
+        }
     } );
 }

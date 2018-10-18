@@ -21,8 +21,9 @@
 
 class Texture;
 class RenderDevice;
-class VirtualTexture;
 class TaskManager;
+
+struct VirtualTexture;
 
 #include <vector>
 #include <queue>
@@ -44,7 +45,6 @@ public:
     PageTable*  allocatePageTable( RenderDevice* renderDevice );
 
     void        registerVirtualTexture( VirtualTexture* virtualTexture );
-    void        unregisterVirtualTexture( VirtualTexture* virtualTexture );
 
     void        addPageRequest( const fnPageId_t pageIndex );
 
@@ -53,6 +53,8 @@ private:
     {
         uint32_t    x;
         uint32_t    y;
+        uint32_t    mipLevel;
+        uint32_t    __PADDING__;
         void*       data;
     };
 
@@ -63,4 +65,6 @@ private:
     std::vector<VirtualTexture*>    virtualTextures;
 
     std::queue<PageUpload>          pageUploads;
+
+    std::mutex                      pageUploadsMutex;
 };

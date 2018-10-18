@@ -57,9 +57,9 @@ struct VirtualTexture
         const int level = ( ( pageIndex & 0x00FF0000 ) >> 16 );
 
         auto levelPage = levels[level];
-        const auto pageIndex = x + y * pageCountX[level];
+        const auto levelPageIndex = x + y * pageCountX[level];
 
-        return levelPage[pageIndex];
+        return levelPage[levelPageIndex];
     }
 
     void loadPage( const fnPageId_t pageIndex, void* pageData )

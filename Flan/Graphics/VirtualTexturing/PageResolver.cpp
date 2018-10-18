@@ -74,4 +74,36 @@ void PageResolver::readbackFromGPU( RenderDevice* renderDevice )
             pageUsage[pageIndex]++;
         }
     }
+
+    std::vector<fnPageId_t> sortedPages( pageUsage.size() );
+    for ( const auto& usedPage : pageUsage ) {
+        sortedPages.push_back( usedPage.first );
+    }
+
+    // Sort page by its priority (highest mip goes first; the most used one goes first aswell)
+    std::sort( std::begin( sortedPages ), std::end( sortedPages ),
+        [&]( fnPageId_t a, fnPageId_t b ) -> bool {
+        const int aLevel = ( ( a & 0x00FF0000 ) >> 16 );
+        const int bLevel = ( ( b & 0x00FF0000 ) >> 16 );
+
+        if ( aLevel > bLevel ) {
+            return true;
+        }
+
+        if ( aLevel == bLevel ) {
+            return pageUsage[a] > pageUsage[b];
+        }
+
+        return false;
+    } );
+
+    size_t newRequests = 0;
+    for ( size_t r = 0; r < sortedPages.size(); ++r ) {
+        const fnPageId_t requestId = sortedPages[r];
+        const size_t textureIndex = ( ( requestId & 0xFF000000 ) >> 24 );
+
+        PageCacheMgr* pageCache = registeredTextures[textureIndex]->getPageCache();
+
+        newRequests += processPageRequest( requestId, *pageCache );
+    }
 }

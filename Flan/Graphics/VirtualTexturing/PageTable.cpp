@@ -22,10 +22,6 @@
 
 #include <Rendering/Texture.h>
 
-static constexpr int PAGE_TABLE_MIP_COUNT = 11;
-static constexpr int PAGE_SIZE_IN_PIXELS = 128;
-static constexpr int PAGE_TABLE_PAGE_COUNT = 128;
-
 PageTable::PageTable()
     : pageTableTexture( nullptr )
 {
@@ -69,7 +65,7 @@ void PageTable::uploadPage( CommandList* cmdList, const uint32_t x, const uint32
     pageTableTexture->updateSubresource( cmdList, copyBox, PAGE_SIZE_IN_PIXELS, PAGE_SIZE_IN_PIXELS, 4, pageData );
 }
 
-Texture* PageTable::getTableTexture() const
+void PageTable::bind( CommandList* cmdList, const uint32_t bindingIndex, const uint32_t shaderStagesToBindTo )
 {
-    return pageTableTexture.get();
+    pageTableTexture->bind( cmdList, bindingIndex, shaderStagesToBindTo );
 }

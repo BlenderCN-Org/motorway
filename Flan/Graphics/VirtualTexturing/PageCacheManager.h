@@ -19,26 +19,27 @@
 */
 #pragma once
 
-class Texture;
-class RenderDevice;
-class CommandList;
+#include "PageConstants.h"
+#include "PageIndex.h"
+#include "PageCacheEntry.h"
+#include "PageCacheTree.h"
 
-#include <Rendering/ShaderStages.h>
-
-class PageTable
+class PageCacheManager
 {
 public:
-                PageTable();
-                PageTable( PageTable& ) = default;
-                PageTable& operator = ( PageTable& ) = default;
-                ~PageTable();
+                PageCacheManager();
+                PageCacheManager( PageCacheManager& ) = default;
+                PageCacheManager& operator = ( PageCacheManager& ) = default;
+                ~PageCacheManager();
 
-    void        destroy( RenderDevice* renderDevice );
-    void        create( RenderDevice* renderDevice );
-
-    void        uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData );
-    void        bind( CommandList* cmdList, const uint32_t bindingIndex = 0, const uint32_t shaderStagesToBindTo = eShaderStage::SHADER_STAGE_ALL );
+    bool        isPageCached( const fnPageId_t pageIndex );
 
 private:
-    std::unique_ptr<Texture> pageTableTexture;
+    CacheEntry      dummyEntry;
+
+    CacheEntry*     mru;
+    CacheEntry*     lru;
+
+    PageCacheTree   cachePageTree;
+    std::array<CacheEntry, PAGE_TABLE_PAGE_COUNT> cacheEntryPool;
 };

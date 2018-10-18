@@ -19,26 +19,12 @@
 */
 #pragma once
 
-class Texture;
-class RenderDevice;
-class CommandList;
-
-#include <Rendering/ShaderStages.h>
-
-class PageTable
+struct CacheEntry
 {
-public:
-                PageTable();
-                PageTable( PageTable& ) = default;
-                PageTable& operator = ( PageTable& ) = default;
-                ~PageTable();
-
-    void        destroy( RenderDevice* renderDevice );
-    void        create( RenderDevice* renderDevice );
-
-    void        uploadPage( CommandList* cmdList, const uint32_t x, const uint32_t y, const uint32_t mipLevel, const void* pageData );
-    void        bind( CommandList* cmdList, const uint32_t bindingIndex = 0, const uint32_t shaderStagesToBindTo = eShaderStage::SHADER_STAGE_ALL );
-
-private:
-    std::unique_ptr<Texture> pageTableTexture;
+    CacheEntry* prev;
+    CacheEntry* next;
+    fnPageId_t  pageId;
+    uint32_t    x;
+    uint32_t    y;
+    uint32_t    __PADDING__;
 };
