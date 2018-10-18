@@ -21,8 +21,12 @@
 
 class Texture;
 class RenderDevice;
+class VirtualTexture;
+class TaskManager;
 
 #include <vector>
+#include <queue>
+
 #include "PageTable.h"
 #include "PageIndex.h"
 
@@ -34,15 +38,29 @@ public:
                 PageStreaming& operator = ( PageStreaming& ) = default;
                 ~PageStreaming();
 
-    void        destroy( RenderDevice* renderDevice );
+    void        create( TaskManager* taskManagerInstance );
     
+    void        update( CommandList* cmdList );
     PageTable*  allocatePageTable( RenderDevice* renderDevice );
+
+    void        registerVirtualTexture( VirtualTexture* virtualTexture );
+    void        unregisterVirtualTexture( VirtualTexture* virtualTexture );
 
     void        addPageRequest( const fnPageId_t pageIndex );
 
 private:
-    std::vector<PageTable*>  allocatedPageTables;
+    struct PageUpload
+    {
+        uint32_t    x;
+        uint32_t    y;
+        void*       data;
+    };
 
 private:
-    void    addAsynchronousPageLoading( const fnPageId_t pageIndex );
+    TaskManager*                    taskManager;
+
+    std::vector<PageTable*>         allocatedPageTables;
+    std::vector<VirtualTexture*>    virtualTextures;
+
+    std::queue<PageUpload>          pageUploads;
 };

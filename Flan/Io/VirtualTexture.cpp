@@ -25,7 +25,7 @@
 
 static constexpr uint32_t MAGIC = 0x00FF00FF;
 
-void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextureFileQuadTree& quadTree )
+void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTexture& quadTree )
 {
     const auto contentLength = stream->getSize();
 
@@ -85,4 +85,7 @@ void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextur
             }
         }
     }
+
+    quadTree.stream = stream;
+    quadTree.hashcode = stream->getHashcode();
 }

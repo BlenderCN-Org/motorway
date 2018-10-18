@@ -20,9 +20,11 @@
 #include <Shared.h>
 #include "PageStreaming.h"
 
-#include <Rendering/Texture.h>
+#include <Io/VirtualTexture.h>
+#include <Core/TaskManager.h>
 
 PageStreaming::PageStreaming()
+    : taskManager( nullptr )
 {
 
 }
@@ -32,10 +34,16 @@ PageStreaming::~PageStreaming()
 
 }
 
-void PageStreaming::destroy( RenderDevice* renderDevice )
+void PageStreaming::create( TaskManager* taskManagerInstance )
 {
-    for ( auto& table : allocatedPageTables ) {
-        table->destroy( renderDevice );
+    taskManager = taskManagerInstance;
+}
+
+void PageStreaming::update( CommandList* cmdList )
+{
+    while ( !pageUploads.empty() ) {
+        auto& pageUpload = pageUploads.back();
+        pageUploads.pop();
     }
 }
 
@@ -49,12 +57,30 @@ PageTable* PageStreaming::allocatePageTable( RenderDevice* renderDevice )
     return allocatedPageTables.back();
 }
 
-void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
+void PageStreaming::registerVirtualTexture( VirtualTexture* virtualTexture )
+{
+    virtualTextures.push_back( virtualTexture );
+}
+
+void PageStreaming::unregisterVirtualTexture( VirtualTexture* virtualTexture )
 {
 
 }
 
-void PageStreaming::addAsynchronousPageLoading( const fnPageId_t pageIndex )
+void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
 {
+    taskManager->addTask( [&]() {
+        const int level = ( ( pageIndex & 0x00FF0000 ) >> 16 );
+        const int textureIndex = ( ( pageIndex & 0xFF000000 ) >> 24 );
 
+        auto virtualTexture = virtualTextures[textureIndex];
+        const std::size_t mipSize = ( 128 >> level );
+
+        // TODO Correct allocators for pages
+        uint8_t* pageData = new uint8_t[mipSize * mipSize * 4 * sizeof( float )];
+        virtualTexture->loadPage( pageIndex, pageData );
+
+        // Defer upload until the rendering start
+        pageUploads.push( { ( pageIndex & 0x000000FF ), ( ( pageIndex & 0x0000FF00 ) >> 8 ), pageData } );
+    } );
 }
