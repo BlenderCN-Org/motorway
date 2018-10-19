@@ -96,6 +96,41 @@ Texture2D g_TexBlendMask2 : register( t48 );
 #else
 FLAN_BAKED_TEXTURE_SLOTS
 #endif
+#else
+Texture2D g_TexIndirectionTable : register( t17 );
+Texture2D g_TexPageTable : register( t18 );
+
+static const float c_page_width = 16384.0f;
+static const float c_page_border = 4.0f;
+static const float c_phys_pages_wide = 128.0f;
+
+float3 VirtualToPhysicalTranslation( in float2 virt_coords, in float mip_sample_bias )
+{
+	// J.M.P. van Waveren - "Software Virtual Textures"
+	const float c_float_to_byte   = 255.0;
+	const float c_page_frac_scale = (c_page_width - 2.0 * c_page_border) / c_page_width / c_phys_pages_wide;
+	const float c_border_offset   = (c_page_border / c_page_width / c_phys_pages_wide);
+
+	const float4 c_tex_bias  = float4(c_border_offset, c_border_offset, 0.0, 0.0);
+	const float4 c_tex_scale = float4(
+		(c_float_to_byte / c_phys_pages_wide),
+		(c_float_to_byte / c_phys_pages_wide),
+		(c_float_to_byte * 1.0   / 16.0),
+		(c_float_to_byte * 256.0 / 16.0));
+
+	float4 phys_page = g_TexIndirectionTable.SampleBias( g_BaseColorSampler, virt_coords, mip_sample_bias ) * c_tex_scale + c_tex_bias;
+	float2 page_frac = frac(virt_coords * (phys_page.z + phys_page.w));
+
+	return float3( page_frac * c_page_frac_scale + phys_page.xy,c_page_frac_scale * (phys_page.z + phys_page.w) );
+}
+
+float4 VirtualTextureSample( in float2 virtualCoords, in float3 physicalCoords ) 
+{
+	float2 dx = ddx( virtualCoords ) * physicalCoords.z;
+	float2 dy = ddy( virtualCoords ) * physicalCoords.z;
+	
+	return g_TexPageTable.SampleGrad( g_BaseColorSampler, physicalCoords.xy, dx, dy );
+}
 #endif
 
 // Shading Model BRDF
@@ -588,8 +623,12 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
+	static const float MIP_BIAS = 0.0f;
+	float3 physicalCoords = VirtualToPhysicalTranslation( VertexStage.uvCoord, MIP_BIAS );
+	float4 baseColor = VirtualTextureSample( VertexStage.uvCoord, physicalCoords );
+		
 	MaterialReadLayer BaseLayer;
-	BaseLayer.BaseColor = float3( 0.42, 0.42, 0.42 );
+	BaseLayer.BaseColor = accurateSRGBToLinear( baseColor.rgb );
 	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
 	BaseLayer.Roughness = 0.50f;
 	BaseLayer.Metalness = 0.0f;

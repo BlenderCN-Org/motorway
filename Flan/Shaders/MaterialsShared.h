@@ -23,6 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define uint uint32_t
 #define float2 glm::vec2
 
+class VirtualTexture;
+
 struct MaterialEditionInput
 {
     glm::vec3 Input3D;
@@ -34,7 +36,8 @@ struct MaterialEditionInput
         COLOR_1D,
         COLOR_3D,
         TEXTURE,
-
+        VIRTUAL_TEXTURE,
+     
         EDITABLE_MATERIAL_COMPONENT_TYPE_COUNT
     } InputType;
 
@@ -53,7 +56,11 @@ struct MaterialEditionInput
         WORLD_SPACE_SOURCE = 1,
     } SamplingFlags;
 
-    Texture* InputTexture;
+    union 
+    {
+        Texture*        InputTexture;
+        VirtualTexture* InputVirtualTexture;
+    };
 };
 #else
 struct MaterialEditionInput

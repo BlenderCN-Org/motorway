@@ -363,6 +363,7 @@ compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS
 compile_shader_PS( "Lighting/UberSurface.hlsl", "Surface", "EntryPointPS", { "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_TERRAIN": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDepth", "EntryPointDepthPS", { "PA_EDITOR": "1" } )
+compile_shader_PS( "Lighting/SurfaceFeedback.hlsl", "SurfaceFeedback" )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandardProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
