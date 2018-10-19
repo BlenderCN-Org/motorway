@@ -21,8 +21,10 @@
 
 class RenderTarget;
 class RenderDevice;
+class PageStreaming;
+class RenderPipeline;
 
-#include <vector>
+#include <Graphics/RenderPass.h>
 
 class PageResolver
 {
@@ -35,7 +37,7 @@ public:
     void    destroy( RenderDevice* renderDevice );
     void    create( RenderDevice* renderDevice );
 
-    void    readbackFromGPU( RenderDevice* renderDevice );
+    void    readbackFromGPU( RenderDevice* renderDevice, PageStreaming* pageStreaming );
 
 private:
     std::unique_ptr<RenderTarget> feedbackRenderTarget;

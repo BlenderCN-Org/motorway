@@ -20,7 +20,10 @@
 #include <Shared.h>
 #include "PageStreaming.h"
 
-#include <Io/VirtualTexture.h>
+#include "PageIndirectionTable.h"
+#include "PageCacheManager.h"
+#include "VirtualTexture.h"
+
 #include <Core/TaskManager.h>
 
 PageStreaming::PageStreaming()
@@ -48,13 +51,17 @@ void PageStreaming::update( CommandList* cmdList )
         while ( !pageUploads.empty() ) {
             auto& pageUpload = pageUploads.back();
 
-            auto pageTable = allocatedPageTables.back();
+            auto pageTable = allocatedPageTables[pageUpload.texIndex];
             pageTable->uploadPage( cmdList, pageUpload.x, pageUpload.y, pageUpload.mipLevel, pageUpload.data );
 
             delete[] pageUpload.data;
 
             pageUploads.pop();
         }
+    }
+
+    for ( auto& indirection : pageIndirectionTable ) {
+        indirection->update( cmdList );
     }
 }
 
@@ -71,6 +78,7 @@ PageTable* PageStreaming::allocatePageTable( RenderDevice* renderDevice )
 void PageStreaming::registerVirtualTexture( VirtualTexture* virtualTexture )
 {
     virtualTextures.push_back( virtualTexture );
+    pageCaches.push_back( new PageCacheManager() );
 }
 
 void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
@@ -89,7 +97,12 @@ void PageStreaming::addPageRequest( const fnPageId_t pageIndex )
         // Defer upload until the rendering start
         {
             std::unique_lock<std::mutex> pendingUpload = std::unique_lock<std::mutex>( pageUploadsMutex );
-            pageUploads.push( { ( pageIndex & 0x000000FF ), ( ( pageIndex & 0x0000FF00 ) >> 8 ), level, 0, pageData } );
+            pageUploads.push( { ( pageIndex & 0x000000FFu ), ( ( pageIndex & 0x0000FF00u ) >> 8 ), static_cast<uint32_t>( level ), 0u, pageData } );
         }
     } );
+}
+
+PageCacheManager* PageStreaming::getTextureCache( const uint32_t textureIndex )
+{
+    return pageCaches[textureIndex];
 }

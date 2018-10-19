@@ -20,6 +20,8 @@
 #include <Shared.h>
 #include "PageTable.h"
 
+#include "PageConstants.h"
+
 #include <Rendering/Texture.h>
 
 PageTable::PageTable()

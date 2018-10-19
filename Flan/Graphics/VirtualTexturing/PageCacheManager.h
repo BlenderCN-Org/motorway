@@ -33,6 +33,8 @@ public:
                 ~PageCacheManager();
 
     bool        isPageCached( const fnPageId_t pageIndex );
+    void        accomodatePage( const fnPageId_t pageIndex, uint32_t& pageX, uint32_t& pageY );
+    void        purgeCache();
 
 private:
     CacheEntry      dummyEntry;
@@ -42,4 +44,7 @@ private:
 
     PageCacheTree   cachePageTree;
     std::array<CacheEntry, PAGE_TABLE_PAGE_COUNT> cacheEntryPool;
+
+private:
+    CacheEntry*     allocate();
 };

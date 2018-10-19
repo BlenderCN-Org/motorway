@@ -24,20 +24,22 @@ class RenderDevice;
 class CommandList;
 class PageTable;
 
-#include <Io/VirtualTexture.h>
+#include <Io/VirtualTextureStream.h>
 
-
-class VirtualTextureSet
+class VirtualTexture
 {
 public:
-                VirtualTextureSet();
-                VirtualTextureSet( VirtualTextureSet& ) = default;
-                VirtualTextureSet& operator = ( VirtualTextureSet& ) = default;
-                ~VirtualTextureSet();
+                            VirtualTexture();
+                            VirtualTexture( VirtualTexture& ) = default;
+                            VirtualTexture& operator = ( VirtualTexture& ) = default;
+                            ~VirtualTexture();
 
-    void        addTextureToSet( const VirtualTexture& virtualTexture );
-    void        update( PageTable* pageTable );
+    void                    createFromStream( const VirtualTextureStream& stream );
+    void                    update( PageTable* pageTable );
+    void                    setPage( const int x, const int y, const int level, const uint64_t fileOffsetInBytes, const uint32_t pageSize );
+    PageEntry&              getPage( const fnPageId_t pageIndex );
+    void                    loadPage( const fnPageId_t pageIndex, void* pageData );
 
 private:
-    std::vector<VirtualTexture> virtualTextures;
+    VirtualTextureStream    virtualTextureStream;
 };

@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <Graphics/VirtualTexturing/PageIndex.h>
+#include <Graphics/VirtualTexturing/PageCacheManager.h>
 
 class FileSystemObject;
 
@@ -38,38 +39,8 @@ struct PageEntry
     uint32_t pageSizeInBytes;
 };
 
-struct VirtualTexture
+struct VirtualTextureStream
 {
-    void setPage( const int x, const int y, const int level, const uint64_t fileOffsetInBytes, const uint32_t pageSize )
-    {
-        auto levelPage = levels[level];
-        const auto pageIndex = x + y * pageCountX[level];
-
-        levelPage[pageIndex].pageRelativeOffset = fileOffsetInBytes;
-        levelPage[pageIndex].pageSizeInBytes = pageSize;
-    }
-
-    PageEntry& getPage( const fnPageId_t pageIndex )
-    {
-        // Extract useful bytes to retrieve page entry
-        const int x = ( ( pageIndex & 0x000000FF ) >> 0 );
-        const int y = ( ( pageIndex & 0x0000FF00 ) >> 8 );
-        const int level = ( ( pageIndex & 0x00FF0000 ) >> 16 );
-
-        auto levelPage = levels[level];
-        const auto levelPageIndex = x + y * pageCountX[level];
-
-        return levelPage[levelPageIndex];
-    }
-
-    void loadPage( const fnPageId_t pageIndex, void* pageData )
-    {
-        const auto& pageInfos = getPage( pageIndex );
-
-        stream->seek( pageInfos.pageRelativeOffset, flan::core::eFileReadDirection::FILE_READ_DIRECTION_BEGIN );
-        stream->read( (uint8_t*)pageData, pageInfos.pageSizeInBytes );
-    }
-
     fnStringHash_t hashcode;
     uint32_t pageCountX[11];
     uint32_t pageCountY[11];
@@ -82,6 +53,6 @@ namespace flan
 {
     namespace core
     {
-        void LoadVirtualTextureFile( FileSystemObject* stream, VirtualTexture& quadTree );
+        void LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextureStream& outputStream );
     }
 }

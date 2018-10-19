@@ -37,6 +37,8 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
+#include <Graphics/VirtualTexturing/VirtualTexture.h>
+
 #if FLAN_D3D11
 #include <Rendering/Direct3D11/Texture.h>
 #elif FLAN_VULKAN
@@ -692,6 +694,7 @@ const fnString_t& Material::getName() const
 
 #if FLAN_DEVBUILD
 #include <imgui/imgui.h>
+
 #include <Core/FileSystemIOHelpers.h>
 #include <Core/Environment.h>
 #include <Graphics/TextureSaveTools.h>
@@ -702,7 +705,8 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         "None",
         "1D Constant Value",
         "3D Constant Value",
-        "Texture"
+        "Texture",
+        "Virtual Texture"
     };
 
     // Input label

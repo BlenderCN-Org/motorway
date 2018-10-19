@@ -24,6 +24,8 @@
 #include <unordered_map>
 
 #include "PageIndex.h"
+#include "PageStreaming.h"
+#include "PageCacheManager.h"
 
 PageResolver::PageResolver()
     : feedbackRenderTarget( nullptr )
@@ -59,7 +61,7 @@ void PageResolver::create( RenderDevice* renderDevice )
     indirectionTexels.resize( 256 * 128 * 4 );
 }
 
-void PageResolver::readbackFromGPU( RenderDevice* renderDevice )
+void PageResolver::readbackFromGPU( RenderDevice* renderDevice, PageStreaming* pageStreaming )
 {
     feedbackRenderTarget->retrieveTexelsLDR( renderDevice, indirectionTexels );
 
@@ -101,9 +103,11 @@ void PageResolver::readbackFromGPU( RenderDevice* renderDevice )
     for ( size_t r = 0; r < sortedPages.size(); ++r ) {
         const fnPageId_t requestId = sortedPages[r];
         const size_t textureIndex = ( ( requestId & 0xFF000000 ) >> 24 );
-
-        PageCacheMgr* pageCache = registeredTextures[textureIndex]->getPageCache();
-
-        newRequests += processPageRequest( requestId, *pageCache );
+        
+        auto* pageCache = pageStreaming->getTextureCache( textureIndex );
+        
+        if ( !pageCache->isPageCached( requestId ) ) {
+            pageStreaming->addPageRequest( requestId );
+        }
     }
 }

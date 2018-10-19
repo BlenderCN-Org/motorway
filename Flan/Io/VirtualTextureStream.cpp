@@ -18,14 +18,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <Shared.h>
-#include "VirtualTexture.h"
+#include "VirtualTextureStream.h"
 
 #include <FileSystem/FileSystemObject.h>
 #include <Rendering/ImageFormat.h>
 
 static constexpr uint32_t MAGIC = 0x00FF00FF;
 
-void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTexture& quadTree )
+void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextureStream& outputStream )
 {
     const auto contentLength = stream->getSize();
 
@@ -53,22 +53,22 @@ void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextur
         stream->read( mipHeader );
         stream->seek( mipHeader.pageCountY * mipHeader.pageCountX, eFileReadDirection::FILE_READ_DIRECTION_CURRENT );
 
-        quadTree.pageCountX[mipIdx] = mipHeader.pageCountX;
-        quadTree.pageCountY[mipIdx] = mipHeader.pageCountY;
+        outputStream.pageCountX[mipIdx] = mipHeader.pageCountX;
+        outputStream.pageCountY[mipIdx] = mipHeader.pageCountY;
     }
     
     uint32_t totalEntries = 0;
     for ( uint32_t l = 0; l < fileHeader.mipCount; ++l ) {
-        totalEntries += quadTree.pageCountX[l] * quadTree.pageCountY[l];
+        totalEntries += outputStream.pageCountX[l] * outputStream.pageCountY[l];
     }
 
-    quadTree.levels.resize( fileHeader.mipCount, nullptr );
-    quadTree.pageEntries.resize( totalEntries );
+    outputStream.levels.resize( fileHeader.mipCount, nullptr );
+    outputStream.pageEntries.resize( totalEntries );
 
     totalEntries = 0;
     for ( uint32_t l = 0; l < fileHeader.mipCount; ++l ) {
-        quadTree.levels[l] = quadTree.pageEntries.data() + totalEntries;
-        totalEntries += quadTree.pageCountX[l] * quadTree.pageCountY[l];
+        outputStream.levels[l] = outputStream.pageEntries.data() + totalEntries;
+        totalEntries += outputStream.pageCountX[l] * outputStream.pageCountY[l];
     }
 
     stream->seek( dataBeginOffset, eFileReadDirection::FILE_READ_DIRECTION_BEGIN );
@@ -81,11 +81,15 @@ void flan::core::LoadVirtualTextureFile( FileSystemObject* stream, VirtualTextur
                 PageEntry pageEntry;
                 stream->read( pageEntry );
 
-                quadTree.setPage( x, y, l, pageEntry.pageRelativeOffset, pageEntry.pageSizeInBytes );
+                auto levelPage = outputStream.levels[l];
+                const auto pageIndex = x + y * outputStream.pageCountX[l];
+
+                levelPage[pageIndex].pageRelativeOffset = pageEntry.pageRelativeOffset;
+                levelPage[pageIndex].pageSizeInBytes = pageEntry.pageSizeInBytes;
             }
         }
     }
 
-    quadTree.stream = stream;
-    quadTree.hashcode = stream->getHashcode();
+    outputStream.stream = stream;
+    outputStream.hashcode = stream->getHashcode();
 }

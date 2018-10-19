@@ -19,8 +19,11 @@
 */
 #pragma once
 
+#include <array>
+
 class Texture;
 class RenderDevice;
+class CommandList;
 
 class PageIndirectionTable
 {
@@ -33,6 +36,18 @@ public:
     void    destroy( RenderDevice* renderDevice );
     void    create( RenderDevice* renderDevice );
 
+    void    update( CommandList* cmdList );
+
+private:
+    struct IndirectionTexel {
+        uint8_t x;
+        uint8_t y;
+        uint8_t scaleHigh;
+        uint8_t scaleLow;
+    };
+
 private:
     std::unique_ptr<Texture> pageIndirectionTableTexture;
+    std::array<IndirectionTexel*, 11> tableLevels;
+    std::unique_ptr<IndirectionTexel[]> tableEntryPool;
 };

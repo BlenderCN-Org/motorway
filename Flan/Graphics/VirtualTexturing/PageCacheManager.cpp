@@ -25,8 +25,21 @@ PageCacheManager::PageCacheManager()
     , mru( nullptr )
     , lru( nullptr )
     , cachePageTree()
+    , cacheEntryPool{}
 {
-    
+    for ( int x = 0; x < PAGE_TABLE_PER_LINE_PAGE_COUNT; x++ ) {
+        for ( int y = 0; y < PAGE_TABLE_PER_LINE_PAGE_COUNT; y++ ) {
+            const auto pageIndex = x * PAGE_TABLE_PER_LINE_PAGE_COUNT + y;
+
+            cacheEntryPool[pageIndex].prev = nullptr;
+            cacheEntryPool[pageIndex].next = nullptr;
+            cacheEntryPool[pageIndex].x = x;
+            cacheEntryPool[pageIndex].y = y;
+            cacheEntryPool[pageIndex].pageId = INVALID_PAGEID;
+        }
+    }
+
+    purgeCache();
 }
 
 PageCacheManager::~PageCacheManager()
@@ -72,4 +85,53 @@ bool PageCacheManager::isPageCached( const fnPageId_t pageIndex )
     }
 
     return true;
+}
+
+void PageCacheManager::accomodatePage( const fnPageId_t pageIndex, uint32_t& pageX, uint32_t& pageY )
+{
+    const int x = ( ( pageIndex & 0x000000FF ) >> 0 );
+    const int y = ( ( pageIndex & 0x0000FF00 ) >> 8 );
+    const int level = ( ( pageIndex & 0x00FF0000 ) >> 16 );
+
+    CacheEntry* entry = allocate();
+
+    cachePageTree.addToCache( level, x, y, entry );
+    entry->pageId = pageIndex;
+
+    pageX = entry->x;
+    pageY = entry->y;
+}
+
+void PageCacheManager::purgeCache()
+{
+    for ( int i = 0; i < PAGE_TABLE_PAGE_COUNT; i++ ) {
+        cacheEntryPool[i].prev = ( i > 0 ) ? &cacheEntryPool[i - 1] : nullptr;
+        cacheEntryPool[i].next = ( i < ( PAGE_TABLE_PAGE_COUNT - 1 ) ) ? &cacheEntryPool[i + 1] : nullptr;
+        cacheEntryPool[i].pageId = INVALID_PAGEID;
+    }
+
+    mru = &cacheEntryPool[0];
+    lru = &cacheEntryPool[( PAGE_TABLE_PAGE_COUNT - 1 )];
+}
+
+CacheEntry* PageCacheManager::allocate()
+{
+    if ( lru->pageId != INVALID_PAGEID ) {
+        const int x = ( ( lru->pageId & 0x000000FF ) >> 0 );
+        const int y = ( ( lru->pageId & 0x0000FF00 ) >> 8 );
+        const int level = ( ( lru->pageId & 0x00FF0000 ) >> 16 );
+
+        cachePageTree.addToCache( level, x, y, nullptr );
+    }
+
+    CacheEntry* entry = lru;
+    entry->prev->next = nullptr;
+    lru = entry->prev;
+
+    entry->prev = nullptr;
+    entry->next = mru;
+    mru->prev = entry;
+    mru = entry;
+
+    return entry;
 }

@@ -22,11 +22,14 @@
 class Texture;
 class RenderDevice;
 class TaskManager;
+class PageIndirectionTable;
+class PageCacheManager;
 
 struct VirtualTexture;
 
 #include <vector>
 #include <queue>
+#include <mutex>
 
 #include "PageTable.h"
 #include "PageIndex.h"
@@ -34,19 +37,21 @@ struct VirtualTexture;
 class PageStreaming
 {
 public:
-                PageStreaming();
-                PageStreaming( PageStreaming& ) = default;
-                PageStreaming& operator = ( PageStreaming& ) = default;
-                ~PageStreaming();
+                        PageStreaming();
+                        PageStreaming( PageStreaming& ) = default;
+                        PageStreaming& operator = ( PageStreaming& ) = default;
+                        ~PageStreaming();
 
-    void        create( TaskManager* taskManagerInstance );
+    void                create( TaskManager* taskManagerInstance );
     
-    void        update( CommandList* cmdList );
-    PageTable*  allocatePageTable( RenderDevice* renderDevice );
+    void                update( CommandList* cmdList );
+    PageTable*          allocatePageTable( RenderDevice* renderDevice );
 
-    void        registerVirtualTexture( VirtualTexture* virtualTexture );
+    void                registerVirtualTexture( VirtualTexture* virtualTexture );
 
-    void        addPageRequest( const fnPageId_t pageIndex );
+    void                addPageRequest( const fnPageId_t pageIndex );
+
+    PageCacheManager*   getTextureCache( const uint32_t textureIndex );
 
 private:
     struct PageUpload
@@ -54,17 +59,18 @@ private:
         uint32_t    x;
         uint32_t    y;
         uint32_t    mipLevel;
-        uint32_t    __PADDING__;
+        uint32_t    texIndex;
         void*       data;
     };
 
 private:
-    TaskManager*                    taskManager;
+    TaskManager*                        taskManager;
 
-    std::vector<PageTable*>         allocatedPageTables;
-    std::vector<VirtualTexture*>    virtualTextures;
+    std::vector<PageTable*>             allocatedPageTables;
+    std::vector<VirtualTexture*>        virtualTextures;
+    std::vector<PageCacheManager*>      pageCaches;
+    std::vector<PageIndirectionTable*>  pageIndirectionTable;
 
-    std::queue<PageUpload>          pageUploads;
-
-    std::mutex                      pageUploadsMutex;
+    std::queue<PageUpload>              pageUploads;
+    std::mutex                          pageUploadsMutex;
 };

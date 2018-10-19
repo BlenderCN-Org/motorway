@@ -45,4 +45,3 @@ private:
     std::array<int, 11> numPagesX;
     std::array<int, 11> numPagesY;
 };
-};
