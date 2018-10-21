@@ -20,10 +20,10 @@ Stuff todo for the project
 [Engine]
     > Implement proper memory allocators (pool/heap/stack/fast hashmap/etc.)
     <Terrain Rendering/Physics>
-        > Terrain Material Blending
         > Biome Presets / Define
+        > Add SpecularAA precompute for biome materials
         > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
-        > Terrain Tile streaming w/ Hiearchal Structure (use a quadtree; check which terrain instance to stream from disk but cull on GPU at domain stage)
+        > Terrain Tile streaming w/ Hiearchal Structure (use a quadtree; check which terrain instance to stream from disk but cull on GPU at domain stage) < Wait until proper world streaming
         > Heightmap collision (built in Bullet's, just need to read the doc)
         > Grass rendering (see Boulanger paper)
         > Terrain Height snapping (for assets/roads/etc.)
@@ -74,6 +74,7 @@ DONE
         > How should it be saved? Draft idea: compute both rt at frame N, save to disk at frame N+1 (basically wait for 
           the previous cmdlist to be finished)
     <Terrain Rendering/Physics>
+        > Terrain Material Blending
         > Texture Splatting (3 levels should be enough)
         > GeoClipping / or something even more basic for LODing
     > SSAA Implementation
