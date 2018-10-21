@@ -28,7 +28,6 @@
 #include <Io/FontDescriptor.h>
 #include <Io/Mesh.h>
 #include <Io/Model.h>
-#include <Io/Material.h>
 
 #ifndef STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -163,7 +162,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
             break;  
         case 3:
         case 4:
-            desc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_UNORM;
+            desc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_UINT;
             break;
         }
 
