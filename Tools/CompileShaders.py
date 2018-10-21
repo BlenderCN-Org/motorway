@@ -293,7 +293,7 @@ compile_shader_VS( "Editor/IBLConvolution.hlsl", "IBLConvolution", "EntryPointVS
 compile_shader_PS( "Editor/IBLConvolution.hlsl", "IBLConvolution" )
 compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolver" )
 compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolverTextureMapInput", "EntryPointCS", { "FLAN_TEX_INPUT" : "1" } )
-compile_shader_CS( "Editor/HeightmapNormalGeneration.hlsl", "HeightmapNormalGeneration" )
+compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolverTightTextureMapInput", "EntryPointCS", { "FLAN_TEX_INPUT" : "1", "FLAN_TIGHT_TEXTURE_PACK": "1" } )
 
 # Debug
 compile_shader_PS( "Debug/Wireframe.hlsl", "Wireframe" )
@@ -355,6 +355,8 @@ compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPoi
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
+compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWriteMaxTess", "EntryPointDS", { "PH_DEPTH_WRITE": "1", "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
+compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWriteMaxTess", "EntryPointHS", { "PH_DEPTH_WRITE": "1", "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointPS", { "PA_EDITOR": "1", "FLAN_DEBUG_TILE_HEAT": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1" } )
@@ -363,7 +365,6 @@ compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS
 compile_shader_PS( "Lighting/UberSurface.hlsl", "Surface", "EntryPointPS", { "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_TERRAIN": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDepth", "EntryPointDepthPS", { "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/SurfaceFeedback.hlsl", "SurfaceFeedback" )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandardProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
