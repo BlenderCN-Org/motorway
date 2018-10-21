@@ -398,6 +398,52 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     //delete descriptor.rasterizerState;
     //delete descriptor.depthStencilState;
 #endif
+    // TEST Create Fake Material With Global ID0, being loaded at localID 0
+    // localID: location in textureArray
+    // globalID: splat map texel value, identifying the material (hence the 256 limit)
+    auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor2.dds" ) );
+    auto& terrainBaseColorDesc = terrainBaseColor0->getDescription();
+    for ( int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor0, i, 0, i, 0 );
+    }
+
+    auto terrainBaseColor128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor1.dds" ) );
+    auto& terrainBaseColor128Desc = terrainBaseColor128->getDescription();
+    for ( int i = 0; i < terrainBaseColor128Desc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor128, i, 0, i, 1 );
+    }
+
+    auto terrainBaseColor64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor0.dds" ) );
+    auto& terrainBaseColor64Desc = terrainBaseColor64->getDescription();
+    for ( int i = 0; i < terrainBaseColor64Desc.mipCount; i++ ) {
+        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor64, i, 0, i, 2 );
+    }
+
+    auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm2.dds" ) );
+    auto& terrainNormalDesc = terrainNormal0->getDescription();
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 0 );
+    }
+
+    auto terrainNormal128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm1.dds" ) );
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal128, i, 0, i, 1 );
+    }
+
+    auto terrainNormal64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm0.dds" ) );
+    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal64, i, 0, i, 2 );
+    }
+
+    terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
+    terrainStreaming.terrainMaterialStreaming[0].terrainSamplingParameters = glm::vec4( 0, 0, 96.0f, 96.0f );
+
+    terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
+    terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 96.0f, 96.0f );
+
+    terrainStreaming.baseColorStreamed = terrainStreamedBaseColor.get();
+    terrainStreaming.normalStreamed = terrainStreamedNormal.get();
+    renderPipeline->importWellKnownResource( &terrainStreaming );
 }
 
 unsigned int WorldRenderer::getFrameNumber() const
@@ -427,9 +473,9 @@ void WorldRenderer::precomputeVMF( Texture* normalMap, const float roughnessValu
     }
 }
 
-void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap )
+void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap, const bool thightPackedTexture )
 {
-    auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap, roughnessMap );
+    auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap, roughnessMap, thightPackedTexture );
 
     // Build Ouput Texture (merge UAVs into a single mip mapped render target)
     auto roughnessRT = renderPipeline->importRenderTarget( outputRoughnessMap );
@@ -438,13 +484,6 @@ void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, Re
     }
 }
 
-void WorldRenderer::computeHMapNormalMap( Texture* heightmap, RenderTarget* outputNormalMap )
-{
-    auto normalHmap = AddHMapNormalMapComputePass( renderPipeline.get(), heightmap );
-
-    auto normalHmapRT = renderPipeline->importRenderTarget( outputNormalMap );
-    AddCopyTextureUAVPass( renderPipeline.get(), false, 0, 0, normalHmapRT, normalHmap );
-}
 
 void WorldRenderer::createRenderTargets( void )
 {
@@ -482,6 +521,24 @@ void WorldRenderer::createRenderTargets( void )
 
     previousFrameRenderTarget.reset( new RenderTarget() );
     previousFrameRenderTarget->createAsRenderTarget2D( renderDevice, previousFrameDesc );
+
+    static constexpr int TERRAIN_TEXTURE_DIMENSIONS = 1024;
+    TextureDescription terrainTextureStreamingDesc;
+    terrainTextureStreamingDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC3_UNORM;
+    terrainTextureStreamingDesc.width = TERRAIN_TEXTURE_DIMENSIONS;
+    terrainTextureStreamingDesc.height = TERRAIN_TEXTURE_DIMENSIONS;
+    terrainTextureStreamingDesc.depth = 1;
+    terrainTextureStreamingDesc.arraySize = 32;
+    terrainTextureStreamingDesc.mipCount = flan::rendering::ComputeMipCount( TERRAIN_TEXTURE_DIMENSIONS, TERRAIN_TEXTURE_DIMENSIONS );
+    terrainTextureStreamingDesc.samplerCount = 1;
+
+    terrainStreamedBaseColor.reset( new Texture() );
+    terrainStreamedBaseColor->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
+
+    terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC3_UNORM;
+    terrainStreamedNormal.reset( new Texture() );
+    terrainStreamedNormal->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
 }
 
 void WorldRenderer::createPrimitives( void )

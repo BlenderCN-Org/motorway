@@ -68,15 +68,15 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
     float3 viewDirection = normalize( VertexStage.viewRay.xyz );
 
     float3 transmittance;
-    float3 radiance = GetSkyRadiance( float3( WorldPosition.xz, max( WorldPosition.y * 0.05f, 0.0f ) ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
+    float3 radiance = GetSkyRadiance( float3( WorldPosition.xz * 0.05f, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
 
     autoExposure_t currentExposure = ReadAutoExposureParameters();
-    float4 color = float4( 1.0 - exp( -radiance / ( currentExposure.EngineLuminanceFactor * 0.25f ) ), 1.0f );
+    float4 color = float4( 1.0 - exp( -radiance / ( currentExposure.EngineLuminanceFactor * 0.5f ) ), 1.0f );
 
 #if PA_RENDER_SUN_DISC
     [branch]
     if ( dot( viewDirection, g_SunDirection ) > g_SunSizeY ) {
-        color.rgb += ( transmittance * GetSolarRadiance() * 0.00001f );
+        color.rgb += ( transmittance * GetSolarRadiance() * 0.001f );
     }
 #endif
 

@@ -97,8 +97,7 @@ public:
     // TODO Move this to an appropriate dedicated renderer?
     void                    saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName );
     void                    precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap );
-    void                    precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap );
-    void                    computeHMapNormalMap( Texture* heightmap, RenderTarget* outputNormalMap );
+    void                    precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap, const bool thightPackedTexture = false );
 
 #if FLAN_DEVBUILD
     // TODO Nothing to do in the worldRenderer...
@@ -148,6 +147,10 @@ private:
 
     std::unique_ptr<RenderTarget>           environmentProbes[3];
     std::unique_ptr<Material>               wireframeMaterial;
+
+    std::unique_ptr<Texture>                terrainStreamedBaseColor;
+    std::unique_ptr<Texture>                terrainStreamedNormal;
+    TerrainStreaming                        terrainStreaming;
 
     std::unique_ptr<Buffer>                 sphereVbo;
     std::unique_ptr<Buffer>                 sphereIbo;

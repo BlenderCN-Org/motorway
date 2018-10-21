@@ -31,7 +31,11 @@ RWTexture2D<unorm float> OutputRoughnessMap : register( u0 );
 
 float3 FetchNormal(uint2 samplePos)
 {
+#if FLAN_TIGHT_TEXTURE_PACK
+    float3 normal = normalize(RoughnessMap[samplePos].xyz * 2.0f - 1.0f);
+#else
     float3 normal = normalize(NormalMap[samplePos].xyz * 2.0f - 1.0f);
+#endif
 
     return normal;
 }
@@ -66,7 +70,11 @@ VMF SolveVMF( float2 centerPos, uint numSamples, out float vmfRoughness )
         }
 
 #if FLAN_TEX_INPUT
+#if FLAN_TIGHT_TEXTURE_PACK
+        vmfRoughness = RoughnessMap[uint2(centerPos)].a;
+#else
         vmfRoughness = RoughnessMap[uint2(centerPos)].r;
+#endif
 #else
         vmfRoughness = Roughness;
 #endif
@@ -92,7 +100,11 @@ VMF SolveVMF( float2 centerPos, uint numSamples, out float vmfRoughness )
                 avgNormal += sampleNormal;
                 
 #if FLAN_TEX_INPUT
+#if FLAN_TIGHT_TEXTURE_PACK
+                float sampleRoughness = RoughnessMap[samplePos].a;
+#else
                 float sampleRoughness = RoughnessMap[samplePos].r;
+#endif
                 avgRoughness += sampleRoughness;
 #endif       
             }

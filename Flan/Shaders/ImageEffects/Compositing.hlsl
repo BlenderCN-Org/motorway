@@ -24,6 +24,46 @@
 Texture2D mainRenderTarget : register( t2 );
 Texture2D bloomRenderTarget : register( t3 );
 
+cbuffer PerPass : register( b2 )
+{
+    float g_BloomExposureCompensation; // -8.0f
+    float g_BloomStrength; // 0.04f
+    float g_WhitePoint; // 1.0f
+    float g_BlackPoint; // 0.0f
+    
+    float g_JunctionPoint; // 0.50f
+    float g_ToeStrength; // 0.50f
+    float g_ShoulderStrength; // 0.50f
+    uint explicitpadding;
+}
+
+float ToneMappingFilmic_Insomniac( float x )
+{
+    float	w = g_WhitePoint;	// White point
+    float	b = g_BlackPoint;				// Black point
+    float	c = g_JunctionPoint;				// Junction point
+    float	t = g_ToeStrength;				// Toe strength
+    float	s = g_ShoulderStrength;				// Shoulder strength
+    float	k = ( 1.0f - t ) * ( c - b ) / ( ( 1.0f - s ) * ( w - c ) + ( 1.0f - t ) * ( c - b ) );				// Junction factor
+
+    // "Optimized" version where coeffs for Toe and Shoulder could be passed as float4 to the CB
+    float4	Coeffs_Toe = float4( k - k*t, -t, -k*b + k*b*t, c - b + t*b );
+    float4	Coeffs_Shoulder = float4( k*( s - 1 ) + 1, s, k*( 1 - s )*( w - c ) - k*s*c - c*( 1 - k ), ( 1 - s )*( w - c ) - s*c );
+
+    float4	Coeffs = x < c ? Coeffs_Toe : Coeffs_Shoulder;
+    float2	Fraction = Coeffs.xy * x + Coeffs.zw;
+    return Fraction.x / Fraction.y;
+}
+
+float3 ToneMappingFilmic_Insomniac( float3 Color )
+{
+    float Lum = rgbToLuminance( Color );
+    float nLum = ToneMappingFilmic_Insomniac( Lum );
+    float scale = nLum / Lum;
+
+    return ( scale * Color );
+}
+
 float Vignette( const in float2 fragCoordinates )
 {
 	return 0.3 + 0.7 * pow( 16.0 * fragCoordinates.x * fragCoordinates.y * ( 1.0 - fragCoordinates.x ) * ( 1.0 - fragCoordinates.y ), 0.2 );
@@ -67,9 +107,8 @@ float4 EntryPointPS( psDataScreenQuad_t p ) : SV_TARGET0
     // Add Bloom
     // NOTE Bloom must be done on a unexposed HDR render target (since we interpolate both unexposed render target below, and then tonemap)
     float4 bloomColor = bloomRenderTarget.Sample( LinearSampler, p.uv );
-    float bloomExposureCompensation = -8.0f;
-    float3 bloomLuminance = computeBloomLuminance( bloomColor.rgb, bloomExposureCompensation, currentEV );
-    finalColor.rgb = lerp( finalColor.rgb, bloomLuminance.rgb, 0.04 );
+    float3 bloomLuminance = computeBloomLuminance( bloomColor.rgb, g_BloomExposureCompensation, currentEV );
+    finalColor.rgb = lerp( finalColor.rgb, bloomLuminance.rgb, g_BloomStrength );
 
     // Apply Tonemapping
 	finalColor.rgb = ToneMappingFilmic_Insomniac( finalColor.rgb * currentExposure.EngineLuminanceFactor );

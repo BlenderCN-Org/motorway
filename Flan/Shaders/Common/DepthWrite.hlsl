@@ -10,7 +10,7 @@ struct VertexStageData
 
 #if PH_HEIGHTFIELD
 Texture2D g_TexHeightmap    : register( t0 );
-sampler g_HeightmapSampler : register( s7 );
+sampler g_HeightmapSampler : register( s8 );
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
 {

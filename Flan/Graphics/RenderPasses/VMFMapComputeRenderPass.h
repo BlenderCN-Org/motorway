@@ -149,7 +149,7 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
 
 // IMPORTANT It is implicitely assumed that normal map dimensions are the same as the roughness map
 // Dimensions mismatch will result as an invalid output
-static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Texture* normalMap, Texture* roughnessMap )
+static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Texture* normalMap, Texture* roughnessMap, const bool thightPacked = false )
 {
     struct PassBuffer
     {
@@ -170,8 +170,14 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
             // Pipeline State
             RenderPassPipelineStateDesc passPipelineState = {};
-            passPipelineState.hashcode = FLAN_STRING_HASH( "VMF Solver (using precomputed Texture)" );
-            passPipelineState.computeStage = FLAN_STRING( "VMFSolverTextureMapInput" );
+
+            if ( !thightPacked ) {
+                passPipelineState.hashcode = FLAN_STRING_HASH( "VMF Solver (using precomputed Texture)" );
+                passPipelineState.computeStage = FLAN_STRING( "VMFSolverTextureMapInput" );
+            } else {
+                passPipelineState.hashcode = FLAN_STRING_HASH( "VMF Solver (using thight packed precomputed Texture)" );
+                passPipelineState.computeStage = FLAN_STRING( "VMFSolverTightTextureMapInput" );
+            }
 
             passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
 

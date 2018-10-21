@@ -27,6 +27,23 @@
 #include <Graphics/CBufferIndexes.h>
 #include <Shared.h>
 
+#include <Graphics/RenderModules/AutomaticExposureModule.h>
+
+struct CompositionSettings
+{
+    float BloomExposureCompensation = -16.0f;
+    float BloomStrength = 0.03f;
+    float WhitePoint = 1.0f;
+    float BlackPoint = 0.0f;
+
+    float JunctionPoint = 0.25f;
+    float ToeStrength = 0.0f;
+    float ShoulderStrength = 1.0f;
+    uint32_t __PADDING__;
+};
+
+FLAN_DEV_VAR( GraphicsCompositionSettings, "Graphics Composition Step Settings", {}, CompositionSettings )
+
 static fnPipelineMutableResHandle_t AddCompositionPass( RenderPipeline* renderPipeline )
 {
     auto RenderPass = renderPipeline->addRenderPass(
@@ -71,6 +88,13 @@ static fnPipelineMutableResHandle_t AddCompositionPass( RenderPipeline* renderPi
             bilinearSamplerDesc.filter = flan::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
+
+            // Constant Buffer
+            BufferDesc passBuffer = {};
+            passBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            passBuffer.Size = sizeof( CompositionSettings );
+
+            passData.buffers[0] = renderPipelineBuilder->allocateBuffer( passBuffer );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             // Bind Pass Pipeline State
@@ -85,6 +109,10 @@ static fnPipelineMutableResHandle_t AddCompositionPass( RenderPipeline* renderPi
             auto bilinearSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             bilinearSampler->bind( cmdList, 3 );
 
+            // Get Constant Buffer 
+            auto passConstantBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
+            passConstantBuffer->updateAsynchronous( cmdList, &GraphicsCompositionSettings, sizeof( CompositionSettings ) );
+            passConstantBuffer->bind( cmdList, 2 );
 
             auto autoExposureBuffer = renderPipelineResources->getWellKnownImportedResource<AutoExposureBuffer>()->exposureBuffer; 
             autoExposureBuffer->bindReadOnly( cmdList, 16, SHADER_STAGE_PIXEL );
@@ -105,6 +133,7 @@ static fnPipelineMutableResHandle_t AddCompositionPass( RenderPipeline* renderPi
             bloomRenderTarget->unbind( cmdList );
             inputRenderTarget->unbind( cmdList );
             autoExposureBuffer->unbind( cmdList );
+            passConstantBuffer->unbind( cmdList );
 
             cmdList->bindBackbufferCmd();
         }

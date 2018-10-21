@@ -37,8 +37,6 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
-#include <Graphics/VirtualTexturing/VirtualTexture.h>
-
 #if FLAN_D3D11
 #include <Rendering/Direct3D11/Texture.h>
 #elif FLAN_VULKAN
@@ -59,7 +57,6 @@ Material::Material( const fnString_t& materialName )
     , sortKey( 0 )
     , shadingModel( flan::graphics::eShadingModel::SHADING_MODEL_STANDARD )
     , rebuildSpecularAAMaps{ 0 }
-    , rebuildHMapNormalMaps{ 0 }
 {
     editableMaterialData = { 0 };
     editableMaterialData.LayerCount = 1;
@@ -170,9 +167,8 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         RasterizerStateDesc rasterDesc;
         rasterDesc.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
-        rasterDesc.cullMode = ( isWorldMaterial )
-            ? ( editableMaterialData.IsDoubleFace ) ? flan::rendering::eCullMode::CULL_MODE_NONE : flan::rendering::eCullMode::CULL_MODE_BACK
-            : flan::rendering::eCullMode::CULL_MODE_FRONT;
+        rasterDesc.cullMode =  ( editableMaterialData.IsDoubleFace ) ? flan::rendering::eCullMode::CULL_MODE_NONE
+            : flan::rendering::eCullMode::CULL_MODE_BACK;
         rasterDesc.useTriangleCCW = true;
 
         DepthStencilStateDesc depthStencilDesc;
@@ -252,8 +248,11 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             descriptor.tesselationEvalStage = nullptr;
         } else if ( materialType == MaterialType::TERRAIN ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
-            descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_CONTROL );
-            descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_EVALUATION );
+
+            // Use constant tessellated based heightfield instead of the distance based one (since this pso permutation should be used 
+            // for shadow mapping anyway)
+            descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWriteMaxTess" ), SHADER_STAGE_TESSELATION_CONTROL );
+            descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWriteMaxTess" ), SHADER_STAGE_TESSELATION_EVALUATION );
         }
 
         descriptor.pixelStage = ( editableMaterialData.EnableAlphaTest ) 
@@ -284,6 +283,11 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         // Reversed Depth Only
         if ( !editableMaterialData.EnableAlphaBlend ) {
+            if ( materialType == MaterialType::TERRAIN ) {
+                descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_CONTROL );
+                descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_EVALUATION );
+            }
+
             depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GREATER;
             descriptor.depthStencilState = new DepthStencilState();
             descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
@@ -315,6 +319,8 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
     sortKeyInfos.useTranslucidity = ( sortKeyInfos.isAlphaTested || sortKeyInfos.isAlphaBlended );
 }
 
+#include <Core/PathHelpers.h>
+
 void ReadEditableMaterialInput( const fnString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetManager* graphicsAssetManager, MaterialEditionInput& materialComponent, fnTextureSet_t& textureSet )
 {
     auto valueHashcode = flan::core::CRC32( materialInputLine.c_str() );
@@ -334,8 +340,11 @@ void ReadEditableMaterialInput( const fnString_t& materialInputLine, const uint3
         materialComponent.InputType = MaterialEditionInput::COLOR_3D;
         materialComponent.Input3D = glm::vec3( redChannel, greenChannel, blueChannel );
     } else if ( materialInputLine.front() == '"' && materialInputLine.back() == '"' ) {
+        auto assetPath = flan::core::WrappedStringToString( materialInputLine );
+        auto extension = flan::core::GetFileExtensionFromPath( assetPath );
+
         materialComponent.InputType = MaterialEditionInput::TEXTURE;
-        materialComponent.InputTexture = graphicsAssetManager->getTexture( flan::core::WrappedStringToString( materialInputLine ).c_str() );
+        materialComponent.InputTexture = graphicsAssetManager->getTexture( assetPath.c_str() );
 
         textureSet.insert( std::make_pair( inputTextureBindIndex, materialComponent.InputTexture ) );
     } else {
@@ -447,8 +456,6 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 
                 // Shading Model Inputs
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
-                FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 1, HeightmapNormal )
-                FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 2, HeightmapDisplacement )
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, TerrainSplatMap )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
@@ -551,8 +558,6 @@ void Material::serialize( FileSystemObject* file ) const
         file->writeString( "Layer\n{\n" );
 
         FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
-        FLAN_WRITE_INPUT_VERTEX( HeightmapNormal, 1 );
-        FLAN_WRITE_INPUT_VERTEX( HeightmapDisplacement, 1 );
         
         FLAN_WRITE_INPUT_PIXEL( TerrainSplatMap, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
@@ -705,8 +710,7 @@ void Material::displayInputConfiguration( GraphicsAssetManager* graphicsAssetMan
         "None",
         "1D Constant Value",
         "3D Constant Value",
-        "Texture",
-        "Virtual Texture"
+        "Texture"
     };
 
     // Input label
@@ -893,55 +897,55 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
         ImGui::EndGroup();
 
         // Material Layers
-        if ( ImGui::Button( "Add Layer" ) && editableMaterialData.LayerCount < MAX_LAYER_COUNT ) {
-            editableMaterialData.LayerCount++;
+        if ( shadingModel != flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
+            if ( ImGui::Button( "Add Layer" ) && editableMaterialData.LayerCount < MAX_LAYER_COUNT ) {
+                editableMaterialData.LayerCount++;
 
-            auto& addedLayer = editableMaterialData.layers[( editableMaterialData.LayerCount - 1 )];
+                auto& addedLayer = editableMaterialData.layers[( editableMaterialData.LayerCount - 1 )];
 
-            addedLayer.Heightmap.InputType = MaterialEditionInput::NONE;
-            addedLayer.HeightmapNormal.InputType = MaterialEditionInput::NONE;
-            addedLayer.HeightmapDisplacement.InputType = MaterialEditionInput::NONE;
-            
-            addedLayer.HeightmapWorldHeight = 0.0f;
+                addedLayer.Heightmap.InputType = MaterialEditionInput::NONE;
 
-            addedLayer.BaseColor.InputType = MaterialEditionInput::COLOR_3D;
-            addedLayer.BaseColor.Input3D = { 0.42f, 0.42f, 0.42f };
+                addedLayer.HeightmapWorldHeight = 0.0f;
 
-            addedLayer.Reflectance.InputType = MaterialEditionInput::COLOR_1D;
-            addedLayer.Reflectance.Input1D = 1.0f;
+                addedLayer.BaseColor.InputType = MaterialEditionInput::COLOR_3D;
+                addedLayer.BaseColor.Input3D = { 0.42f, 0.42f, 0.42f };
 
-            addedLayer.Roughness.InputType = MaterialEditionInput::COLOR_1D;
-            addedLayer.Roughness.Input1D = 0.80f;
+                addedLayer.Reflectance.InputType = MaterialEditionInput::COLOR_1D;
+                addedLayer.Reflectance.Input1D = 1.0f;
 
-            addedLayer.Metalness.InputType = MaterialEditionInput::COLOR_1D;
-            addedLayer.Metalness.Input1D = 0.0f;
+                addedLayer.Roughness.InputType = MaterialEditionInput::COLOR_1D;
+                addedLayer.Roughness.Input1D = 0.80f;
 
-            addedLayer.AmbientOcclusion.InputType = MaterialEditionInput::NONE;
-            addedLayer.Normal.InputType = MaterialEditionInput::NONE;
-            addedLayer.Emissivity.InputType = MaterialEditionInput::NONE;
-            addedLayer.AlphaMask.InputType = MaterialEditionInput::NONE;
-            addedLayer.Displacement.InputType = MaterialEditionInput::NONE;
-            addedLayer.SecondaryNormal.InputType = MaterialEditionInput::NONE;
+                addedLayer.Metalness.InputType = MaterialEditionInput::COLOR_1D;
+                addedLayer.Metalness.Input1D = 0.0f;
 
-            addedLayer.BlendMask.InputType = MaterialEditionInput::COLOR_1D;
-            addedLayer.BlendMask.Input1D = 0.5f;
+                addedLayer.AmbientOcclusion.InputType = MaterialEditionInput::NONE;
+                addedLayer.Normal.InputType = MaterialEditionInput::NONE;
+                addedLayer.Emissivity.InputType = MaterialEditionInput::NONE;
+                addedLayer.AlphaMask.InputType = MaterialEditionInput::NONE;
+                addedLayer.Displacement.InputType = MaterialEditionInput::NONE;
+                addedLayer.SecondaryNormal.InputType = MaterialEditionInput::NONE;
 
-            addedLayer.Refraction = 0.0f;
-            addedLayer.RefractionIor = 0.0f;
-            addedLayer.ClearCoat = 0.0f;
-            addedLayer.ClearCoatGlossiness = 0.0f;
+                addedLayer.BlendMask.InputType = MaterialEditionInput::COLOR_1D;
+                addedLayer.BlendMask.Input1D = 0.5f;
 
-            addedLayer.NormalMapStrength = 1.0f;
-            addedLayer.SecondaryNormalMapStrength = 1.0f;
-            addedLayer.DisplacementMapStrength = 1.0f;
+                addedLayer.Refraction = 0.0f;
+                addedLayer.RefractionIor = 0.0f;
+                addedLayer.ClearCoat = 0.0f;
+                addedLayer.ClearCoatGlossiness = 0.0f;
 
-            addedLayer.DiffuseContribution = 1.0f;
-            addedLayer.SpecularContribution = 1.0f;
-            addedLayer.NormalContribution = 1.0f;
-            addedLayer.AlphaCutoff = 0.50f;
+                addedLayer.NormalMapStrength = 1.0f;
+                addedLayer.SecondaryNormalMapStrength = 1.0f;
+                addedLayer.DisplacementMapStrength = 1.0f;
 
-            addedLayer.LayerScale = glm::vec2( 1.0f, 1.0f );
-            addedLayer.LayerOffset = glm::vec2( 0.0f, 0.0f );
+                addedLayer.DiffuseContribution = 1.0f;
+                addedLayer.SpecularContribution = 1.0f;
+                addedLayer.NormalContribution = 1.0f;
+                addedLayer.AlphaCutoff = 0.50f;
+
+                addedLayer.LayerScale = glm::vec2( 1.0f, 1.0f );
+                addedLayer.LayerOffset = glm::vec2( 0.0f, 0.0f );
+            }
         }
 
         for ( uint32_t i = 0; i < editableMaterialData.LayerCount; i++ ) {
@@ -950,12 +954,6 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
             auto& layer = editableMaterialData.layers[i];
             auto layerLabel = "Layer" + std::to_string( i );
-
-            if ( rebuildHMapNormalMaps[i] == 1 ) {
-                fnString_t normalMapName = name + FLAN_STRING( "_LayerHMap" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Normal" );
-                worldRenderer->saveTexture( heightmapNormalMapRT[i], normalMapName );
-                rebuildHMapNormalMaps[i] = 0;
-            }
 
             if ( rebuildSpecularAAMaps[i] == 1 ) {
                 fnString_t roughnessMapName = name + FLAN_STRING( "_Layer" ) + FLAN_TO_STRING( i ) + FLAN_STRING( "_Roughness" );
@@ -974,41 +972,22 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                 rebuildSpecularAAMaps[i] = 0;
             }
 
-            if ( !isBaseLayer 
-              && ImGui::Button( ( "-##" + std::to_string( i ) ).c_str() ) ) {
-                editableMaterialData.LayerCount--;
-                i++;
-                continue;
+            if ( shadingModel != flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
+                if ( !isBaseLayer
+                    && ImGui::Button( ( "-##" + std::to_string( i ) ).c_str() ) ) {
+                    editableMaterialData.LayerCount--;
+                    i++;
+                    continue;
+                }
             }
 
             ImGui::SameLine( 200.0f );
             if ( ImGui::TreeNode( layerLabel.c_str() ) ) {
                 if ( shadingModel == flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD ) {
-                    displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
-                    displayInputConfiguration( graphicsAssetManager, "NormalMap", layer.HeightmapNormal, 1, vertexTextureSet );
-                    displayInputConfiguration( graphicsAssetManager, "DisplacementMap", layer.HeightmapDisplacement, 2, vertexTextureSet );
-                    displayInputConfiguration( graphicsAssetManager, "SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
-
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
 
-                    if ( ImGui::Button( "Compute Terrain Normal Map" )
-                        && layer.Heightmap.InputType == MaterialEditionInput::TEXTURE ) {
-                        heightmapNormalMapRT[i] = new RenderTarget();
-
-                        auto& nmDesc = layer.Heightmap.InputTexture->getDescription();
-                        TextureDescription renderTargetDesc;
-                        renderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-                        renderTargetDesc.width = nmDesc.width;
-                        renderTargetDesc.height = nmDesc.height;
-                        renderTargetDesc.depth = 1;
-                        renderTargetDesc.arraySize = 1;
-                        renderTargetDesc.mipCount = 1;
-                        renderTargetDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-                        heightmapNormalMapRT[i]->createAsRenderTarget2D( renderDevice, renderTargetDesc );
-
-                        worldRenderer->computeHMapNormalMap( layer.Heightmap.InputTexture, heightmapNormalMapRT[i] );
-                        rebuildHMapNormalMaps[i] = 1;
-                    }
+                    displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
+                    displayInputConfiguration( graphicsAssetManager, "SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
                 } else {
                     if ( ImGui::Button( "Precompute Anti-Aliased Roughness Map" )
                         && layer.Normal.InputType == MaterialEditionInput::TEXTURE ) {

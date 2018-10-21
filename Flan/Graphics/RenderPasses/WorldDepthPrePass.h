@@ -98,14 +98,28 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
 
             passData.buffers[3] = renderPipelineBuilder->allocateBuffer( cameraBuffer );
 
+            BufferDesc terrainStreamingBuffer = {};
+            terrainStreamingBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            terrainStreamingBuffer.Size = sizeof( TerrainStreaming::terrainMaterialStreaming );
+
+            passData.buffers[5] = renderPipelineBuilder->allocateBuffer( terrainStreamingBuffer );
+
             // Texture (geometry stuff) Sampler
             SamplerDesc matSamplerDesc;
-            matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             matSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matSamplerDesc );
+
+            SamplerDesc matDisplacementSamplerDesc;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+
+            passData.samplers[1] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             // Bind Pass Pipeline State
@@ -138,7 +152,16 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
 
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
-            matInputSampler->bind( cmdList, 7 );
+            matInputSampler->bind( cmdList, 8 );
+
+            auto matInputDisplSampler = renderPipelineResources->getSampler( passData.samplers[1] );
+            matInputDisplSampler->bind( cmdList, 9 );
+            auto terrrainStreamingData = renderPipelineResources->getWellKnownImportedResource<TerrainStreaming>();
+            terrrainStreamingData->baseColorStreamed->bind( cmdList, 6, SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
+
+            auto terrainStreamingBuffer = renderPipelineResources->getBuffer( passData.buffers[5] );
+            terrainStreamingBuffer->updateAsynchronous( cmdList, &terrrainStreamingData->terrainMaterialStreaming, sizeof( TerrainStreaming::terrainMaterialStreaming ) );
+            terrainStreamingBuffer->bind( cmdList, 7, SHADER_STAGE_PIXEL | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
 
             // Render Opaque Geometry Only
             int cmdCount = 0;

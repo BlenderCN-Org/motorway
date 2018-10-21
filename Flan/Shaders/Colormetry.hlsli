@@ -42,22 +42,6 @@ float3 accurateLinearToSRGB( in float3 linearCol )
     return sRGB;
 }
 
-// Based on The Order : 1886 SIGGRAPH course notes implementation
-float adjustRoughness( in float inputRoughness, in float avgNormalLength )
-{
-    float adjustedRoughness = inputRoughness;
-
-    if ( avgNormalLength < 1.0f ) {
-        float avgNormLen2 = avgNormalLength * avgNormalLength;
-        float kappa = ( 3 * avgNormalLength - avgNormalLength * avgNormLen2 ) / ( 1 - avgNormLen2 );
-        float variance = 1.0f / ( 2.0 * kappa );
-
-        adjustedRoughness = sqrt( inputRoughness * inputRoughness + variance );
-    }
-
-    return adjustedRoughness;
-}
-
 // RGB to luminance
 float rgbToLuminance( float3 colour )
 {
@@ -74,54 +58,6 @@ float CalcLuminance( float3 color )
 float rgbToLogLuminance( float3 colour )
 {
     return log( rgbToLuminance( colour ) );
-}
-
-float3 ACESFilm( float3 x )
-{
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-
-    return saturate( ( x*( a*x + b ) ) / ( x*( c*x + d ) + e ) );
-}
-
-float3 ACESFilmRec2020( float3 x )
-{
-    float a = 15.8f;
-    float b = 2.12f;
-    float c = 1.2f;
-    float d = 5.92f;
-    float e = 1.9f;
-    return ( x * ( a * x + b ) ) / ( x * ( c * x + d ) + e );
-}
-
-float ToneMappingFilmic_Insomniac( float x )
-{
-    float	w = 1.0f;	// White point
-    float	b = 0.00f;				// Black point
-    float	c = 0.50f;				// Junction point
-    float	t = 0.0f;				// Toe strength
-    float	s = 0.00f;				// Shoulder strength
-    float	k = ( 1.0f - t ) * ( c - b ) / ( ( 1.0f - s ) * ( w - c ) + ( 1.0f - t ) * ( c - b ) );				// Junction factor
-
-    // "Optimized" version where coeffs for Toe and Shoulder could be passed as float4 to the CB
-    float4	Coeffs_Toe = float4( k - k*t, -t, -k*b + k*b*t, c - b + t*b );
-    float4	Coeffs_Shoulder = float4( k*( s - 1 ) + 1, s, k*( 1 - s )*( w - c ) - k*s*c - c*( 1 - k ), ( 1 - s )*( w - c ) - s*c );
-
-    float4	Coeffs = x < c ? Coeffs_Toe : Coeffs_Shoulder;
-    float2	Fraction = Coeffs.xy * x + Coeffs.zw;
-    return Fraction.x / Fraction.y;
-}
-
-float3 ToneMappingFilmic_Insomniac( float3 Color )
-{
-    float Lum = rgbToLuminance( Color );
-    float nLum = ToneMappingFilmic_Insomniac( Lum );
-    float scale = nLum / Lum;
-
-    return ( scale * Color );
 }
 
 float computeEV100FromAvgLuminance( float avg_luminance )

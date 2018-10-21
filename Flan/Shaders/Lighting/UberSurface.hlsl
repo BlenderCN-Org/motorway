@@ -54,7 +54,23 @@ SamplerComparisonState  g_ShadowMapSampler  : register( s15 );
 sampler  g_LUTSampler                       : register( s10 );
 sampler  g_DiffuseEnvProbeSampler           : register( s12 );
 
-#ifndef PA_TERRAIN
+#ifdef PA_TERRAIN
+Texture2D<uint4> g_TexSplatMap : register( t17 );
+Texture2DArray 		g_TerrainBaseColorHeightArray : register( t6 );
+Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
+
+struct TerrainSamplingParameter
+{
+    float4 samplingParameters;
+    uint splatIndex;
+    uint3 EXPLICIT_PADDING;
+};
+
+cbuffer Terrain : register( b7 )
+{
+	TerrainSamplingParameter g_TerrainMaterials[256];
+};
+#else
 #if PA_EDITOR
 // Layer0
 Texture2D g_TexBaseColor0 : register( t17 );
@@ -96,41 +112,6 @@ Texture2D g_TexBlendMask2 : register( t48 );
 #else
 FLAN_BAKED_TEXTURE_SLOTS
 #endif
-#else
-Texture2D g_TexIndirectionTable : register( t17 );
-Texture2D g_TexPageTable : register( t18 );
-
-static const float c_page_width = 16384.0f;
-static const float c_page_border = 4.0f;
-static const float c_phys_pages_wide = 128.0f;
-
-float3 VirtualToPhysicalTranslation( in float2 virt_coords, in float mip_sample_bias )
-{
-	// J.M.P. van Waveren - "Software Virtual Textures"
-	const float c_float_to_byte   = 255.0;
-	const float c_page_frac_scale = (c_page_width - 2.0 * c_page_border) / c_page_width / c_phys_pages_wide;
-	const float c_border_offset   = (c_page_border / c_page_width / c_phys_pages_wide);
-
-	const float4 c_tex_bias  = float4(c_border_offset, c_border_offset, 0.0, 0.0);
-	const float4 c_tex_scale = float4(
-		(c_float_to_byte / c_phys_pages_wide),
-		(c_float_to_byte / c_phys_pages_wide),
-		(c_float_to_byte * 1.0   / 16.0),
-		(c_float_to_byte * 256.0 / 16.0));
-
-	float4 phys_page = g_TexIndirectionTable.SampleBias( g_BaseColorSampler, virt_coords, mip_sample_bias ) * c_tex_scale + c_tex_bias;
-	float2 page_frac = frac(virt_coords * (phys_page.z + phys_page.w));
-
-	return float3( page_frac * c_page_frac_scale + phys_page.xy,c_page_frac_scale * (phys_page.z + phys_page.w) );
-}
-
-float4 VirtualTextureSample( in float2 virtualCoords, in float3 physicalCoords ) 
-{
-	float2 dx = ddx( virtualCoords ) * physicalCoords.z;
-	float2 dy = ddy( virtualCoords ) * physicalCoords.z;
-	
-	return g_TexPageTable.SampleGrad( g_BaseColorSampler, physicalCoords.xy, dx, dy );
-}
 #endif
 
 // Shading Model BRDF
@@ -612,6 +593,18 @@ void EvaluateIBL(
 FLAN_LAYERS_READ
 #endif
 
+
+float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)  
+{  
+    float depth = 0.2;  
+    float ma = max(texture1.a + a1, texture2.a + a2) - depth;  
+  
+    float b1 = max(texture1.a + a1 - ma, 0);  
+    float b2 = max(texture2.a + a2 - ma, 0);  
+  
+    return (texture1.rgb * b1 + texture2.rgb * b2) / (b1 + b2);  
+}
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     // Compute common terms from vertex stage variables
@@ -623,18 +616,62 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_EDITOR
 #if PA_TERRAIN
-	static const float MIP_BIAS = 0.0f;
-	float3 physicalCoords = VirtualToPhysicalTranslation( VertexStage.uvCoord, MIP_BIAS );
-	float4 baseColor = VirtualTextureSample( VertexStage.uvCoord, physicalCoords );
+    // distance blend test
+    static const float TransitionDistance = 96.0f;
+    static const float Falloff = 2.0f;
+    static const float InvTransitionDistance = 1.0f / TransitionDistance;
+    
+    float distanceWS = distance( VertexStage.positionWS.xyz, WorldPosition.xyz );
+    distanceWS *= InvTransitionDistance;
+    distanceWS = saturate( pow( distanceWS, Falloff ) );
+    
+    uint4 splatmapData = g_TexSplatMap.Load( int3( VertexStage.positionWS.xz, 0 ) );
+    
+	// Retrieve texture coordinates
+	float4 samplingParameters = g_TerrainMaterials[splatmapData.r / 257].samplingParameters; // xy offset; zw scale
+	float2 samplingCoordinates = ( VertexStage.uvCoord.xy + samplingParameters.xy ) * samplingParameters.zw;
+    float2 samplingCoordinatesFar = samplingCoordinates * 0.1f;
+        
+	uint streamedTextureIndex = g_TerrainMaterials[splatmapData.r / 257].splatIndex;
+    
+    float4 baseColor = lerp(   g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
+                                g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
+                                distanceWS );
+                                
+    float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );    
+
+	float4 samplingParameters2 = g_TerrainMaterials[splatmapData.g / 257].samplingParameters; // xy offset; zw scale
+	float2 samplingCoordinates2 = ( VertexStage.uvCoord.xy + samplingParameters2.xy ) * samplingParameters2.zw;
+    float2 samplingCoordinates2Far = samplingCoordinates2 * 0.1f;
 		
+	uint streamedTextureIndex2 = g_TerrainMaterials[splatmapData.g / 257].splatIndex;
+    
+    float4 baseColor2 = lerp(   g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) ),
+                                g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2Far.xy, streamedTextureIndex2 ) ),
+                                distanceWS );
+    float4 normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) );    
+
+    float blendFactor = (float)( splatmapData.b / 65535.0f );
+    
 	MaterialReadLayer BaseLayer;
-	BaseLayer.BaseColor = accurateSRGBToLinear( baseColor.rgb );
-	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
-	BaseLayer.Roughness = 0.50f;
+	BaseLayer.BaseColor = 
+    TerrainDepthBlend(
+        float4( accurateSRGBToLinear( baseColor.rgb ), baseColor.a ), 1.0f - blendFactor,
+        float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor ); //float3( 0.42, 0.42, 0.42 );
+	BaseLayer.Reflectance = 0.125f; // baseColor.a;	
+	BaseLayer.Roughness = 
+    TerrainDepthBlend(
+        float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor,
+        float4( normalAndRoughness2.aaa, baseColor2.a ), blendFactor ).r;
+        //lerp( normalAndRoughness.a, normalAndRoughness2.a, blendFactor );
 	BaseLayer.Metalness = 0.0f;
 	BaseLayer.AmbientOcclusion = 1.0f;
 	BaseLayer.Emissivity = 0.0f;
-	BaseLayer.Normal = N;
+	BaseLayer.Normal = 
+    TerrainDepthBlend(
+        float4( normalize( normalAndRoughness.rgb * 2.0f - 1.0f  ), baseColor.a ), 1.0f - blendFactor,
+        float4( normalize( normalAndRoughness2.rgb * 2.0f - 1.0f ), baseColor2.a ), blendFactor );
+        
 	BaseLayer.SecondaryNormal = N;
 	BaseLayer.AlphaMask = 1.0f;
 	BaseLayer.BlendMask = 1.0f;
@@ -646,6 +683,9 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	BaseLayer.SpecularContribution = 1.0f;
 	BaseLayer.NormalContribution = 1.0f;
 	BaseLayer.AlphaCutoff = 0.0f;
+    
+    
+	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
@@ -899,25 +939,23 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
 
-#if 0
 #ifndef PA_PROBE_CAPTURE
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
 
-    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, max( WorldPosition.y, 0.0f )  );
-    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z,  max( VertexStage.positionWS.y, 0.0f ) );
+    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, 1.0f ) * 0.05f;
+    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z, 1.0f ) * 0.05f;
       
 	float3 atmosphereInScatter = GetSkyRadianceToPoint
 	( 
 		atmosphereSamplingPos - g_EarthCenter,
 		atmosphereVertexPos - g_EarthCenter,
-		0.0f,
+		VertexStage.depth,
 		g_SunDirection,
 		atmosphereTransmittance 
 	);
 
 	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
-#endif
 #endif
 
     // PA_ENABLE_ALPHA_BLEND

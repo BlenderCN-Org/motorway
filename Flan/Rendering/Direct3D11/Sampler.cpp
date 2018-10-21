@@ -70,10 +70,10 @@ NativeSamplerObject* flan::rendering::CreateSamplerImpl( NativeRenderContext* na
     samplerDesc.MinLOD = static_cast<FLOAT>( description.minLOD );
     samplerDesc.MaxLOD = static_cast<FLOAT>( description.maxLOD );
     samplerDesc.ComparisonFunc = D3D11_COMPARISON_FUNCTION[description.comparisonFunction];
-    samplerDesc.BorderColor[0] = 0.0F;
-    samplerDesc.BorderColor[1] = 0.0F;
-    samplerDesc.BorderColor[2] = 0.0F;
-    samplerDesc.BorderColor[3] = 0.0F;
+    samplerDesc.BorderColor[0] = 1.0F;
+    samplerDesc.BorderColor[1] = 1.0F;
+    samplerDesc.BorderColor[2] = 1.0F;
+    samplerDesc.BorderColor[3] = 1.0F;
 
     NativeSamplerObject* sampler = new NativeSamplerObject();
     nativeRenderContext->nativeDevice->CreateSamplerState( &samplerDesc, &sampler->samplerStateObject );

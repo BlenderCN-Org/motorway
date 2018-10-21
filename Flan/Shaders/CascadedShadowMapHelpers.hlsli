@@ -37,12 +37,11 @@ float SampleCascadedShadowMap( in float2 base_uv, in float u, in float v, in flo
 {
     float2 uv = base_uv + float2( u, v ) * shadowMapSizeInv;
 
-    // NOTE Somehow, the z value might goes above 1
-    float z = ( depth + dot( float2( u, v ) * shadowMapSizeInv, receiverPlaneDepthBias ) );
+    float z = depth + dot( float2( u, v ) * shadowMapSizeInv, receiverPlaneDepthBias );
 
     float2 shiftedCoordinates = uv.xy;
-    shiftedCoordinates.x = float( cascadeIdx ) / CSM_SLICE_COUNT;
-    shiftedCoordinates.x += ( uv.x / CSM_SLICE_COUNT );
+    shiftedCoordinates.x = float( cascadeIdx ) / float(CSM_SLICE_COUNT);
+    shiftedCoordinates.x += ( uv.x / float(CSM_SLICE_COUNT) );
     
     return ShadowMapTest.SampleCmpLevelZero( g_ShadowMapSampler, shiftedCoordinates.xy, z );
 }

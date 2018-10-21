@@ -36,7 +36,6 @@ struct MaterialEditionInput
         COLOR_1D,
         COLOR_3D,
         TEXTURE,
-        VIRTUAL_TEXTURE,
      
         EDITABLE_MATERIAL_COMPONENT_TYPE_COUNT
     } InputType;
@@ -109,8 +108,6 @@ struct MaterialLayer
     MaterialEditionInput   SecondaryNormal;
     MaterialEditionInput   BlendMask;
     MaterialEditionInput   Heightmap;
-    MaterialEditionInput   HeightmapNormal;
-    MaterialEditionInput   HeightmapDisplacement;
     MaterialEditionInput   TerrainSplatMap;
 
     float                  Refraction;

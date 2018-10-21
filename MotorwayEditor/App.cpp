@@ -227,6 +227,7 @@ int App::launch()
 
             auto mainCamera = cameraNode->camera;
             mainCamera->clearRenderPasses();
+            mainCamera->addRenderPass( FLAN_STRING_HASH( "PageStreamingFeedbackPass" ) );
             mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
             mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
 

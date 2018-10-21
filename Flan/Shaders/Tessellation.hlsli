@@ -2,11 +2,11 @@
 #define __TESS_H__
 float CalcTessFactor(float3 p)
 {
-    static const float gMinDist = 16.0f;
+    static const float gMinDist = 8.0f;
     static const float gMaxDist = 256.0f;
 
     static const float gMaxTess = 6.0f;
-    static const float gMinTess = 0.0f;
+    static const float gMinTess = 1.0f;
     
     float d = distance(p, WorldPosition);
 

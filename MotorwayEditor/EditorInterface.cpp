@@ -136,6 +136,8 @@ static void PrintTab( const char* tabName, const int tabIndex )
     }
 }
 
+#include <Graphics/RenderPasses/CompositionPass.h>
+
 static void DisplayMenuBar()
 {
     FLAN_IMPORT_VAR_PTR( DrawBoundingPrimitive, bool )
@@ -150,6 +152,8 @@ static void DisplayMenuBar()
     FLAN_IMPORT_VAR_PTR( DisplayTileHeat, bool )
     FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
     FLAN_IMPORT_VAR_PTR( CopiedNode, SceneNode* )
+
+    FLAN_IMPORT_VAR_PTR( GraphicsCompositionSettings, CompositionSettings )
 
     if ( ImGui::BeginMainMenuBar() ) {
         if ( ImGui::BeginMenu( "File" ) ) {
@@ -479,12 +483,21 @@ static void DisplayMenuBar()
 
                 ImGui::EndMenu();
             }
+            
             if ( ImGui::Checkbox( "Enable VSync", EnableVSync ) ) {
                 g_RenderDevice->setVSyncState( *EnableVSync );
             }
 
             ImGui::Checkbox( "Enable Temporal AA", EnableTemporalAA );
             ImGui::Checkbox( "Enable FXAA", EnableFXAA );
+
+            ImGui::DragFloat( "Bloom Exposure Compensation", &GraphicsCompositionSettings->BloomExposureCompensation );
+            ImGui::SliderFloat( "Bloom Strength", &GraphicsCompositionSettings->BloomStrength, 0.0f, 1.0f );
+            ImGui::SliderFloat( "White Point", &GraphicsCompositionSettings->WhitePoint, 0.0f, 1.0f );
+            ImGui::SliderFloat( "Black Point", &GraphicsCompositionSettings->BlackPoint, 0.0f, 1.0f );
+            ImGui::SliderFloat( "Junction Point", &GraphicsCompositionSettings->JunctionPoint, 0.0f, 1.0f );
+            ImGui::SliderFloat( "Toe Strength", &GraphicsCompositionSettings->ToeStrength, 0.0f, 1.0f );
+            ImGui::SliderFloat( "Shoulder Strength", &GraphicsCompositionSettings->ShoulderStrength, 0.0f, 1.0f );
 
             ImGui::EndMenu();
         }

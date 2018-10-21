@@ -94,12 +94,20 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 
             // Texture (geometry stuff) Sampler
             SamplerDesc matSamplerDesc;
-            matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             matSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matSamplerDesc );
+
+            SamplerDesc matDisplacementSamplerDesc;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+
+            passData.samplers[1] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             // Bind Pass Pipeline State
@@ -116,7 +124,10 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
             matricesConstantBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
 
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
-            matInputSampler->bind( cmdList, 7 );
+            matInputSampler->bind( cmdList, 8 );
+
+            auto matInputDisplSampler = renderPipelineResources->getSampler( passData.samplers[1] );
+            matInputDisplSampler->bind( cmdList, 9 );
 
             MatricesBuffer matrices;
             matrices.ModelMatrix = glm::mat4( 1 );

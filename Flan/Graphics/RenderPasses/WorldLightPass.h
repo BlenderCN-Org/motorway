@@ -162,10 +162,10 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
 
             SamplerDesc shadowComparisonSamplerDesc;
-            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            shadowComparisonSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_COMPARISON_BILINEAR;
+            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_COMPARISON_TRILINEAR;
             shadowComparisonSamplerDesc.comparisonFunction = eComparisonFunction::COMPARISON_FUNCTION_LEQUAL;
 
             passData.samplers[1] = renderPipelineBuilder->allocateSampler( shadowComparisonSamplerDesc );
@@ -177,6 +177,14 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             bilinearSamplerDesc.filter = flan::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[2] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
+
+            SamplerDesc matDisplacementSamplerDesc;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+
+            passData.samplers[3] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             // Bind the light buffer (read only)
@@ -238,10 +246,19 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             atmosphereBuffer->updateAsynchronous( cmdList, atmosphereData, sizeof( AtmosphereModule::Parameters ) );
             atmosphereBuffer->bind( cmdList, CBUFFER_INDEX_ATMOSPHERE );
 
+            auto terrrainStreamingData = renderPipelineResources->getWellKnownImportedResource<TerrainStreaming>();
+            auto terrainStreamingBuffer = renderPipelineResources->getBuffer( passData.buffers[5] );
+            terrainStreamingBuffer->updateAsynchronous( cmdList, &terrrainStreamingData->terrainMaterialStreaming, sizeof( TerrainStreaming::terrainMaterialStreaming ) );
+            terrainStreamingBuffer->bind( cmdList, 7, SHADER_STAGE_PIXEL | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
+
+            terrrainStreamingData->baseColorStreamed->bind( cmdList, 6, SHADER_STAGE_PIXEL | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_TESSELATION_EVALUATION );
+            terrrainStreamingData->normalStreamed->bind( cmdList, 7, SHADER_STAGE_PIXEL );
+
             // Bind Samplers
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             auto shadowSampler = renderPipelineResources->getSampler( passData.samplers[1] );
             auto bilinearSampler = renderPipelineResources->getSampler( passData.samplers[2] );
+            auto displacementSampler = renderPipelineResources->getSampler( passData.samplers[3] );
 
             // Material input sampler
             for ( uint32_t i = 0; i < 8; i++ ) {
@@ -251,6 +268,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             //matInputSampler->bind( cmdList, 17 );
 
             bilinearSampler->bind( cmdList, 8 );
+            displacementSampler->bind( cmdList, 9 );
             bilinearSampler->bind( cmdList, 10 );
             bilinearSampler->bind( cmdList, 12 );
             shadowSampler->bind( cmdList, 15 );

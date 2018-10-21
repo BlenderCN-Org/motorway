@@ -96,7 +96,7 @@ void flan::rendering::ClearRenderTargetImpl( NativeCommandList* cmdList )
 
 void flan::rendering::ClearColorRenderTargetImpl( NativeCommandList* cmdList )
 {
-    static constexpr FLOAT CLEAR_COLOR[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    static constexpr FLOAT CLEAR_COLOR[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     auto nativeDeviceContext = cmdList->deferredContext;
     for ( int targetId = 0; targetId < cmdList->currentRenderTargetCount; targetId++ ) {
