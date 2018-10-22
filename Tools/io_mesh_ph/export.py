@@ -108,7 +108,10 @@ def write_header( file, version ):
     # File Size
     file_size_offset = file.tell()
     file.write( struct.pack( 'I', 0 ) )
-
+    
+    # Buffer strides
+    # 1100; has uvmap and normals
+    file.write( struct.pack( 'I', 3 ) )
     write_padding( file )
 
 def write_bounding_sphere( file, object ):
@@ -149,7 +152,6 @@ def write_mesh( file, global_matrix, create_convex_collider, path ):
 
     ibo_size_offset = file.tell()
     file.write( struct.pack( 'I', 0 ) )
-    write_padding( file )
 
     mesh_list = []
     submesh_start_offset = file.tell()
@@ -200,9 +202,20 @@ def write_mesh( file, global_matrix, create_convex_collider, path ):
 
             mesh_triangulate( mesh )
             mesh.calc_tessface()
-            mesh.calc_tangents()
+            # mesh.calc_tangents()
             # mesh.flip_normals()
 
+            lod = 0
+            
+            if '__LOD1__' in obj.name:
+                lod = 1
+            elif '__LOD2__' in obj.name:
+                lod = 2
+            elif '__LOD3__' in obj.name:
+                lod = 3
+                
+            print( "DEBUG > LOD = %i" % ( lod ) )
+            
             file.write( struct.pack( 'I', meshHash ) )
             file.write( bytearray( obj.name, 'utf-8' ) )
             file.write( struct.pack( 'B', 0x0 ) )
@@ -211,6 +224,7 @@ def write_mesh( file, global_matrix, create_convex_collider, path ):
             file.write( struct.pack( 'I', 0 ) )
             write_bounding_sphere( file, obj )
             write_bounding_box( file, obj )
+            file.write( struct.pack( 'I', lod ) )
             write_padding( file )
             
             indice_tracking = 0
@@ -230,16 +244,6 @@ def write_mesh( file, global_matrix, create_convex_collider, path ):
 
                     vbo.append( mesh.uv_layers.active.data[loop_index].uv[0] )
                     vbo.append( mesh.uv_layers.active.data[loop_index].uv[1] )
-
-                    vbo.append( mesh.loops[loop_index].tangent.x )
-                    vbo.append( mesh.loops[loop_index].tangent.y )
-                    vbo.append( mesh.loops[loop_index].tangent.z )
-
-                    bitangent = mesh.loops[loop_index].bitangent_sign * vertex.normal.cross( mesh.loops[loop_index].tangent )
-
-                    vbo.append( bitangent.x )
-                    vbo.append( bitangent.y )
-                    vbo.append( bitangent.z )
 
                     indice += 1
                     indice_tracking += 1
