@@ -152,11 +152,7 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 
 [domain("quad")]
 [partitioning("fractional_even")]
-// #ifdef PH_DEPTH_WRITE
-// [outputtopology("triangle_cw")]
-// #else
 [outputtopology("triangle_ccw")]
-//#endif
 [outputcontrolpoints(4)]
 [patchconstantfunc("ConstantHS")]
 [maxtessfactor(64.0f)]
@@ -263,10 +259,10 @@ DomainStageData EntryPointDS(
         
 	uint streamedTextureIndex = g_TerrainMaterials[splatmapData.r / 257].splatIndex;
     
-    float disp = g_TerrainBaseColorHeightArray.SampleLevel( g_DisplacementSampler, float3( samplingCoordinates.xy, 0 ), streamedTextureIndex ).a * 0.3;
+    /*float disp = g_TerrainBaseColorHeightArray.SampleLevel( g_DisplacementSampler, float3( samplingCoordinates.xy, 0 ), streamedTextureIndex ).a * 0.3;
     disp = disp * 2.0f - 1.0f;
           
-    positionWS.xyz += ( norm * disp );
+    positionWS.xyz += ( norm * disp );*/
     
 #if PH_DEPTH_ONLY
     output.position = mul( float4( positionWS.xyz, 1.0f ), g_DepthViewProjectionMatrix );

@@ -33,6 +33,15 @@ class VertexArrayObject;
 class Mesh
 {
 public:
+    struct LevelOfDetail {
+        float                               lodDistance; // In world units
+        std::unique_ptr<Buffer>             vertexBuffer;
+        std::unique_ptr<Buffer>             indiceBuffer;
+        std::unique_ptr<VertexArrayObject>  vertexArrayObject;
+        std::vector<SubMesh>	            subMeshes;
+    };
+
+public:
                                 Mesh( const fnString_t& meshName = FLAN_STRING( "Mesh" ) );
                                 Mesh( Mesh& mesh ) = default;
                                 Mesh& operator = ( Mesh& mesh ) = default;
@@ -48,21 +57,28 @@ public:
 
     void                        setName( const fnString_t& meshName );
     const fnString_t&           getName() const;
+
+    const LevelOfDetail&        getLevelOfDetail( const float distance ) const;
+    const LevelOfDetail&        getLevelOfDetailByIndex( const uint32_t lodIndex ) const;
+
     const std::vector<SubMesh>& getSubMeshVector() const;
     std::vector<SubMesh>&       getSubMeshVectorRW();
 
     void                        reset();
 
 private:
+    static constexpr int        MAX_LOD_COUNT = 4;
+
+private:
     fnString_t                          name;
     AABB                                aabb;
+    
+    int                                 lodCount;
+    LevelOfDetail                       lod[MAX_LOD_COUNT];
+
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
     std::unique_ptr<VertexArrayObject>  vertexArrayObject;
-    std::vector<SubMesh>	            subMeshes;
 
-    struct  {
-        uint8_t canBeCulled : 1;
-        uint8_t castShadows : 1;
-    } flags;
+    std::vector<SubMesh>	            subMeshes;
 };

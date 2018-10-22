@@ -84,6 +84,7 @@ BoundingSphere Mesh::getBoundingSphere() const
 
     BoundingSphere sphere;
     flan::core::CreateSphere( sphere, sphereCenter, sphereRadius );
+
     return sphere;
 }
 
@@ -107,6 +108,22 @@ const fnString_t& Mesh::getName() const
     return name;
 }
 
+const Mesh::LevelOfDetail& Mesh::getLevelOfDetail( const float distance ) const
+{
+    for ( int lodIdx = 0; lodIdx < lodCount; lodIdx ) {
+        if ( lod[lodIdx].lodDistance < distance ) {
+            return lod[lodIdx];
+        }
+    }
+
+    return lod[lodCount - 1];
+}
+
+const Mesh::LevelOfDetail& Mesh::getLevelOfDetailByIndex( const uint32_t lodIndex ) const
+{
+    return lod[lodIndex];
+}
+
 const std::vector<SubMesh>& Mesh::getSubMeshVector() const
 {
     return subMeshes;
@@ -122,7 +139,4 @@ void Mesh::reset()
     name.clear();
     aabb.maxPoint = aabb.minPoint = glm::vec3( 0, 0, 0 );
     subMeshes.clear();
-
-    flags.canBeCulled = 0;
-    flags.castShadows = 0;
 }

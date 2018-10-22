@@ -25,8 +25,27 @@ class VertexArrayObject;
 class Material;
 class Texture;
 class Buffer;
+class Mesh;
 
 #include <Core/Maths/AABB.h>
+
+struct GrassType
+{
+    // LOD0
+    VertexArrayObject*  vaoGeometry;
+    Material*           materialGeometry;
+
+    // LOD1
+    Material*           materialInspostor;
+};
+
+struct GrassGrid
+{
+    struct
+    {
+        GrassType*  type;
+    } cells[512 * 512];
+};
 
 class Terrain
 {
@@ -43,6 +62,8 @@ public:
     const uint32_t                      getIndiceCount() const;
     const AABB&                         getAxisAlignedBoundingBox() const;
     float*                              getHeightmapValues() const;
+
+    Mesh* GRASS_TEST; 
 
 private:
     fnString_t                          name;

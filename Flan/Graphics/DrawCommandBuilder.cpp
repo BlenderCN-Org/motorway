@@ -610,12 +610,24 @@ void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldV
 
     for ( int i = 0; i < meshInstancesCount; i++ ) {
         auto* meshInstance = meshInstances[i];
-        auto& subMeshes = meshInstance->meshAsset->getSubMeshVector();
+        const auto mesh = meshInstance->meshAsset;
 
-        auto meshVao = meshInstance->meshAsset->getVertexArrayObject();
+        BoundingSphere sphere = mesh->getBoundingSphere();
+        sphere.center += meshInstance->meshTransform->getWorldTranslation();
+        sphere.radius *= meshInstance->meshTransform->getWorldBiggestScale();
+
+        // Outside frustum; cull the mesh
+        if ( CullSphereInfReversedZ( viewportFrustum, sphere.center, sphere.radius ) <= 0 ) {
+            continue;
+        }
+
+        // Retrieve LOD based on the distance to camera
+        float distanceToCamera = glm::distance( sphere.center, worldViewport.worldPosition );
+        const Mesh::LevelOfDetail& lod = mesh->getLevelOfDetail( distanceToCamera );
+        
         auto meshModelMatrix = meshInstance->meshTransform->getWorldModelMatrix();
 
-        for ( auto& subMesh : subMeshes ) {
+        for ( const auto& subMesh : lod.subMeshes ) {
             BoundingSphere sphere = subMesh.boundingSphere;
             sphere.center += meshInstance->meshTransform->getWorldTranslation();
             sphere.radius *= meshInstance->meshTransform->getWorldBiggestScale();
@@ -633,7 +645,7 @@ void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldV
 
                 DrawCommandInfos drawCmdGeo;
                 drawCmdGeo.material = subMesh.material;
-                drawCmdGeo.vao = meshVao;
+                drawCmdGeo.vao = lod.vertexArrayObject.get();
                 drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
                 drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
                 drawCmdGeo.modelMatrix = meshModelMatrix;
