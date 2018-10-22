@@ -138,37 +138,37 @@ public:
                 return;
             }
 
-            for ( auto& subMesh : instance.meshAsset->getSubMeshVectorRW() ) {
-                auto str = flan::core::WideStringToString( subMesh.name );
-                ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
-                ImGui::SameLine();
-                if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
-                    fnString_t materialName;
-                    if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
-                        materialName = fnString_t( materialName.c_str() );
+            //for ( auto& subMesh : instance.meshAsset->getSubMeshVectorRW() ) {
+            //    auto str = flan::core::WideStringToString( subMesh.name );
+            //    ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
+            //    ImGui::SameLine();
+            //    if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
+            //        fnString_t materialName;
+            //        if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
+            //            materialName = fnString_t( materialName.c_str() );
 
-                        auto workingDir = fnString_t( FLAN_STRING( "" ) );
-                        flan::core::RetrieveWorkingDirectory( workingDir );
-                        workingDir.append( FLAN_STRING( "data" ) );
+            //            auto workingDir = fnString_t( FLAN_STRING( "" ) );
+            //            flan::core::RetrieveWorkingDirectory( workingDir );
+            //            workingDir.append( FLAN_STRING( "data" ) );
 
-                        size_t poswd = materialName.find( workingDir );
+            //            size_t poswd = materialName.find( workingDir );
 
-                        if ( poswd != fnString_t::npos ) {
-                            // If found then erase it from string
-                            materialName.erase( poswd, workingDir.length() );
-                        }
+            //            if ( poswd != fnString_t::npos ) {
+            //                // If found then erase it from string
+            //                materialName.erase( poswd, workingDir.length() );
+            //            }
 
-                        std::replace( materialName.begin(), materialName.end(), '\\', '/' );
+            //            std::replace( materialName.begin(), materialName.end(), '\\', '/' );
 
-                        subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
-                    }
-                }
-                ImGui::SameLine();
-                if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
-                    FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
-                    *dev_EditorPickedMaterial = subMesh.material;
-                }
-            }
+            //            subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
+            //        }
+            //    }
+            //    ImGui::SameLine();
+            //    if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
+            //        FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
+            //        *dev_EditorPickedMaterial = subMesh.material;
+            //    }
+            //}
         }
     }
 
@@ -176,13 +176,13 @@ public:
     {
         if ( DrawBoundingPrimitive ) {
             for ( auto& instance : instances ) {
-                for ( auto& subMesh : instance.meshAsset->getSubMeshVector() ) {
+              /*  for ( auto& subMesh : instance.meshAsset->getSubMeshVector() ) {
                     auto subMeshBoundingSphere = subMesh.boundingSphere;
                     subMeshBoundingSphere.center += instance.meshTransform->getWorldTranslation();
                     subMeshBoundingSphere.radius *= instance.meshTransform->getWorldBiggestScale();
 
                     drawCommandBuilder->addWireframeSphere( subMeshBoundingSphere.center, subMeshBoundingSphere.radius );
-                }
+                }*/
 
                 FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* );
                 if ( *PickedNode == this ) {

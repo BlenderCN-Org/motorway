@@ -45,6 +45,7 @@ struct GeomLoadData
         fnString_t      name;
         BoundingSphere  boundingSphere;
         AABB            aabb;
+        uint32_t        levelOfDetailIndex;
     };
 
     std::vector<float>      vertices;

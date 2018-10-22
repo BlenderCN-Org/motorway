@@ -127,6 +127,12 @@ FLAN_BAKED_TEXTURE_SLOTS
 #include "ShadingModels/Debug.hlsl"
 #endif
 
+cbuffer MatricesBuffer : register( b3 )
+{
+    float4x4	ModelMatrix;
+    float       g_lodDitherAlphaValue;
+};
+
 struct MaterialReadLayer
 {
     float3  BaseColor;
@@ -1012,6 +1018,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
     
+    LightContribution.a = g_lodDitherAlphaValue;
+    
     // Write output to buffer(s)
 	PixelStageData output;
 	output.Buffer0 = LightContribution;
@@ -1026,44 +1034,61 @@ void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float al
     alphaCutoff = lerp( alphaCutoff, nextAlphaCutoff, blendMask );
 }
 
+cbuffer DepthMatricesBuffer : register( b3 )
+{
+    float4x4    g_DepthModelMatrix;
+    float4x4	g_DepthViewProjectionMatrix;
+    uint        g_EnableAlphaStippling;
+};
+
 void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
+    // Alpha Stippling for LOD Transition
+    [branch]
+    if ( g_EnableAlphaStippling == 1 ) {
+        clip( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 );
+    } else if ( g_EnableAlphaStippling == 2 ) {
+        clip( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 != 0 ) ? -1 : 1 );
+    }
+    
+    if ( g_EnableAlphaTest ) {
 #if PA_EDITOR
 #ifndef PA_TERRAIN
 #define PA_ENABLE_ALPHA_TEST 1
-    bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
-    bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
-    
-    float alphaCutoff = g_Layers[0].AlphaCutoff;
-    float alphaMask = ReadInput1D( g_Layers[0].AlphaMask, g_TexAlphaMask0, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[0].LayerOffset ) * g_Layers[0].LayerScale, 1.0f );
-    
-    // NOTE Only use the double branch for material realtime edition
-    // Otherwise, resolve branches offline at compile time
-    if ( g_LayerCount > 1 ) {
-        float alphaCutoff1 = g_Layers[1].AlphaCutoff;
-        float alphaMask1 = ReadInput1D( g_Layers[1].AlphaMask, g_TexAlphaMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
+        bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
+        bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
         
-        // Blend layers
-        float blendMask1 = ReadInput1D( g_Layers[1].BlendMask, g_TexBlendMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
-        BlendDepthLayers( blendMask1, alphaMask, alphaCutoff, alphaMask1, alphaCutoff1 );
+        float alphaCutoff = g_Layers[0].AlphaCutoff;
+        float alphaMask = ReadInput1D( g_Layers[0].AlphaMask, g_TexAlphaMask0, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[0].LayerOffset ) * g_Layers[0].LayerScale, 1.0f );
         
-        if ( g_LayerCount > 2 ) {
-            float alphaCutoff2 = g_Layers[2].AlphaCutoff;
-            float alphaMask2 = ReadInput1D(g_Layers[2].AlphaMask, g_TexAlphaMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale,  1.0f );
+        // NOTE Only use the double branch for material realtime edition
+        // Otherwise, resolve branches offline at compile time
+        if ( g_LayerCount > 1 ) {
+            float alphaCutoff1 = g_Layers[1].AlphaCutoff;
+            float alphaMask1 = ReadInput1D( g_Layers[1].AlphaMask, g_TexAlphaMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
             
             // Blend layers
-            float blendMask2 = ReadInput1D( g_Layers[2].BlendMask, g_TexBlendMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale, 1.0f );
-            BlendDepthLayers( blendMask2, alphaMask, alphaCutoff, alphaMask2, alphaCutoff2 );
+            float blendMask1 = ReadInput1D( g_Layers[1].BlendMask, g_TexBlendMask1, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[1].LayerOffset ) * g_Layers[1].LayerScale, 1.0f );
+            BlendDepthLayers( blendMask1, alphaMask, alphaCutoff, alphaMask1, alphaCutoff1 );
+            
+            if ( g_LayerCount > 2 ) {
+                float alphaCutoff2 = g_Layers[2].AlphaCutoff;
+                float alphaMask2 = ReadInput1D(g_Layers[2].AlphaMask, g_TexAlphaMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale,  1.0f );
+                
+                // Blend layers
+                float blendMask2 = ReadInput1D( g_Layers[2].BlendMask, g_TexBlendMask2, g_AlphaMaskSampler, ( VertexStage.uvCoord + g_Layers[2].LayerOffset ) * g_Layers[2].LayerScale, 1.0f );
+                BlendDepthLayers( blendMask2, alphaMask, alphaCutoff, alphaMask2, alphaCutoff2 );
+            }
         }
-    }
 #endif
 #else
-	FLAN_BUILD_DEPTH_LAYERS
+        FLAN_BUILD_DEPTH_LAYERS
 #endif
 
 #if PA_ENABLE_ALPHA_TEST
-    if ( alphaMask < alphaCutoff ) {
-        discard;
-    }
+        if ( alphaMask < alphaCutoff ) {
+            discard;
+        }
 #endif
+    }
 }

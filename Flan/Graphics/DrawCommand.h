@@ -81,6 +81,8 @@ struct DrawCommandInfos
     const VertexArrayObject*    vao;
     unsigned int                indiceBufferOffset;
     unsigned int                indiceBufferCount;
+    unsigned int                enableAlphaStippling; // TODO Cluncky idea; there has to be a better way to implement that...
+    float                       alphaDitheringValue; // 0..1
     glm::mat4*                  modelMatrix;
 };
 

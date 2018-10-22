@@ -255,9 +255,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWriteMaxTess" ), SHADER_STAGE_TESSELATION_EVALUATION );
         }
 
-        descriptor.pixelStage = ( editableMaterialData.EnableAlphaTest ) 
-                                ? shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL )
-                                : nullptr;
+        descriptor.pixelStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "SurfaceDepth" ), SHADER_STAGE_PIXEL );
 
         depthStencilDesc = {};
         depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_LESS;

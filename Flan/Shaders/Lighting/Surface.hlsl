@@ -22,6 +22,7 @@
 cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrix;
+    float       g_lodDitherAlphaValue;
 };
 
 struct VertexBufferData
@@ -100,6 +101,7 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
     output.uvCoord          = uvCoordinates;
     output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
     output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
+    
     output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ); //.xywz;
    
     float4 PositionVS = mul( float4( output.positionWS.xyz, 1.0f ), ViewMatrix );

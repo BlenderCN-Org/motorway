@@ -237,7 +237,8 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, con
     baseSubMesh.boundingSphere.center = { 0, 0, 0 };
     baseSubMesh.boundingSphere.radius = 2.0f;
 
-    GRASS_TEST->addSubMesh( std::move( baseSubMesh ) );
+    GRASS_TEST->addLevelOfDetail( 0, 64.0f );
+    GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
 }
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const

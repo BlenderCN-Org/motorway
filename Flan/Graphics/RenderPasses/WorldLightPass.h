@@ -52,6 +52,13 @@ FLAN_ENV_VAR( TextureFiltering,
 
 static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPipeline, const bool enableMSAA = false, const bool isRenderingProbe = false )
 {
+    struct InstanceBuffer
+    {
+        glm::mat4x4 modelMatrix;
+        float lodDitheringAlpha;
+        uint32_t __PADDING__[3];
+    };
+
     auto RenderPass = renderPipeline->addRenderPass(
         "Opaque Lighting Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
@@ -105,7 +112,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             // Constant Buffer
             BufferDesc passBuffer = {};
             passBuffer.Type = BufferDesc::CONSTANT_BUFFER;
-            passBuffer.Size = sizeof( glm::mat4 );
+            passBuffer.Size = sizeof( InstanceBuffer );
 
             passData.buffers[1] = renderPipelineBuilder->allocateBuffer( passBuffer );
 
@@ -281,15 +288,20 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             int cmdCount = 0;
             auto* opaqueBucketList = renderPipelineResources->getLayerBucket( DrawCommandKey::Layer::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT, cmdCount );
 
+            InstanceBuffer instance;
             glm::mat4x4* previousModelMatrix = nullptr;
             for ( int i = 0; i < cmdCount; i++ ) {
                 const auto& drawCmd = opaqueBucketList[i];
                 drawCmd.vao->bind( cmdList );
 
-                if ( drawCmd.modelMatrix != previousModelMatrix ) {
-                    modelMatrixBuffer->updateAsynchronous( cmdList, drawCmd.modelMatrix, sizeof( glm::mat4x4 ) );
-                    previousModelMatrix = drawCmd.modelMatrix;
-                }
+                //if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                    instance.modelMatrix = *drawCmd.modelMatrix;
+                    instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
+
+                    modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
+                   
+                //    previousModelMatrix = drawCmd.modelMatrix;
+                //}
 
                 if ( !isRenderingProbe )
                     drawCmd.material->bind( cmdList );

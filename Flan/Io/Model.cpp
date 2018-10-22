@@ -115,12 +115,12 @@ void Io_WriteModelFile( FileSystemObject* file, const std::vector<Mesh*>& meshes
         file->writeString( "Mesh\n{\n" );
         file->writeString( "\tName : " + narrowMeshName + "\n" );
         file->writeString( "\tSubMeshes\n{\n" );
-        for ( auto& subMesh : mesh->getSubMeshVector() ) {
+        /*for ( auto& subMesh : mesh->getSubMeshVector() ) {
             auto narrowSubMeshName = flan::core::WideStringToString( subMesh.name );
             auto narrowMaterialName = flan::core::WideStringToString( subMesh.material->getName() );
 
             file->writeString( narrowSubMeshName + " : " + narrowMaterialName + "\n" );
-        }
+        }*/
         file->writeString( "\t}\n" );
         file->writeString( "}\n" );
     }

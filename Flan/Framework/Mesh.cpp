@@ -28,8 +28,9 @@ Mesh::Mesh( const fnString_t& meshName )
     : name( meshName )
     , aabb{}
     , vertexArrayObject( nullptr )
+    , lodCount( 0 )
 {
-    subMeshes.reserve( 64 );
+
 }
 
 Mesh::~Mesh()
@@ -55,8 +56,6 @@ void Mesh::create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDes
         { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
         { 1, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // NORMAL
         { 2, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 6 * sizeof( float ) }, // UVMAP0
-        { 3, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 8 * sizeof( float ) }, // TANGENT
-        { 4, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 11 * sizeof( float ) }, // BINORMAL
     };
 
     vertexArrayObject->setVertexLayout( renderDevice, defaultMeshLayout );
@@ -65,11 +64,21 @@ void Mesh::create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDes
     aabb.maxPoint = aabb.maxPoint = glm::vec3( 0, 0, 0 );
 }
 
-void Mesh::addSubMesh( SubMesh&& subMeshData )
+void Mesh::addLevelOfDetail( const uint32_t lodIndex, const float lodDistance )
 {
-    subMeshes.push_back( std::move( subMeshData ) );
+    lod[lodIndex].startDistance = ( lodIndex > 0 ) ? lod[lodIndex - 1].lodDistance : 0.0f;
+    lod[lodIndex].lodDistance = lodDistance;
+    lod[lodIndex].lodIndex = lodIndex;
+    lod[lodIndex].subMeshes.clear();
 
-    flan::core::ExpandAABB( aabb, subMeshes.back().aabb );
+    lodCount++;
+}
+
+void Mesh::addSubMesh( const uint32_t lodIndex, SubMesh&& subMeshData )
+{
+    flan::core::ExpandAABB( aabb, subMeshData.aabb );
+
+    lod[lodIndex].subMeshes.push_back( std::move( subMeshData ) );
 }
 
 const AABB& Mesh::getAABB() const
@@ -110,8 +119,8 @@ const fnString_t& Mesh::getName() const
 
 const Mesh::LevelOfDetail& Mesh::getLevelOfDetail( const float distance ) const
 {
-    for ( int lodIdx = 0; lodIdx < lodCount; lodIdx ) {
-        if ( lod[lodIdx].lodDistance < distance ) {
+    for ( int lodIdx = 0; lodIdx < lodCount; lodIdx++ ) {
+        if ( lod[lodIdx].lodDistance >= distance ) {
             return lod[lodIdx];
         }
     }
@@ -121,22 +130,12 @@ const Mesh::LevelOfDetail& Mesh::getLevelOfDetail( const float distance ) const
 
 const Mesh::LevelOfDetail& Mesh::getLevelOfDetailByIndex( const uint32_t lodIndex ) const
 {
-    return lod[lodIndex];
-}
-
-const std::vector<SubMesh>& Mesh::getSubMeshVector() const
-{
-    return subMeshes;
-}
-
-std::vector<SubMesh>& Mesh::getSubMeshVectorRW()
-{
-    return subMeshes;
+    return lod[std::min( ( MAX_LOD_COUNT - 1u ), lodIndex )];
 }
 
 void Mesh::reset()
 {
     name.clear();
     aabb.maxPoint = aabb.minPoint = glm::vec3( 0, 0, 0 );
-    subMeshes.clear();
+    lodCount = 0;
 }

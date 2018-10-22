@@ -33,7 +33,19 @@ struct FileHeader
     uint32_t    version;
     uint32_t    fileSize;
 
-    uint64_t    __PADDING__;
+    union
+    {
+        struct
+        {
+            uint8_t hasUvMap0 : 1;
+            uint8_t hasNormals : 1;
+            uint8_t : 0;
+        };
+
+        uint32_t flagset;
+    };
+
+    uint32_t    __PADDING__;
 };
 
 //=====================================
@@ -61,6 +73,18 @@ void flan::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
 {
     FileHeader fileHeader = {};
     file->read( ( uint8_t* )&fileHeader, sizeof( FileHeader ) );
+
+    // The script ALWAYS export position (3D)
+    data.vertexStrides = { 3 };
+
+    // NOTE Order is important, strides setup the input layout later in the asset loading pipeline!
+    if ( fileHeader.hasUvMap0 == 1 ) {
+        data.vertexStrides.push_back( 2 );
+    }
+
+    if ( fileHeader.hasNormals == 1 ) {
+        data.vertexStrides.push_back( 3 );
+    }
 
     while ( file->tell() < fileHeader.fileSize ) {
         BlockHeader blockHeader = {};
@@ -97,12 +121,14 @@ void flan::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
                     data.subMesh.push_back( {} );
                     auto& subMesh = data.subMesh.back();
 
-                    file->read( ( uint8_t* )&subMesh.hashcode, sizeof( uint32_t ) );
+                    file->read( subMesh.hashcode );
+                    
                     flan::core::ReadString( file, subMesh.name );
-                    file->read( ( uint8_t* )&subMesh.indiceBufferOffset, sizeof( uint32_t ) );
-                    file->read( ( uint8_t* )&subMesh.indiceCount, sizeof( uint32_t ) );
-                    file->read( ( uint8_t* )&subMesh.boundingSphere, sizeof( BoundingSphere ) );
 
+                    file->read( subMesh.indiceBufferOffset );
+                    file->read( subMesh.indiceCount );
+                    file->read( subMesh.boundingSphere );
+                    
                     if ( fileHeader.version >= 3 ) {
                         glm::vec3 location, dimensions;
                         file->read( ( uint8_t* )&location, sizeof( glm::vec3 ) );
@@ -110,6 +136,8 @@ void flan::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
 
                         flan::core::CreateAABB( subMesh.aabb, location, dimensions );
                     }
+
+                    file->read( subMesh.levelOfDetailIndex );
 
                     // TODO This should not be necessary...
                     // Skip padding and seek to the next block offset
@@ -143,7 +171,4 @@ void flan::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
     } 
 
     file->close();
-
-    // TODO Support different buffer strides
-    data.vertexStrides = { 3, 3, 2, 3, 3 };
 }

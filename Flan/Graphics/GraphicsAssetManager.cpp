@@ -345,10 +345,22 @@ Mesh* GraphicsAssetManager::getMesh( const fnChar_t* assetName, const bool force
     indiceBufferDesc.Stride = sizeof( uint32_t );
 
     meshInstance->create( renderDevice, vertexBufferDesc, indiceBufferDesc, loadData.vertices.data(), loadData.indices.data() );
+    
+    // TODO Custom Distance Definition (define per model LoD distance?)
+    constexpr float LOD_DISTANCE[4] = { 16.0f, 48.0f, 96.0f, 128.0f };
+    for ( int i = 0; i < 4; i++ )
+        meshInstance->addLevelOfDetail( i, LOD_DISTANCE[i] );
 
-    // Define submeshes
+    // Build each LevelOfDetail
     for ( GeomLoadData::SubMesh& subMesh : loadData.subMesh ) {
-        meshInstance->addSubMesh( { getMaterialCopy( FLAN_STRING( "GameData/Materials/MaterialTest.amat" ) ), subMesh.indiceBufferOffset, subMesh.indiceCount, subMesh.boundingSphere, subMesh.name, subMesh.aabb } );
+        meshInstance->addSubMesh( subMesh.levelOfDetailIndex, {
+            getMaterialCopy( FLAN_STRING( "GameData/Materials/MaterialTest.amat" ) ), 
+            subMesh.indiceBufferOffset, 
+            subMesh.indiceCount, 
+            subMesh.boundingSphere, 
+            subMesh.name, 
+            subMesh.aabb 
+        } );
     }
 
     return meshInstance;
@@ -391,7 +403,7 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
             continue;
         }
 
-        auto& subMeshes = loadedMesh->getSubMeshVectorRW();
+    /*    auto& subMeshes = loadedMesh->getSubMeshVectorRW();
         for ( auto& subMesh : subMeshes ) {
             for ( auto& subMeshName : mesh.SubMeshMaterialMap ) {
                 if ( subMesh.name == subMeshName.first ) {
@@ -402,7 +414,7 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
 #endif
                 }
             }
-        }
+        }*/
 
         modelInstance->meshes.push_back( loadedMesh );
     }

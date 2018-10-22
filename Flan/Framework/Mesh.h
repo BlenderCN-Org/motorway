@@ -34,10 +34,9 @@ class Mesh
 {
 public:
     struct LevelOfDetail {
+        float                               startDistance; // In world units; LOD N-1 lodDistance
         float                               lodDistance; // In world units
-        std::unique_ptr<Buffer>             vertexBuffer;
-        std::unique_ptr<Buffer>             indiceBuffer;
-        std::unique_ptr<VertexArrayObject>  vertexArrayObject;
+        uint32_t                            lodIndex;
         std::vector<SubMesh>	            subMeshes;
     };
 
@@ -48,7 +47,9 @@ public:
                                 ~Mesh();
 
     void                        create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDesc, const BufferDesc& indiceBufferDesc, const float* vertexBufferContent, const uint32_t* indiceBufferContent );
-    void                        addSubMesh( SubMesh&& subMeshData );
+    
+    void                        addLevelOfDetail( const uint32_t lodIndex, const float lodDistance );
+    void                        addSubMesh( const uint32_t lodIndex, SubMesh&& subMeshData );
 
     BoundingSphere              getBoundingSphere() const;
     const AABB&                 getAABB() const;
@@ -61,9 +62,6 @@ public:
     const LevelOfDetail&        getLevelOfDetail( const float distance ) const;
     const LevelOfDetail&        getLevelOfDetailByIndex( const uint32_t lodIndex ) const;
 
-    const std::vector<SubMesh>& getSubMeshVector() const;
-    std::vector<SubMesh>&       getSubMeshVectorRW();
-
     void                        reset();
 
 private:
@@ -72,13 +70,11 @@ private:
 private:
     fnString_t                          name;
     AABB                                aabb;
-    
-    int                                 lodCount;
-    LevelOfDetail                       lod[MAX_LOD_COUNT];
 
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
     std::unique_ptr<VertexArrayObject>  vertexArrayObject;
 
-    std::vector<SubMesh>	            subMeshes;
+    int                                 lodCount;
+    LevelOfDetail                       lod[MAX_LOD_COUNT];
 };
