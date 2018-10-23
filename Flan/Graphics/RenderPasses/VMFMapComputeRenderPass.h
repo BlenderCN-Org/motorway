@@ -220,10 +220,10 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
             auto buffer = renderPipelineResources->getBuffer( passData.buffers[0] );
 
             PassBuffer passBufferData;
-            passBufferData.inputTexWidth = normalMapDesc.width;
-            passBufferData.inputTexHeight = normalMapDesc.height;
-            passBufferData.outputTexWidth = normalMapDesc.width;
-            passBufferData.outputTexHeight = normalMapDesc.height;
+            passBufferData.inputTexWidth = static_cast<float>( normalMapDesc.width );
+            passBufferData.inputTexHeight = static_cast<float>( normalMapDesc.height );
+            passBufferData.outputTexWidth = static_cast<float>( normalMapDesc.width );
+            passBufferData.outputTexHeight = static_cast<float>( normalMapDesc.height );
             passBufferData.mipLevel = 0;
             passBufferData.roughness = 0;
             passBufferData.scaleFactor = std::pow( 10.0f, 0.5f );
@@ -236,8 +236,8 @@ static VMFResolveOutput AddVMFMapComputePass( RenderPipeline* renderPipeline, Te
                 auto roughnessUAV = renderPipelineResources->getBuffer( passData.buffers[( mipLevel + 1 )] );
 
                 passBufferData.mipLevel = mipLevel;
-                passBufferData.outputTexWidth = width;
-                passBufferData.outputTexHeight = height;
+                passBufferData.outputTexWidth = static_cast<float>( width );
+                passBufferData.outputTexHeight = static_cast<float>( height );
                 buffer->updateAsynchronous( cmdList, &passBufferData, sizeof( PassBuffer ) );
 
                 roughnessUAV->bind( cmdList, 0, SHADER_STAGE_COMPUTE );

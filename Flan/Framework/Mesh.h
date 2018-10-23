@@ -41,6 +41,9 @@ public:
     };
 
 public:
+    static constexpr int        MAX_LOD_COUNT = 4;
+
+public:
                                 Mesh( const fnString_t& meshName = FLAN_STRING( "Mesh" ) );
                                 Mesh( Mesh& mesh ) = default;
                                 Mesh& operator = ( Mesh& mesh ) = default;
@@ -63,9 +66,6 @@ public:
     const LevelOfDetail&        getLevelOfDetailByIndex( const uint32_t lodIndex ) const;
 
     void                        reset();
-
-private:
-    static constexpr int        MAX_LOD_COUNT = 4;
 
 private:
     fnString_t                          name;

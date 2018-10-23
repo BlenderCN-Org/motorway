@@ -56,7 +56,8 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
     {
         glm::mat4x4 modelMatrix;
         float lodDitheringAlpha;
-        uint32_t __PADDING__[3];
+        uint32_t enableAlphaStippling;
+        uint32_t __PADDING__[2];
     };
 
     auto RenderPass = renderPipeline->addRenderPass(
@@ -297,6 +298,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
                 //if ( drawCmd.modelMatrix != previousModelMatrix ) {
                     instance.modelMatrix = *drawCmd.modelMatrix;
                     instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
+                    instance.enableAlphaStippling = drawCmd.enableAlphaStippling;
 
                     modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
                    

@@ -30,7 +30,9 @@ Mesh::Mesh( const fnString_t& meshName )
     , vertexArrayObject( nullptr )
     , lodCount( 0 )
 {
-
+    for ( int lodIdx = 0; lodIdx < MAX_LOD_COUNT; lodIdx++ ) {
+        lod[lodIdx].startDistance = -1.0f;
+    }
 }
 
 Mesh::~Mesh()

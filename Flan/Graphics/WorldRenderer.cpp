@@ -403,35 +403,35 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     // globalID: splat map texel value, identifying the material (hence the 256 limit)
     auto terrainBaseColor0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor2.dds" ) );
     auto& terrainBaseColorDesc = terrainBaseColor0->getDescription();
-    for ( int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainBaseColorDesc.mipCount; i++ ) {
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor0, i, 0, i, 0 );
     }
 
     auto terrainBaseColor128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor1.dds" ) );
     auto& terrainBaseColor128Desc = terrainBaseColor128->getDescription();
-    for ( int i = 0; i < terrainBaseColor128Desc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainBaseColor128Desc.mipCount; i++ ) {
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor128, i, 0, i, 1 );
     }
 
     auto terrainBaseColor64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor0.dds" ) );
     auto& terrainBaseColor64Desc = terrainBaseColor64->getDescription();
-    for ( int i = 0; i < terrainBaseColor64Desc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainBaseColor64Desc.mipCount; i++ ) {
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor64, i, 0, i, 2 );
     }
 
     auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm2.dds" ) );
     auto& terrainNormalDesc = terrainNormal0->getDescription();
-    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal0, i, 0, i, 0 );
     }
 
     auto terrainNormal128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm1.dds" ) );
-    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal128, i, 0, i, 1 );
     }
 
     auto terrainNormal64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm0.dds" ) );
-    for ( int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
+    for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal64, i, 0, i, 2 );
     }
 
@@ -511,10 +511,10 @@ void WorldRenderer::createRenderTargets( void )
     environmentProbes[2]->createAsRenderTarget2D( renderDevice, envProbeDesc );
 
     TextureDescription previousFrameDesc;
-    previousFrameDesc.dimension = TextureDescription::DIMENSION_TEXTURE_3D;
+    previousFrameDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
     previousFrameDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
-    previousFrameDesc.width = 1920 * SSAAMultiplicator;
-    previousFrameDesc.height = 1080 * SSAAMultiplicator;
+    previousFrameDesc.width = static_cast<uint32_t>( 1920 * SSAAMultiplicator );
+    previousFrameDesc.height = static_cast<uint32_t>( 1080 * SSAAMultiplicator );
     previousFrameDesc.arraySize = 1;
     previousFrameDesc.mipCount = 1;
     previousFrameDesc.samplerCount = 1;
@@ -644,7 +644,7 @@ void WorldRenderer::createPrimitives( void )
         vertexIbo.Size = ( uint32_t )indexBufferData.size() * sizeof( uint32_t );
         vertexIbo.Stride = sizeof( uint32_t );
 
-        circleIndiceCount = indexBufferData.size();
+        circleIndiceCount = static_cast<uint32_t>( indexBufferData.size() );
 
         circleVbo.reset( new Buffer() );
         circleVbo->create( renderDevice, vertexVbo, ( void* )vertexBufferData.data() );
@@ -724,7 +724,7 @@ void WorldRenderer::createPrimitives( void )
         vertexIbo.Size = sizeof( BOX_IB_DATA );
         vertexIbo.Stride = sizeof( uint32_t );
 
-        boxIndiceCount = vertexIbo.Size / vertexIbo.Stride;
+        boxIndiceCount = static_cast<uint32_t>( vertexIbo.Size / vertexIbo.Stride );
 
         boxVbo.reset( new Buffer() );
         boxVbo->create( renderDevice, vertexVbo, ( void* )BOX_VB_DATA );
@@ -802,7 +802,7 @@ void WorldRenderer::createPrimitives( void )
         vertexIbo.Size = coneIndices.size() * sizeof( uint32_t );
         vertexIbo.Stride = sizeof( uint32_t );
 
-        coneIndiceCount = coneIndices.size();
+        coneIndiceCount = static_cast<uint32_t>( coneIndices.size() );
 
         coneVbo.reset( new Buffer() );
         coneVbo->create( renderDevice, vertexVbo, ( void* )coneVertices.data() );

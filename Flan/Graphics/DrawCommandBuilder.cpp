@@ -844,7 +844,7 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
                     drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
                     drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
                     drawCmdGeo.modelMatrix = meshModelMatrix;
-                    drawCmdGeo.enableAlphaStippling = 2;
+                    drawCmdGeo.enableAlphaStippling = useLodAlphaStippling;
                     drawCmdGeo.alphaDitheringValue = lodBlendAlpha;
 
                     worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
