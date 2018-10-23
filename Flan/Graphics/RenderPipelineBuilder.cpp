@@ -75,8 +75,8 @@ void RenderPipelineBuilder::allocateResourcesAndBuild( RenderDevice* renderDevic
             textureDescription.description.height = activeViewport.Height;
 
             FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-            textureDescription.description.width *= static_cast<uint32_t>( *SSAAMultiplicator );
-            textureDescription.description.height *= static_cast<uint32_t>( *SSAAMultiplicator );
+            textureDescription.description.width *= *SSAAMultiplicator;
+            textureDescription.description.height *= *SSAAMultiplicator;
         }
 
         if ( textureDescription.useGlobalMultisamplingState ) {
@@ -210,8 +210,8 @@ void RenderPipelineBuilder::setViewport( const RenderPipelineViewport& viewport 
     this->viewportGeometry = viewport;
 
     FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-    this->viewportGeometry.rendererViewport.Width *= static_cast<uint32_t>( *SSAAMultiplicator );
-    this->viewportGeometry.rendererViewport.Height *= static_cast<uint32_t>( *SSAAMultiplicator );
+    this->viewportGeometry.rendererViewport.Width *= *SSAAMultiplicator;
+    this->viewportGeometry.rendererViewport.Height *= *SSAAMultiplicator;
 }
 
 const Viewport& RenderPipelineBuilder::getActiveViewport() const

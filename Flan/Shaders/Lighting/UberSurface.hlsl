@@ -129,8 +129,8 @@ FLAN_BAKED_TEXTURE_SLOTS
 
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
-    float       g_lodDitherAlphaValue;
+    float4x4	g_ModelMatrix;
+    float       g_LodBlendAlpha;
 	uint		g_EnableAlphaStippling;
 };
 
@@ -613,10 +613,22 @@ float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
-    // Alpha Stippling for LOD Transition
+    // // Alpha Stippling for LOD Transition
+    // [branch]
+    // if ( g_EnableAlphaStippling == 1 ) {
+        // clip( ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 ) * g_lodDitherAlphaValue );
+    // }
     [branch]
     if ( g_EnableAlphaStippling == 1 ) {
-        clip( ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 ) * g_lodDitherAlphaValue );
+        static const float4x4 thresholdMatrix = {
+            1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+            13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+            4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+            16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+        };
+
+        clip( g_LodBlendAlpha - thresholdMatrix[VertexStage.position.x % 4][VertexStage.position.y % 4] );
+
     }
     
     // Compute common terms from vertex stage variables
@@ -1038,8 +1050,25 @@ void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float al
     alphaCutoff = lerp( alphaCutoff, nextAlphaCutoff, blendMask );
 }
 
+// cbuffer MatricesBuffer : register( b3 )
+// {
+    // float4x4	ModelMatrix;
+    // float4x4	g_DepthViewProjectionMatrix;
+    // float       g_LodBlendAlpha;
+// };
+
 void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
+    // static const float4x4 thresholdMatrix =
+    // {
+        // 1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+        // 13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+        // 4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+        // 16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+    // };
+
+    clip( g_LodBlendAlpha - ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? 1 : 0 ) );
+
     if ( g_EnableAlphaTest ) {
 #if PA_EDITOR
 #ifndef PA_TERRAIN

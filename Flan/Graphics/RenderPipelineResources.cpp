@@ -321,8 +321,8 @@ void RenderPipelineResources::submitViewport( const Viewport& viewport )
     activeViewportGeometry = viewport;
 
     FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-    activeViewportGeometry.Width *= static_cast<uint32_t>( *SSAAMultiplicator );
-    activeViewportGeometry.Height *= static_cast<uint32_t>( *SSAAMultiplicator );
+    activeViewportGeometry.Width *= *SSAAMultiplicator;
+    activeViewportGeometry.Height *= *SSAAMultiplicator;
 }
 
 const Viewport& RenderPipelineResources::getActiveViewport() const

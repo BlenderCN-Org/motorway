@@ -36,6 +36,8 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
     {
         glm::mat4 ModelMatrix;
         glm::mat4 ViewProjectionShadowMatrix;
+        float     lodBlendAlpha;
+        uint32_t  __PADDING__[3];
     };
 
     auto RenderPass = renderPipeline->addRenderPass(
@@ -172,11 +174,12 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
                 const auto& drawCmd = opaqueBucketList[i];
                 drawCmd.vao->bind( cmdList );
 
-                if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                //if ( drawCmd.modelMatrix != previousModelMatrix ) {
                     matrices.ModelMatrix = *drawCmd.modelMatrix;
+                    matrices.lodBlendAlpha = drawCmd.alphaDitheringValue;
                     matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
                     previousModelMatrix = drawCmd.modelMatrix;
-                }
+                //}
 
                 if ( !drawCmd.material->bindReversedDepthOnly( cmdList ) ) {
                     continue;

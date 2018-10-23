@@ -743,7 +743,7 @@ void DrawCommandBuilder::addHUDGeometryForViewport( const Camera::Data& worldVie
     }
 }
 
-static constexpr float LOD_TRANSITION_START_DISTANCE = 16.0f;
+static constexpr float LOD_TRANSITION_START_DISTANCE = 32.0f;
 
 void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer )
 {
@@ -767,21 +767,28 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
         const Mesh::LevelOfDetail& lod = mesh->getLevelOfDetail( distanceToCamera );
 
         // Compute distances for next and previous lod transitions
-        const float nextLodTransitionDistance       = ( lod.lodDistance - distanceToCamera );
-        const float previousLodTransitionDistance   = ( distanceToCamera - lod.startDistance );
+        const int lodCount = mesh->getLevelOfDetailCount();
 
         float alphaValue = 1.0f;
+
         unsigned int useLodAlphaStippling = 0;
         unsigned int lodTransitionIndex = lod.lodIndex;
-        if ( nextLodTransitionDistance < LOD_TRANSITION_START_DISTANCE ) { // LOD N to LOD N+1          
-            useLodAlphaStippling = 1;
-            lodTransitionIndex = lodTransitionIndex + 1;
-            alphaValue = nextLodTransitionDistance / LOD_TRANSITION_START_DISTANCE;
-        } else if ( previousLodTransitionDistance < LOD_TRANSITION_START_DISTANCE 
-            && lod.lodIndex != 0 ) { // LOD N to LOD N-1         
-            useLodAlphaStippling = 1;
-            lodTransitionIndex = lodTransitionIndex - 1;
-            alphaValue = previousLodTransitionDistance / LOD_TRANSITION_START_DISTANCE;
+
+        if ( lodCount > 1 ) {
+            const float nextLodTransitionDistance = ( lod.lodDistance - distanceToCamera );
+            const float previousLodTransitionDistance = ( distanceToCamera - lod.startDistance );
+
+            if ( nextLodTransitionDistance <= LOD_TRANSITION_START_DISTANCE ) { // LOD N to LOD N+1          
+                useLodAlphaStippling = 1;
+                lodTransitionIndex = ( lodTransitionIndex + 1 );
+                alphaValue = std::max( 0.0f, 1.0f - ( nextLodTransitionDistance / LOD_TRANSITION_START_DISTANCE ) );
+            } else if ( previousLodTransitionDistance < LOD_TRANSITION_START_DISTANCE
+                && lod.lodIndex != 0 ) { // LOD N to LOD N-1         
+                useLodAlphaStippling = 1;
+                lodTransitionIndex = lodTransitionIndex - 1;
+                alphaValue = std::max( 0.0f, 1.0f - ( previousLodTransitionDistance / LOD_TRANSITION_START_DISTANCE ) );
+                //previousLodTransitionDistance / LOD_TRANSITION_START_DISTANCE;
+            }
         }
 
         const VertexArrayObject* meshVao = mesh->getVertexArrayObject();
@@ -810,8 +817,8 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
                 drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
                 drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
                 drawCmdGeo.modelMatrix = meshModelMatrix;
-                drawCmdGeo.enableAlphaStippling = useLodAlphaStippling;
-                drawCmdGeo.alphaDitheringValue = alphaValue;
+                drawCmdGeo.enableAlphaStippling = 0;
+                drawCmdGeo.alphaDitheringValue = 1.0f;
                 worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
             }
         }
@@ -819,7 +826,6 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
         if ( useLodAlphaStippling ) {
             const Mesh::LevelOfDetail& lodBlend = mesh->getLevelOfDetailByIndex( lodTransitionIndex );
 
-            float lodBlendAlpha = ( 1.0f - alphaValue );
             for ( const auto& subMesh : lodBlend.subMeshes ) {
                 BoundingSphere sphere = subMesh.boundingSphere;
                 sphere.center += meshInstance->meshTransform->getWorldTranslation();
@@ -832,9 +838,7 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
                     drawCmdKey.bitfield.layer = layer;
                     drawCmdKey.bitfield.viewportId = viewportIndex;
                     drawCmdKey.bitfield.viewportLayer = viewportLayer;
-                    drawCmdKey.bitfield.sortOrder = ( subMesh.material->isOpaque() )
-                        ? DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK
-                        : DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
+                    drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
                     drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
                     drawCmdKey.bitfield.materialSortKey = subMesh.material->getMaterialSortKey();
 
@@ -845,7 +849,7 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
                     drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
                     drawCmdGeo.modelMatrix = meshModelMatrix;
                     drawCmdGeo.enableAlphaStippling = useLodAlphaStippling;
-                    drawCmdGeo.alphaDitheringValue = lodBlendAlpha;
+                    drawCmdGeo.alphaDitheringValue = alphaValue;
 
                     worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
                 }

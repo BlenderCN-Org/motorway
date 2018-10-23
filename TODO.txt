@@ -29,6 +29,7 @@ Stuff todo for the project
         > Terrain Height snapping (for assets/roads/etc.)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
     > Finish Vulkan port
+    > Fix LOD blend transition (alpha stippling breaks because of the z prepass and both LOD being at the same position...)
     > Decals Support (might be useless if megatexture?) OR MegaTexturing (terrain as a first class citizen)
     > Jobify CPU work
         | Resources:

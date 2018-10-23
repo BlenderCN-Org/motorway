@@ -74,7 +74,7 @@ struct TerrainSceneNode : public SceneNode
     {
         if ( instance.terrainAsset != nullptr ) {
             drawCommandBuilder->addTerrainToRender( &instance );
-            drawCommandBuilder->addWireframeMeshToRender( &grassInstane );
+            drawCommandBuilder->addMeshToRender( &grassInstane );
         }
     }
 

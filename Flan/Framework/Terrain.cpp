@@ -73,7 +73,7 @@ glm::vec2 CalcYBounds( const uint16_t* texels, const int width, const glm::vec3&
     return glm::vec2( min, max );
 }
 
-void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
+void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     struct VertexLayout {
         glm::vec3 positionWorldSpace;
@@ -233,9 +233,11 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, con
     SubMesh baseSubMesh;
     baseSubMesh.indiceBufferOffset = 0;
     baseSubMesh.indiceCount = 48;
-    baseSubMesh.material = material;
+    baseSubMesh.material = grassTest;
     baseSubMesh.boundingSphere.center = { 0, 0, 0 };
-    baseSubMesh.boundingSphere.radius = 2.0f;
+    baseSubMesh.boundingSphere.radius = 8.0f;
+    
+    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
 
     GRASS_TEST->addLevelOfDetail( 0, 64.0f );
     GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );

@@ -49,6 +49,7 @@ cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrix;
     float4x4	g_DepthViewProjectionMatrix;
+    float       g_LodBlendAlpha;
 };
 
 PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )

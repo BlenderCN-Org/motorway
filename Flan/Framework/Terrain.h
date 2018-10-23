@@ -55,7 +55,7 @@ public:
                                         Terrain& operator = ( Terrain& Terrain ) = default;
                                         ~Terrain();
 
-    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
+    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
     const VertexArrayObject*            getVertexArrayObject() const;
     Material*                           getMaterial();

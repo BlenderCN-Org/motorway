@@ -311,6 +311,7 @@ static void DisplayMenuBar()
                 std::size_t dontcare;
                 terrain->create( g_RenderDevice.get(), 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
+                    g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
                     (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ), 512, 512 );
 
                 auto sceneNode = scene->createTerrain( terrain );
