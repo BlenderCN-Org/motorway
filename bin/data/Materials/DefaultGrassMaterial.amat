@@ -1,0 +1,24 @@
+Name: "Default Grass Material"
+Version: 1
+
+ShadingModel: SHADING_MODEL_STANDARD
+WriteVelocity: True
+EnableAlphaTest: True
+EnableAlphaToCoverage: True
+IsDoubleFace: True
+EnableAlphaBlend: True
+CastShadow: True
+ReceiveShadow: True
+ScaleUVByModelScale: True
+
+Layer 
+{
+    BaseColor: "GameData/Textures/T_Grass_D.dds"
+    AlphaMask: "GameData/Textures/T_Grass_A.dds"
+    AlphaCutoff: 0.5
+    Reflectance: 1.00
+    Normal: None
+    Roughness: "GameData/Textures/T_Grass_R.dds"
+
+    Scale: { 1, 1 }
+}
