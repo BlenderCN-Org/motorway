@@ -49,7 +49,6 @@ cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrix;
     float4x4	g_DepthViewProjectionMatrix;
-    uint        g_EnableAlphaStippling;
 };
 
 PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )

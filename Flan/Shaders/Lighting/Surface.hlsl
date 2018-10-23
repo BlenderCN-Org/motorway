@@ -23,6 +23,7 @@ cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrix;
     float       g_lodDitherAlphaValue;
+	uint		g_EnableAlphaStippling;
 };
 
 struct VertexBufferData

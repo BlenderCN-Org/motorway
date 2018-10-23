@@ -131,6 +131,7 @@ cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrix;
     float       g_lodDitherAlphaValue;
+	uint		g_EnableAlphaStippling;
 };
 
 struct MaterialReadLayer
@@ -599,7 +600,6 @@ void EvaluateIBL(
 FLAN_LAYERS_READ
 #endif
 
-
 float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)  
 {  
     float depth = 0.2;  
@@ -613,6 +613,12 @@ float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
+    // Alpha Stippling for LOD Transition
+    [branch]
+    if ( g_EnableAlphaStippling == 1 ) {
+        clip( ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 ) * g_lodDitherAlphaValue );
+    }
+    
     // Compute common terms from vertex stage variables
     float3 N = normalize( VertexStage.normal );
     float3 V = normalize( WorldPosition.xyz - VertexStage.positionWS.xyz );
@@ -1018,8 +1024,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
 #endif
     
-    LightContribution.a = g_lodDitherAlphaValue;
-    
     // Write output to buffer(s)
 	PixelStageData output;
 	output.Buffer0 = LightContribution;
@@ -1034,23 +1038,8 @@ void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float al
     alphaCutoff = lerp( alphaCutoff, nextAlphaCutoff, blendMask );
 }
 
-cbuffer DepthMatricesBuffer : register( b3 )
-{
-    float4x4    g_DepthModelMatrix;
-    float4x4	g_DepthViewProjectionMatrix;
-    uint        g_EnableAlphaStippling;
-};
-
 void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
 {
-    // Alpha Stippling for LOD Transition
-    [branch]
-    if ( g_EnableAlphaStippling == 1 ) {
-        clip( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 );
-    } else if ( g_EnableAlphaStippling == 2 ) {
-        clip( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 != 0 ) ? -1 : 1 );
-    }
-    
     if ( g_EnableAlphaTest ) {
 #if PA_EDITOR
 #ifndef PA_TERRAIN
