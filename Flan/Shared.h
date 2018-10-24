@@ -23,6 +23,11 @@
 #include "Core/BuildFlags.h"
 #include "Core/SystemIncludes.h"
 #include "Core/Types.h"
+
+#if FLAN_DEVBUILD
+#include "Core/HeapTracker.h"
+#endif
+
 #include "Core/Logging.h"
 
 // NOTE Hashing function should not be changed between version

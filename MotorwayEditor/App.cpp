@@ -130,14 +130,19 @@ FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seco
 
 
 static CommandListPool* cmdListTest = nullptr;
-static Timer           autoSaveTimer;
+static Timer            autoSaveTimer;
+
+#include <Core/HeapAllocator.h>
+static Heap* g_HeapTest;
 
 App::App()
 {
+    g_HeapTest = new Heap( 1024 * 1024 * 1024 );
+
     // Create global instances whenever the Application ctor is called
-    g_FileLogger.reset( new FileLogger( PROJECT_NAME ) );
-    g_VirtualFileSystem.reset( new VirtualFileSystem() );
-    g_TaskManager.reset( new TaskManager() );
+    g_FileLogger.reset( new ( g_HeapTest->allocate( sizeof( FileLogger ) ) ) FileLogger( PROJECT_NAME ) );
+    g_VirtualFileSystem.reset( new ( g_HeapTest->allocate<VirtualFileSystem> ) VirtualFileSystem() );
+    g_TaskManager.reset( new ( g_HeapTest->allocate<TaskManager> ) TaskManager() );
     g_MainDisplaySurface.reset( new DisplaySurface( PROJECT_NAME ) );
     g_InputReader.reset( new InputReader() );
     g_InputMapper.reset( new InputMapper() );
@@ -333,6 +338,11 @@ int App::launch()
         //g_GraphicsProfiler->endSection( g_RenderDevice.get() );
 
 #if FLAN_DEVBUILD
+        float heapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
+        std::string heapUsage = "Heap: " + std::to_string( heapMib ) + "MiB";
+
+        g_WorldRenderer->drawDebugText( heapUsage, 0.5f, 0.3f, 0.3f );
+
         auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice.get() );
         DrawEditorInterface( interpolatedFrametime, cmdList );
 #endif
