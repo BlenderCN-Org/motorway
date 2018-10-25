@@ -19,11 +19,13 @@
 */
 #pragma once
 
+class Heap;
+
 template<typename T>
 class Pool
 {
 public:
-                        Pool( const std::size_t poolCapacity, const std::size_t heapAlignement = 16 );
+                        Pool( const std::size_t poolCapacity, const std::size_t heapAlignement = 16, Heap* heapAllocator = nullptr );
                         Pool( Pool& ) = delete;
                         Pool& operator = ( Pool& ) = delete;
                         ~Pool();

@@ -18,19 +18,43 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <Shared.h>
+#include "HeapAllocator.h"
 
 static constexpr int DEBUG_MARKER = 0xEE;
 
 template<typename T>
-Pool<T>::Pool( const std::size_t poolCapacity, const std::size_t heapAlignement )
+Pool<T>::Pool( const std::size_t poolCapacity, const std::size_t heapAlignement, Heap* heapAllocator )
     : capacity( poolCapacity )
     , allocationIndex( 0 )
 {
-    baseAddress = malloc( poolCapacity * sizeof( T ) );
+    // Memory layout
+    //
+    // [ Bitfield, defining pool member availability ]
+    // [ Memory ]
+    const int freeFlagsSize = static_cast<int>( std::ceil( poolCapacity / 32 ) ) * sizeof( int );
+
+    std::uint32_t allocationSize = static_cast<std::uint32_t>( freeFlagsSize + poolCapacity * sizeof( T ) );
+    if ( heapAllocator != nullptr ) {
+        baseAddress = heapAllocator->allocate( allocationSize );
+    } else {
+        baseAddress = malloc( allocationSize );
+    }
 
 #if FLAN_DEVBUILD
-    memset( baseAddress, DEBUG_MARKER, poolCapacity * sizeof( T ) );
+    // Reset bifield(s)
+    memset( baseAddress, 0, freeFlagsSize );
+    memset( static_cast<int*>( baseAddress ) + freeFlagsSize, DEBUG_MARKER, poolCapacity * sizeof( T ) );
 #endif
+}
+
+void UpdateAllocationBitfield( void* baseAddress, const std::size_t allocationIndex )
+{
+    const int bitfieldIndex = static_cast<int>( std::ceil( allocationIndex / 32.0f ) );
+
+    int* allocationIndexes = static_cast<int*>( baseAddress ) + ( bitfieldIndex * sizeof( int ) );
+
+    const int bitIndex = static_cast<int>( allocationIndex - ( bitfieldIndex * 32 ) );
+    *allocationIndexes ^= 1 << bitIndex;
 }
 
 template<typename T>
@@ -42,13 +66,18 @@ Pool<T>::~Pool()
 template<typename T>
 T* Pool<T>::get()
 {
-    return static_cast< T* >( baseAddress + ( sizeof( T ) * allocationIndex++ ) );
+    UpdateAllocationBitfield( baseAddress, allocationIndex );
+    allocationIndex++;
+
+    return static_cast< T* >( baseAddress + ( sizeof( T ) * allocationIndex ) );
 }
 
 template<typename T>
 void Pool<T>::release( T* poolAllocation )
 {
-    //return static_cast< T* >( baseAddress + ( sizeof( T ) * allocationIndex++ ) );
+    const int allocatedIndex = ( poolAllocation - baseAddress ) / sizeof( T );
+
+    UpdateAllocationBitfield( baseAddress, allocatedIndex );
 }
 
 template<typename T>
