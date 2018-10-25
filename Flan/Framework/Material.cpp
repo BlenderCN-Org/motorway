@@ -291,9 +291,17 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GREATER;
             descriptor.depthStencilState = new DepthStencilState();
             descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
+
+            rasterDesc = {};
+            rasterDesc.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
             rasterDesc.cullMode = ( editableMaterialData.IsDoubleFace )
                 ? flan::rendering::eCullMode::CULL_MODE_NONE
                 : flan::rendering::eCullMode::CULL_MODE_FRONT;
+
+            rasterDesc.useTriangleCCW = true;
+
+            descriptor.rasterizerState = new RasterizerState();
+            descriptor.rasterizerState->create( renderDevice, rasterDesc );
 
             reversedDepthPipelineState->create( renderDevice, descriptor );
         } else {
