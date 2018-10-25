@@ -125,6 +125,7 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 
             auto matInputSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             matInputSampler->bind( cmdList, 8 );
+            matInputSampler->bind( cmdList, 7 );
 
             auto matInputDisplSampler = renderPipelineResources->getSampler( passData.samplers[1] );
             matInputDisplSampler->bind( cmdList, 9 );
