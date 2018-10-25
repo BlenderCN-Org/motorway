@@ -6,17 +6,18 @@ WriteVelocity: True
 EnableAlphaTest: True
 EnableAlphaToCoverage: True
 IsDoubleFace: True
-EnableAlphaBlend: True
+EnableAlphaBlend: False
 CastShadow: True
 ReceiveShadow: True
-ScaleUVByModelScale: True
+ScaleUVByModelScale: False
 
 Layer 
 {
     BaseColor: "GameData/Textures/T_Grass_D.dds"
     AlphaMask: "GameData/Textures/T_Grass_A.dds"
-    AlphaCutoff: 0.5
+    AlphaCutoff: 0.75
     Reflectance: 1.00
+    AmbientOcclusion: None
     Normal: None
     Roughness: "GameData/Textures/T_Grass_R.dds"
 
