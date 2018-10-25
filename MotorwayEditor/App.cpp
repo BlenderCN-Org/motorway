@@ -140,27 +140,27 @@ App::App()
     g_HeapTest = new Heap( 1024 * 1024 * 1024 );
 
     // Create global instances whenever the Application ctor is called
-    g_FileLogger.reset( new ( g_HeapTest->allocate( sizeof( FileLogger ) ) ) FileLogger( PROJECT_NAME ) );
-    g_VirtualFileSystem.reset( new ( g_HeapTest->allocate<VirtualFileSystem> ) VirtualFileSystem() );
-    g_TaskManager.reset( new ( g_HeapTest->allocate<TaskManager> ) TaskManager() );
-    g_MainDisplaySurface.reset( new DisplaySurface( PROJECT_NAME ) );
-    g_InputReader.reset( new InputReader() );
-    g_InputMapper.reset( new InputMapper() );
-    g_RenderDevice.reset( new RenderDevice() );
-    g_WorldRenderer.reset( new WorldRenderer() );
-    g_ShaderStageManager.reset( new ShaderStageManager( g_RenderDevice.get(), g_VirtualFileSystem.get() ) );
-    g_GraphicsAssetManager.reset( new GraphicsAssetManager( g_RenderDevice.get(), g_ShaderStageManager.get(), g_VirtualFileSystem.get() ) );
-    g_DrawCommandBuilder.reset( new DrawCommandBuilder() );
-    g_RenderableEntityManager.reset( new RenderableEntityManager() );
-    g_AudioDevice.reset( new AudioDevice() );
-    g_DynamicsWorld.reset( new DynamicsWorld() );
-    g_CurrentScene.reset( new Scene() );
+    g_FileLogger.reset( g_HeapTest->allocate<FileLogger>( PROJECT_NAME ) );
+    g_VirtualFileSystem.reset( g_HeapTest->allocate<VirtualFileSystem>() );
+    g_TaskManager.reset( g_HeapTest->allocate<TaskManager>() );
+    g_MainDisplaySurface.reset( g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME ) );
+    g_InputReader.reset( g_HeapTest->allocate<InputReader>() );
+    g_InputMapper.reset( g_HeapTest->allocate<InputMapper>() );
+    g_RenderDevice.reset( g_HeapTest->allocate<RenderDevice>() );
+    g_WorldRenderer.reset( g_HeapTest->allocate<WorldRenderer>() );
+    g_ShaderStageManager.reset( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice.get(), g_VirtualFileSystem.get() ) );
+    g_GraphicsAssetManager.reset( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice.get(), g_ShaderStageManager.get(), g_VirtualFileSystem.get() ) );
+    g_DrawCommandBuilder.reset( g_HeapTest->allocate<DrawCommandBuilder>() );
+    g_RenderableEntityManager.reset( g_HeapTest->allocate<RenderableEntityManager>() );
+    g_AudioDevice.reset( g_HeapTest->allocate<AudioDevice>() );
+    g_DynamicsWorld.reset( g_HeapTest->allocate<DynamicsWorld>() );
+    g_CurrentScene.reset( g_HeapTest->allocate<Scene>() );
 
 #if FLAN_DEVBUILD
     //g_GraphicsProfiler.reset( new GraphicsProfiler() );
-    g_FileSystemWatchdog.reset( new FileSystemWatchdog() );
-    g_TransactionHandler.reset( new TransactionHandler() );
-    g_PhysicsDebugDraw.reset( new PhysicsDebugDraw() );
+    g_FileSystemWatchdog.reset( g_HeapTest->allocate<FileSystemWatchdog>() );
+    g_TransactionHandler.reset( g_HeapTest->allocate<TransactionHandler>() );
+    g_PhysicsDebugDraw.reset( g_HeapTest->allocate<PhysicsDebugDraw>() );
 #endif
 }
 
@@ -338,10 +338,14 @@ int App::launch()
         //g_GraphicsProfiler->endSection( g_RenderDevice.get() );
 
 #if FLAN_DEVBUILD
-        float heapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
-        std::string heapUsage = "Heap: " + std::to_string( heapMib ) + "MiB";
+        float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
+        std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
+        g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
 
-        g_WorldRenderer->drawDebugText( heapUsage, 0.5f, 0.3f, 0.3f );
+        float heapMib = ( float )g_HeapTest->getMemoryUsage() / ( 1024.0f * 1024.0f );
+        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_HeapTest->getAllocationCount() ) + " allocations)";
+
+        g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
 
         auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice.get() );
         DrawEditorInterface( interpolatedFrametime, cmdList );
@@ -389,7 +393,7 @@ int App::initialize()
     // Prepare files/folders stored on the system fs
     // For now, configuration/save files will be stored in the same folder
     // This might get refactored later (e.g. to implement profile specific config/save for each system user)
-    auto saveFolder = new FileSystemNative( fnString_t( cfgFilesDir ) );
+    auto saveFolder = g_HeapTest->allocate<FileSystemNative>( fnString_t( cfgFilesDir ) );
 
 #if FLAN_UNIX
     // Use *nix style configuration folder name
@@ -406,13 +410,13 @@ int App::initialize()
         saveFolder->createFolder( aloneSaveFolder );
     }
 
-    delete saveFolder;
+    g_HeapTest->free( saveFolder );
 
     FLAN_CLOG << "SaveData folder at : '" << aloneSaveFolder << "'" << std::endl;
     FLAN_CLOG << "Mounting filesystems..." << std::endl;
     
-    g_SaveFileSystem.reset( new FileSystemNative( aloneSaveFolder ) );
-    g_DataFileSystem.reset( new FileSystemNative( FLAN_STRING( "./data/" ) ) );
+    g_SaveFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
+    g_DataFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
 
     g_VirtualFileSystem->mount( g_SaveFileSystem.get(), FLAN_STRING( "SaveData" ), UINT64_MAX );
     g_VirtualFileSystem->mount( g_DataFileSystem.get(), FLAN_STRING( "GameData" ), 1 );
@@ -420,7 +424,7 @@ int App::initialize()
 #if FLAN_DEVBUILD
     FLAN_CLOG << "Mounting devbuild filesystem..." << std::endl;
 
-    g_DevFileSystem.reset( new FileSystemNative( FLAN_STRING( "./dev/" ) ) );
+    g_DevFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
     g_VirtualFileSystem->mount( g_DevFileSystem.get(), FLAN_STRING( "GameData" ), 0 );
 #endif
 
@@ -620,13 +624,13 @@ int App::initialize()
             if ( input.Actions.find( FLAN_STRING_HASH( "OpenScene" ) ) != input.Actions.end() ) {
                 fnString_t sceneName;
                 if ( flan::core::DisplayFileOpenPrompt( sceneName, FLAN_STRING( "Asset Scene file (*.scene)\0*.scene" ), FLAN_STRING( "./" ), FLAN_STRING( "Save as a Scene asset" ) ) ) {
-                    auto file = new FileSystemObjectNative( sceneName );
+                    auto file = g_HeapTest->allocate<FileSystemObjectNative>( sceneName );
                     file->open( std::ios::binary | std::ios::in );
 
                     PickedNode = nullptr;
                     g_RenderableEntityManager->clear();
 
-                    Scene* loadedScene = new Scene();
+                    Scene* loadedScene = g_HeapTest->allocate<Scene>();
 
                     // Trigger scene change (flush CPU/GPU buffers; discard current game state; etc.)
                     g_CurrentScene.reset( loadedScene );
@@ -634,7 +638,7 @@ int App::initialize()
                     // Then load the scene
                     Io_ReadSceneFile( file, g_GraphicsAssetManager.get(), g_RenderableEntityManager.get(), *loadedScene );
                     file->close();
-                    delete file;
+                    g_HeapTest->free( file );
 
                     for ( auto& node : g_CurrentScene->getSceneNodes() ) {
                         if ( node->rigidBody != nullptr ) {

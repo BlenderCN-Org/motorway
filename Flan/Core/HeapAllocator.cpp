@@ -28,6 +28,8 @@ Heap::Heap( const std::size_t heapSize, const std::size_t heapAlignement )
     : baseAddress( nullptr )
     , size( heapSize )
     , head( nullptr )
+    , allocationCount( 0 )
+    , memoryUsage( 0 )
 {
     baseAddress = malloc( heapSize );
 
@@ -46,7 +48,7 @@ Heap::~Heap()
     head = nullptr;
 }
 
-void* Heap::allocate( const std::size_t size )
+void* Heap::allocate( const std::uint32_t size )
 {
     // Try to reuse
     Heap::AllocationHeader* iterator = head;
@@ -68,6 +70,9 @@ void* Heap::allocate( const std::size_t size )
     head->previousAllocation = static_cast< Heap::AllocationHeader* >( allocatedAddress );
     head->isAvailable = 0;
 
+    memoryUsage += size;
+    allocationCount++;
+
     return static_cast< void* >( static_cast< Heap::AllocationHeader* >( allocatedAddress ) + sizeof( AllocationHeader ) );
 }
 
@@ -78,9 +83,21 @@ void Heap::free( void* allocatedMemory )
     while ( iterator != nullptr ) {
         if ( allocatedMemory == iterator ) {
             iterator->isAvailable = 1;
+            memoryUsage -= size;
+            allocationCount--;
             return;
         }
 
         iterator = iterator->previousAllocation;
     }
+}
+
+const std::size_t Heap::getAllocationCount() const
+{
+    return allocationCount;
+}
+
+const std::size_t Heap::getMemoryUsage() const
+{
+    return memoryUsage;
 }

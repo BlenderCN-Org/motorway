@@ -27,13 +27,16 @@ public:
             Heap& operator = ( Heap& ) = delete;
             ~Heap();
             
-            template<typename T>
-            void* allocate() {
-                return allocate( sizeof( T ) );
-            }
+    template<typename T, typename... TArgs>
+    T* allocate( TArgs... args ) {
+        return new ( allocate( sizeof( T ) ) ) T( std::forward<TArgs>( args )... );
+    }
 
-    void*   allocate( const std::size_t size );
+    void*   allocate( const std::uint32_t size );
     void    free( void* allocatedMemory );
+
+    const std::size_t getAllocationCount() const;
+    const std::size_t getMemoryUsage() const;
 
 private:
     struct AllocationHeader {
@@ -48,4 +51,7 @@ private:
     void*               baseAddress;
     std::size_t         size;
     AllocationHeader*   head;
+
+    std::size_t         allocationCount;
+    std::size_t         memoryUsage;
 };
