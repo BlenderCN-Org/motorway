@@ -123,10 +123,10 @@ void CommandList::bindPipelineStateCmd( PipelineState* pipelineState )
     // a rebind (total or partial) is needed
     if ( psoDesc->rasterizerState != nullptr ) {
         auto rasterizerKey = psoDesc->rasterizerState->getKeyValue();
-        if ( rasterizerKey != currentRasterizerState ) {
+        //if ( rasterizerKey != currentRasterizerState ) {
             psoDesc->rasterizerState->bind( this );
             currentRasterizerState = rasterizerKey;
-        }
+       // }
     }
 
     if ( psoDesc->blendState != nullptr ) {
