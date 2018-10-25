@@ -177,6 +177,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
     struct GrassLayout
     {
         glm::vec3 position;
+        glm::vec3 normal;
         glm::vec2 texCoords;
     };
 
@@ -187,20 +188,20 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
         auto vertId = quadId * 4;
         auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
 
-        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth }, { 0, 0 } };
-        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth }, { 0, 0 } };
-        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth }, { 0, 0 } };
-        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth }, { 0, 0 } };
+        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 1, 1 } };
+        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 0, 1 } };
+        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 0, 0 } };
+        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 1, 0 } };
     }
 
     for ( int quadId = 0; quadId < 4; quadId++ ) {
         auto vertId = quadId * 4 + 16;
         auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
 
-        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f }, { 0, 0 } };
-        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f }, { 0, 0 } };
-        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f }, { 0, 0 } };
-        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f }, { 0, 0 } };
+        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f }, { 0, 1, 0 }, { 1, 1 } };
+        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f }, { 0, 1, 0 }, { 0, 1 } };
+        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f }, { 0, 1, 0 }, { 0, 0 } };
+        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f }, { 0, 1, 0 }, { 1, 0 } };
     }
 
     uint32_t grassIndices[6 * 8];
@@ -219,8 +220,8 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
     
     BufferDesc vboGrassDesc;
     vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
-    vboGrassDesc.Size = 4 * 4 * 2 * 5 * sizeof( float );
-    vboGrassDesc.Stride = 5 * sizeof( float );
+    vboGrassDesc.Size = 4 * 4 * 2 * sizeof( GrassLayout );
+    vboGrassDesc.Stride = sizeof( GrassLayout );
 
     BufferDesc iboGrassDesc;
     iboGrassDesc.Type = BufferDesc::INDICE_BUFFER;
@@ -232,14 +233,14 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
 
     SubMesh baseSubMesh;
     baseSubMesh.indiceBufferOffset = 0;
-    baseSubMesh.indiceCount = 48;
+    baseSubMesh.indiceCount = 6 * 8;
     baseSubMesh.material = grassTest;
     baseSubMesh.boundingSphere.center = { 0, 0, 0 };
-    baseSubMesh.boundingSphere.radius = 8.0f;
+    baseSubMesh.boundingSphere.radius = 2.0f;
     
-    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
+    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 2.0f, 2.0f, 2.0f } );
 
-    GRASS_TEST->addLevelOfDetail( 0, 64.0f );
+    GRASS_TEST->addLevelOfDetail( 0, 256.0f );
     GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
 }
 
