@@ -1067,7 +1067,7 @@ void EntryPointDepthPS( in VertexDepthOnlyStageShaderData VertexStage )
         // 16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
     // };
 
-    clip( g_LodBlendAlpha - ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? 1 : 0 ) );
+    //clip( g_LodBlendAlpha - ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? 1 : 0 ) );
 
     if ( g_EnableAlphaTest ) {
 #if PA_EDITOR
