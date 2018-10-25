@@ -20,7 +20,7 @@
 #include <Shared.h>
 #include "HeapAllocator.h"
 
-#include "MemoryAlignementHelpers.h"
+#include <Core/MemoryAlignementHelpers.h>
 
 static constexpr int DEBUG_MARKER = 0xEE;
 
@@ -43,7 +43,8 @@ Heap::Heap( const std::size_t heapSize, const std::size_t heapAlignement )
 
 Heap::~Heap()
 {
-    free( baseAddress );
+    ::free( baseAddress );
+    baseAddress = nullptr;
     size = 0;
     head = nullptr;
 }
