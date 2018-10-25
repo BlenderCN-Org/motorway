@@ -39,35 +39,33 @@
 #include <Framework/Scene.h>
 
 #if FLAN_DEVBUILD
-#include <Graphics/GraphicsProfiler.h>
 #include "Core/FileSystem/FileSystemWatchdog.h"
 #include <Framework/TransactionHandler/TransactionHandler.h>
 #include <Physics/PhysicsDebugDraw.h>
 #endif
 
-std::unique_ptr<FileLogger>              g_FileLogger( nullptr );
-std::unique_ptr<VirtualFileSystem>       g_VirtualFileSystem( nullptr );
-std::unique_ptr<TaskManager>             g_TaskManager( nullptr );
-std::unique_ptr<DisplaySurface>          g_MainDisplaySurface( nullptr );
-std::unique_ptr<InputReader>             g_InputReader( nullptr );
-std::unique_ptr<InputMapper>             g_InputMapper( nullptr );
-std::unique_ptr<RenderDevice>            g_RenderDevice( nullptr );
-std::unique_ptr<WorldRenderer>           g_WorldRenderer( nullptr );
-std::unique_ptr<GraphicsAssetManager>    g_GraphicsAssetManager( nullptr );
-std::unique_ptr<ShaderStageManager>      g_ShaderStageManager( nullptr );
-std::unique_ptr<DrawCommandBuilder>      g_DrawCommandBuilder( nullptr ); 
-std::unique_ptr<RenderableEntityManager> g_RenderableEntityManager( nullptr );
-std::unique_ptr<AudioDevice>             g_AudioDevice( nullptr );
-std::unique_ptr<FileSystemNative>        g_SaveFileSystem( nullptr );
-std::unique_ptr<FileSystemNative>        g_DataFileSystem( nullptr );
-std::unique_ptr<DynamicsWorld>           g_DynamicsWorld( nullptr );
-std::unique_ptr<Scene>                   g_CurrentScene( nullptr );
+FileLogger*              g_FileLogger( nullptr );
+VirtualFileSystem*       g_VirtualFileSystem( nullptr );
+TaskManager*             g_TaskManager( nullptr );
+DisplaySurface*          g_MainDisplaySurface( nullptr );
+InputReader*             g_InputReader( nullptr );
+InputMapper*             g_InputMapper( nullptr );
+RenderDevice*            g_RenderDevice( nullptr );
+WorldRenderer*           g_WorldRenderer( nullptr );
+GraphicsAssetManager*    g_GraphicsAssetManager( nullptr );
+ShaderStageManager*      g_ShaderStageManager( nullptr );
+DrawCommandBuilder*      g_DrawCommandBuilder( nullptr ); 
+RenderableEntityManager* g_RenderableEntityManager( nullptr );
+AudioDevice*             g_AudioDevice( nullptr );
+FileSystemNative*        g_SaveFileSystem( nullptr );
+FileSystemNative*        g_DataFileSystem( nullptr );
+DynamicsWorld*           g_DynamicsWorld( nullptr );
+Scene*                   g_CurrentScene( nullptr );
 
 #if FLAN_DEVBUILD
-std::unique_ptr<GraphicsProfiler>        g_GraphicsProfiler( nullptr );
-std::unique_ptr<FileSystemWatchdog>      g_FileSystemWatchdog( nullptr );
-std::unique_ptr<FileSystemNative>        g_DevFileSystem( nullptr );
-std::unique_ptr<TransactionHandler>      g_TransactionHandler( nullptr );
-std::unique_ptr<PhysicsDebugDraw>        g_PhysicsDebugDraw( nullptr );
+FileSystemWatchdog*      g_FileSystemWatchdog( nullptr );
+FileSystemNative*        g_DevFileSystem( nullptr );
+TransactionHandler*      g_TransactionHandler( nullptr );
+PhysicsDebugDraw*        g_PhysicsDebugDraw( nullptr );
 #endif
 

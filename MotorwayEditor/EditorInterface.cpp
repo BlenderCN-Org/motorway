@@ -160,7 +160,7 @@ static void DisplayMenuBar()
             if ( ImGui::MenuItem( "New Scene" ) ) {
                 *PickedNode = nullptr;
                 g_RenderableEntityManager->clear();
-                g_CurrentScene.reset( new Scene() );
+                g_CurrentScene = ( new Scene() );
 
                 auto camera = new FreeCamera();
                 camera->SetProjectionMatrix( 80.0f, 1920.0f, 1080.0f );
@@ -182,10 +182,10 @@ static void DisplayMenuBar()
                     Scene* loadedScene = new Scene();
 
                     // Trigger scene change (flush CPU/GPU buffers; discard current game state; etc.)
-                    g_CurrentScene.reset( loadedScene );
+                    g_CurrentScene = ( loadedScene );
 
                     // Then load the scene
-                    Io_ReadSceneFile( file, g_GraphicsAssetManager.get(), g_RenderableEntityManager.get(), *loadedScene );
+                    Io_ReadSceneFile( file, g_GraphicsAssetManager, g_RenderableEntityManager, *loadedScene );
                     file->close();
                     delete file;
 
@@ -207,7 +207,7 @@ static void DisplayMenuBar()
                     //    pa::core::ExtractFilenameFromPath( sceneName, fileNameWithoutExtension );
                     //    pa::core::GetFilenameWithoutExtension( fileNameWithoutExtension, sceneNameWithExt );
 
-                    //    g_RenderManager->LoadProbesFromDisk( g_GraphicsAssetManager.get(), paString_t( sceneNameWithExt.c_str() ) );
+                    //    g_RenderManager->LoadProbesFromDisk( g_GraphicsAssetManager, paString_t( sceneNameWithExt.c_str() ) );
 
                     //    // Rebuild BVH
                 }
@@ -219,7 +219,7 @@ static void DisplayMenuBar()
                     sceneName = fnString_t( sceneName.c_str() );
                     auto file = new FileSystemObjectNative( fnString_t( sceneName + FLAN_STRING( ".scene" ) ) );
                     file->open( std::ios::binary | std::ios::out );
-                    Io_WriteSceneFile( g_CurrentScene.get(), file );
+                    Io_WriteSceneFile( g_CurrentScene, file );
                     file->close();
                     delete file;
 
@@ -258,13 +258,13 @@ static void DisplayMenuBar()
 
             if ( ImGui::MenuItem( "Paste" ) ) {
                 if ( CopiedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeCopyCommand( *PickedNode, g_CurrentScene.get(), g_RenderableEntityManager.get(), g_DynamicsWorld.get() ) );
+                    g_TransactionHandler->commit( new SceneNodeCopyCommand( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
                 }
             }
 
             if ( ImGui::MenuItem( "Delete" ) ) {
                 if ( PickedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeDeleteCommand( *PickedNode, g_CurrentScene.get(), g_RenderableEntityManager.get(), g_DynamicsWorld.get() ) );
+                    g_TransactionHandler->commit( new SceneNodeDeleteCommand( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
                     PickedNode = nullptr;
                 }
             }
@@ -272,7 +272,7 @@ static void DisplayMenuBar()
         }
 
         if ( ImGui::BeginMenu( "Add To Scene" ) ) {
-            auto scene = g_CurrentScene.get();
+            auto scene = g_CurrentScene;
 
             if ( ImGui::MenuItem( "Free Camera" ) ) {
                 auto camera = new FreeCamera();
@@ -309,7 +309,7 @@ static void DisplayMenuBar()
             if ( ImGui::MenuItem( "Terrain" ) ) {
                 auto terrain = new Terrain();
                 std::size_t dontcare;
-                terrain->create( g_RenderDevice.get(), 
+                terrain->create( g_RenderDevice, 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
                     (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ), 512, 512 );
@@ -533,7 +533,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 {
     const auto& nativeContext = g_RenderDevice->getNativeRenderContext();
     const auto nativeCmdList = cmdList->getNativeCommandList();
-    cmdList->beginCommandList( g_RenderDevice.get() );
+    cmdList->beginCommandList( g_RenderDevice );
     cmdList->bindBackbufferCmd();
     
     ImGui_ImplWin32_NewFrame();
@@ -559,7 +559,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
         DisplayMenuBar();
 
         // Update Guizmo Matrices
-        auto cameraNode = (FreeCameraSceneNode*)g_CurrentScene.get()->findNodeByHashcode( FLAN_STRING_HASH( "DefaultCamera" ) );
+        auto cameraNode = (FreeCameraSceneNode*)g_CurrentScene->findNodeByHashcode( FLAN_STRING_HASH( "DefaultCamera" ) );
         if ( cameraNode != nullptr ) {
             auto cameraData = cameraNode->camera->GetData();
             auto transposedView = glm::transpose( cameraData.viewMatrix );
@@ -598,7 +598,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                     if ( ImGui::Button( "Delete!" ) ) {
                         ImGui::PopStyleColor();
 
-                        g_TransactionHandler->commit( new SceneNodeDeleteCommand( node, g_CurrentScene.get(), g_RenderableEntityManager.get(), g_DynamicsWorld.get() ) );
+                        g_TransactionHandler->commit( new SceneNodeDeleteCommand( node, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
                         *PickedNode = nullptr;
                     } else {
                         ImGui::PopStyleColor();
@@ -618,7 +618,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                             }
                         }
 
-                        const auto& sceneNodes = g_CurrentScene.get()->getSceneNodes();
+                        const auto& sceneNodes = g_CurrentScene->getSceneNodes();
 
                         int selectedParentIdx = 0;
                         if ( node->parent != nullptr ) {
@@ -911,7 +911,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                         }
 
                         // Draw Node Edition Panel Content
-                        node->drawInEditor( g_GraphicsAssetManager.get(), g_TransactionHandler.get(), frameTime );
+                        node->drawInEditor( g_GraphicsAssetManager, g_TransactionHandler, frameTime );
                     }
 
                 } else {
@@ -919,7 +919,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                 }
             } else if ( panelId == 1 ) {
                 if ( dev_EditorPickedMaterial != nullptr ) {
-                    dev_EditorPickedMaterial->drawInEditor( g_RenderDevice.get(), g_ShaderStageManager.get(), g_GraphicsAssetManager.get(), g_WorldRenderer.get() );
+                    dev_EditorPickedMaterial->drawInEditor( g_RenderDevice, g_ShaderStageManager, g_GraphicsAssetManager, g_WorldRenderer );
                 } else {
                     if ( ImGui::Button( "New" ) ) {
                         dev_EditorPickedMaterial = new Material();
@@ -938,7 +938,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
             ImGui::InputText( "##SceneNodeLookup", sceneNodeSearch, 256, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue );
             ImGui::Separator();
 
-            auto scene = g_CurrentScene.get();
+            auto scene = g_CurrentScene;
             const auto& sceneNodes = scene->getSceneNodes();
             for ( auto& node : sceneNodes ) {
                 if ( node->parent == nullptr ) {
@@ -963,7 +963,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
     //ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData(), cmdList );
 #endif
 
-    cmdList->endCommandList( g_RenderDevice.get() );
-    cmdList->playbackCommandList( g_RenderDevice.get() );
+    cmdList->endCommandList( g_RenderDevice );
+    cmdList->playbackCommandList( g_RenderDevice );
 }
 #endif

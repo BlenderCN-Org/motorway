@@ -128,39 +128,41 @@ FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
 
 FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seconds)", 120.0f, float )
 
-
 static CommandListPool* cmdListTest = nullptr;
 static Timer            autoSaveTimer;
 
-#include <Core/HeapAllocator.h>
+#include <Core/Allocators/HeapAllocator.h>
+#include <Core/Allocators/PoolAllocator.h>
+
 static Heap* g_HeapTest;
+Pool<Timer> test( 5 );
 
 App::App()
 {
     g_HeapTest = new Heap( 1024 * 1024 * 1024 );
 
     // Create global instances whenever the Application ctor is called
-    g_FileLogger.reset( g_HeapTest->allocate<FileLogger>( PROJECT_NAME ) );
-    g_VirtualFileSystem.reset( g_HeapTest->allocate<VirtualFileSystem>() );
-    g_TaskManager.reset( g_HeapTest->allocate<TaskManager>() );
-    g_MainDisplaySurface.reset( g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME ) );
-    g_InputReader.reset( g_HeapTest->allocate<InputReader>() );
-    g_InputMapper.reset( g_HeapTest->allocate<InputMapper>() );
-    g_RenderDevice.reset( g_HeapTest->allocate<RenderDevice>() );
-    g_WorldRenderer.reset( g_HeapTest->allocate<WorldRenderer>() );
-    g_ShaderStageManager.reset( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice.get(), g_VirtualFileSystem.get() ) );
-    g_GraphicsAssetManager.reset( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice.get(), g_ShaderStageManager.get(), g_VirtualFileSystem.get() ) );
-    g_DrawCommandBuilder.reset( g_HeapTest->allocate<DrawCommandBuilder>() );
-    g_RenderableEntityManager.reset( g_HeapTest->allocate<RenderableEntityManager>() );
-    g_AudioDevice.reset( g_HeapTest->allocate<AudioDevice>() );
-    g_DynamicsWorld.reset( g_HeapTest->allocate<DynamicsWorld>() );
-    g_CurrentScene.reset( g_HeapTest->allocate<Scene>() );
+    g_FileLogger =( g_HeapTest->allocate<FileLogger>( PROJECT_NAME ) );
+    g_VirtualFileSystem =( g_HeapTest->allocate<VirtualFileSystem>() );
+    g_TaskManager =( g_HeapTest->allocate<TaskManager>() );
+    g_MainDisplaySurface =( g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME ) );
+    g_InputReader =( g_HeapTest->allocate<InputReader>() );
+    g_InputMapper =( g_HeapTest->allocate<InputMapper>() );
+    g_RenderDevice =( g_HeapTest->allocate<RenderDevice>() );
+    g_WorldRenderer =( g_HeapTest->allocate<WorldRenderer>() );
+    g_ShaderStageManager =( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice, g_VirtualFileSystem ) );
+    g_GraphicsAssetManager =( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem ) );
+    g_DrawCommandBuilder =( g_HeapTest->allocate<DrawCommandBuilder>() );
+    g_RenderableEntityManager =( g_HeapTest->allocate<RenderableEntityManager>() );
+    g_AudioDevice =( g_HeapTest->allocate<AudioDevice>() );
+    g_DynamicsWorld =( g_HeapTest->allocate<DynamicsWorld>() );
+    g_CurrentScene =( g_HeapTest->allocate<Scene>() );
 
 #if FLAN_DEVBUILD
-    //g_GraphicsProfiler.reset( new GraphicsProfiler() );
-    g_FileSystemWatchdog.reset( g_HeapTest->allocate<FileSystemWatchdog>() );
-    g_TransactionHandler.reset( g_HeapTest->allocate<TransactionHandler>() );
-    g_PhysicsDebugDraw.reset( g_HeapTest->allocate<PhysicsDebugDraw>() );
+    //g_GraphicsProfiler =( new GraphicsProfiler() );
+    g_FileSystemWatchdog =( g_HeapTest->allocate<FileSystemWatchdog>() );
+    g_TransactionHandler =( g_HeapTest->allocate<TransactionHandler>() );
+    g_PhysicsDebugDraw = g_HeapTest->allocate<PhysicsDebugDraw>();
 #endif
 }
 
@@ -186,7 +188,7 @@ int App::launch()
 
     while ( 1 ) {
         g_Profiler.beginSection( "DisplaySurface::pumpEvents" );
-            g_MainDisplaySurface->pumpEvents( g_InputReader.get() );
+            g_MainDisplaySurface->pumpEvents( g_InputReader );
         g_Profiler.endSection();
 
         if ( g_MainDisplaySurface->shouldQuit() ) {
@@ -199,11 +201,11 @@ int App::launch()
         logicCounter.onFrame( frameTime );
 
         //g_Profiler.beginSection( "GraphicsProfiler::onFrame" );
-        //g_GraphicsProfiler->onFrame( g_RenderDevice.get(), g_WorldRenderer.get() );
+        //g_GraphicsProfiler->onFrame( g_RenderDevice, g_WorldRenderer );
         //g_Profiler.endSection();
 
         g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 0.30f, 0.1f );
-        g_Profiler.onFrame( g_WorldRenderer.get() );
+        g_Profiler.onFrame( g_WorldRenderer );
 #endif
 
         // Avoid spiral of death
@@ -219,7 +221,7 @@ int App::launch()
         g_Profiler.beginSection( "Fixed Updates" );
         while ( accumulator >= flan::framework::LOGIC_DELTA ) {
             // Update Input
-            g_InputReader->onFrame( g_InputMapper.get() );
+            g_InputReader->onFrame( g_InputMapper );
 
             // Update Local Game Instance
             g_InputMapper->update( flan::framework::LOGIC_DELTA );
@@ -316,26 +318,26 @@ int App::launch()
 
         //uint32_t winWidth, winHeight;
         //g_MainDisplaySurface->getSurfaceDimension( winWidth, winHeight );
-        //g_DebugUI->onFrame( frameTime, g_DrawCommandBuilder.get(), winWidth, winHeight );
+        //g_DebugUI->onFrame( frameTime, g_DrawCommandBuilder, winWidth, winHeight );
 #endif
 
         g_Profiler.beginSection( "GameLogic::collectRenderKeys" );
             // Collect render keys from the current scene
-            g_CurrentScene->collectRenderKeys( g_DrawCommandBuilder.get() );
+            g_CurrentScene->collectRenderKeys( g_DrawCommandBuilder );
         g_Profiler.endSection();
 
         // Prepare drawcalls and pipelines for the GPU (don't setup anything yet)
         g_Profiler.beginSection( "DrawCommandBuilder::buildCommands" );
-            g_DrawCommandBuilder->buildCommands( g_RenderDevice.get(), g_WorldRenderer.get() );
+            g_DrawCommandBuilder->buildCommands( g_RenderDevice, g_WorldRenderer );
         g_Profiler.endSection();
 
         float interpolatedFrametime = static_cast< float >( accumulator ) / flan::framework::LOGIC_DELTA;
 
-        //g_GraphicsProfiler->beginSection( g_RenderDevice.get(), "GPU" );
+        //g_GraphicsProfiler->beginSection( g_RenderDevice, "GPU" );
         g_Profiler.beginSection( "WorldRenderer::onFrame" );
-            g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager.get() );
+            g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager );
         g_Profiler.endSection();
-        //g_GraphicsProfiler->endSection( g_RenderDevice.get() );
+        //g_GraphicsProfiler->endSection( g_RenderDevice );
 
 #if FLAN_DEVBUILD
         float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
@@ -347,7 +349,7 @@ int App::launch()
 
         g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
 
-        auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice.get() );
+        auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice );
         DrawEditorInterface( interpolatedFrametime, cmdList );
 #endif
 
@@ -364,8 +366,19 @@ int App::launch()
     ImGui::DestroyContext();
 #endif
 
+#if FLAN_DEVBUILD
+    g_VirtualFileSystem->unmount( g_DevFileSystem );
+#endif
+
     g_WorldRenderer->destroy();
     g_GraphicsAssetManager->destroy();
+
+    g_VirtualFileSystem->unmount( g_SaveFileSystem );
+    g_VirtualFileSystem->unmount( g_DataFileSystem );
+   
+    g_FileLogger->close();
+
+    delete g_HeapTest;
 
     return 0;
 }
@@ -415,17 +428,17 @@ int App::initialize()
     FLAN_CLOG << "SaveData folder at : '" << aloneSaveFolder << "'" << std::endl;
     FLAN_CLOG << "Mounting filesystems..." << std::endl;
     
-    g_SaveFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
-    g_DataFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
+    g_SaveFileSystem =( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
+    g_DataFileSystem =( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
 
-    g_VirtualFileSystem->mount( g_SaveFileSystem.get(), FLAN_STRING( "SaveData" ), UINT64_MAX );
-    g_VirtualFileSystem->mount( g_DataFileSystem.get(), FLAN_STRING( "GameData" ), 1 );
+    g_VirtualFileSystem->mount( g_SaveFileSystem, FLAN_STRING( "SaveData" ), UINT64_MAX );
+    g_VirtualFileSystem->mount( g_DataFileSystem, FLAN_STRING( "GameData" ), 1 );
 
 #if FLAN_DEVBUILD
     FLAN_CLOG << "Mounting devbuild filesystem..." << std::endl;
 
-    g_DevFileSystem.reset( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
-    g_VirtualFileSystem->mount( g_DevFileSystem.get(), FLAN_STRING( "GameData" ), 0 );
+    g_DevFileSystem =( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
+    g_VirtualFileSystem->mount( g_DevFileSystem, FLAN_STRING( "GameData" ), 0 );
 #endif
 
     // Open FileLogger (setup console output stream redirection)
@@ -476,16 +489,16 @@ int App::initialize()
 
     // Rendering/Graphics systems
     FLAN_CLOG << "Initializing rendering subsystems..." << std::endl;
-    g_RenderDevice->create( g_MainDisplaySurface.get() );
+    g_RenderDevice->create( g_MainDisplaySurface );
 
     FLAN_IMPORT_VAR_PTR( EnableVSync, bool );
     g_RenderDevice->setVSyncState( *EnableVSync );
 
-    g_WorldRenderer->create( g_RenderDevice.get() );
-    g_WorldRenderer->loadCachedResources( g_ShaderStageManager.get(), g_GraphicsAssetManager.get() );
+    g_WorldRenderer->create( g_RenderDevice );
+    g_WorldRenderer->loadCachedResources( g_ShaderStageManager, g_GraphicsAssetManager );
 
-    g_DrawCommandBuilder->create( g_TaskManager.get(), g_RenderableEntityManager.get(), g_GraphicsAssetManager.get(), g_WorldRenderer.get() );
-    g_RenderableEntityManager->create( g_RenderDevice.get() );
+    g_DrawCommandBuilder->create( g_TaskManager, g_RenderableEntityManager, g_GraphicsAssetManager, g_WorldRenderer );
+    g_RenderableEntityManager->create( g_RenderDevice );
 
     FLAN_CLOG << "Initializing audio subsystems..." << std::endl;
     g_AudioDevice->create();
@@ -496,7 +509,7 @@ int App::initialize()
     FLAN_CLOG << "Initialization done!" << std::endl;
 
 #if FLAN_DEVBUILD
-    //g_GraphicsProfiler->create( g_RenderDevice.get() );
+    //g_GraphicsProfiler->create( g_RenderDevice );
 
     // TODO Remove this once menu and UI are set
 #if FLAN_DEVBUILD
@@ -633,10 +646,10 @@ int App::initialize()
                     Scene* loadedScene = g_HeapTest->allocate<Scene>();
 
                     // Trigger scene change (flush CPU/GPU buffers; discard current game state; etc.)
-                    g_CurrentScene.reset( loadedScene );
+                    g_CurrentScene = loadedScene;
 
                     // Then load the scene
-                    Io_ReadSceneFile( file, g_GraphicsAssetManager.get(), g_RenderableEntityManager.get(), *loadedScene );
+                    Io_ReadSceneFile( file, g_GraphicsAssetManager, g_RenderableEntityManager, *loadedScene );
                     file->close();
                     g_HeapTest->free( file );
 
@@ -658,7 +671,7 @@ int App::initialize()
                     //    pa::core::ExtractFilenameFromPath( sceneName, fileNameWithoutExtension );
                     //    pa::core::GetFilenameWithoutExtension( fileNameWithoutExtension, sceneNameWithExt );
 
-                    //    g_RenderManager->LoadProbesFromDisk( g_GraphicsAssetManager.get(), paString_t( sceneNameWithExt.c_str() ) );
+                    //    g_RenderManager->LoadProbesFromDisk( g_GraphicsAssetManager, paString_t( sceneNameWithExt.c_str() ) );
 
                     //    // Rebuild BVH
                 }
@@ -670,7 +683,7 @@ int App::initialize()
                     sceneName = fnString_t( sceneName.c_str() );
                     auto file = new FileSystemObjectNative( fnString_t( sceneName + FLAN_STRING( ".scene" ) ) );
                     file->open( std::ios::binary | std::ios::out );
-                    Io_WriteSceneFile( g_CurrentScene.get(), file );
+                    Io_WriteSceneFile( g_CurrentScene, file );
                     file->close();
                     delete file;
                 }
@@ -678,7 +691,7 @@ int App::initialize()
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PasteNode" ) ) != input.Actions.end() ) {
                 if ( CopiedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeCopyCommand( PickedNode, g_CurrentScene.get(), g_RenderableEntityManager.get(), g_DynamicsWorld.get() ) );
+                    g_TransactionHandler->commit( new SceneNodeCopyCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
                 }
             }
 
@@ -693,7 +706,7 @@ int App::initialize()
 
         if ( input.Actions.find( FLAN_STRING_HASH( "DeleteNode" ) ) != input.Actions.end() ) {
             if ( PickedNode != nullptr ) {
-                g_TransactionHandler->commit( new SceneNodeDeleteCommand( PickedNode, g_CurrentScene.get(), g_RenderableEntityManager.get(), g_DynamicsWorld.get() ) );
+                g_TransactionHandler->commit( new SceneNodeDeleteCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
                 PickedNode = nullptr;
             }
         }
@@ -711,7 +724,7 @@ int App::initialize()
     auto testCamNode = ( FreeCameraSceneNode* )g_CurrentScene->createFreeCamera( testCam, "DefaultCamera" );
     testCamNode->enabled = true;
 
-    g_PhysicsDebugDraw->create( g_DynamicsWorld.get(), g_DrawCommandBuilder.get() );
+    g_PhysicsDebugDraw->create( g_DynamicsWorld, g_DrawCommandBuilder );
 
     DirectionalLightData sunLight = {};
     sunLight.isSunLight = true;
@@ -732,7 +745,7 @@ int App::initialize()
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
     cmdListTest = new CommandListPool();
-    cmdListTest->create( g_RenderDevice.get(), 8 );
+    cmdListTest->create( g_RenderDevice, 8 );
 
     ImGui_ImplWin32_Init( g_MainDisplaySurface->getNativeDisplaySurface()->Handle );
 
