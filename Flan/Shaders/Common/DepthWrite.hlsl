@@ -7,10 +7,7 @@ struct VertexStageData
 
 #include <CameraData.hlsli>
 #include <Tessellation.hlsli>
-
-#if PH_HEIGHTFIELD
-Texture2D g_TexHeightmap    : register( t0 );
-sampler g_HeightmapSampler : register( s8 );
+#if PH_USE_HEIGHTFIELD
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
 {
@@ -28,6 +25,13 @@ cbuffer MaterialEdition : register( b8 )
     MaterialLayer           g_Layers[MAX_LAYER_COUNT];
 };
 
+Texture2D g_TexHeightmap    : register( t0 );
+sampler g_HeightmapSampler : register( s8 );
+
+float SampleHeightmap( in const float2 texCoordinates )
+{
+	return g_TexHeightmap.SampleLevel( g_HeightmapSampler, texCoordinates, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
+}
 #endif
 
 struct PixelDepthShaderData
@@ -62,11 +66,15 @@ PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
     // Send position in model space (projection into depth space should be done at Domain stage)
     output.position = float4( VertexBuffer.Position, 1.0f ); 
     
-    output.position.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, VertexBuffer.uvCoord, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
+    output.position.y = SampleHeightmap( VertexBuffer.uvCoord );
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
 #else
-    float4 positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
+    float4 positionWS = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
     
+#if PH_SNAP_TO_HEIGHTFIELD
+    positionWS.y += SampleHeightmap( VertexBuffer.uvCoord );
+#endif
+
     // NOTE This actually write non-linear depth to the render target/buffer/whatever is bind...
     // You still need to do the division with the projection matrix to get proper values!
     output.position = mul( float4( positionWS.xyz, 1.0f ), g_DepthViewProjectionMatrix );

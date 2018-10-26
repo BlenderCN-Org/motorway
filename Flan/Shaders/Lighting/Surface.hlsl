@@ -33,7 +33,7 @@ struct VertexBufferData
 	float2 TexCoordinates   : TEXCOORD0;
 };
 
-#if PH_HEIGHTFIELD
+#if PH_USE_HEIGHTFIELD
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
 {
@@ -52,8 +52,15 @@ cbuffer MaterialEdition : register( b8 )
 };
 
 Texture2D g_TexHeightmap    : register( t0 );
-sampler g_HeightmapSampler : register( s8 );
+sampler g_HeightmapSampler  : register( s8 );
 
+float SampleHeightmap( in const float2 texCoordinates )
+{
+	return g_TexHeightmap.SampleLevel( g_HeightmapSampler, texCoordinates, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
+}
+#endif
+
+#if PH_HEIGHTFIELD
 struct VertexStageHeightfieldData
 {
     float4 positionMS   : POSITION;
@@ -63,12 +70,11 @@ struct VertexStageHeightfieldData
 
 VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffer )
 {
-    const float2 sampleCoordinates = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
-    
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
-    output.positionMS.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, VertexBuffer.TexCoordinates, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
+    output.positionMS.y = SampleHeightmap( VertexBuffer.TexCoordinates );
+	
     output.uvCoord = VertexBuffer.TexCoordinates;
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
     
@@ -101,6 +107,11 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
 
     output.uvCoord          = uvCoordinates;
     output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
+
+#if PH_SNAP_TO_HEIGHTFIELD
+    output.positionWS.y 	+= SampleHeightmap( VertexBuffer.TexCoordinates );
+#endif
+
     output.position         = mul( float4( output.positionWS.xyz, 1.0f ), ViewProjectionMatrix );
     
     output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ); //.xywz;
