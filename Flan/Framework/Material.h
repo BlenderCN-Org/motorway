@@ -75,6 +75,7 @@ private:
     fnString_t  name;
     bool        isEditable;
     bool        scaleUVByModelScale;
+    bool        snapToHeightmap;
     int         builderVersion;
 
     union {

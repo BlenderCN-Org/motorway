@@ -53,6 +53,7 @@ Material::Material( const fnString_t& materialName )
     : name( materialName )
     , isEditable( true )
     , scaleUVByModelScale( false )
+    , snapToHeightmap( false )
     , builderVersion( 1 )
     , sortKey( 0 )
     , shadingModel( flan::graphics::eShadingModel::SHADING_MODEL_STANDARD )
@@ -149,9 +150,16 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         PipelineStateDesc descriptor;
         if ( materialType == MaterialType::SURFACE ) {
-            descriptor.vertexStage = shaderStageManager->getOrUploadStage( ( scaleUVByModelScale )
-                ? FLAN_STRING( "SurfaceScaledUV" )
-                : FLAN_STRING( "Surface" ), SHADER_STAGE_VERTEX );
+            fnString_t vertexStage = FLAN_STRING( "Surface" );
+            if ( snapToHeightmap ) {
+                vertexStage += FLAN_STRING( "SnapToHeightfield" );
+            }
+            
+            if ( scaleUVByModelScale ) {
+                vertexStage += FLAN_STRING( "ScaledUV" );
+            }
+
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
         } else if ( materialType == MaterialType::TERRAIN ) {
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_VERTEX );
             descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_TESSELATION_CONTROL );
@@ -167,7 +175,10 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         RasterizerStateDesc rasterDesc;
         rasterDesc.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
-        rasterDesc.cullMode =  ( editableMaterialData.IsDoubleFace ) ? flan::rendering::eCullMode::CULL_MODE_NONE
+        rasterDesc.cullMode =  ( editableMaterialData.IsDoubleFace ) 
+            ? flan::rendering::eCullMode::CULL_MODE_NONE
+            : ( materialType == MaterialType::TERRAIN )
+            ? flan::rendering::eCullMode::CULL_MODE_FRONT
             : flan::rendering::eCullMode::CULL_MODE_BACK;
         rasterDesc.useTriangleCCW = true;
 
@@ -243,7 +254,12 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         // Depth Only Pipeline State
         if ( materialType == MaterialType::SURFACE ) {
-            descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWrite" ), SHADER_STAGE_VERTEX );
+            fnString_t vertexStage = FLAN_STRING( "DepthWrite" );
+            if ( snapToHeightmap ) {
+                vertexStage += FLAN_STRING( "SnapToHeightfield" );
+            }
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
+
             descriptor.tesselationControlStage = nullptr;
             descriptor.tesselationEvalStage = nullptr;
         } else if ( materialType == MaterialType::TERRAIN ) {
@@ -427,6 +443,10 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
 
                 case FLAN_STRING_HASH( "ScaleUVByModelScale" ):
                     scaleUVByModelScale = flan::core::StringToBoolean( dictionaryValue );
+                    break;
+
+                case FLAN_STRING_HASH( "SnapToHeightmap" ):
+                    snapToHeightmap = flan::core::StringToBoolean( dictionaryValue );
                     break;
 
                 case FLAN_STRING_HASH( "UseBaseColorsRGBSource" ):
