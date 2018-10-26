@@ -56,31 +56,3 @@ float3 DoShading( in float3 L, in LightSurfaceInfos surface )
 
     return ( clearCoatSpecular + baseLayer * LayerAttenuation );
 }
-
-// float3 GetIndirectLighting( in LightSurfaceInfos surface, in EnvironmentProbe probe )
-// {
-    // float3 IndirectDiffuse = evaluateIBLDiffuse( surface.V, surface.N, surface.R, surface.Roughness, surface.NoV, probe.Index ) * surface.Albedo;
-    // float3 SpecularReflections = evaluateIBLSpecular( surface.FresnelColor, surface.F90, surface.N, surface.R, surface.LinearRoughness, surface.Roughness, surface.NoV, probe.Index ) * computeSpecOcclusion( surface.NoV, surface.AmbientOcclusion, surface.LinearRoughness );
-    
-    // // Compute Specular Reflections for the ClearCoat Layer
-    
-    // // IOR = 1.5 -> F0 = 0.04
-    // float ClearCoatF0 = 0.04f;
-    // float ClearCoatRoughness = 1.0f - surface.ClearCoatGlossiness;
-    // float ClearCoatLinearRoughness = ( ClearCoatRoughness * ClearCoatRoughness );
-    // float ClearCoatNoV = saturate( dot( surface.V, surface.ClearCoatNormalMap ) ) + 1e-5f;
-
-    // float Fc = pow( 1 - ClearCoatNoV, 5.0f );
-    // float ClearCoatFresnel = Fc + ( 1 - Fc ) * ClearCoatF0;
-    // ClearCoatFresnel *= surface.ClearCoat;
-
-    // float3 ClearCoatR = reflect( -surface.V, surface.ClearCoatNormalMap );
-
-    // float LightTransmitAmt = ( 1.0f - ClearCoatFresnel );
-
-    // // Accentuate rim lighting (which is usually strong on clear coat like paints) 
-    // float3 ClearCoatSpecular = evaluateIBLSpecular( ClearCoatF0, ( 1.0f - surface.ClearCoat ), surface.ClearCoatNormalMap, ClearCoatR, ClearCoatLinearRoughness, ClearCoatRoughness, surface.NoV, probe.Index );
-    // float Mip = linearRoughnessToMipLevel( ClearCoatLinearRoughness, 9 );
-    
-    // return ( IndirectDiffuse + ( ( SpecularReflections * LightTransmitAmt ) + ClearCoatSpecular ) ) + ( ClearCoatSpecular * ClearCoatFresnel );
-// }
