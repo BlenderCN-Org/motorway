@@ -69,6 +69,7 @@ public:
     void                        drawInEditor( RenderDevice* renderDevice, ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager, WorldRenderer* worldRenderer );
 #endif
 
+    float getHeightmapScaleTEST() const { return editableMaterialData.layers[0].HeightmapWorldHeight; }
     void setHeightmapTEST( Texture* tex ) { vertexTextureSet[0] = tex; editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  editableMaterialData.layers[0].Heightmap.InputTexture = tex; }
 
 private:
