@@ -27,6 +27,36 @@
 #include <Graphics/CBufferIndexes.h>
 #include <Shared.h>
 
+#include <Rendering/Direct3D11/CommandList.h>
+#include <Rendering/Direct3D11/Texture.h>
+
+static fnPipelineMutableResHandle_t AddFastMSAAResolvePass( RenderPipeline* renderPipeline, fnPipelineMutableResHandle_t textureToResolve )
+{
+    auto RenderPass = renderPipeline->addRenderPass(
+        "Fast MSAA Resolve Pass",
+        [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
+            RenderPassTextureDesc passRenderTargetDesc = {};
+            passRenderTargetDesc.resourceToCopy = textureToResolve;
+            passRenderTargetDesc.copyResource = true;
+            passRenderTargetDesc.description.mipCount = 1;
+            passRenderTargetDesc.description.samplerCount = 1;
+
+            passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
+
+            // Read input render targets
+            passData.input[0] = renderPipelineBuilder->readRenderTarget( textureToResolve );
+        },
+        [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
+            auto inputRenderTarget = renderPipelineResources->getRenderTarget( passData.input[0] );
+            auto outputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );
+
+            cmdList->getNativeCommandList()->deferredContext->ResolveSubresource( outputRenderTarget->getNativeTextureObject()->texture2D, 0, inputRenderTarget->getNativeTextureObject()->texture2D, 0, DXGI_FORMAT_R16G16B16A16_FLOAT );
+        }
+    );
+
+    return RenderPass.output[0];
+}
+
 static fnPipelineMutableResHandle_t AddMSAAResolvePass( RenderPipeline* renderPipeline, const int sampleCount = 1, const bool useTemporalAA = false, fnPipelineResHandle_t previousFrameRT = -1 )
 {
     struct ResolveConstantBuffer
