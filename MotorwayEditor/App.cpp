@@ -244,6 +244,8 @@ int App::launch()
                 mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
                 mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
                 mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
+
+                mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPass" ) );
             } else {
                 mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
                 mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
@@ -259,6 +261,8 @@ int App::launch()
                 } else {
                     mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
                 }
+
+                mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPassMSAA" ) );
             }
 
             FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )

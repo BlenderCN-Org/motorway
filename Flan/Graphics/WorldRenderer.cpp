@@ -58,6 +58,7 @@
 #include "RenderPasses/EnvironmentProbeConvolutionPass.h"
 #include "RenderPasses/VMFMapComputeRenderPass.h"
 #include "RenderPasses/WriteTextureToDiskPass.h"
+#include "RenderPasses/SubsurfaceScatteringBlurPass.h"
 
 using namespace flan::rendering;
 
