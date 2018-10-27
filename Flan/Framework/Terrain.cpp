@@ -33,6 +33,8 @@ Terrain::Terrain( const fnString_t& TerrainName )
     , material( nullptr )
     , aabb{}
     , meshIndiceCount( 0 )
+    , heightmapLowestVertex( std::numeric_limits<float>::max() )
+    , heightmapHighestVertex( std::numeric_limits<float>::min() )
     , heightmap( nullptr )
     , heightmapTexture( nullptr )
     , vertexBuffer( nullptr )
@@ -98,6 +100,15 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
 
     heightmapTexture.reset( new Texture() );
     heightmapTexture->createAsTexture2D( renderDevice, heightmapTextureDesc, heightmap, ( heightmapWidth * heightmapHeight * sizeof( float ) ) );
+
+    // Scale vertices for physics rigid body
+    float heightmapHeightScale = terrainMaterial->getHeightmapScaleTEST();
+    for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ); texelIdx++ ) {
+        heightmap[texelIdx] *= heightmapHeightScale;
+
+        heightmapLowestVertex = std::min( heightmapLowestVertex, heightmap[texelIdx] );
+        heightmapHighestVertex = std::max( heightmapHighestVertex, heightmap[texelIdx] );
+    }
 
     constexpr float tessFactor = 8.0f;
 
@@ -267,4 +278,14 @@ const AABB& Terrain::getAxisAlignedBoundingBox() const
 float* Terrain::getHeightmapValues() const
 {
     return heightmap;
+}
+
+float Terrain::getHeightmapLowestVertex() const
+{
+    return heightmapLowestVertex;
+}
+
+float Terrain::getHeightmapHighestVertex() const
+{
+    return heightmapHighestVertex;
 }
