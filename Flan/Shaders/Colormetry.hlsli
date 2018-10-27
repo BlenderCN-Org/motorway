@@ -17,6 +17,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
+#ifndef __COLORMETRY_H__
+#define __COLORMETRY_H__ 1
 float3 accurateSRGBToLinear( in float3 sRGBCol )
 {
     float3 linearRGBLo = sRGBCol / 12.92;
@@ -32,6 +35,11 @@ float3 accurateSRGBToLinear( in float3 sRGBCol )
 float3 fastLinearToSRGB( in float3 linearCol )
 {
     return pow( abs( linearCol ), ( 1.0 / 2.2 ) );
+}
+
+float3 fastSRGBToLinear( in float3 srgbCol )
+{
+    return pow( abs( srgbCol ), 2.2 );
 }
 
 float3 accurateLinearToSRGB( in float3 linearCol )
@@ -80,3 +88,4 @@ float convertEV100ToExposure( float EV100 )
     float max_luminance = 1.2 * pow( 2.0, EV100 );
     return 1.0 / max_luminance;
 }
+#endif
