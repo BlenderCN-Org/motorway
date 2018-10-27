@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 #define uint uint32_t
 #define float2 glm::vec2
+#define float3 glm::vec3
 
 class VirtualTexture;
 
@@ -125,6 +126,9 @@ struct MaterialLayer
     float                  NormalContribution;
     float                  AlphaCutoff;
 
+    float3                 PADDING;
+    float                  SSStrength;
+    
     float2                 LayerOffset;
     float2                 LayerScale;
 };

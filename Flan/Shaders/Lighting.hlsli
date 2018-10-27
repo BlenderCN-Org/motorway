@@ -2,6 +2,8 @@
 #include <CascadedShadowMapHelpers.hlsli>
 #include <Atmosphere/Atmosphere.hlsli>
 
+#include <ImageEffects/SeparableSSS.h>
+
 static const float PI = 3.1415926535897932384626433f;
 static const float INV_PI = ( 1.0 / PI );
 
@@ -38,7 +40,8 @@ struct LightSurfaceInfos
 
     float   ClearCoat;
     float   ClearCoatGlossiness;
-    float2  PADDING;
+    float   SubsurfaceScatteringStrength; // 0..1 range
+    uint    PADDING;
 };
 
 float rectangleSolidAngle( float3 worldPos, float3 p0, float3 p1, float3 p2, float3 p3 )
@@ -144,7 +147,8 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     // Add shadow
     // We assume the surface is lit if not covered by the shadow map
     float3 shadowVisibility = 1.0f;
-
+    float3 surfaceTransmittance = float3( 0, 0, 0 );
+    
 #ifndef PA_DONT_RECEIVE_SHADOWS
     // Figure out which cascade to sample from
     uint cascadeIdx = ~0;
@@ -186,6 +190,26 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
             shadowVisibility = saturate( shadowVisibility );
         }
     }
+    
+    [branch]
+    if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
+        float NoL = saturate( dot( surface.N, L ) );
+
+        // Apply offset
+        float3 offset = GetCascadedShadowMapShadowPosOffset( NoL, surface.N ) / abs( CascadeScales[cascadeIdx].z );
+
+        // Project into shadow space
+        float3 samplePos = surface.PositionWorldSpace + offset;
+        float4 shrinkedPos = float4(surface.PositionWorldSpace - 0.005 * surface.N, 1.0);
+        float3 ssShadowPosition = mul( shrinkedPos, ShadowMatrixShared ).xyz;
+        float3 ssShadowPosDX = ddx_fine( ssShadowPosition );
+        float3 ssShadowPosDY = ddy_fine( ssShadowPosition );
+
+        float d1 = SampleShadowCascade( light, ssShadowPosition, ssShadowPosDX, ssShadowPosDY, cascadeIdx ).g; //SSSSSample(shadowMap, shadowPosition.xy / shadowPosition.w).r; // 'd1' has a range of 0..1
+        d1 = saturate( d1 );
+        
+        surfaceTransmittance = SSSSTransmittance( surface.SubsurfaceScatteringStrength, 0.005f, surface.N, L, ( d1 * 128.0f ), ssShadowPosition.z );
+    }    
 #endif
 
     // Get Sun Irradiance
@@ -193,7 +217,9 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     float3 skyIrradiance = float3( 0, 0, 0 );
     float3 sunIrradiance = GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy * 1.0 - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
 
-    return ( sunIrradiance * illuminance * shadowVisibility );
+    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility );
+    
+    return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }
 
 float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -205,7 +231,7 @@ float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surfa
     float illuminance = pow( saturate( 1 - pow( ( distance / light.PositionAndRadius.w ), 4 ) ), 2 ) / ( distance * distance + 1 );
     float luminancePower = light.ColorAndPowerInLux.a / ( 4.0f * sqrt( light.PositionAndRadius.w * PI ) );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }
 
 float3 GetSpotLightIlluminance( in SpotLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -235,7 +261,7 @@ float3 GetSpotLightIlluminance( in SpotLight light, in LightSurfaceInfos surface
 
     float luminancePower = light.ColorAndPowerInLux.a / ( 4.0f * sqrt( light.Radius * PI ) );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }
 
 float3 GetSphereLightIlluminance( in SphereLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -257,7 +283,7 @@ float3 GetSphereLightIlluminance( in SphereLight light, in LightSurfaceInfos sur
     float3 closestPoint = unormalizedL + centerToRay * saturate( light.PositionAndRadius.w / length( centerToRay ) );
     L = normalize( closestPoint );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }
 
 float3 GetDiscLightIlluminance( in DiscLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -284,7 +310,7 @@ float3 GetDiscLightIlluminance( in DiscLight light, in LightSurfaceInfos surface
     float3 closestPoint = unormalizedL + centerToRay * saturate( light.PositionAndRadius.w / length( centerToRay ) );
     L = normalize( closestPoint );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }
 
 float3 GetRectangleLightIlluminance( in RectangleLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -359,7 +385,7 @@ float3 GetRectangleLightIlluminance( in RectangleLight light, in LightSurfaceInf
 
     float luminancePower = light.ColorAndPowerInLux.a / ( light.Width * light.Height * PI );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }
 
 float3 GetTubeLightIlluminance( in RectangleLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
@@ -418,5 +444,5 @@ float3 GetTubeLightIlluminance( in RectangleLight light, in LightSurfaceInfos su
 
     float luminancePower = light.ColorAndPowerInLux.a / ( 2.0f * PI * light.Width * light.Height + 4.0f * sqrt( light.Height * PI ) );
 
-    return accurateSRGBToLinear( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
 }

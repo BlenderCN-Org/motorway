@@ -35,11 +35,11 @@ static const float INV_PI = ( 1.0 / PI );
 // Shared samplers
 // DO NOT ALTER THIS SAMPLERS (materials use these registers)
 sampler GeometrySampler : register( s1 );
-sampler LinearSampler : register( s3 );
+//sampler LinearSampler : register( s3 );
 SamplerComparisonState ShadowMapSampler : register( s4 );
 sampler LinearMirrorSampler : register( s5 );
 sampler LinearWrapSampler : register( s6 );
-sampler PointSampler : register( s7 );
+//sampler PointSampler : register( s7 );
 
 struct psDataScreenQuad_t
 {

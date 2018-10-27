@@ -32,6 +32,7 @@ struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
     float2  Buffer1         : SV_TARGET1; // Velocity (Opaque RenderList ONLY)
+    float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
 };
 
 // BRDF independant inputs
@@ -159,6 +160,7 @@ struct MaterialReadLayer
     float   SpecularContribution;
     float   NormalContribution;
     float   AlphaCutoff;
+    float   SSStrength;
 };
 
 // Forward + Helpers
@@ -306,6 +308,9 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
         layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
     }\
+    if ( g_Layers[layerIdx].BaseColor.Type == INPUT_TYPE_TEXTURE ) {\
+        layer.AlphaMask = g_TexBaseColor##layerIdx.Sample( g_AlphaMaskSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) ).a;\
+    }\
     layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_AlphaMaskSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_ReflectanceSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
     layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_RoughnessSampler, ( uvCoordinates + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale, 1.0f );\
@@ -341,6 +346,7 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     layer.SpecularContribution = g_Layers[layerIdx].SpecularContribution;\
     layer.NormalContribution = g_Layers[layerIdx].NormalContribution;\
     layer.AlphaCutoff = g_Layers[layerIdx].AlphaCutoff;\
+    layer.SSStrength = g_Layers[layerIdx].SSStrength;\
     \
 
 #define READ_LAYER_BLEND_MASK( layerIdx )\
@@ -478,6 +484,7 @@ void BlendLayers( inout MaterialReadLayer baseLayer, in MaterialReadLayer nextLa
     baseLayer.Emissivity = lerp( baseLayer.Emissivity, nextLayer.Emissivity, nextLayer.BlendMask );
           
     baseLayer.AlphaMask = lerp( baseLayer.AlphaMask, nextLayer.AlphaMask, nextLayer.BlendMask );
+    baseLayer.SSStrength = lerp( baseLayer.SSStrength, nextLayer.SSStrength, nextLayer.BlendMask );
     
     baseLayer.SecondaryNormal = nextLayer.SecondaryNormal * nextLayer.NormalContribution;
     
@@ -628,7 +635,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         };
 
         clip( g_LodBlendAlpha - thresholdMatrix[VertexStage.position.x % 4][VertexStage.position.y % 4] );
-
     }
     
     // Compute common terms from vertex stage variables
@@ -682,7 +688,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     TerrainDepthBlend(
         float4( accurateSRGBToLinear( baseColor.rgb ), baseColor.a ), 1.0f - blendFactor,
         float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor ); //float3( 0.42, 0.42, 0.42 );
-	BaseLayer.Reflectance = 0.125f; // baseColor.a;	
+	BaseLayer.Reflectance = 0.0f; // baseColor.a;	
 	BaseLayer.Roughness = 
     TerrainDepthBlend(
         float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor,
@@ -707,6 +713,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	BaseLayer.SpecularContribution = 1.0f;
 	BaseLayer.NormalContribution = 1.0f;
 	BaseLayer.AlphaCutoff = 0.0f;
+	BaseLayer.SSStrength = 0.0f;
     
     
 	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
@@ -814,8 +821,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         BaseLayer.ClearCoat,
         BaseLayer.ClearCoatGlossiness,
 
-        // Explicit Padding
-        float2( 0.0f, 0.0f )
+        BaseLayer.SSStrength,
+        0u // Explicit Padding
     };
 
     // Lighting
@@ -1040,6 +1047,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	PixelStageData output;
 	output.Buffer0 = LightContribution;
 	output.Buffer1 = Velocity;
+	output.Buffer2 = float4( BaseLayer.SSStrength, 0, 0, 0 );
 	
 	return output;
 }

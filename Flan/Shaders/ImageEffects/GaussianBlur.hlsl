@@ -19,6 +19,7 @@
 */
 #include <Shared.hlsli>
 
+SamplerState LinearSampler { Filter = MIN_MAG_LINEAR_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
 Texture2D mainRenderTarget : register( t0 );
 
 cbuffer BlurInfos : register( b0 )

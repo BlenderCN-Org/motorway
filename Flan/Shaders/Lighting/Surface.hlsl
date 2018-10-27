@@ -74,6 +74,7 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
 
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
     output.positionMS.y = SampleHeightmap( VertexBuffer.TexCoordinates );
+    output.positionMS   = mul( ModelMatrix, output.positionMS );
 	
     output.uvCoord = VertexBuffer.TexCoordinates;
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
