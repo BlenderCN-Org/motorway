@@ -192,6 +192,10 @@ void LineRenderingModule::loadCachedResources( RenderDevice* renderDevice, Graph
 
 void LineRenderingModule::addLine( const glm::vec3& from, const glm::vec3& to, const float thickness, const glm::vec4& color )
 {
+    if ( bufferIndex + 16 >= LINE_RENDERING_MAX_LINE_COUNT ) {
+        return;
+    }
+    
     buffer[bufferIndex++] = ( from.x );
     buffer[bufferIndex++] = ( from.y );
     buffer[bufferIndex++] = ( from.z );
