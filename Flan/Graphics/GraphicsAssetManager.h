@@ -35,6 +35,18 @@ struct Model;
 class GraphicsAssetManager
 {
 public:
+    struct RawTexels
+    {
+        ~RawTexels();
+
+        uint16_t*       data;
+        std::size_t bytePerPixel;
+        int32_t     width;
+        int32_t     height;
+        int32_t     channelCount;
+    };
+
+public:
                     GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS );
                     GraphicsAssetManager( GraphicsAssetManager& ) = delete;
 	                ~GraphicsAssetManager();
@@ -49,7 +61,7 @@ public:
     Model*          getModel( const fnChar_t* assetName, const bool forceReload = false );
 
     // WARNING (for now) you are responsible of releasing the memory (which is a bad thing)
-    void*           getImageTexels( const fnChar_t* assetName, std::size_t& bytePerTexel );
+    void            getImageTexels( const fnChar_t* assetName, GraphicsAssetManager::RawTexels& texels );
     
 private:
     RenderDevice*       renderDevice;

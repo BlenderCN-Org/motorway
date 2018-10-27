@@ -45,6 +45,11 @@
 
 using namespace flan::core;
 
+GraphicsAssetManager::RawTexels::~RawTexels()
+{
+    stbi_image_free( reinterpret_cast<stbi_us*>( data ) );
+}
+
 GraphicsAssetManager::GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS )
     : renderDevice( activeRenderDevice )
     , shaderStageManager( activeShaderStageManager )
@@ -422,12 +427,12 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
     return modelInstance;
 }
 
-void* GraphicsAssetManager::getImageTexels( const fnChar_t* assetName, std::size_t& bytePerTexel )
+void GraphicsAssetManager::getImageTexels( const fnChar_t* assetName, GraphicsAssetManager::RawTexels& texels )
 {
     auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
     if ( file == nullptr ) {
         FLAN_CERR << "'" << assetName << "' does not exist!" << std::endl;
-        return nullptr;
+        return;
     }
 
     auto texFileFormat = GetFileExtensionFromPath( assetName );
@@ -443,16 +448,12 @@ void* GraphicsAssetManager::getImageTexels( const fnChar_t* assetName, std::size
         callbacks.skip = stbi_skipcallback;
         callbacks.eof = stbi_eofcallback;
 
-        int w;
-        int h;
-        int comp;
+        texels.data = stbi_load_16_from_callbacks( &callbacks, file, &texels.width, &texels.height, &texels.channelCount, STBI_default );
+        texels.bytePerPixel = sizeof( stbi_us );
 
-        stbi_us* image = stbi_load_16_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
-        bytePerTexel = sizeof( stbi_us );
-
-        return image;
+        file->close();
     } break;
     default:
-        return nullptr;
+        break;
     }
 }
