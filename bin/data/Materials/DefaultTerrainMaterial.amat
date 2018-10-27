@@ -25,6 +25,7 @@ Layer
     Normal: None
     Roughness: 0.0
     Emissivity: 0.000000
-
+    HeightmapWorldHeight: 64.0f
+    
     Scale: { 1, 1 }
 }
