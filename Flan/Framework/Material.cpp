@@ -177,9 +177,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         rasterDesc.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
         rasterDesc.cullMode =  ( editableMaterialData.IsDoubleFace ) 
             ? flan::rendering::eCullMode::CULL_MODE_NONE
-            : ( materialType == MaterialType::TERRAIN )
-            ? flan::rendering::eCullMode::CULL_MODE_FRONT
-            : flan::rendering::eCullMode::CULL_MODE_BACK;
+            : flan::rendering::eCullMode::CULL_MODE_FRONT;
         rasterDesc.useTriangleCCW = true;
 
         DepthStencilStateDesc depthStencilDesc;
@@ -511,7 +509,8 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, SecondaryNormalMapStrength )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, DisplacementMapStrength )
                 FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, HeightmapWorldHeight )
-
+                FLAN_CASE_READ_MATERIAL_FLOAT( dictionaryValue, currentLayerIndex, SSStrength )
+                    
                 // Layer Scaling
                 case FLAN_STRING_HASH( "Offset" ):
                     editableMaterialData.layers[currentLayerIndex].LayerOffset = flan::core::StringTo2DVector( dictionaryValue );
@@ -600,6 +599,7 @@ void Material::serialize( FileSystemObject* file ) const
         FLAN_WRITE_INPUT_PIXEL( SecondaryNormal, ( slotBaseIndex + 9 ) )
         FLAN_WRITE_INPUT_PIXEL( BlendMask, ( slotBaseIndex + 10 ) )
 
+        FLAN_WRITE_VARIABLE( SSStrength )
         FLAN_WRITE_VARIABLE( Refraction )
         FLAN_WRITE_VARIABLE( RefractionIor )
         FLAN_WRITE_VARIABLE( ClearCoat )
@@ -1070,6 +1070,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
 
                         displayInputConfiguration( graphicsAssetManager, "Displacement", layer.Displacement, ( slotBaseIndex + 7 ), pixelTextureSet );
                         ImGui::SliderFloat( "Displacement Strength", &layer.DisplacementMapStrength, 0.0f, 1.0f );
+
+                        ImGui::SliderFloat( "Subsurface Scattering", &layer.SSStrength, 0.0f, 1.0f );
 
                         displayInputConfiguration( graphicsAssetManager, "AlphaMask", layer.AlphaMask, ( slotBaseIndex + 1 ), pixelTextureSet );
 
