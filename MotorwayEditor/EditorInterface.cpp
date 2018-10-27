@@ -308,20 +308,24 @@ static void DisplayMenuBar()
 
             if ( ImGui::MenuItem( "Terrain" ) ) {
                 auto terrain = new Terrain();
-                std::size_t dontcare;
+                GraphicsAssetManager::RawTexels hmapTexels;
+                g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), hmapTexels );
+
                 terrain->create( g_RenderDevice, 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
-                    (uint16_t*)g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), dontcare ), 512, 512 );
+                    (uint16_t*)hmapTexels.data, hmapTexels.width, hmapTexels.height );
 
                 auto sceneNode = scene->createTerrain( terrain );
                 *PickedNode = sceneNode;
 
-                sceneNode->rigidBody = new RigidBody( 0.0f, sceneNode->transform.getWorldTranslation(), sceneNode->transform.getWorldRotation() );
+                float minH = terrain->getHeightmapLowestVertex();
+                float maxH = terrain->getHeightmapHighestVertex();
 
-                g_DynamicsWorld->addRigidBody( sceneNode->rigidBody );
+                auto shape = new btHeightfieldTerrainShape( hmapTexels.width, hmapTexels.height, terrain->getHeightmapValues(), 1.0f, minH, maxH, 1, PHY_FLOAT, false );
 
-                auto shape = new btHeightfieldTerrainShape( 512, 512, terrain->getHeightmapValues(), 128.0f, 0.0f, 1.0f, 1, PHY_FLOAT, false );
+                float offset = ( minH + maxH ) * 0.5f;           
+                sceneNode->rigidBody = new RigidBody( 0.0f, glm::vec3( 256, offset, 256 ), sceneNode->transform.getWorldRotation() );
 
                 auto nativeObject = sceneNode->rigidBody->getNativeObject();
                 nativeObject->setCollisionShape( shape );
@@ -750,7 +754,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                                         RebuildRigidBody( node->rigidBody );
                                     } } break;
                                 case eRigidBodyShape::HEIGHTFIELD:  {
-                                    fnString_t hmapFile;
+                             /*       fnString_t hmapFile;
                                     if ( flan::core::DisplayFileOpenPrompt( hmapFile, FLAN_STRING( "Heightmap file (*.hmap)\0*.hmap" ), FLAN_STRING( "./" ), FLAN_STRING( "Select Heightmap file" ) ) ) {
                                         fnString_t assetPath;
                                         flan::core::ExtractFilenameFromPath( hmapFile, assetPath );
@@ -774,7 +778,8 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                                         nativeObject->setCollisionShape( shape );
 
                                         RebuildRigidBody( node->rigidBody );
-                                    } } break;
+                                    } */
+                                } break;
                                 
                                 default:
                                     break;

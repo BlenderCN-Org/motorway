@@ -62,8 +62,10 @@ public:
     const uint32_t                      getIndiceCount() const;
     const AABB&                         getAxisAlignedBoundingBox() const;
     float*                              getHeightmapValues() const;
+    float                               getHeightmapLowestVertex() const;
+    float                               getHeightmapHighestVertex() const;
 
-    Mesh* GRASS_TEST; 
+    Mesh* GRASS_TEST;
 
 private:
     fnString_t                          name;
@@ -71,6 +73,9 @@ private:
     AABB                                aabb;
 
     uint32_t                            meshIndiceCount;
+
+    float                               heightmapHighestVertex;
+    float                               heightmapLowestVertex;
 
     float*                              heightmap;
     std::unique_ptr<Texture>            heightmapTexture;
