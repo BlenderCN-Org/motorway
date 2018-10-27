@@ -92,6 +92,8 @@
 //-----------------------------------------------------------------------------
 // Configurable Defines
 
+#define SSSS_HLSL_4 1
+
 /**
  * SSSS_FOV must be set to the value used to render the scene.
  */
@@ -115,7 +117,7 @@
  * else.
  */
 #ifndef SSSS_STREGTH_SOURCE
-#define SSSS_STREGTH_SOURCE (colorM.a)
+#define SSSS_STREGTH_SOURCE (strength)
 #endif
 
 /**
@@ -147,7 +149,7 @@ float4 kernel[SSSS_N_SAMPLES];
 
 #if SSSS_QUALITY == 2
 #define SSSS_N_SAMPLES 25
-float4 kernel[] = {
+static const float4 kernel[] = {
     float4(0.530605, 0.613514, 0.739601, 0),
     float4(0.000973794, 1.11862e-005, 9.43437e-007, -3),
     float4(0.00333804, 7.85443e-005, 1.2945e-005, -2.52083),
@@ -176,7 +178,7 @@ float4 kernel[] = {
 };
 #elif SSSS_QUALITY == 1
 #define SSSS_N_SAMPLES 17
-float4 kernel[] = {
+static const float4 kernel[] = {
     float4(0.536343, 0.624624, 0.748867, 0),
     float4(0.00317394, 0.000134823, 3.77269e-005, -2),
     float4(0.0100386, 0.000914679, 0.000275702, -1.53125),
@@ -197,7 +199,7 @@ float4 kernel[] = {
 };
 #elif SSSS_QUALITY == 0
 #define SSSS_N_SAMPLES 11
-float4 kernel[] = {
+static const float4 kernel[] = {
     float4(0.560479, 0.669086, 0.784728, 0),
     float4(0.00471691, 0.000184771, 5.07566e-005, -2),
     float4(0.0192831, 0.00282018, 0.00084214, -1.28),
@@ -276,6 +278,8 @@ SamplerState PointSampler { Filter = MIN_MAG_MIP_POINT; AddressU = Clamp; Addres
 #define float4x4 mat4x4
 #endif
 
+#include <Colormetry.hlsli>
+
 
 //-----------------------------------------------------------------------------
 // Separable SSS Transmittance Function
@@ -294,11 +298,6 @@ float3 SSSSTransmittance(
         float sssWidth,
 
         /**
-         * Position in world space.
-         */
-        float3 worldPosition,
-
-        /**
          * Normal in world space.
          */
         float3 worldNormal,
@@ -308,39 +307,15 @@ float3 SSSSTransmittance(
          */
         float3 light,
 
-        /**
-         * Linear 0..1 shadow map.
-         */
-        SSSSTexture2D shadowMap,
-
-        /**
-         * Regular world to light space matrix.
-         */
-        float4x4 lightViewProjection,
-
-        /**
-         * Far plane distance used in the light projection matrix.
-         */
-        float lightFarPlane) {
+        float d1,
+        
+        float shadowZ ) {
     /**
      * Calculate the scale of the effect.
      */
     float scale = 8.25 * (1.0 - translucency) / sssWidth;
-       
-    /**
-     * First we shrink the position inwards the surface to avoid artifacts:
-     * (Note that this can be done once for all the lights)
-     */
-    float4 shrinkedPos = float4(worldPosition - 0.005 * worldNormal, 1.0);
 
-    /**
-     * Now we calculate the thickness from the light point of view:
-     */
-    float4 shadowPosition = SSSSMul(shrinkedPos, lightViewProjection);
-    float d1 = SSSSSample(shadowMap, shadowPosition.xy / shadowPosition.w).r; // 'd1' has a range of 0..1
-    float d2 = shadowPosition.z; // 'd2' has a range of 0..'lightFarPlane'
-    d1 *= lightFarPlane; // So we scale 'd1' accordingly:
-    float d = scale * abs(d1 - d2);
+    float d = scale * abs(d1 - shadowZ);
 
     /**
      * Armed with the thickness, we can now calculate the color by means of the
@@ -403,6 +378,7 @@ float4 SSSSBlurPS(
          */
         SSSSTexture2D depthTex,
 
+        SSSSTexture2D gBufferTex,
         /**
          * This parameter specifies the global level of subsurface scattering
          * or, in other words, the width of the filter. It's specified in
@@ -426,14 +402,19 @@ float4 SSSSBlurPS(
         bool initStencil) {
 
     // Fetch color of current pixel:
+    float strength = SSSSSamplePoint(gBufferTex, texcoord).r;
+    
     float4 colorM = SSSSSamplePoint(colorTex, texcoord);
 
     // Initialize the stencil buffer in case it was not already available:
-    if (initStencil) // (Checked in compile time, it's optimized away)
-        if (SSSS_STREGTH_SOURCE == 0.0) discard;
-
+    if (initStencil) { // (Checked in compile time, it's optimized away)
+        if (SSSS_STREGTH_SOURCE == 0.0) return colorM;
+    
+        colorM.rgb = fastSRGBToLinear( colorM.rgb );
+    }
+    
     // Fetch linear depth of current pixel:
-    float depthM = SSSSSamplePoint(depthTex, texcoord).r;
+    float depthM = abs( SSSSSamplePoint(depthTex, texcoord).r - 1.0f );
 
     // Calculate the sssWidth scale (1.0 for a unit plane sitting on the
     // projection window):
@@ -466,6 +447,10 @@ float4 SSSSBlurPS(
 
         // Accumulate:
         colorBlurred.rgb += kernel[i].rgb * color.rgb;
+    }
+    
+    if (!initStencil) {       
+        colorM.rgb = fastLinearToSRGB( colorM.rgb );
     }
 
     return colorBlurred;

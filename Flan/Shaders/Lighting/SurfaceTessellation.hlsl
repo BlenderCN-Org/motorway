@@ -109,7 +109,7 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
     output.EdgeTessFactor[0] = 32.0f;
     output.EdgeTessFactor[1] = 32.0f;
     output.EdgeTessFactor[2] = 32.0f;
-    output.EdgeTessFactor[3] =32.0f;
+    output.EdgeTessFactor[3] = 32.0f;
     output.InsideTessFactor[0] = 32.0f;
     output.InsideTessFactor[1] = output.InsideTessFactor[0];
     
@@ -246,7 +246,7 @@ DomainStageData EntryPointDS(
     
     positionMS.y = g_TexHeightmap.SampleLevel( g_HeightmapSampler, output.uvCoord, 0.0f ).r * g_Layers[0].HeightmapWorldHeight;
    
-	float4 positionWS = mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );
+	float4 positionWS = float4( positionMS.xyz, 1.0f ); //mul( ModelMatrix, float4( positionMS.xyz, 1.0f ) );
    
     float3 norm = estimateNormal( output.uvCoord ); 
     

@@ -18,6 +18,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <Shared.hlsli>
+
+SamplerState LinearSampler { Filter = MIN_MAG_LINEAR_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
+
 #include <Colormetry.hlsli>
 #include "SharedAutoExposure.hlsli"
 
