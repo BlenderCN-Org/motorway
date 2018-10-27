@@ -103,6 +103,21 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
                 passData.output[1] = mainVelocityTarget;
             }
 
+            // Thin GBuffer RT
+            RenderPassTextureDesc thinGBufferRenderTargetDesc = {};
+            thinGBufferRenderTargetDesc.description.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+            thinGBufferRenderTargetDesc.description.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+            thinGBufferRenderTargetDesc.description.depth = 1;
+            thinGBufferRenderTargetDesc.description.mipCount = 1;
+            thinGBufferRenderTargetDesc.description.arraySize = 1;
+            thinGBufferRenderTargetDesc.useGlobalDimensions = true;
+            thinGBufferRenderTargetDesc.useGlobalMultisamplingState = enableMSAA;
+            thinGBufferRenderTargetDesc.initialState = RenderPassTextureDesc::CLEAR;
+
+            passData.output[2] = renderPipelineBuilder->allocateTexture( thinGBufferRenderTargetDesc );
+
+            renderPipelineBuilder->registerWellKnownResource( FLAN_STRING_HASH( "ThinGBufferRT" ), passData.output[2] );
+            
             // Read Depth Buffer
             passData.input[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainDepthRT" ) );
             passData.input[1] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "CascadedShadowMappingShadowMap" ) );
@@ -214,16 +229,18 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             // Bind Output Buffers
             auto colorBuffer = renderPipelineResources->getRenderTarget( passData.output[0] );
             auto velocityBuffer = renderPipelineResources->getRenderTarget( passData.output[1] );
+            auto thinGBuffer = renderPipelineResources->getRenderTarget( passData.output[2] );
 
             auto depthBuffer = renderPipelineResources->getRenderTarget( passData.input[0] );
             auto csmShadowMap = renderPipelineResources->getRenderTarget( passData.input[1] );
 
-            RenderTarget* renderTargets[2] = {
+            RenderTarget* renderTargets[3] = {
                 colorBuffer,
-                velocityBuffer
+                velocityBuffer,
+                thinGBuffer
             };
 
-            cmdList->bindRenderTargetsCmd( renderTargets, depthBuffer, 2 );
+            cmdList->bindRenderTargetsCmd( renderTargets, depthBuffer, 3 );
 
             csmShadowMap->bind( cmdList, TEXTURE_SLOT_INDEX_CSM_TEST, SHADER_STAGE_PIXEL );
 

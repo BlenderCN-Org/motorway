@@ -343,6 +343,8 @@ compile_shader_PS( "ImageEffects/GaussianBlur.hlsl", "GaussianBlur" )
 compile_shader_CS( "ImageEffects/MergeHistogram.hlsl", "MergeHistogram" )
 compile_shader_CS( "ImageEffects/TileHistogramCompute.hlsl", "TileHistogramCompute" )
 compile_shader_PS( "ImageEffects/FXAA.hlsl", "FXAA" )
+compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur1", "EntryPointPS", { "PH_FIRST_PASS": "1" } )
+compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur2" )
 
 # Lighting
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
