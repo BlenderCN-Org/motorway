@@ -308,6 +308,7 @@ static void DisplayMenuBar()
 
             if ( ImGui::MenuItem( "Terrain" ) ) {
                 auto terrain = new Terrain();
+
                 GraphicsAssetManager::RawTexels hmapTexels;
                 g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), hmapTexels );
 
