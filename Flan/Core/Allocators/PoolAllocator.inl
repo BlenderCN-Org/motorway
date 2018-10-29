@@ -47,7 +47,7 @@ Pool<T>::Pool( const std::size_t poolCapacity, const std::size_t heapAlignement,
 #endif
 }
 
-void UpdateAllocationBitfield( void* baseAddress, const std::size_t allocationIndex )
+static void UpdateAllocationBitfield( void* baseAddress, const std::size_t allocationIndex )
 {
     const int bitfieldIndex = static_cast<int>( std::ceil( allocationIndex / 32.0f ) );
 

@@ -134,12 +134,16 @@ static Timer            autoSaveTimer;
 #include <Core/Allocators/HeapAllocator.h>
 #include <Core/Allocators/PoolAllocator.h>
 
+#include <Core/Allocators/LinearAllocator.h>
+
+// CRT allocated memory for base heap allocation
+char g_BaseBuffer[1024];
+
 static Heap* g_HeapTest;
-Pool<Timer> test( 5 );
 
 App::App()
 {
-    g_HeapTest = new Heap( 1024 * 1024 * 1024 );
+    g_HeapTest = new ( g_BaseBuffer ) Heap( 1024 * 1024 * 1024 );
 
     // Create global instances whenever the Application ctor is called
     g_FileLogger = g_HeapTest->allocate<FileLogger>( PROJECT_NAME );

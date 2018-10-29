@@ -21,6 +21,7 @@
 
 #include "DisplayMode.h"
 
+class Heap;
 struct NativeDisplaySurface;
 class InputReader;
 class DisplaySurface
