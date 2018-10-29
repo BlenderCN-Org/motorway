@@ -32,7 +32,7 @@ VirtualFileSystem::~VirtualFileSystem()
 
 void VirtualFileSystem::mount( FileSystem* media, const fnString_t& mountPoint, const uint64_t mountOrder )
 {
-    fileSystemEntries.push_back( { mountPoint, media, mountOrder } );
+    fileSystemEntries.push_back( { media, mountOrder, mountPoint } );
 
     fileSystemEntries.sort( [=]( FileSystemEntry& lEntry, FileSystemEntry& rEntry ) {
         return lEntry.MountPoint.length() >= rEntry.MountPoint.length() && lEntry.MountOrder <= rEntry.MountOrder;

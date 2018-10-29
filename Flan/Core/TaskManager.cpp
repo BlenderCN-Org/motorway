@@ -20,11 +20,14 @@
 #include <Shared.h>
 #include "TaskManager.h"
 
-#include <Core/Environment.h>
+#include "Environment.h"
 #include "Worker.h"
 
+#include "Allocators/HeapAllocator.h"
+
 TaskManager::TaskManager()
-    : stopSignal( false )
+    : memoryAllocator( nullptr )
+    , stopSignal( false )
 {
 
 }
@@ -37,7 +40,7 @@ TaskManager::~TaskManager()
 
     for ( Worker* worker : workers ) {
         if ( worker != nullptr ) {
-            delete worker;
+            memoryAllocator->free( worker );
             worker = nullptr;
         }
     }
@@ -45,7 +48,7 @@ TaskManager::~TaskManager()
 
     for ( Task* task : taskList ) {
         if ( task != nullptr ) {
-            delete task;
+            memoryAllocator->free( task );
             task = nullptr;
         }
     }
@@ -54,13 +57,17 @@ TaskManager::~TaskManager()
     stopSignal = false;
 
     pendingTasks.clear();
+
+    memoryAllocator = nullptr;
 }
 
-void TaskManager::create( const int overrideWorkerCount )
+void TaskManager::create( Heap* allocator, const int overrideWorkerCount )
 {
+    memoryAllocator = allocator;
+
     auto cpuCoreCount = ( overrideWorkerCount != -1 ) ? overrideWorkerCount : flan::core::GetCPUCoreCount();
     for ( int i = 0; i < cpuCoreCount; ++i ) {
-        workers.push_back( new Worker( this ) );
+        workers.push_back( allocator->allocate<Worker>( this ) );
     }
 
     FLAN_CLOG << "Created TaskManager with " << cpuCoreCount << " workers" << std::endl;
@@ -68,12 +75,12 @@ void TaskManager::create( const int overrideWorkerCount )
 
 fnTaskId_t TaskManager::addTask( Task&& task )
 {
-    return dispatchAndNotify( new Task( std::move( task ) ) );
+    return dispatchAndNotify( memoryAllocator->allocate<Task>( std::move( task ) ) );
 }
 
 fnTaskId_t TaskManager::addTask( fnTaskFunc_t jobToComplete )
 {
-    Task* task = new Task();
+    Task* task = memoryAllocator->allocate<Task>();
     task->Job = jobToComplete; 
 
     return dispatchAndNotify( task );

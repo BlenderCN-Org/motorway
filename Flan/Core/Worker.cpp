@@ -22,6 +22,8 @@
 
 #include "Task.h"
 
+#include "Allocators/HeapAllocator.h"
+
 #include <mutex>
 #include <algorithm>
 
@@ -69,7 +71,7 @@ void Worker::work()
             taskManagerInstance->pendingTasks.erase( std::find( taskManagerInstance->pendingTasks.begin(), taskManagerInstance->pendingTasks.end(), currentTask->ID ) );
         }
 
-        delete currentTask;
+        taskManagerInstance->memoryAllocator->free( currentTask );
         currentTask = nullptr;
     }
 }

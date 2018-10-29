@@ -31,10 +31,16 @@
 
 #ifndef STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
+//
+//#define STBI_MALLOC(sz)           assetStreamingHeap->allocate( sz )
+//#define STBI_REALLOC(p,newsz)     assetStreamingHeap->allocate( newsz )
+//#define STBI_FREE(p)              assetStreamingHeap->free(p)
+
 #include <stb_image.h>
 #endif
 
 #include <Core/LocaleHelpers.h>
+#include <Core/Allocators/HeapAllocator.h>
 
 // Assets
 #include <Rendering/Texture.h>
@@ -45,8 +51,9 @@
 
 using namespace flan::core;
 
-GraphicsAssetManager::GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS )
-    : renderDevice( activeRenderDevice )
+GraphicsAssetManager::GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, Heap* allocator )
+    : assetStreamingHeap( allocator->allocate<Heap>( 32000000, 16, allocator ) )
+    , renderDevice( activeRenderDevice )
     , shaderStageManager( activeShaderStageManager )
     , virtualFileSystem( activeVFS )
 {
@@ -98,7 +105,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
     const bool alreadyExists = ( mapIterator != textureMap.end() );
 
     if ( alreadyExists && !forceReload ) {
-        return mapIterator->second.get();
+        return mapIterator->second;
     }
 
     auto texFileFormat = GetFileExtensionFromPath( assetName );
@@ -112,7 +119,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         LoadDirectDrawSurface( file, ddsData );
 
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = std::make_unique<Texture>();
+            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
         }
 
         switch ( ddsData.textureDescription.dimension ) {
@@ -141,7 +148,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         auto* image = stbi_load_16_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
         
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = std::make_unique<Texture>();
+            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
         }
 
         TextureDescription desc;
@@ -190,7 +197,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
         
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = std::make_unique<Texture>();
+            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
         }
 
         TextureDescription desc;
@@ -228,7 +235,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
     file->close();
     textureMap[assetHashcode]->setResourceName( renderDevice, WideStringToString( assetName ) );
 
-    return textureMap[assetHashcode].get();
+    return textureMap[assetHashcode];
 }
 
 FontDescriptor* GraphicsAssetManager::getFont( const fnChar_t* assetName, const bool forceReload )
@@ -239,18 +246,18 @@ FontDescriptor* GraphicsAssetManager::getFont( const fnChar_t* assetName, const 
     const bool alreadyExists = ( mapIterator != fontMap.end() );
 
     if ( alreadyExists && !forceReload ) {
-        return mapIterator->second.get();
+        return mapIterator->second;
     }
 
     if ( !alreadyExists ) {
-        fontMap[assetHashcode] = std::make_unique<FontDescriptor>();
+        fontMap[assetHashcode] = assetStreamingHeap->allocate<FontDescriptor>();
     }
 
-    auto font = fontMap[assetHashcode].get();
+    auto font = fontMap[assetHashcode];
 
     flan::core::LoadFontFile( virtualFileSystem->openFile( assetName ), *font );
 
-    return fontMap[assetHashcode].get();
+    return fontMap[assetHashcode];
 }
 
 Material* GraphicsAssetManager::getMaterialCopy( const fnChar_t* assetName )
@@ -259,7 +266,7 @@ Material* GraphicsAssetManager::getMaterialCopy( const fnChar_t* assetName )
     
     Material* matCopy = nullptr;
     if ( materialLoaded != nullptr ) {
-        matCopy = new Material( *materialLoaded );
+        matCopy = assetStreamingHeap->allocate<Material>( *materialLoaded );
         matCopy->create( renderDevice, shaderStageManager );
     }
 
@@ -279,20 +286,20 @@ Material* GraphicsAssetManager::getMaterial( const fnChar_t* assetName, const bo
     const bool alreadyExists = ( mapIterator != materialMap.end() );
 
     if ( alreadyExists && !forceReload ) {
-        return mapIterator->second.get();
+        return mapIterator->second;
     }
 
     if ( !alreadyExists ) {
-        materialMap[assetHashcode] = std::make_unique<Material>();
+        materialMap[assetHashcode] = assetStreamingHeap->allocate<Material>();
     }
 
-    auto materialInstance = materialMap[assetHashcode].get();
+    auto materialInstance = materialMap[assetHashcode];
     materialInstance->deserialize( file, this );
     materialInstance->create( renderDevice, shaderStageManager );
 
     file->close();
 
-    return materialMap[assetHashcode].get();
+    return materialMap[assetHashcode];
 }
 
 Mesh* GraphicsAssetManager::getMesh( const fnChar_t* assetName, const bool forceReload )
@@ -308,16 +315,16 @@ Mesh* GraphicsAssetManager::getMesh( const fnChar_t* assetName, const bool force
     const bool alreadyExists = ( mapIterator != meshMap.end() );
 
     if ( alreadyExists && !forceReload ) {
-        return mapIterator->second.get();
+        return mapIterator->second;
     }
 
     if ( !alreadyExists ) {
-        meshMap[assetHashcode] = std::make_unique<Mesh>();
+        meshMap[assetHashcode] = assetStreamingHeap->allocate<Mesh>();
     } else {
         meshMap[assetHashcode]->reset();
     }
 
-    auto meshInstance = meshMap[assetHashcode].get();
+    auto meshInstance = meshMap[assetHashcode];
     
     GeomLoadData loadData;
     flan::core::LoadGeometryFile( file, loadData );
@@ -379,17 +386,17 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
     const bool alreadyExists = ( mapIterator != modelMap.end() );
 
     if ( alreadyExists && !forceReload ) {
-        return mapIterator->second.get();
+        return mapIterator->second;
     }
 
     if ( !alreadyExists ) {
-        modelMap[assetHashcode] = std::make_unique<Model>();
+        modelMap[assetHashcode] = assetStreamingHeap->allocate<Model>();
     } else {
         modelMap[assetHashcode]->meshes.clear();
         modelMap[assetHashcode]->name.clear();
     }
 
-    auto modelInstance = modelMap[assetHashcode].get();
+    auto modelInstance = modelMap[assetHashcode];
 
     ModelLoadData loadData;
     Io_ReadModelFile( file, loadData );

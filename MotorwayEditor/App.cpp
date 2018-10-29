@@ -142,16 +142,17 @@ App::App()
     g_HeapTest = new Heap( 1024 * 1024 * 1024 );
 
     // Create global instances whenever the Application ctor is called
-    g_FileLogger =( g_HeapTest->allocate<FileLogger>( PROJECT_NAME ) );
-    g_VirtualFileSystem =( g_HeapTest->allocate<VirtualFileSystem>() );
-    g_TaskManager =( g_HeapTest->allocate<TaskManager>() );
-    g_MainDisplaySurface =( g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME ) );
+    g_FileLogger = g_HeapTest->allocate<FileLogger>( PROJECT_NAME );
+    g_VirtualFileSystem = g_HeapTest->allocate<VirtualFileSystem>();
+    g_TaskManager = g_HeapTest->allocate<TaskManager>();
+    g_MainDisplaySurface = g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME );
+
     g_InputReader =( g_HeapTest->allocate<InputReader>() );
     g_InputMapper =( g_HeapTest->allocate<InputMapper>() );
     g_RenderDevice =( g_HeapTest->allocate<RenderDevice>() );
     g_WorldRenderer =( g_HeapTest->allocate<WorldRenderer>() );
     g_ShaderStageManager =( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice, g_VirtualFileSystem ) );
-    g_GraphicsAssetManager =( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem ) );
+    g_GraphicsAssetManager =( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_HeapTest ) );
     g_DrawCommandBuilder =( g_HeapTest->allocate<DrawCommandBuilder>() );
     g_RenderableEntityManager =( g_HeapTest->allocate<RenderableEntityManager>() );
     g_AudioDevice =( g_HeapTest->allocate<AudioDevice>() );
@@ -448,7 +449,7 @@ int App::initialize()
     FLAN_COUT << PROJECT_NAME << " " << FLAN_BUILD << std::endl
         << FLAN_BUILD_DATE << "\n" << std::endl;
 
-    g_TaskManager->create();
+    g_TaskManager->create( g_HeapTest );
 
     // Parse Environment Configuration
     FLAN_IMPORT_VAR_PTR( RebuildGameCfgFile, bool )

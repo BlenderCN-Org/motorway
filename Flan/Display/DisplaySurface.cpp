@@ -28,10 +28,14 @@
 #include "EventLoopWin32.h"
 #endif
 
+#include <Core/Allocators/HeapAllocator.h>
+
 using namespace flan::core;
 
 DisplaySurface::DisplaySurface( const fnString_t& surfaceCaption )
-    : caption( surfaceCaption )
+    : nativeDisplaySurface( nullptr )
+    , memoryAllocator( nullptr )
+    , caption( surfaceCaption )
     , width( 640 )
     , height( 480 )
     , displayMode( eDisplayMode::WINDOWED )
@@ -42,6 +46,9 @@ DisplaySurface::DisplaySurface( const fnString_t& surfaceCaption )
 
 DisplaySurface::~DisplaySurface()
 {
+    nativeDisplaySurface = nullptr;
+    memoryAllocator = nullptr;
+
     caption.clear();
     width = 0;
     height = 0;
@@ -49,18 +56,18 @@ DisplaySurface::~DisplaySurface()
     isCursorVisible = true;
 }
 
-void DisplaySurface::create( const uint32_t surfaceWidth, const uint32_t surfaceHeight )
+void DisplaySurface::create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, Heap* allocator )
 {
     width = surfaceWidth;
     height = surfaceHeight;
 
-    nativeDisplaySurface.reset( CreateDisplaySurfaceImpl( width, height ) );
+    nativeDisplaySurface = CreateDisplaySurfaceImpl( width, height );
 
     if ( nativeDisplaySurface == nullptr ) {
         return;
     }
 
-    SetDisplaySurfaceCaptionImpl( nativeDisplaySurface.get(), caption );
+    SetDisplaySurfaceCaptionImpl( nativeDisplaySurface, caption );
 
     setDisplayMode( displayMode );
 }
@@ -71,19 +78,19 @@ void DisplaySurface::setDisplayMode( const flan::core::eDisplayMode newDisplayMo
 
     switch ( newDisplayMode ) {
     case FULLSCREEN:
-        ToggleFullscreenImpl( nativeDisplaySurface.get() );
+        ToggleFullscreenImpl( nativeDisplaySurface );
         break;
 
     case BORDERLESS:
-        ToggleBorderlessImpl( nativeDisplaySurface.get() );
+        ToggleBorderlessImpl( nativeDisplaySurface );
         break;
 
     case WINDOWED:
         // Toggle previous mode to get back to windowed mode
         if ( displayMode == FULLSCREEN ) {
-            ToggleFullscreenImpl( nativeDisplaySurface.get() );
+            ToggleFullscreenImpl( nativeDisplaySurface );
         } else if ( displayMode == BORDERLESS ) {
-            ToggleBorderlessImpl( nativeDisplaySurface.get() );
+            ToggleBorderlessImpl( nativeDisplaySurface );
         }
         break;
 
@@ -96,12 +103,12 @@ void DisplaySurface::setDisplayMode( const flan::core::eDisplayMode newDisplayMo
 
 void DisplaySurface::pumpEvents( InputReader* inputReader ) const
 {
-    PollSystemEventsImpl( nativeDisplaySurface.get(), inputReader );
+    PollSystemEventsImpl( nativeDisplaySurface, inputReader );
 }
 
 bool DisplaySurface::shouldQuit() const
 {
-    return GetShouldQuitFlagImpl( nativeDisplaySurface.get() );
+    return GetShouldQuitFlagImpl( nativeDisplaySurface );
 }
 
 flan::core::eDisplayMode DisplaySurface::getDisplayMode() const
@@ -111,7 +118,7 @@ flan::core::eDisplayMode DisplaySurface::getDisplayMode() const
 
 NativeDisplaySurface* DisplaySurface::getNativeDisplaySurface() const
 {
-    return nativeDisplaySurface.get();
+    return nativeDisplaySurface;
 }
 
 void DisplaySurface::getSurfaceDimension( uint32_t& surfaceWidth, uint32_t& surfaceHeight ) const
@@ -122,5 +129,5 @@ void DisplaySurface::getSurfaceDimension( uint32_t& surfaceWidth, uint32_t& surf
 
 void DisplaySurface::setMousePosition( const float surfaceNormalizedX, const float surfaceNormalizedY )
 {
-    SetMousePositionImpl( nativeDisplaySurface.get(), surfaceNormalizedX, surfaceNormalizedY );
+    SetMousePositionImpl( nativeDisplaySurface, surfaceNormalizedX, surfaceNormalizedY );
 }

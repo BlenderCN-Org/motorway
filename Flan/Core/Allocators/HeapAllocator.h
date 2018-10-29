@@ -22,7 +22,7 @@
 class Heap
 {
 public:
-            Heap( const std::size_t heapSize, const std::size_t heapAlignement = 16 );
+            Heap( const std::size_t heapSize, const std::size_t heapAlignement = 16, Heap* allocator = nullptr );
             Heap( Heap& ) = delete;
             Heap& operator = ( Heap& ) = delete;
             ~Heap();
@@ -48,6 +48,7 @@ private:
     FLAN_IS_MEMORY_ALIGNED( 16, AllocationHeader )
 
 private:
+    Heap*               memoryAllocator;
     void*               baseAddress;
     std::size_t         size;
     AllocationHeader*   head;

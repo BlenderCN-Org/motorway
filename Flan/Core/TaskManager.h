@@ -26,7 +26,9 @@
 #include <atomic>
 #include <condition_variable>
 
+class Heap;
 class Worker;
+
 class TaskManager
 {
 public:
@@ -35,13 +37,15 @@ public:
                 TaskManager& operator = ( TaskManager& ) = delete;
                 ~TaskManager();
 
-    void        create( const int overrideWorkerCount = -1 );
+    void        create( Heap* allocator, const int overrideWorkerCount = -1 );
     fnTaskId_t  addTask( Task&& task );
     fnTaskId_t  addTask( fnTaskFunc_t jobToComplete );
     bool        isTaskFinished( const fnTaskId_t taskID );
 
 private:
     friend class Worker;
+
+    Heap*                   memoryAllocator;
 
     std::list<Task*>        taskList;
     std::vector<Worker*>    workers;

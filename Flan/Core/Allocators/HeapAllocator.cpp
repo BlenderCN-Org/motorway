@@ -24,14 +24,15 @@
 
 static constexpr int DEBUG_MARKER = 0xEE;
 
-Heap::Heap( const std::size_t heapSize, const std::size_t heapAlignement )
-    : baseAddress( nullptr )
+Heap::Heap( const std::size_t heapSize, const std::size_t heapAlignement, Heap* allocator )
+    : memoryAllocator( allocator )
+    , baseAddress( nullptr )
     , size( heapSize )
     , head( nullptr )
     , allocationCount( 0 )
     , memoryUsage( 0 )
 {
-    baseAddress = malloc( heapSize );
+    baseAddress = ( allocator == nullptr ) ? malloc( heapSize ) : allocator->allocate( heapSize );
 
 #if FLAN_DEVBUILD
     memset( baseAddress, DEBUG_MARKER, heapSize );
@@ -43,7 +44,13 @@ Heap::Heap( const std::size_t heapSize, const std::size_t heapAlignement )
 
 Heap::~Heap()
 {
-    ::free( baseAddress );
+    if ( memoryAllocator == nullptr ) {
+        ::free( baseAddress );
+    } else {
+        memoryAllocator->free( baseAddress );
+    }
+
+    memoryAllocator = nullptr;
     baseAddress = nullptr;
     size = 0;
     head = nullptr;
@@ -64,17 +71,17 @@ void* Heap::allocate( const std::uint32_t size )
     }
 
     head->allocationSize = size;
-
-    auto allocatedAddress = static_cast< void* >( head );
-
-    head = static_cast< Heap::AllocationHeader* >( static_cast< Heap::AllocationHeader* >( allocatedAddress ) + sizeof( AllocationHeader ) ) + size;
-    head->previousAllocation = static_cast< Heap::AllocationHeader* >( allocatedAddress );
     head->isAvailable = 0;
+
+    Heap::AllocationHeader* allocatedAddress = static_cast< Heap::AllocationHeader* >( head + sizeof( AllocationHeader ) );
+
+    head = allocatedAddress + size;
+    head->previousAllocation = static_cast< Heap::AllocationHeader* >( allocatedAddress - sizeof( AllocationHeader ) );
 
     memoryUsage += size;
     allocationCount++;
 
-    return static_cast< void* >( static_cast< Heap::AllocationHeader* >( allocatedAddress ) + sizeof( AllocationHeader ) );
+    return static_cast< void* >( allocatedAddress );
 }
 
 void Heap::free( void* allocatedMemory )
