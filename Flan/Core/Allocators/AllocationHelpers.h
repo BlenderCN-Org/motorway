@@ -19,6 +19,10 @@
 */
 #pragma once
 
+#if FLAN_WIN
+#include "AllocationHelpersWin32.h"
+#endif
+
 namespace flan
 {
     namespace core
@@ -41,7 +45,7 @@ namespace flan
             return adjustment;
         }
 
-        inline uint8_t AlignForwardAdjustmentWithHeader( const void* address, const uint8_t alignment, const uint8_t headerSize )
+        uint8_t AlignForwardAdjustmentWithHeader( const void* address, const uint8_t alignment, const uint8_t headerSize )
         {
             uint8_t adjustment = AlignForwardAdjustment( address, alignment );
             uint8_t neededSpace = headerSize;

@@ -23,8 +23,6 @@
 #include "Environment.h"
 #include "Worker.h"
 
-#include "Allocators/HeapAllocator.h"
-
 TaskManager::TaskManager()
     : memoryAllocator( nullptr )
     , stopSignal( false )

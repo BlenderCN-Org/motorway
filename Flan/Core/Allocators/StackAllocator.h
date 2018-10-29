@@ -21,19 +21,24 @@
 
 #include "BaseAllocator.h"
 
-class PoolAllocator final : public BaseAllocator
+class StackAllocator final : public BaseAllocator
 {
 public:
-            PoolAllocator( const std::size_t objectSize, const std::uint8_t objectAlignment, const std::size_t size, void* baseAddress );
-            PoolAllocator( PoolAllocator& ) = delete;
-            PoolAllocator& operator = ( PoolAllocator& ) = delete;
-            ~PoolAllocator();
+            StackAllocator( const std::size_t size, void* baseAddress );
+            StackAllocator( StackAllocator& ) = delete;
+            StackAllocator& operator = ( StackAllocator& ) = delete;
+            ~StackAllocator();
 
     void*   allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) override;
     void    free( void* pointer ) override;
 
 private:
-    const std::size_t   objectSize;
-    const std::uint8_t  objectAlignment;
-    void**              freeList;
+    struct AllocationHeader {
+        void* previousAllocation;
+        std::uint8_t adjustment;
+    };
+
+private:
+    void*   currentPosition;
+    void*   previousPosition;
 };
