@@ -117,7 +117,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", true, bool )
-FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
+FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, floafot )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
 FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
@@ -128,8 +128,6 @@ FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
 
 FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seconds)", 120.0f, float )
 
-static CommandListPool* cmdListTest = nullptr;
-static Timer            autoSaveTimer;
 
 #include <Core/Allocators/HeapAllocator.h>
 #include <Core/Allocators/PoolAllocator.h>
@@ -137,11 +135,13 @@ static Timer            autoSaveTimer;
 #include <Core/Allocators/LinearAllocator.h>
 
 // CRT allocated memory for base heap allocation
-char g_BaseBuffer[1024];
+char                g_BaseBuffer[1024];
+Timer               g_EditorAutoSaveTimer;
+CommandListPool*    g_EditorCmdListPool = nullptr;
 
-static Heap* g_HeapTest;
+Heap* g_HeapTest;
 
-App::App()
+void CreateSubsystems()
 {
     g_HeapTest = new ( g_BaseBuffer ) Heap( 1024 * 1024 * 1024 );
 
@@ -151,216 +151,28 @@ App::App()
     g_TaskManager = g_HeapTest->allocate<TaskManager>();
     g_MainDisplaySurface = g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME );
 
-    g_InputReader =( g_HeapTest->allocate<InputReader>() );
-    g_InputMapper =( g_HeapTest->allocate<InputMapper>() );
-    g_RenderDevice =( g_HeapTest->allocate<RenderDevice>() );
-    g_WorldRenderer =( g_HeapTest->allocate<WorldRenderer>() );
-    g_ShaderStageManager =( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice, g_VirtualFileSystem ) );
-    g_GraphicsAssetManager =( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_HeapTest ) );
-    g_DrawCommandBuilder =( g_HeapTest->allocate<DrawCommandBuilder>() );
-    g_RenderableEntityManager =( g_HeapTest->allocate<RenderableEntityManager>() );
-    g_AudioDevice =( g_HeapTest->allocate<AudioDevice>() );
-    g_DynamicsWorld =( g_HeapTest->allocate<DynamicsWorld>() );
-    g_CurrentScene =( g_HeapTest->allocate<Scene>() );
+    g_InputReader = ( g_HeapTest->allocate<InputReader>() );
+    g_InputMapper = ( g_HeapTest->allocate<InputMapper>() );
+    g_RenderDevice = ( g_HeapTest->allocate<RenderDevice>() );
+    g_WorldRenderer = ( g_HeapTest->allocate<WorldRenderer>() );
+    g_ShaderStageManager = ( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice, g_VirtualFileSystem ) );
+    g_GraphicsAssetManager = ( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_HeapTest ) );
+    g_DrawCommandBuilder = ( g_HeapTest->allocate<DrawCommandBuilder>() );
+    g_RenderableEntityManager = ( g_HeapTest->allocate<RenderableEntityManager>() );
+    g_AudioDevice = ( g_HeapTest->allocate<AudioDevice>() );
+    g_DynamicsWorld = ( g_HeapTest->allocate<DynamicsWorld>() );
+    g_CurrentScene = ( g_HeapTest->allocate<Scene>() );
 
 #if FLAN_DEVBUILD
     //g_GraphicsProfiler =( new GraphicsProfiler() );
-    g_FileSystemWatchdog =( g_HeapTest->allocate<FileSystemWatchdog>() );
-    g_TransactionHandler =( g_HeapTest->allocate<TransactionHandler>() );
+    g_FileSystemWatchdog = ( g_HeapTest->allocate<FileSystemWatchdog>() );
+    g_TransactionHandler = ( g_HeapTest->allocate<TransactionHandler>() );
     g_PhysicsDebugDraw = g_HeapTest->allocate<PhysicsDebugDraw>();
 #endif
 }
 
-App::~App()
+void Shutdown()
 {
-
-}
-
-int App::launch()
-{
-    if ( initialize() != 0 ) {
-        return 1;
-    }
-
-    // Application main loop
-    Timer updateTimer = {};
-
-    float frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
-
-    float previousTime = frameTime;
-    double accumulator = 0.0;
-    FramerateCounter logicCounter = {};
-
-    while ( 1 ) {
-        g_Profiler.beginSection( "DisplaySurface::pumpEvents" );
-            g_MainDisplaySurface->pumpEvents( g_InputReader );
-        g_Profiler.endSection();
-
-        if ( g_MainDisplaySurface->shouldQuit() ) {
-            break;
-        }
-
-        frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
-
-#if FLAN_DEVBUILD
-        logicCounter.onFrame( frameTime );
-
-        //g_Profiler.beginSection( "GraphicsProfiler::onFrame" );
-        //g_GraphicsProfiler->onFrame( g_RenderDevice, g_WorldRenderer );
-        //g_Profiler.endSection();
-
-        g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 0.30f, 0.1f );
-        g_Profiler.onFrame( g_WorldRenderer );
-#endif
-
-        // Avoid spiral of death
-        if ( frameTime > 0.2500f ) {
-            frameTime = 0.2500f;
-        }
-
-        previousTime += frameTime;
-
-        // Do fixed step updates and interpolate between each App state
-        accumulator += frameTime;
-
-        g_Profiler.beginSection( "Fixed Updates" );
-        while ( accumulator >= flan::framework::LOGIC_DELTA ) {
-            // Update Input
-            g_InputReader->onFrame( g_InputMapper );
-
-            // Update Local Game Instance
-            g_InputMapper->update( flan::framework::LOGIC_DELTA );
-            g_InputMapper->clear();
-
-            g_DynamicsWorld->update( flan::framework::LOGIC_DELTA );
-
-            auto cameraNode = static_cast< FreeCameraSceneNode* >( g_CurrentScene->findNodeByHashcode( FLAN_STRING_HASH( "DefaultCamera" ) ) );
-            cameraNode->enabled = true;
-
-            auto mainCamera = cameraNode->camera;
-            mainCamera->clearRenderPasses();
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "PageStreamingFeedbackPass" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
-
-            if ( MSAASamplerCount <= 1 ) {
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
-            } else {
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
-
-                mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
-
-                if ( EnableTemporalAA ) {
-                    mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) + "TAA" ).c_str() ) );
-                } else {
-                    mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
-                }
-            }
-
-            FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-            if ( *SSAAMultiplicator > 1.0f ) {
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
-            }
-
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "AutoExposurePass" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "CompositionPass" ) );
-
-            if ( EnableFXAA ) {
-                mainCamera->addRenderPass( FLAN_STRING_HASH( "FXAAPass" ) );
-            }
-
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "HUDRenderPass" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "TextRenderPass" ) );
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "PresentPass" ) );
-            g_CurrentScene->update( flan::framework::LOGIC_DELTA );
-
-            accumulator -= flan::framework::LOGIC_DELTA;
-        }
-        g_Profiler.endSection();
-
-#if FLAN_DEVBUILD
-        //// Compute GPU average delta time
-        //auto gpuTime = g_GraphicsProfiler->getSectionResultArray();
-
-        //double gpuTimeAvg = 0.0;
-        //int sampleCount = 0;
-        //for ( int i = 0; i < GraphicsProfiler::TOTAL_QUERY_COUNT; ) {
-        //    if ( gpuTime[i] == -1.0 ) {
-        //        i += GraphicsProfiler::MAX_PROFILE_SECTION_COUNT;
-        //        continue;
-        //    }
-
-        //    gpuTimeAvg += gpuTime[i];
-        //    sampleCount++;
-        //    i++;
-        //}
-
-        //gpuTimeAvg /= sampleCount;
-
-        if ( EnableCPUFPSPrint ) {
-            std::string fpsString = "CPU: " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS) / "
-                + std::to_string( logicCounter.MinDeltaTime ).substr( 0, 6 ) + " ms / "
-                + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n"; // GPU: " + std::to_string( gpuTimeAvg ).substr( 0, 6 ) + " ms;
-
-            g_WorldRenderer->drawDebugText( fpsString, 0.3f, 1.0f, 0.0f, 0.50f, glm::vec4( 1.0f, 1.0f, 0.0f, 1.00f ) );
-        }
-
-        g_FileSystemWatchdog->OnFrame();
-
-        if ( EnableDebugPhysicsColliders ) {
-            g_PhysicsDebugDraw->onFrame();
-        }
-
-        //uint32_t winWidth, winHeight;
-        //g_MainDisplaySurface->getSurfaceDimension( winWidth, winHeight );
-        //g_DebugUI->onFrame( frameTime, g_DrawCommandBuilder, winWidth, winHeight );
-#endif
-
-        g_Profiler.beginSection( "GameLogic::collectRenderKeys" );
-            // Collect render keys from the current scene
-            g_CurrentScene->collectRenderKeys( g_DrawCommandBuilder );
-        g_Profiler.endSection();
-
-        // Prepare drawcalls and pipelines for the GPU (don't setup anything yet)
-        g_Profiler.beginSection( "DrawCommandBuilder::buildCommands" );
-            g_DrawCommandBuilder->buildCommands( g_RenderDevice, g_WorldRenderer );
-        g_Profiler.endSection();
-
-        float interpolatedFrametime = static_cast< float >( accumulator ) / flan::framework::LOGIC_DELTA;
-
-        //g_GraphicsProfiler->beginSection( g_RenderDevice, "GPU" );
-        g_Profiler.beginSection( "WorldRenderer::onFrame" );
-            g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager );
-        g_Profiler.endSection();
-        //g_GraphicsProfiler->endSection( g_RenderDevice );
-
-#if FLAN_DEVBUILD
-        float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
-        std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
-        g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
-
-        float heapMib = ( float )g_HeapTest->getMemoryUsage() / ( 1024.0f * 1024.0f );
-        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_HeapTest->getAllocationCount() ) + " allocations)";
-
-        g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
-
-        auto cmdList = cmdListTest->allocateCmdList( g_RenderDevice );
-        DrawEditorInterface( interpolatedFrametime, cmdList );
-#endif
-
-        g_RenderDevice->present();
-    }
-
 #if FLAN_D3D11
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
@@ -380,15 +192,11 @@ int App::launch()
 
     g_VirtualFileSystem->unmount( g_SaveFileSystem );
     g_VirtualFileSystem->unmount( g_DataFileSystem );
-   
+
     g_FileLogger->close();
-
-    delete g_HeapTest;
-
-    return 0;
 }
 
-int App::initialize()
+int InitializeSubsystems()
 {
     const ScopedTimer AppInitializationTimer( FLAN_STRING( "AppInitializationTimer" ) );
 
@@ -432,9 +240,9 @@ int App::initialize()
 
     FLAN_CLOG << "SaveData folder at : '" << aloneSaveFolder << "'" << std::endl;
     FLAN_CLOG << "Mounting filesystems..." << std::endl;
-    
-    g_SaveFileSystem =( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
-    g_DataFileSystem =( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
+
+    g_SaveFileSystem = ( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
+    g_DataFileSystem = ( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
 
     g_VirtualFileSystem->mount( g_SaveFileSystem, FLAN_STRING( "SaveData" ), UINT64_MAX );
     g_VirtualFileSystem->mount( g_DataFileSystem, FLAN_STRING( "GameData" ), 1 );
@@ -442,7 +250,7 @@ int App::initialize()
 #if FLAN_DEVBUILD
     FLAN_CLOG << "Mounting devbuild filesystem..." << std::endl;
 
-    g_DevFileSystem =( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
+    g_DevFileSystem = ( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
     g_VirtualFileSystem->mount( g_DevFileSystem, FLAN_STRING( "GameData" ), 0 );
 #endif
 
@@ -458,7 +266,7 @@ int App::initialize()
     // Parse Environment Configuration
     FLAN_IMPORT_VAR_PTR( RebuildGameCfgFile, bool )
 
-    auto envConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
+        auto envConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
     if ( envConfigurationFile == nullptr || *RebuildGameCfgFile ) {
         FLAN_CLOG << "Creating default user configuration!" << std::endl;
         auto newEnvConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_WRITE );
@@ -477,7 +285,7 @@ int App::initialize()
     // Parse Input Configuration
     FLAN_IMPORT_VAR_PTR( RebuildInputCfgFile, bool )
 
-    auto inputConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Input.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
+        auto inputConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Input.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
     if ( inputConfigurationFile == nullptr || *RebuildInputCfgFile ) {
         FLAN_CLOG << "Creating default input configuration file..." << std::endl;
 
@@ -717,7 +525,7 @@ int App::initialize()
         }
     }, -1 );
 
-    autoSaveTimer.start();
+    g_EditorAutoSaveTimer.start();
 #endif
 
     // Setup at least one base camera
@@ -749,8 +557,9 @@ int App::initialize()
     ImGuiIO& io = ImGui::GetIO();
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
-    cmdListTest = new CommandListPool();
-    cmdListTest->create( g_RenderDevice, 8 );
+    // ImGui draw cmdlist
+    g_EditorCmdListPool = new CommandListPool();
+    g_EditorCmdListPool->create( g_RenderDevice, 2 );
 
     ImGui_ImplWin32_Init( g_MainDisplaySurface->getNativeDisplaySurface()->Handle );
 
@@ -761,28 +570,28 @@ int App::initialize()
     ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
 
     ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.14f, 0.14f, 0.14f, 1.0f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_Button,  ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_FrameBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_TitleBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_SeparatorActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_TextSelectedBg, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_HeaderActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    
-    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );    
+
+    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_HeaderHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_FrameBgHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_Text,  ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
     ImGui::PushStyleColor( ImGuiCol_CheckMark, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
-    
+
     ImGui::PushStyleColor( ImGuiCol_TitleBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
     ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
     ImGui::PushStyleColor( ImGuiCol_FrameBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
     ImGui::PushStyleColor( ImGuiCol_MenuBarBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
     ImGui::PushStyleColor( ImGuiCol_Header, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    
+
     ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
     ImGui::PushStyleColor( ImGuiCol_PopupBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
 
@@ -792,6 +601,160 @@ int App::initialize()
     g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 1.0f, 0.1f );
     g_FileSystemWatchdog->Create();
 #endif
+
+    return 0;
+}
+
+void RebuildCameraPipeline( Camera* mainCamera )
+{
+    mainCamera->clearRenderPasses();
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
+
+    if ( MSAASamplerCount <= 1 ) {
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
+    } else {
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
+
+        mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
+
+        if ( EnableTemporalAA ) {
+            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) + "TAA" ).c_str() ) );
+        } else {
+            mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
+        }
+    }
+
+    FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
+        if ( *SSAAMultiplicator > 1.0f ) {
+            mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
+        }
+
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "AutoExposurePass" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "CompositionPass" ) );
+
+    if ( EnableFXAA ) {
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "FXAAPass" ) );
+    }
+
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "HUDRenderPass" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "TextRenderPass" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "PresentPass" ) );
+}
+
+int motorway::game::Start()
+{
+    CreateSubsystems();
+
+    const int initializationResult = InitializeSubsystems();
+    if ( initializationResult != 0 ) {
+        FLAN_CERR << "Motorway initialization failed! (error code: " << initializationResult << ")" << std::endl;
+        return 1;
+    }
+
+    // Application main loop
+    Timer updateTimer = {};
+    float frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
+
+    float previousTime = frameTime;
+    double accumulator = 0.0;
+    FramerateCounter logicCounter = {};
+    while ( 1 ) {
+        FLAN_PROFILE_SECTION( g_MainDisplaySurface->pumpEvents( g_InputReader ) );
+        if ( g_MainDisplaySurface->shouldQuit() ) {
+            break;
+        }
+
+        frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
+
+        logicCounter.onFrame( frameTime );
+        g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 0.30f, 0.1f );
+        g_Profiler.onFrame( g_WorldRenderer );
+
+        // Avoid spiral of death
+        if ( frameTime > 0.2500f ) {
+            frameTime = 0.2500f;
+        }
+
+        previousTime += frameTime;
+
+        // Do fixed step updates and interpolate between each App state
+        accumulator += frameTime;
+
+        g_Profiler.beginSection( "Fixed Updates" );
+        while ( accumulator >= flan::framework::LOGIC_DELTA ) {
+            // Update Input
+            g_InputReader->onFrame( g_InputMapper );
+
+            // Update Local Game Instance
+            g_InputMapper->update( flan::framework::LOGIC_DELTA );
+            g_InputMapper->clear();
+
+            g_DynamicsWorld->update( flan::framework::LOGIC_DELTA );
+
+            auto cameraNode = static_cast< FreeCameraSceneNode* >( g_CurrentScene->findNodeByHashcode( FLAN_STRING_HASH( "DefaultCamera" ) ) );
+            cameraNode->enabled = true;
+
+            RebuildCameraPipeline( cameraNode->camera );
+
+            g_CurrentScene->update( flan::framework::LOGIC_DELTA );
+
+            accumulator -= flan::framework::LOGIC_DELTA;
+        }
+        g_Profiler.endSection();
+
+        if ( EnableCPUFPSPrint ) {
+            std::string fpsString = "CPU: " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS) / "
+                + std::to_string( logicCounter.MinDeltaTime ).substr( 0, 6 ) + " ms / "
+                + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n";
+
+            g_WorldRenderer->drawDebugText( fpsString, 0.3f, 1.0f, 0.0f, 0.50f, glm::vec4( 1.0f, 1.0f, 0.0f, 1.00f ) );
+        }
+
+        g_FileSystemWatchdog->OnFrame();
+
+        if ( EnableDebugPhysicsColliders ) {
+            g_PhysicsDebugDraw->onFrame();
+        }
+
+        // Collect render keys from the current scene
+        FLAN_PROFILE_SECTION( g_CurrentScene->collectRenderKeys( g_DrawCommandBuilder ) );
+
+        // Prepare drawcalls and pipelines for the GPU (don't setup anything yet)
+        FLAN_PROFILE_SECTION( g_DrawCommandBuilder->buildCommands( g_RenderDevice, g_WorldRenderer ) );
+
+        float interpolatedFrametime = static_cast< float >( accumulator ) / flan::framework::LOGIC_DELTA;
+        FLAN_PROFILE_SECTION( g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager ) );
+
+#if FLAN_DEVBUILD
+        // Print debug memory usage
+        float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
+        std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
+        g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
+
+        float heapMib = ( float )g_HeapTest->getMemoryUsage() / ( 1024.0f * 1024.0f );
+        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_HeapTest->getAllocationCount() ) + " allocations)";
+
+        g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+
+        CommandList* cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+        DrawEditorInterface( interpolatedFrametime, cmdList );
+#endif
+
+        g_RenderDevice->present();
+    }
+
+    Shutdown();
 
     return 0;
 }

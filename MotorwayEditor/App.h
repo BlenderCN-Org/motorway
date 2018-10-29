@@ -19,16 +19,10 @@
 */
 #pragma once
 
-class App
+namespace motorway
 {
-public:
-                    App();
-                    App( App& ) = delete;
-                    App& operator = ( App& ) = delete;
-                    ~App();
-
-    int             launch();
-
-private:
-    int             initialize();
-};
+    namespace game
+    {
+        int Start();
+    }
+}

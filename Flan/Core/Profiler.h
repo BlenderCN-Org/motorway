@@ -65,4 +65,10 @@ private:
 };
 
 extern Profiler g_Profiler;
+
+#define FLAN_PROFILE_SECTION( sectionCode )\
+g_Profiler.beginSection( #sectionCode );\
+sectionCode; g_Profiler.endSection();
+#else
+#define FLAN_PROFILE_SECTION( sectionCode )
 #endif

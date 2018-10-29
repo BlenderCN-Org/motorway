@@ -43,13 +43,6 @@ int WINAPI CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR
     
     ReadCommandLineArgs( lpCmdLine );
 
-    std::unique_ptr<App> app( new App() );
-    auto appOperationResult = app->launch();
-
-    //_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_CHECK_ALWAYS_DF );
-    //_CrtDumpMemoryLeaks();
-    //_CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_DEBUG );
-
-    return appOperationResult;
+    return motorway::game::Start();
 }
 #endif
