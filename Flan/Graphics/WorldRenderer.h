@@ -36,6 +36,9 @@ class AtmosphereModule;
 class AutomaticExposureModule;
 class TaskManager;
 class LineRenderingModule;
+class BaseAllocator;
+class PoolAllocator;
+class LinearAllocator;
 
 struct EnvironmentProbe;
 
@@ -45,6 +48,7 @@ struct EnvironmentProbe;
 #include "DrawCommand.h"
 #include "RenderPass.h"
 
+#include <Core/Allocators/PoolAllocator.h>
 #include <queue>
 
 struct BRDFInputs
@@ -72,7 +76,7 @@ struct TerrainStreaming
 class WorldRenderer
 {
 public:
-                            WorldRenderer();
+                            WorldRenderer( BaseAllocator* allocator );
                             WorldRenderer( WorldRenderer& ) = delete;
                             WorldRenderer& operator = ( WorldRenderer& ) = delete;
                             ~WorldRenderer();
@@ -126,21 +130,24 @@ private:
 private:
     RenderDevice*                           renderDevice;
     ShaderStageManager*                     shaderStageManager;
+    LinearAllocator*                        resourceAllocator;
 
     // NOTE If you wanna add more viewport, extend the drawcmd key so that the viewport id use more bits (atm > 3bits)
     RenderPipelineViewport                  viewportsToRender[8];
     int                                     viewportToRenderCount;
 
     // Draw Commands (geom, jobs, etc.)
-    std::vector<DrawCommand>                drawCommands;               // (front to back cmds)
-    std::vector<DrawCommand>                transparentDrawCommands;    // (back to front cmds)
+    PoolAllocator*                          drawCommandsPool;
+
+    std::vector<DrawCommand> drawCommands;               // (front to back cmds)
+    std::vector<DrawCommand> transparentDrawCommands;    // (back to front cmds)
 
     // RenderModules; independant from any RenderPipeline
-    std::unique_ptr<RenderPipeline>          renderPipeline;
-    std::unique_ptr<TextRenderingModule>     textRenderingModule;
-    std::unique_ptr<AtmosphereModule>        atmosphereRenderingModule;
-    std::unique_ptr<AutomaticExposureModule> autoExposureModule;
-    std::unique_ptr<LineRenderingModule>     lineRenderingModule;
+    RenderPipeline*          renderPipeline;
+    TextRenderingModule*     textRenderingModule;
+    AtmosphereModule*        atmosphereRenderingModule;
+    AutomaticExposureModule* autoExposureModule;
+    LineRenderingModule*     lineRenderingModule;
 
     // TODO Move this
     std::unique_ptr<RenderTarget>           previousFrameRenderTarget;

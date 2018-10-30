@@ -21,7 +21,7 @@
 
 #include "DisplayMode.h"
 
-class Heap;
+class BaseAllocator;
 struct NativeDisplaySurface;
 class InputReader;
 class DisplaySurface
@@ -32,7 +32,7 @@ public:
                                             DisplaySurface& operator = ( DisplaySurface& ) = default;
                                             ~DisplaySurface();
 
-    void                                    create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, Heap* allocator = nullptr );
+    void                                    create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, BaseAllocator* allocator = nullptr );
     void                                    pumpEvents( InputReader* inputReader ) const;
     void                                    setDisplayMode( const flan::core::eDisplayMode newDisplayMode );
 
@@ -46,7 +46,7 @@ public:
 
 private:
     NativeDisplaySurface*                   nativeDisplaySurface;
-    Heap*                                   memoryAllocator;
+    BaseAllocator*                          memoryAllocator;
 
     fnString_t                              caption;
     uint32_t                                width;

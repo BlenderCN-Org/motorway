@@ -24,44 +24,44 @@ namespace flan
 {
     namespace core
     {
-        void* MAlloc( const std::size_t size )
+        static void* MAlloc( const std::size_t size )
         {
             return ::malloc( size );
         }
 
-        void* ReAlloc( void* block, const std::size_t size )
+        static void* ReAlloc( void* block, const std::size_t size )
         {
             return ::realloc( block, size );
         }
 
-        void Free( void* block )
+        static void Free( void* block )
         {
             ::free( block );
         }
 
 #if FLAN_MSVC
-        void* AlignedMAlloc( const std::size_t size, const std::uint8_t alignment )
+        static void* AlignedMAlloc( const std::size_t size, const std::uint8_t alignment )
         {
             return ::_aligned_malloc( size, alignment );
         }
 
-        void* AlignedReAlloc( void* block, const std::size_t size, const std::uint8_t alignment )
+        static void* AlignedReAlloc( void* block, const std::size_t size, const std::uint8_t alignment )
         {
             return ::_aligned_realloc( block, size, alignment );
         }
 
-        void FreeAligned( void* block )
+        static void FreeAligned( void* block )
         {
             ::_aligned_free( block );
         }
 #endif
 
-        void* PageAlloc( const std::size_t size )
+        static void* PageAlloc( const std::size_t size )
         {
             return VirtualAlloc( nullptr, size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE );
         }
 
-        void FreePage( void* page )
+        static void FreePage( void* page )
         {
             VirtualFree( page, 0, MEM_RELEASE );
         }

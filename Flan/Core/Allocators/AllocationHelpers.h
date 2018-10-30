@@ -27,13 +27,13 @@ namespace flan
 {
     namespace core
     {
-        inline void* AlignForward( void* address, const uint8_t alignment )
+        inline static void* AlignForward( void* address, const uint8_t alignment )
         {
             return ( void* )( *( (uint8_t*)( address ) + static_cast<uint8_t>( alignment - 1 ) ) 
                               & static_cast<uint8_t>( ~( alignment - 1 ) ) );
         }
 
-        inline uint8_t AlignForwardAdjustment( const void* address, uint8_t alignment )
+        inline static uint8_t AlignForwardAdjustment( const void* address, uint8_t alignment )
         {
             uint8_t adjustment = alignment - ( *( uint8_t* )( address )
                                              & static_cast<uint8_t>( alignment - 1 ) );
@@ -45,7 +45,7 @@ namespace flan
             return adjustment;
         }
 
-        uint8_t AlignForwardAdjustmentWithHeader( const void* address, const uint8_t alignment, const uint8_t headerSize )
+        static uint8_t AlignForwardAdjustmentWithHeader( const void* address, const uint8_t alignment, const uint8_t headerSize )
         {
             uint8_t adjustment = AlignForwardAdjustment( address, alignment );
             uint8_t neededSpace = headerSize;

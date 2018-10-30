@@ -48,47 +48,6 @@ public:
     virtual void*       allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) = 0;
     virtual void        free( void* pointer ) = 0;
 
-    template<typename T, typename... TArgs>
-    T* allocate( TArgs... args ) {
-        return new ( allocate( sizeof( T ), alignof( T ) ) ) T( std::forward<TArgs>( args )... );
-    }
-
-    template<typename T>
-    T* allocateArray( const std::size_t arrayLength ) {
-        std::uint8_t headerSize = GetAllocatedArrayHeaderSize<T>();
-
-        T* allocationStart = static_cast< T* >( allocate( sizeof( T ) * ( arrayLength + headerSize ), alignof( T ) ) ) 
-                           + headerSize;
-
-        // Write array length at the begining of the allocation
-        *( ( std::size_t* )( allocationStart ) - 1 ) = arrayLength;
-
-        for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
-            new ( &allocationStart ) T;
-        }
-
-        return allocationStart;
-    }
-
-    template<typename T>
-    void free( T* object ) {
-        object->~T();
-        free( object );
-    }
-
-    template<typename T>
-    void freeArray( T* arrayObject ) {
-        std::size_t arrayLength = *( static_cast< std::size_t* >( arrayObject ) - 1 );
-
-        for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
-            arrayObject.~T();
-        }
-
-        std::uint8_t headerSize = GetAllocatedArrayHeaderSize<T>();
-
-        free( arrayObject - headerSize );
-    }
-
 protected:
     void*               baseAddress;
     std::size_t         memorySize;
@@ -96,3 +55,54 @@ protected:
     std::size_t         memoryUsage;
     std::size_t         allocationCount;
 };
+
+namespace flan
+{
+    namespace core
+    {
+        template<typename T, typename... TArgs>
+        T* allocate( BaseAllocator* allocator, TArgs... args )
+        {
+            return new ( allocator->allocate( sizeof( T ), alignof( T ) ) ) T( std::forward<TArgs>( args )... );
+        }
+
+        template<typename T>
+        T* allocateArray( BaseAllocator* allocator, const std::size_t arrayLength )
+        {
+            std::uint8_t headerSize = GetAllocatedArrayHeaderSize<T>();
+
+            T* allocationStart = static_cast< T* >( allocator->allocate( sizeof( T ) * ( arrayLength + headerSize ), alignof( T ) ) )
+                + headerSize;
+
+            // Write array length at the begining of the allocation
+            *( ( std::size_t* )( allocationStart ) - 1 ) = arrayLength;
+
+            for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
+                new ( &allocationStart ) T;
+            }
+
+            return allocationStart;
+        }
+
+        template<typename T>
+        void free( BaseAllocator* allocator, T* object )
+        {
+            object->~T();
+            allocator->free( object );
+        }
+
+        template<typename T>
+        void freeArray( BaseAllocator* allocator, T* arrayObject )
+        {
+            std::size_t arrayLength = *( static_cast< std::size_t* >( arrayObject ) - 1 );
+
+            for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
+                arrayObject.~T();
+            }
+
+            std::uint8_t headerSize = GetAllocatedArrayHeaderSize<T>();
+
+            allocator->free( arrayObject - headerSize );
+        }
+    }
+}

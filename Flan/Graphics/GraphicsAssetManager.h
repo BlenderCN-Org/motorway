@@ -28,7 +28,9 @@ class Material;
 class Mesh;
 struct FontDescriptor;
 struct Model;
-class Heap;
+
+class BaseAllocator;
+class FreeListAllocator;
 
 #include <unordered_map>
 #include <vector>
@@ -36,7 +38,7 @@ class Heap;
 class GraphicsAssetManager
 {
 public:
-                    GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, Heap* allocator );
+                    GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, BaseAllocator* allocator );
                     GraphicsAssetManager( GraphicsAssetManager& ) = delete;
 	                ~GraphicsAssetManager();
 
@@ -53,7 +55,7 @@ public:
     void*           getImageTexels( const fnChar_t* assetName, std::size_t& bytePerTexel );
     
 private:
-    Heap*                   assetStreamingHeap;
+    FreeListAllocator*      assetStreamingHeap;
     RenderDevice*           renderDevice;
     ShaderStageManager*     shaderStageManager;
     VirtualFileSystem*      virtualFileSystem;

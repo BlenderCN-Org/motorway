@@ -25,6 +25,7 @@
 #include <Core/FileLogger.h>
 #include <FileSystem/VirtualFileSystem.h>
 #include <FileSystem/FileSystemNative.h>
+#include<FileSystem/FileSystemObject.h>
 #include <Core/TaskManager.h>
 #include <Display/DisplaySurface.h>
 
@@ -117,7 +118,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", true, bool )
-FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, floafot )
+FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
 FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
@@ -128,46 +129,46 @@ FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
 
 FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seconds)", 120.0f, float )
 
-
-#include <Core/Allocators/HeapAllocator.h>
-#include <Core/Allocators/PoolAllocator.h>
-
+#include <Core/Allocators/AllocationHelpers.h>
 #include <Core/Allocators/LinearAllocator.h>
 
 // CRT allocated memory for base heap allocation
 char                g_BaseBuffer[1024];
 Timer               g_EditorAutoSaveTimer;
+
 CommandListPool*    g_EditorCmdListPool = nullptr;
 
-Heap* g_HeapTest;
+void*               g_AllocatedTable;
+LinearAllocator*    g_GlobalAllocator;
 
 void CreateSubsystems()
 {
-    g_HeapTest = new ( g_BaseBuffer ) Heap( 1024 * 1024 * 1024 );
+    g_AllocatedTable = flan::core::MAlloc( 1024 * 1024 * 1024 );
+    g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
 
     // Create global instances whenever the Application ctor is called
-    g_FileLogger = g_HeapTest->allocate<FileLogger>( PROJECT_NAME );
-    g_VirtualFileSystem = g_HeapTest->allocate<VirtualFileSystem>();
-    g_TaskManager = g_HeapTest->allocate<TaskManager>();
-    g_MainDisplaySurface = g_HeapTest->allocate<DisplaySurface>( PROJECT_NAME );
+    g_FileLogger = flan::core::allocate<FileLogger>( g_GlobalAllocator, PROJECT_NAME );
+    g_VirtualFileSystem = flan::core::allocate<VirtualFileSystem>( g_GlobalAllocator );
+    g_TaskManager = flan::core::allocate<TaskManager>( g_GlobalAllocator );
+    g_MainDisplaySurface = flan::core::allocate<DisplaySurface>( g_GlobalAllocator, PROJECT_NAME );
 
-    g_InputReader = ( g_HeapTest->allocate<InputReader>() );
-    g_InputMapper = ( g_HeapTest->allocate<InputMapper>() );
-    g_RenderDevice = ( g_HeapTest->allocate<RenderDevice>() );
-    g_WorldRenderer = ( g_HeapTest->allocate<WorldRenderer>() );
-    g_ShaderStageManager = ( g_HeapTest->allocate<ShaderStageManager>( g_RenderDevice, g_VirtualFileSystem ) );
-    g_GraphicsAssetManager = ( g_HeapTest->allocate<GraphicsAssetManager>( g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_HeapTest ) );
-    g_DrawCommandBuilder = ( g_HeapTest->allocate<DrawCommandBuilder>() );
-    g_RenderableEntityManager = ( g_HeapTest->allocate<RenderableEntityManager>() );
-    g_AudioDevice = ( g_HeapTest->allocate<AudioDevice>() );
-    g_DynamicsWorld = ( g_HeapTest->allocate<DynamicsWorld>() );
-    g_CurrentScene = ( g_HeapTest->allocate<Scene>() );
+    g_InputReader = ( flan::core::allocate<InputReader>( g_GlobalAllocator ) );
+    g_InputMapper = ( flan::core::allocate<InputMapper>( g_GlobalAllocator ) );
+    g_RenderDevice = ( flan::core::allocate<RenderDevice>( g_GlobalAllocator ) );
+    g_WorldRenderer = ( flan::core::allocate<WorldRenderer>( g_GlobalAllocator, g_GlobalAllocator ) );
+    g_ShaderStageManager = ( flan::core::allocate<ShaderStageManager>( g_GlobalAllocator, g_RenderDevice, g_VirtualFileSystem ) );
+    g_GraphicsAssetManager = ( flan::core::allocate<GraphicsAssetManager>( g_GlobalAllocator, g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_GlobalAllocator ) );
+    g_DrawCommandBuilder = ( flan::core::allocate<DrawCommandBuilder>( g_GlobalAllocator ) );
+    g_RenderableEntityManager = ( flan::core::allocate<RenderableEntityManager>( g_GlobalAllocator ) );
+    g_AudioDevice = ( flan::core::allocate<AudioDevice>( g_GlobalAllocator ) );
+    g_DynamicsWorld = ( flan::core::allocate<DynamicsWorld>( g_GlobalAllocator ) );
+    g_CurrentScene = ( flan::core::allocate<Scene>( g_GlobalAllocator ) );
 
 #if FLAN_DEVBUILD
     //g_GraphicsProfiler =( new GraphicsProfiler() );
-    g_FileSystemWatchdog = ( g_HeapTest->allocate<FileSystemWatchdog>() );
-    g_TransactionHandler = ( g_HeapTest->allocate<TransactionHandler>() );
-    g_PhysicsDebugDraw = g_HeapTest->allocate<PhysicsDebugDraw>();
+    g_FileSystemWatchdog = ( flan::core::allocate<FileSystemWatchdog>( g_GlobalAllocator ) );
+    g_TransactionHandler = ( flan::core::allocate<TransactionHandler>( g_GlobalAllocator ) );
+    g_PhysicsDebugDraw = flan::core::allocate<PhysicsDebugDraw>( g_GlobalAllocator );
 #endif
 }
 
@@ -219,7 +220,7 @@ int InitializeSubsystems()
     // Prepare files/folders stored on the system fs
     // For now, configuration/save files will be stored in the same folder
     // This might get refactored later (e.g. to implement profile specific config/save for each system user)
-    auto saveFolder = g_HeapTest->allocate<FileSystemNative>( fnString_t( cfgFilesDir ) );
+    auto saveFolder = flan::core::allocate<FileSystemNative>( g_GlobalAllocator, fnString_t( cfgFilesDir ) );
 
 #if FLAN_UNIX
     // Use *nix style configuration folder name
@@ -236,13 +237,13 @@ int InitializeSubsystems()
         saveFolder->createFolder( aloneSaveFolder );
     }
 
-    g_HeapTest->free( saveFolder );
+    flan::core::free( g_GlobalAllocator, saveFolder );
 
     FLAN_CLOG << "SaveData folder at : '" << aloneSaveFolder << "'" << std::endl;
     FLAN_CLOG << "Mounting filesystems..." << std::endl;
 
-    g_SaveFileSystem = ( g_HeapTest->allocate<FileSystemNative>( aloneSaveFolder ) );
-    g_DataFileSystem = ( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./data/" ) ) );
+    g_SaveFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, aloneSaveFolder ) );
+    g_DataFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./data/" ) ) );
 
     g_VirtualFileSystem->mount( g_SaveFileSystem, FLAN_STRING( "SaveData" ), UINT64_MAX );
     g_VirtualFileSystem->mount( g_DataFileSystem, FLAN_STRING( "GameData" ), 1 );
@@ -250,7 +251,7 @@ int InitializeSubsystems()
 #if FLAN_DEVBUILD
     FLAN_CLOG << "Mounting devbuild filesystem..." << std::endl;
 
-    g_DevFileSystem = ( g_HeapTest->allocate<FileSystemNative>( FLAN_STRING( "./dev/" ) ) );
+    g_DevFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./dev/" ) ) );
     g_VirtualFileSystem->mount( g_DevFileSystem, FLAN_STRING( "GameData" ), 0 );
 #endif
 
@@ -261,7 +262,7 @@ int InitializeSubsystems()
     FLAN_COUT << PROJECT_NAME << " " << FLAN_BUILD << std::endl
         << FLAN_BUILD_DATE << "\n" << std::endl;
 
-    g_TaskManager->create( g_HeapTest );
+    g_TaskManager->create( g_GlobalAllocator );
 
     // Parse Environment Configuration
     FLAN_IMPORT_VAR_PTR( RebuildGameCfgFile, bool )
@@ -450,13 +451,13 @@ int InitializeSubsystems()
             if ( input.Actions.find( FLAN_STRING_HASH( "OpenScene" ) ) != input.Actions.end() ) {
                 fnString_t sceneName;
                 if ( flan::core::DisplayFileOpenPrompt( sceneName, FLAN_STRING( "Asset Scene file (*.scene)\0*.scene" ), FLAN_STRING( "./" ), FLAN_STRING( "Save as a Scene asset" ) ) ) {
-                    auto file = g_HeapTest->allocate<FileSystemObjectNative>( sceneName );
+                    auto file = flan::core::allocate<FileSystemObjectNative>( g_GlobalAllocator, sceneName );
                     file->open( std::ios::binary | std::ios::in );
 
                     PickedNode = nullptr;
                     g_RenderableEntityManager->clear();
 
-                    Scene* loadedScene = g_HeapTest->allocate<Scene>();
+                    Scene* loadedScene = flan::core::allocate<Scene>( g_GlobalAllocator );
 
                     // Trigger scene change (flush CPU/GPU buffers; discard current game state; etc.)
                     g_CurrentScene = loadedScene;
@@ -464,7 +465,7 @@ int InitializeSubsystems()
                     // Then load the scene
                     Io_ReadSceneFile( file, g_GraphicsAssetManager, g_RenderableEntityManager, *loadedScene );
                     file->close();
-                    g_HeapTest->free( file );
+                    flan::core::free( g_GlobalAllocator, file );
 
                     for ( auto& node : g_CurrentScene->getSceneNodes() ) {
                         if ( node->rigidBody != nullptr ) {
@@ -742,8 +743,8 @@ int motorway::game::Start()
         std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
         g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
 
-        float heapMib = ( float )g_HeapTest->getMemoryUsage() / ( 1024.0f * 1024.0f );
-        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_HeapTest->getAllocationCount() ) + " allocations)";
+        float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
+        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
 
         g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
 

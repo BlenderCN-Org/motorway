@@ -28,19 +28,7 @@ PoolAllocator::PoolAllocator( const std::size_t objectSize, const std::uint8_t o
     , objectAlignment( objectAlignment )
     , freeList( nullptr )
 {
-    const auto adjustment = flan::core::AlignForwardAdjustment( baseAddress, objectAlignment );
-
-    freeList = ( void** )( ( std::uint8_t* )baseAddress + adjustment );
-    size_t numObjects = ( size - adjustment ) / objectSize;
-    void** p = freeList;
-
-    //Initialize free blocks list 
-    for ( size_t i = 0; i < numObjects - 1; i++ ) {
-        *p = ( std::uint8_t* )p + objectSize;
-        p = ( void** )*p;
-    }
-
-    *p = nullptr;
+    clear();
 }
 
 PoolAllocator::~PoolAllocator()
@@ -63,4 +51,21 @@ void PoolAllocator::free( void* pointer )
     freeList = ( void** )pointer;
     memoryUsage -= objectSize;
     allocationCount--;
+}
+
+void PoolAllocator::clear()
+{
+    const auto adjustment = flan::core::AlignForwardAdjustment( baseAddress, objectAlignment );
+
+    freeList = ( void** )( ( std::uint8_t* )baseAddress + adjustment );
+    size_t numObjects = ( memorySize - adjustment ) / objectSize;
+    void** p = freeList;
+
+    //Initialize free blocks list 
+    for ( size_t i = 0; i < numObjects - 1; i++ ) {
+        *p = ( std::uint8_t* )p + objectSize;
+        p = ( void** )*p;
+    }
+
+    *p = nullptr;
 }

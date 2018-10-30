@@ -42,7 +42,7 @@ void* FreeListAllocator::allocate( const std::size_t allocationSize, const std::
 
     while ( freeBlock != nullptr ) {
         const auto adjustment = flan::core::AlignForwardAdjustmentWithHeader( freeBlock, alignment, sizeof( AllocationHeader ) );
-        size_t requiredSize = memorySize + adjustment;
+        size_t requiredSize = allocationSize + adjustment;
 
         // If allocation doesn't fit in this FreeBlock, try the next 
         if ( freeBlock->size < requiredSize ) {

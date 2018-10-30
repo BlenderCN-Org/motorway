@@ -32,6 +32,9 @@
 #include <Core/Profiler.h>
 #include <Core/Maths/Sphere.h>
 
+#include <Core/Allocators/BaseAllocator.h>
+#include <Core/Allocators/LinearAllocator.h>
+
 #include "GraphicsAssetManager.h"
 #include "ShaderStageManager.h" 
 #include "RenderPipeline.h"
@@ -82,29 +85,29 @@ FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", fa
 FLAN_ENV_VAR( EnableFXAA, "Enables FXAA [false/true]", false, bool )
 FLAN_ENV_VAR( SSAAMultiplicator, "SSAA Multiplication Factor [1/1.5/2/4/8]", 1.0f, float )
 
-WorldRenderer::WorldRenderer()
+WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     : renderDevice( nullptr )
     , shaderStageManager( nullptr )
+    , resourceAllocator( flan::core::allocate<LinearAllocator>( allocator, 64 * 1024 * 1024, allocator->allocate( 64 * 1024 * 1024 ) ) )
     , viewportToRenderCount( 0 )
-    , renderPipeline( new RenderPipeline( true ) )
-    , textRenderingModule( new TextRenderingModule() )
-    , atmosphereRenderingModule( new AtmosphereModule() )
-    , autoExposureModule( new AutomaticExposureModule() )
-    , lineRenderingModule( new LineRenderingModule() )
+    , drawCommandsPool( flan::core::allocate<PoolAllocator>( allocator, sizeof( DrawCommand ), 4, sizeof(DrawCommand) * 2048, allocator->allocate( sizeof( DrawCommand ) * 2048 ) ) )
+    , renderPipeline( flan::core::allocate<RenderPipeline>( allocator, true ) )
+    , textRenderingModule( flan::core::allocate<TextRenderingModule>( allocator ) )
+    , atmosphereRenderingModule( flan::core::allocate<AtmosphereModule>( allocator ) )
+    , autoExposureModule( flan::core::allocate<AutomaticExposureModule>( allocator ) )
+    , lineRenderingModule( flan::core::allocate<LineRenderingModule>( allocator ) )
     , environmentProbes{ nullptr, nullptr, nullptr }
-    , sphereVao( new VertexArrayObject() )
-    , rectangleVao( new VertexArrayObject() )
-    , boxVao( new VertexArrayObject() )
-    , circleVao( new VertexArrayObject() )
-    , coneVao( new VertexArrayObject() )
+    , sphereVao( flan::core::allocate<VertexArrayObject>( allocator ) )
+    , rectangleVao( flan::core::allocate<VertexArrayObject>( allocator ) )
+    , boxVao( flan::core::allocate<VertexArrayObject>( allocator ) )
+    , circleVao( flan::core::allocate<VertexArrayObject>( allocator ) )
+    , coneVao( flan::core::allocate<VertexArrayObject>( allocator ) )
 {
     renderInfos.timeDelta = 0.0f;
     renderInfos.worldTime = 0.0f;
     renderInfos.frameNumber = 0;
     renderInfos.backbufferWidth = 0;
     renderInfos.backbufferHeight = 0;
-
-    drawCommands.reserve( 2048 ); 
 }
 
 WorldRenderer::~WorldRenderer()
@@ -112,7 +115,6 @@ WorldRenderer::~WorldRenderer()
     renderDevice = nullptr;
     shaderStageManager = nullptr;
     viewportToRenderCount = 0;
-    drawCommands.clear();
 }
 
 void WorldRenderer::create( RenderDevice* activeRenderDevice )
@@ -216,7 +218,7 @@ void WorldRenderer::onFrame( const float interpolatedFrameTime, TaskManager* tas
 
         g_Profiler.beginSection( "Viewport_" + std::to_string( viewportId ) + "::RenderPassesSubmit" );
         for ( auto renderPass : viewport.renderPasses ) {
-            Factory<fnPipelineResHandle_t, RenderPipeline*>::tryBuildWithHashcode( renderPass, renderPipeline.get() );
+            Factory<fnPipelineResHandle_t, RenderPipeline*>::tryBuildWithHashcode( renderPass, renderPipeline );
         }
         g_Profiler.endSection();
 
@@ -351,7 +353,7 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     brdfInputs.dfgLut = dfgLut;
     brdfInputs.envProbeCapture = environmentProbes[0].get();
     brdfInputs.envProbeDiffuse = environmentProbes[1].get();
-    brdfInputs.envProbeSpecular = environmentProbes[2].get();  
+    brdfInputs.envProbeSpecular = environmentProbes[2].get();
     renderPipeline->importWellKnownResource( &brdfInputs );
 
 #if FLAN_DEVBUILD
@@ -458,28 +460,28 @@ float WorldRenderer::getTimeDelta() const
 void WorldRenderer::saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName )
 {
     auto renderTarget = renderPipeline->importRenderTarget( outputTarget );
-    AddWriteBufferedTextureToDiskPass( renderPipeline.get(), renderDevice, renderTarget, outputTargetName );
+    AddWriteBufferedTextureToDiskPass( renderPipeline, renderDevice, renderTarget, outputTargetName );
 }
 
 void WorldRenderer::precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap )
 {
-    auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap );
+    auto resolvedVMF = AddVMFMapComputePass( renderPipeline, normalMap );
 
     // Build Ouput Texture (merge UAVs into a single mip mapped render target)
     auto roughnessRT = renderPipeline->importRenderTarget( outputRoughnessMap );
     for ( int mipLevel = 0; mipLevel < resolvedVMF.generatedMipCount; mipLevel++ ) {
-        AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
+        AddCopyTextureUAVPass( renderPipeline, false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
     }
 }
 
 void WorldRenderer::precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap, const bool thightPackedTexture )
 {
-    auto resolvedVMF = AddVMFMapComputePass( renderPipeline.get(), normalMap, roughnessMap, thightPackedTexture );
+    auto resolvedVMF = AddVMFMapComputePass( renderPipeline, normalMap, roughnessMap, thightPackedTexture );
 
     // Build Ouput Texture (merge UAVs into a single mip mapped render target)
     auto roughnessRT = renderPipeline->importRenderTarget( outputRoughnessMap );
     for ( int mipLevel = 0; mipLevel < resolvedVMF.generatedMipCount; mipLevel++ ) {
-        AddCopyTextureUAVPass( renderPipeline.get(), false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
+        AddCopyTextureUAVPass( renderPipeline, false, mipLevel, 0, roughnessRT, resolvedVMF.roughnessMipMaps[mipLevel] );
     }
 }
 

@@ -22,7 +22,7 @@
 
 #include "Task.h"
 
-#include "Allocators/HeapAllocator.h"
+#include "Allocators/BaseAllocator.h"
 
 #include <mutex>
 #include <algorithm>

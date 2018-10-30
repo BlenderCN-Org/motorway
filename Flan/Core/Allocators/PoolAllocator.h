@@ -31,6 +31,7 @@ public:
 
     void*   allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) override;
     void    free( void* pointer ) override;
+    void    clear();
 
 private:
     const std::size_t   objectSize;

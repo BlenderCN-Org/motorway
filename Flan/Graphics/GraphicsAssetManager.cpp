@@ -32,15 +32,16 @@
 #ifndef STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 //
-//#define STBI_MALLOC(sz)           assetStreamingHeap->allocate( sz )
-//#define STBI_REALLOC(p,newsz)     assetStreamingHeap->allocate( newsz )
-//#define STBI_FREE(p)              assetStreamingHeap->free(p)
+//#define STBI_MALLOC(sz)           flan::core::allocate( sz )
+//#define STBI_REALLOC(p,newsz)     flan::core::allocate( newsz )
+//#define STBI_FREE(p)              flan::core::free(p)
 
 #include <stb_image.h>
 #endif
 
 #include <Core/LocaleHelpers.h>
-#include <Core/Allocators/HeapAllocator.h>
+#include <Core/Allocators/BaseAllocator.h>
+#include <Core/Allocators/FreeListAllocator.h>
 
 // Assets
 #include <Rendering/Texture.h>
@@ -51,8 +52,8 @@
 
 using namespace flan::core;
 
-GraphicsAssetManager::GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, Heap* allocator )
-    : assetStreamingHeap( allocator->allocate<Heap>( 32000000, 16, allocator ) )
+GraphicsAssetManager::GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, BaseAllocator* allocator )
+    : assetStreamingHeap( flan::core::allocate<FreeListAllocator>( allocator, 32 * 1024 * 1024, allocator->allocate( 32 * 1024 * 1024 ) ) )
     , renderDevice( activeRenderDevice )
     , shaderStageManager( activeShaderStageManager )
     , virtualFileSystem( activeVFS )
@@ -119,7 +120,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         LoadDirectDrawSurface( file, ddsData );
 
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
+            textureMap[assetHashcode] = flan::core::allocate<Texture>( assetStreamingHeap );
         }
 
         switch ( ddsData.textureDescription.dimension ) {
@@ -148,7 +149,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         auto* image = stbi_load_16_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
         
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
+            textureMap[assetHashcode] = flan::core::allocate<Texture>( assetStreamingHeap );
         }
 
         TextureDescription desc;
@@ -197,7 +198,7 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
         unsigned char* image = stbi_load_from_callbacks( &callbacks, file, &w, &h, &comp, STBI_default );
         
         if ( !alreadyExists ) {
-            textureMap[assetHashcode] = assetStreamingHeap->allocate<Texture>();
+            textureMap[assetHashcode] = flan::core::allocate<Texture>( assetStreamingHeap );
         }
 
         TextureDescription desc;
@@ -250,7 +251,7 @@ FontDescriptor* GraphicsAssetManager::getFont( const fnChar_t* assetName, const 
     }
 
     if ( !alreadyExists ) {
-        fontMap[assetHashcode] = assetStreamingHeap->allocate<FontDescriptor>();
+        fontMap[assetHashcode] = flan::core::allocate<FontDescriptor>( assetStreamingHeap );
     }
 
     auto font = fontMap[assetHashcode];
@@ -266,7 +267,7 @@ Material* GraphicsAssetManager::getMaterialCopy( const fnChar_t* assetName )
     
     Material* matCopy = nullptr;
     if ( materialLoaded != nullptr ) {
-        matCopy = assetStreamingHeap->allocate<Material>( *materialLoaded );
+        matCopy = flan::core::allocate<Material>( assetStreamingHeap, *materialLoaded );
         matCopy->create( renderDevice, shaderStageManager );
     }
 
@@ -290,7 +291,7 @@ Material* GraphicsAssetManager::getMaterial( const fnChar_t* assetName, const bo
     }
 
     if ( !alreadyExists ) {
-        materialMap[assetHashcode] = assetStreamingHeap->allocate<Material>();
+        materialMap[assetHashcode] = flan::core::allocate<Material>( assetStreamingHeap );
     }
 
     auto materialInstance = materialMap[assetHashcode];
@@ -319,7 +320,7 @@ Mesh* GraphicsAssetManager::getMesh( const fnChar_t* assetName, const bool force
     }
 
     if ( !alreadyExists ) {
-        meshMap[assetHashcode] = assetStreamingHeap->allocate<Mesh>();
+        meshMap[assetHashcode] = flan::core::allocate<Mesh>( assetStreamingHeap );
     } else {
         meshMap[assetHashcode]->reset();
     }
@@ -390,7 +391,7 @@ Model* GraphicsAssetManager::getModel( const fnChar_t* assetName, const bool for
     }
 
     if ( !alreadyExists ) {
-        modelMap[assetHashcode] = assetStreamingHeap->allocate<Model>();
+        modelMap[assetHashcode] = flan::core::allocate<Model>( assetStreamingHeap );
     } else {
         modelMap[assetHashcode]->meshes.clear();
         modelMap[assetHashcode]->name.clear();

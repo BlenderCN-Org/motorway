@@ -28,8 +28,6 @@
 #include "EventLoopWin32.h"
 #endif
 
-#include <Core/Allocators/HeapAllocator.h>
-
 using namespace flan::core;
 
 DisplaySurface::DisplaySurface( const fnString_t& surfaceCaption )
@@ -56,7 +54,7 @@ DisplaySurface::~DisplaySurface()
     isCursorVisible = true;
 }
 
-void DisplaySurface::create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, Heap* allocator )
+void DisplaySurface::create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, BaseAllocator* allocator )
 {
     width = surfaceWidth;
     height = surfaceHeight;
