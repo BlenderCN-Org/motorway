@@ -17,24 +17,42 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
-
+#include <Shared.h>
 #include "BaseAllocator.h"
 
-class PoolAllocator final : public BaseAllocator
+BaseAllocator::BaseAllocator( const std::size_t size, void* baseAddress )
+    : baseAddress( baseAddress )
+    , memorySize( size )
+    , memoryUsage( 0 )
+    , allocationCount( 0 )
 {
-public:
-            PoolAllocator( const std::size_t objectSize, const std::uint8_t objectAlignment, const std::size_t size, void* baseAddress );
-            PoolAllocator( PoolAllocator& ) = delete;
-            PoolAllocator& operator = ( PoolAllocator& ) = delete;
-            ~PoolAllocator();
 
-    void*   allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) override;
-    void    free( void* pointer ) override;
-    void    clear();
+}
 
-private:
-    const std::size_t   objectSize;
-    const std::uint8_t  objectAlignment;
-    void**              freeList;
-};
+BaseAllocator::~BaseAllocator()
+{
+    baseAddress = nullptr;
+    memorySize = 0;
+    memoryUsage = 0;
+    allocationCount = 0;
+}
+
+const void* BaseAllocator::getBaseAddress() const
+{
+    return baseAddress;
+}
+
+const std::size_t BaseAllocator::getSize() const
+{
+    return memorySize;
+}
+
+const std::size_t BaseAllocator::getMemoryUsage() const
+{
+    return memoryUsage;
+}
+
+const std::size_t BaseAllocator::getAllocationCount() const
+{
+    return allocationCount;
+}

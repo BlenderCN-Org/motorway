@@ -21,20 +21,28 @@
 
 #include "BaseAllocator.h"
 
-class PoolAllocator final : public BaseAllocator
+class FreeListAllocator final : public BaseAllocator
 {
 public:
-            PoolAllocator( const std::size_t objectSize, const std::uint8_t objectAlignment, const std::size_t size, void* baseAddress );
-            PoolAllocator( PoolAllocator& ) = delete;
-            PoolAllocator& operator = ( PoolAllocator& ) = delete;
-            ~PoolAllocator();
+            FreeListAllocator( const std::size_t size, void* baseAddress );
+            FreeListAllocator( FreeListAllocator& ) = delete;
+            FreeListAllocator& operator = ( FreeListAllocator& ) = delete;
+            ~FreeListAllocator();
 
     void*   allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) override;
     void    free( void* pointer ) override;
-    void    clear();
+    
+private:
+    struct AllocationHeader { 
+        std::size_t     size;
+        std::uint8_t    adjustment; 
+    };
+
+    struct FreeBlock { 
+        std::size_t size; 
+        FreeBlock*  next; 
+    };
 
 private:
-    const std::size_t   objectSize;
-    const std::uint8_t  objectAlignment;
-    void**              freeList;
+    FreeBlock* freeBlockList;
 };

@@ -20,6 +20,7 @@
 #pragma once
 
 #include "FileSystem.h"
+#include <Core/Allocators/PoolAllocator.h>
 
 class FileSystemObject;
 
@@ -39,9 +40,9 @@ public:
 
 private:
     struct FileSystemEntry {
-        fnString_t  MountPoint;
         FileSystem* Media;
         uint64_t    MountOrder; // From 0 (most important fs; checked first when opening a file) to MAX_UINT64 (least important fs)
+        fnString_t  MountPoint;
     };
 
 private:

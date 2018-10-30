@@ -107,8 +107,8 @@ private:
     std::string                         name;
     std::map<fnStringHash_t, size_t>    nodeHelper; // <hashcode / vector> index map helper
 
-    int64_t                                canCollectRenderKeys[8192];
-    int64_t                                canUpdate[8192];
+    int64_t                             canCollectRenderKeys[8192];
+    int64_t                             canUpdate[8192];
     //bool                            canBeIntersected[8192];
     //bool                            canCollectDebugRenderKeys[8192];
     //bool                            canDrawInEditor[8192];

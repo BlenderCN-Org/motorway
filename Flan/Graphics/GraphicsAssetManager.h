@@ -29,6 +29,9 @@ class Mesh;
 struct FontDescriptor;
 struct Model;
 
+class BaseAllocator;
+class FreeListAllocator;
+
 #include <unordered_map>
 #include <vector>
 
@@ -47,7 +50,7 @@ public:
     };
 
 public:
-                    GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS );
+                    GraphicsAssetManager( RenderDevice* activeRenderDevice, ShaderStageManager* activeShaderStageManager, VirtualFileSystem* activeVFS, BaseAllocator* allocator );
                     GraphicsAssetManager( GraphicsAssetManager& ) = delete;
 	                ~GraphicsAssetManager();
 
@@ -64,13 +67,14 @@ public:
     void            getImageTexels( const fnChar_t* assetName, GraphicsAssetManager::RawTexels& texels );
     
 private:
-    RenderDevice*       renderDevice;
-    ShaderStageManager* shaderStageManager;
-    VirtualFileSystem*  virtualFileSystem;
+    FreeListAllocator*      assetStreamingHeap;
+    RenderDevice*           renderDevice;
+    ShaderStageManager*     shaderStageManager;
+    VirtualFileSystem*      virtualFileSystem;
 
-    std::unordered_map<fnStringHash_t, std::unique_ptr<Material>>       materialMap;
-    std::unordered_map<fnStringHash_t, std::unique_ptr<Mesh>>           meshMap;
-    std::unordered_map<fnStringHash_t, std::unique_ptr<Model>>          modelMap;
-    std::unordered_map<fnStringHash_t, std::unique_ptr<Texture>>        textureMap;
-    std::unordered_map<fnStringHash_t, std::unique_ptr<FontDescriptor>> fontMap;
+    std::unordered_map<fnStringHash_t, Material*>           materialMap;
+    std::unordered_map<fnStringHash_t, Mesh*>               meshMap;
+    std::unordered_map<fnStringHash_t, Model*>              modelMap;
+    std::unordered_map<fnStringHash_t, Texture*>            textureMap;
+    std::unordered_map<fnStringHash_t, FontDescriptor*>     fontMap;
 };

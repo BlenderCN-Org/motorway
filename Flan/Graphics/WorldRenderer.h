@@ -36,6 +36,9 @@ class AtmosphereModule;
 class AutomaticExposureModule;
 class TaskManager;
 class LineRenderingModule;
+class BaseAllocator;
+class PoolAllocator;
+class LinearAllocator;
 
 struct EnvironmentProbe;
 
@@ -45,6 +48,7 @@ struct EnvironmentProbe;
 #include "DrawCommand.h"
 #include "RenderPass.h"
 
+#include <Core/Allocators/PoolAllocator.h>
 #include <queue>
 
 struct BRDFInputs
@@ -72,7 +76,7 @@ struct TerrainStreaming
 class WorldRenderer
 {
 public:
-                            WorldRenderer();
+                            WorldRenderer( BaseAllocator* allocator );
                             WorldRenderer( WorldRenderer& ) = delete;
                             WorldRenderer& operator = ( WorldRenderer& ) = delete;
                             ~WorldRenderer();
@@ -126,58 +130,61 @@ private:
 private:
     RenderDevice*                           renderDevice;
     ShaderStageManager*                     shaderStageManager;
+    LinearAllocator*                        resourceAllocator;
 
     // NOTE If you wanna add more viewport, extend the drawcmd key so that the viewport id use more bits (atm > 3bits)
     RenderPipelineViewport                  viewportsToRender[8];
     int                                     viewportToRenderCount;
 
     // Draw Commands (geom, jobs, etc.)
-    std::vector<DrawCommand>                drawCommands;               // (front to back cmds)
-    std::vector<DrawCommand>                transparentDrawCommands;    // (back to front cmds)
+    PoolAllocator*                          drawCommandsPool;
+
+    std::vector<DrawCommand> drawCommands;               // (front to back cmds)
+    std::vector<DrawCommand> transparentDrawCommands;    // (back to front cmds)
 
     // RenderModules; independant from any RenderPipeline
-    std::unique_ptr<RenderPipeline>          renderPipeline;
-    std::unique_ptr<TextRenderingModule>     textRenderingModule;
-    std::unique_ptr<AtmosphereModule>        atmosphereRenderingModule;
-    std::unique_ptr<AutomaticExposureModule> autoExposureModule;
-    std::unique_ptr<LineRenderingModule>     lineRenderingModule;
+    RenderPipeline*          renderPipeline;
+    TextRenderingModule*     textRenderingModule;
+    AtmosphereModule*        atmosphereRenderingModule;
+    AutomaticExposureModule* autoExposureModule;
+    LineRenderingModule*     lineRenderingModule;
 
     // TODO Move this
-    std::unique_ptr<RenderTarget>           previousFrameRenderTarget;
+    RenderTarget*           previousFrameRenderTarget;
 
-    std::unique_ptr<RenderTarget>           environmentProbes[3];
-    std::unique_ptr<Material>               wireframeMaterial;
+    RenderTarget*           environmentProbes[3];
+    Material*               wireframeMaterial;
 
-    std::unique_ptr<Texture>                terrainStreamedBaseColor;
-    std::unique_ptr<Texture>                terrainStreamedNormal;
-    TerrainStreaming                        terrainStreaming;
+    Texture*                terrainStreamedBaseColor;
+    Texture*                terrainStreamedNormal;
+    TerrainStreaming        terrainStreaming;
 
-    std::unique_ptr<Buffer>                 sphereVbo;
-    std::unique_ptr<Buffer>                 sphereIbo;
-    std::unique_ptr<VertexArrayObject>      sphereVao;
-    uint32_t                                sphereIndiceCount;
+    Buffer*                 sphereVbo;
+    Buffer*                 sphereIbo;
+    VertexArrayObject*      sphereVao;
+    uint32_t                sphereIndiceCount;
 
-    std::unique_ptr<Buffer>                 rectangleVbo;
-    std::unique_ptr<Buffer>                 rectangleIbo;
-    std::unique_ptr<VertexArrayObject>      rectangleVao;
-    uint32_t                                rectangleIndiceCount;
+    Buffer*                 rectangleVbo;
+    Buffer*                 rectangleIbo;
+    VertexArrayObject*      rectangleVao;
+    uint32_t                rectangleIndiceCount;
 
-    std::unique_ptr<Buffer>                 circleVbo;
-    std::unique_ptr<Buffer>                 circleIbo;
-    std::unique_ptr<VertexArrayObject>      circleVao;
-    uint32_t                                circleIndiceCount;
+    Buffer*                 circleVbo;
+    Buffer*                 circleIbo;
+    VertexArrayObject*      circleVao;
+    uint32_t                circleIndiceCount;
 
-    std::unique_ptr<Buffer>                 boxVbo;
-    std::unique_ptr<Buffer>                 boxIbo;
-    std::unique_ptr<VertexArrayObject>      boxVao;
-    uint32_t                                boxIndiceCount;
+    Buffer*                 boxVbo;
+    Buffer*                 boxIbo;
+    VertexArrayObject*      boxVao;
+    uint32_t                boxIndiceCount;
 
-    std::unique_ptr<Buffer>                 coneVbo;
-    std::unique_ptr<Buffer>                 coneIbo;
-    std::unique_ptr<VertexArrayObject>      coneVao;
-    uint32_t                                coneIndiceCount;
+    Buffer*                 coneVbo;
+    Buffer*                 coneIbo;
+    VertexArrayObject*      coneVao;
+    uint32_t                coneIndiceCount;
 
-    BRDFInputs                              brdfInputs;
+    BRDFInputs              brdfInputs;
 
 private:
     void createRenderTargets( void );

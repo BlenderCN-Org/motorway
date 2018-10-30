@@ -21,20 +21,18 @@
 
 #include "BaseAllocator.h"
 
-class PoolAllocator final : public BaseAllocator
+class LinearAllocator final : public BaseAllocator
 {
 public:
-            PoolAllocator( const std::size_t objectSize, const std::uint8_t objectAlignment, const std::size_t size, void* baseAddress );
-            PoolAllocator( PoolAllocator& ) = delete;
-            PoolAllocator& operator = ( PoolAllocator& ) = delete;
-            ~PoolAllocator();
+            LinearAllocator( const std::size_t size, void* baseAddress );
+            LinearAllocator( LinearAllocator& ) = delete;
+            LinearAllocator& operator = ( LinearAllocator& ) = delete;
+            ~LinearAllocator();
 
     void*   allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) override;
     void    free( void* pointer ) override;
     void    clear();
 
 private:
-    const std::size_t   objectSize;
-    const std::uint8_t  objectAlignment;
-    void**              freeList;
+    void*   currentPosition;
 };

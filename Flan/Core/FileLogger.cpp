@@ -22,6 +22,9 @@
 
 FileLogger::FileLogger( const fnString_t& applicationName )
     : applicationFileName( applicationName )
+    , coutBuffer( nullptr )
+    , cerrBuffer( nullptr )
+    , clogBuffer( nullptr )
     , isAvailable( false )
 {
 
@@ -30,11 +33,16 @@ FileLogger::FileLogger( const fnString_t& applicationName )
 FileLogger::~FileLogger()
 {
     close();
+
+    applicationFileName.clear();
+    coutBuffer = nullptr;
+    cerrBuffer = nullptr;
+    clogBuffer = nullptr;
 }
 
 void FileLogger::open( const fnString_t& logFolder )
 {
-    constexpr fnChar_t* LOG_FILE_EXTENSION = (fnChar_t* const)FLAN_STRING( ".log" );
+    constexpr fnChar_t* LOG_FILE_EXTENSION = ( fnChar_t* const )FLAN_STRING( ".log" );
 
     fnString_t fileName = ( logFolder + FLAN_STRING( "/" ) + applicationFileName + LOG_FILE_EXTENSION );
 

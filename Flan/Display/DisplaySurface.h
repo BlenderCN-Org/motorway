@@ -21,6 +21,7 @@
 
 #include "DisplayMode.h"
 
+class BaseAllocator;
 struct NativeDisplaySurface;
 class InputReader;
 class DisplaySurface
@@ -31,7 +32,7 @@ public:
                                             DisplaySurface& operator = ( DisplaySurface& ) = default;
                                             ~DisplaySurface();
 
-    void                                    create( const uint32_t surfaceWidth, const uint32_t surfaceHeight );
+    void                                    create( const uint32_t surfaceWidth, const uint32_t surfaceHeight, BaseAllocator* allocator = nullptr );
     void                                    pumpEvents( InputReader* inputReader ) const;
     void                                    setDisplayMode( const flan::core::eDisplayMode newDisplayMode );
 
@@ -44,7 +45,9 @@ public:
     void                                    setMousePosition( const float surfaceNormalizedX, const float surfaceNormalizedY );
 
 private:
-    std::unique_ptr<NativeDisplaySurface>   nativeDisplaySurface;
+    NativeDisplaySurface*                   nativeDisplaySurface;
+    BaseAllocator*                          memoryAllocator;
+
     fnString_t                              caption;
     uint32_t                                width;
     uint32_t                                height;
