@@ -351,16 +351,16 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     
     // Import Global Resources into the main render pipeline
     brdfInputs.dfgLut = dfgLut;
-    brdfInputs.envProbeCapture = environmentProbes[0].get();
-    brdfInputs.envProbeDiffuse = environmentProbes[1].get();
-    brdfInputs.envProbeSpecular = environmentProbes[2].get();
+    brdfInputs.envProbeCapture = environmentProbes[0];
+    brdfInputs.envProbeDiffuse = environmentProbes[1];
+    brdfInputs.envProbeSpecular = environmentProbes[2];
     renderPipeline->importWellKnownResource( &brdfInputs );
 
 #if FLAN_DEVBUILD
     // Create debug resources
 
     // Wireframe material
-    wireframeMaterial.reset( new Material() );
+    wireframeMaterial = flan::core::allocate<Material>( resourceAllocator );
 
     PipelineStateDesc descriptor;
     descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Primitive" ), SHADER_STAGE_VERTEX );
@@ -380,10 +380,10 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
 
     rasterDesc.rebuildStateKey();
 
-    descriptor.rasterizerState = new RasterizerState();
+    descriptor.rasterizerState = flan::core::allocate<RasterizerState>( resourceAllocator );
     descriptor.rasterizerState->create( renderDevice, rasterDesc );
 
-    descriptor.depthStencilState = new DepthStencilState();
+    descriptor.depthStencilState = flan::core::allocate<DepthStencilState>( resourceAllocator );
     descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
 
     descriptor.inputLayout = {
@@ -442,8 +442,8 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     terrainStreaming.terrainMaterialStreaming[64].terrainSampledSplatIndexes = 1;
     terrainStreaming.terrainMaterialStreaming[64].terrainSamplingParameters = glm::vec4( 0, 0, 96.0f, 96.0f );
 
-    terrainStreaming.baseColorStreamed = terrainStreamedBaseColor.get();
-    terrainStreaming.normalStreamed = terrainStreamedNormal.get();
+    terrainStreaming.baseColorStreamed = terrainStreamedBaseColor;
+    terrainStreaming.normalStreamed = terrainStreamedNormal;
     renderPipeline->importWellKnownResource( &terrainStreaming );
 }
 
@@ -499,14 +499,14 @@ void WorldRenderer::createRenderTargets( void )
     envProbeDesc.samplerCount = 1;
     envProbeDesc.flags.isCubeMap = 1;
 
-    environmentProbes[0].reset( new RenderTarget() );
+    environmentProbes[0] = flan::core::allocate<RenderTarget>( resourceAllocator );
     environmentProbes[0]->createAsRenderTarget2D( renderDevice, envProbeDesc );
 
     envProbeDesc.mipCount = flan::rendering::ComputeMipCount( envProbeDesc.width, envProbeDesc.height );
     envProbeDesc.flags.useHardwareMipGen = 1;
 
-    environmentProbes[1].reset( new RenderTarget() );
-    environmentProbes[2].reset( new RenderTarget() );
+    environmentProbes[1] = flan::core::allocate<RenderTarget>( resourceAllocator );
+    environmentProbes[2] = flan::core::allocate<RenderTarget>( resourceAllocator );
 
     environmentProbes[1]->createAsRenderTarget2D( renderDevice, envProbeDesc );
     environmentProbes[2]->createAsRenderTarget2D( renderDevice, envProbeDesc );
@@ -520,7 +520,7 @@ void WorldRenderer::createRenderTargets( void )
     previousFrameDesc.mipCount = 1;
     previousFrameDesc.samplerCount = 1;
 
-    previousFrameRenderTarget.reset( new RenderTarget() );
+    previousFrameRenderTarget = flan::core::allocate<RenderTarget>( resourceAllocator );
     previousFrameRenderTarget->createAsRenderTarget2D( renderDevice, previousFrameDesc );
 
     static constexpr int TERRAIN_TEXTURE_DIMENSIONS = 1024;
@@ -534,11 +534,11 @@ void WorldRenderer::createRenderTargets( void )
     terrainTextureStreamingDesc.mipCount = flan::rendering::ComputeMipCount( TERRAIN_TEXTURE_DIMENSIONS, TERRAIN_TEXTURE_DIMENSIONS );
     terrainTextureStreamingDesc.samplerCount = 1;
 
-    terrainStreamedBaseColor.reset( new Texture() );
+    terrainStreamedBaseColor = flan::core::allocate<Texture>( resourceAllocator );
     terrainStreamedBaseColor->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
 
     terrainTextureStreamingDesc.format = IMAGE_FORMAT_BC3_UNORM;
-    terrainStreamedNormal.reset( new Texture() );
+    terrainStreamedNormal = flan::core::allocate<Texture>( resourceAllocator );
     terrainStreamedNormal->createAsTexture2D( renderDevice, terrainTextureStreamingDesc );
 }
 
@@ -560,13 +560,13 @@ void WorldRenderer::createPrimitives( void )
 
         sphereIndiceCount = static_cast< uint32_t >( sphere.indices.size() );
 
-        sphereVbo.reset( new Buffer() );
+        sphereVbo = flan::core::allocate<Buffer>( resourceAllocator );
         sphereVbo->create( renderDevice, vertexVbo, ( void* )sphere.vertices.data() );
 
-        sphereIbo.reset( new Buffer() );
+        sphereIbo = flan::core::allocate<Buffer>( resourceAllocator );
         sphereIbo->create( renderDevice, vertexIbo, ( void* )sphere.indices.data() );
 
-        sphereVao->create( renderDevice, sphereVbo.get(), sphereIbo.get() );
+        sphereVao->create( renderDevice, sphereVbo, sphereIbo );
 
         VertexLayout_t sphereVertexLayout = {
             { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
@@ -599,13 +599,13 @@ void WorldRenderer::createPrimitives( void )
 
         rectangleIndiceCount = sizeof( RECTANGLE_IB_DATA ) / sizeof( uint32_t );
 
-        rectangleVbo.reset( new Buffer() );
+        rectangleVbo = flan::core::allocate<Buffer>( resourceAllocator );
         rectangleVbo->create( renderDevice, vertexVbo, ( void* )RECTANGLE_VB_DATA );
 
-        rectangleIbo.reset( new Buffer() );
+        rectangleIbo = flan::core::allocate<Buffer>( resourceAllocator );
         rectangleIbo->create( renderDevice, vertexIbo, ( void* )RECTANGLE_IB_DATA );
 
-        rectangleVao->create( renderDevice, rectangleVbo.get(), rectangleIbo.get() );
+        rectangleVao->create( renderDevice, rectangleVbo, rectangleIbo );
 
         VertexLayout_t rectangleVertexLayout = {
             { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
@@ -647,13 +647,13 @@ void WorldRenderer::createPrimitives( void )
 
         circleIndiceCount = static_cast<uint32_t>( indexBufferData.size() );
 
-        circleVbo.reset( new Buffer() );
+        circleVbo = flan::core::allocate<Buffer>( resourceAllocator );
         circleVbo->create( renderDevice, vertexVbo, ( void* )vertexBufferData.data() );
 
-        circleIbo.reset( new Buffer() );
+        circleIbo = flan::core::allocate<Buffer>( resourceAllocator );
         circleIbo->create( renderDevice, vertexIbo, ( void* )indexBufferData.data() );
 
-        circleVao->create( renderDevice, circleVbo.get(), circleIbo.get() );
+        circleVao->create( renderDevice, circleVbo, circleIbo );
 
         VertexLayout_t circleVertexLayout = {
             { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
@@ -727,13 +727,13 @@ void WorldRenderer::createPrimitives( void )
 
         boxIndiceCount = static_cast<uint32_t>( vertexIbo.Size / vertexIbo.Stride );
 
-        boxVbo.reset( new Buffer() );
+        boxVbo = flan::core::allocate<Buffer>( resourceAllocator );
         boxVbo->create( renderDevice, vertexVbo, ( void* )BOX_VB_DATA );
 
-        boxIbo.reset( new Buffer() );
+        boxIbo = flan::core::allocate<Buffer>( resourceAllocator );
         boxIbo->create( renderDevice, vertexIbo, ( void* )BOX_IB_DATA );
 
-        boxVao->create( renderDevice, boxVbo.get(), boxIbo.get() );
+        boxVao->create( renderDevice, boxVbo, boxIbo );
 
         VertexLayout_t boxVertexLayout = {
             { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
@@ -805,13 +805,13 @@ void WorldRenderer::createPrimitives( void )
 
         coneIndiceCount = static_cast<uint32_t>( coneIndices.size() );
 
-        coneVbo.reset( new Buffer() );
+        coneVbo = flan::core::allocate<Buffer>( resourceAllocator );
         coneVbo->create( renderDevice, vertexVbo, ( void* )coneVertices.data() );
 
-        coneIbo.reset( new Buffer() );
+        coneIbo = flan::core::allocate<Buffer>( resourceAllocator );
         coneIbo->create( renderDevice, vertexIbo, ( void* )coneIndices.data() );
 
-        coneVao->create( renderDevice, coneVbo.get(), coneIbo.get() );
+        coneVao->create( renderDevice, coneVbo, coneIbo );
 
         VertexLayout_t coneVertexLayout = {
             { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
@@ -839,37 +839,37 @@ void WorldRenderer::updateRenderInfos( const float interpolatedFrametime )
 #if FLAN_DEVBUILD
 Material* WorldRenderer::getWireframeMaterial() const
 {
-    return wireframeMaterial.get();
+    return wireframeMaterial;
 }
 
 VertexArrayObject* WorldRenderer::getSpherePrimitive( uint32_t& indiceCount ) const
 {
     indiceCount = sphereIndiceCount;
-    return sphereVao.get();
+    return sphereVao;
 }
 
 VertexArrayObject* WorldRenderer::getRectanglePrimitive( uint32_t& indiceCount ) const
 {
     indiceCount = rectangleIndiceCount;
-    return rectangleVao.get();
+    return rectangleVao;
 }
 
 VertexArrayObject* WorldRenderer::getCirclePrimitive( uint32_t& indiceCount ) const
 {
     indiceCount = circleIndiceCount;
-    return circleVao.get();
+    return circleVao;
 }
 
 VertexArrayObject* WorldRenderer::getBoxPrimitive( uint32_t& indiceCount ) const
 {
     indiceCount = boxIndiceCount;
-    return boxVao.get();
+    return boxVao;
 }
 
 VertexArrayObject* WorldRenderer::getConePrimitive( uint32_t& indiceCount ) const
 {
     indiceCount = coneIndiceCount;
-    return coneVao.get();
+    return coneVao;
 }
 #endif
 
@@ -879,7 +879,7 @@ fnPipelineResHandle_t WorldRenderer::addProbeCaptureSavePass( RenderPipeline* re
         [&]( RenderPipeline* renderPipeline, RenderPipelineBuilder* renderPipelineBuilder ) {
             const auto captureCmd = static_cast<const EnvProbeCaptureCommand*>( renderPipelineBuilder->getRenderPassArgs( FLAN_STRING_HASH( "ProbeCaptureSavePass" ) ) );
 
-            auto envProbeRT = renderPipeline->importRenderTarget( environmentProbes[0].get() );
+            auto envProbeRT = renderPipeline->importRenderTarget( environmentProbes[0] );
             auto faceIndex = captureCmd->CommandInfos.EnvProbeArrayIndex * 6 + captureCmd->CommandInfos.Step;
 
             AddCopyTexturePass( renderPipeline, false, 0, faceIndex, envProbeRT );
@@ -896,7 +896,7 @@ fnPipelineResHandle_t WorldRenderer::addProbeConvolutionPass( RenderPipeline* re
             auto probeConvolutionCmd = static_cast<const EnvProbeConvolutionCommand*>( renderPipelineBuilder->getRenderPassArgs( FLAN_STRING_HASH( "ProbeConvolutionPass" ) ) );
             auto& cmdInfos = probeConvolutionCmd->CommandInfos;
 
-            auto envProbeRT = renderPipeline->importRenderTarget( environmentProbes[0].get() );
+            auto envProbeRT = renderPipeline->importRenderTarget( environmentProbes[0] );
 
             auto convolutedFaces = AddEnvironmentProbeConvolutionPass( renderPipeline,
                                                                        envProbeRT,
@@ -904,8 +904,8 @@ fnPipelineResHandle_t WorldRenderer::addProbeConvolutionPass( RenderPipeline* re
                                                                        cmdInfos.Step,
                                                                        cmdInfos.MipIndex );
 
-            auto envProbeDiffuseRT = renderPipeline->importRenderTarget( environmentProbes[1].get() );
-            auto envProbeSpecularRT = renderPipeline->importRenderTarget( environmentProbes[2].get() );
+            auto envProbeDiffuseRT = renderPipeline->importRenderTarget( environmentProbes[1] );
+            auto envProbeSpecularRT = renderPipeline->importRenderTarget( environmentProbes[2] );
 
             const unsigned int faceIndex = cmdInfos.EnvProbeArrayIndex * 6 + cmdInfos.Step;
             AddCopyTexturePass( renderPipeline, false, cmdInfos.MipIndex, faceIndex, envProbeDiffuseRT, convolutedFaces.StandardDiffuseLD );
@@ -920,7 +920,7 @@ fnPipelineResHandle_t WorldRenderer::addAAPass( RenderPipeline* renderPipeline, 
 {
     renderPipeline->addPipelineSetupPass(
         [&]( RenderPipeline* renderPipeline, RenderPipelineBuilder* renderPipelineBuilder ) {
-            auto previousFrameRT = renderPipeline->importRenderTarget( previousFrameRenderTarget.get() );
+            auto previousFrameRT = renderPipeline->importRenderTarget( previousFrameRenderTarget );
             auto antiAliasedFrame = AddMSAAResolvePass( renderPipeline, samplerCount, useTemporalAA, previousFrameRT );
             
             AddCopyTexturePass( renderPipeline, false, 0, 0, previousFrameRT, antiAliasedFrame );

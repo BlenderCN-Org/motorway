@@ -150,41 +150,41 @@ private:
     LineRenderingModule*     lineRenderingModule;
 
     // TODO Move this
-    std::unique_ptr<RenderTarget>           previousFrameRenderTarget;
+    RenderTarget*           previousFrameRenderTarget;
 
-    std::unique_ptr<RenderTarget>           environmentProbes[3];
-    std::unique_ptr<Material>               wireframeMaterial;
+    RenderTarget*           environmentProbes[3];
+    Material*               wireframeMaterial;
 
-    std::unique_ptr<Texture>                terrainStreamedBaseColor;
-    std::unique_ptr<Texture>                terrainStreamedNormal;
-    TerrainStreaming                        terrainStreaming;
+    Texture*                terrainStreamedBaseColor;
+    Texture*                terrainStreamedNormal;
+    TerrainStreaming        terrainStreaming;
 
-    std::unique_ptr<Buffer>                 sphereVbo;
-    std::unique_ptr<Buffer>                 sphereIbo;
-    std::unique_ptr<VertexArrayObject>      sphereVao;
-    uint32_t                                sphereIndiceCount;
+    Buffer*                 sphereVbo;
+    Buffer*                 sphereIbo;
+    VertexArrayObject*      sphereVao;
+    uint32_t                sphereIndiceCount;
 
-    std::unique_ptr<Buffer>                 rectangleVbo;
-    std::unique_ptr<Buffer>                 rectangleIbo;
-    std::unique_ptr<VertexArrayObject>      rectangleVao;
-    uint32_t                                rectangleIndiceCount;
+    Buffer*                 rectangleVbo;
+    Buffer*                 rectangleIbo;
+    VertexArrayObject*      rectangleVao;
+    uint32_t                rectangleIndiceCount;
 
-    std::unique_ptr<Buffer>                 circleVbo;
-    std::unique_ptr<Buffer>                 circleIbo;
-    std::unique_ptr<VertexArrayObject>      circleVao;
-    uint32_t                                circleIndiceCount;
+    Buffer*                 circleVbo;
+    Buffer*                 circleIbo;
+    VertexArrayObject*      circleVao;
+    uint32_t                circleIndiceCount;
 
-    std::unique_ptr<Buffer>                 boxVbo;
-    std::unique_ptr<Buffer>                 boxIbo;
-    std::unique_ptr<VertexArrayObject>      boxVao;
-    uint32_t                                boxIndiceCount;
+    Buffer*                 boxVbo;
+    Buffer*                 boxIbo;
+    VertexArrayObject*      boxVao;
+    uint32_t                boxIndiceCount;
 
-    std::unique_ptr<Buffer>                 coneVbo;
-    std::unique_ptr<Buffer>                 coneIbo;
-    std::unique_ptr<VertexArrayObject>      coneVao;
-    uint32_t                                coneIndiceCount;
+    Buffer*                 coneVbo;
+    Buffer*                 coneIbo;
+    VertexArrayObject*      coneVao;
+    uint32_t                coneIndiceCount;
 
-    BRDFInputs                              brdfInputs;
+    BRDFInputs              brdfInputs;
 
 private:
     void createRenderTargets( void );

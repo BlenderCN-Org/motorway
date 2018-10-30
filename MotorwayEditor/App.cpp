@@ -143,7 +143,7 @@ LinearAllocator*    g_GlobalAllocator;
 
 void CreateSubsystems()
 {
-    g_AllocatedTable = flan::core::MAlloc( 1024 * 1024 * 1024 );
+    g_AllocatedTable = flan::core::malloc( 1024 * 1024 * 1024 );
     g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
 
     // Create global instances whenever the Application ctor is called

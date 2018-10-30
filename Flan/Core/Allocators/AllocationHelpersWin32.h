@@ -24,28 +24,28 @@ namespace flan
 {
     namespace core
     {
-        static void* MAlloc( const std::size_t size )
+        static void* malloc( const std::size_t size )
         {
             return ::malloc( size );
         }
 
-        static void* ReAlloc( void* block, const std::size_t size )
+        static void* realloc( void* block, const std::size_t size )
         {
             return ::realloc( block, size );
         }
 
-        static void Free( void* block )
+        static void free( void* block )
         {
             ::free( block );
         }
 
 #if FLAN_MSVC
-        static void* AlignedMAlloc( const std::size_t size, const std::uint8_t alignment )
+        static void* AlignedMalloc( const std::size_t size, const std::uint8_t alignment )
         {
             return ::_aligned_malloc( size, alignment );
         }
 
-        static void* AlignedReAlloc( void* block, const std::size_t size, const std::uint8_t alignment )
+        static void* AlignedRealloc( void* block, const std::size_t size, const std::uint8_t alignment )
         {
             return ::_aligned_realloc( block, size, alignment );
         }
@@ -56,14 +56,37 @@ namespace flan
         }
 #endif
 
-        static void* PageAlloc( const std::size_t size )
+        static void* ReserveAddressSpace( const std::size_t reservationSize, void* startAddress = nullptr )
         {
-            return VirtualAlloc( nullptr, size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE );
+            return ::VirtualAlloc( startAddress, reservationSize, ( MEM_RESERVE | MEM_TOP_DOWN ), PAGE_NOACCESS );
         }
 
-        static void FreePage( void* page )
+        static void ReleaseAddressSpace( void* address )
         {
-            VirtualFree( page, 0, MEM_RELEASE );
+            ::VirtualFree( address, 0, MEM_RELEASE );
+        }
+
+        static void* VirtualAlloc( const std::size_t allocationSize, void* reservedAddressSpace )
+        {
+            return ::VirtualAlloc( reservedAddressSpace, allocationSize, MEM_COMMIT, PAGE_READWRITE );
+        }
+
+        static void VirtualFree( void* allocatedAddress )
+        {
+            ::VirtualFree( allocatedAddress, 0, MEM_DECOMMIT );
+        }
+
+        static std::size_t GetPageSize()
+        {
+            SYSTEM_INFO systemInfos = {};
+            GetSystemInfo( &systemInfos );
+
+            return systemInfos.dwAllocationGranularity;
+        }
+
+        static void* PageAlloc( const std::size_t size )
+        {
+            return ::VirtualAlloc( nullptr, size, MEM_COMMIT, PAGE_READWRITE );
         }
     }
 }
