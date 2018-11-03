@@ -71,7 +71,14 @@
 #include <Framework/TransactionHandler/SceneNodeCopyCommand.h>
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
 
+#include <Graphics/RenderPasses/CompositionPass.h>
+
 static int panelId = 0;
+
+static int g_TerrainEditorEditionRadius = 8; // In vertices count; 
+static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
+static float g_TerrainEditorEditionHeight = 0.01f;
+static float g_TerrainEditorEditionHardness = 1.0f;
 
 FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
@@ -135,8 +142,6 @@ static void PrintTab( const char* tabName, const int tabIndex )
         }
     }
 }
-
-#include <Graphics/RenderPasses/CompositionPass.h>
 
 static void DisplayMenuBar()
 {
@@ -582,7 +587,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
             ImGui::SameLine( 0, 2 );
             PrintTab( "MaterialEd", 1 );
             ImGui::SameLine( 0, 2 );
-            PrintTab( "BiomeEd", 2 );
+            PrintTab( "TerrainEd", 2 );
 
             ImGui::End();
         }
@@ -931,6 +936,20 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                         dev_EditorPickedMaterial = new Material();
                     }
                 }
+            } else if ( panelId == 2 ) {
+                ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Lower", &g_TerrainEditorEditionMode, 1 );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Smooth", &g_TerrainEditorEditionMode, 2 );
+
+                if ( ImGui::TreeNode( "Brush Settings" ) ) {
+                    ImGui::SliderInt( "Radius", &g_TerrainEditorEditionRadius, 1, 256 );
+                    ImGui::DragFloat( "Height", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+                    ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 1.0f );
+
+                    ImGui::TreePop();
+                }
             }
         }
         
@@ -973,3 +992,66 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
     cmdList->playbackCommandList( g_RenderDevice );
 }
 #endif
+
+void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
+{
+    float* const vertices = terrain->getHeightmapValues();
+
+    float pickedHeight = -std::numeric_limits<float>::max();
+    int pickedIndex = 0;
+    glm::vec3 rayMarch = mousePickingRay.origin;
+    int marchIteration = 0;
+    while ( rayMarch.y > pickedHeight && marchIteration < 128 ) {
+        pickedIndex = ( abs( int( rayMarch.x ) ) + abs( int( rayMarch.z ) ) * 512 );
+        pickedHeight = vertices[pickedIndex];
+
+        rayMarch += mousePickingRay.direction;
+        marchIteration++;
+    }
+
+    auto lowX = std::max( 0, abs( int( rayMarch.x ) ) - g_TerrainEditorEditionRadius );
+    auto lowY = std::max( 0, abs( int( rayMarch.z ) ) - g_TerrainEditorEditionRadius );
+    auto hiX = std::min( 512, abs( int( rayMarch.x ) ) + g_TerrainEditorEditionRadius );
+    auto hiY = std::min( 512, abs( int( rayMarch.z ) ) + g_TerrainEditorEditionRadius );
+
+    if ( g_TerrainEditorEditionMode == 2 ) {
+        // Basic box filtering-ish smoothing
+
+        const int sampleCount = ( hiY - lowY ) * ( hiX - lowX );
+
+        float average = 0.0f;
+        for ( int x = lowX; x < hiX; x++ ) {
+            for ( int y = lowY; y < hiY; y++ ) {
+                int index = ( x + y * 512 );
+                average += vertices[index];
+            }
+        }
+
+        average /= sampleCount;
+
+        for ( int x = lowX; x < hiX; x++ ) {
+            for ( int y = lowY; y < hiY; y++ ) {
+                int index = ( x + y * 512 );
+                terrain->setVertexHeight( index, average );
+            }
+        }
+    } else {
+        for ( int x = lowX; x < hiX; x++ ) {
+            for ( int y = lowY; y < hiY; y++ ) {
+                int index = ( x + y * 512 );
+                float& vertexToEdit = vertices[index];
+
+                if ( g_TerrainEditorEditionMode == 0 )
+                    vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness );
+                else if ( g_TerrainEditorEditionMode == 1 )
+                    vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness );
+
+                terrain->setVertexHeight( index, vertexToEdit );
+            }
+        }
+    }
+
+    // Recompute patchs bounds (update patch culling data)
+    terrain->computePatchsBounds();
+    terrain->uploadHeightmap( cmdList );
+}

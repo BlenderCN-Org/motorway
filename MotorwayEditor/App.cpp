@@ -197,6 +197,122 @@ void Shutdown()
     g_FileLogger->close();
 }
 
+Ray GenerateMousePickingRay( const ImGuiIO& io, const Camera::Data& cameraData )
+{
+    auto viewMat = glm::transpose( cameraData.viewMatrix );
+    auto projMat = cameraData.depthProjectionMatrix;
+
+    auto inverseViewProj = glm::inverse( projMat * viewMat );
+
+    glm::vec4 ray =
+    {
+        ( io.MousePos.x / io.DisplaySize.x ) * 2.f - 1.f,
+        ( 1.f - ( io.MousePos.y / io.DisplaySize.y ) ) * 2.f - 1.f,
+        0.0f,
+        1.0f
+    };
+
+    glm::vec4 rayOrigin =
+    {
+        ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
+        ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
+        ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
+        ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
+    };
+    rayOrigin *= ( 1.0f / rayOrigin.w );
+
+    ray.z = 1.0f;
+    glm::vec4 rayEnd =
+    {
+        ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
+        ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
+        ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
+        ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
+    };
+    rayEnd *= ( 1.0f / rayEnd.w );
+
+    auto rayDir = glm::normalize( rayEnd - rayOrigin );
+
+    glm::vec3 rayDirection = glm::vec3( rayDir );
+    glm::vec3 rayOrig = glm::vec3( rayOrigin );
+
+    return Ray( rayOrig, rayDirection );
+}
+
+void CreateDefaultScene()
+{
+    // Setup at least one base camera
+    uint32_t surfaceWidth = 0, surfaceHeight = 0;
+    g_MainDisplaySurface->getSurfaceDimension( surfaceWidth, surfaceHeight );
+
+    auto testCam = new FreeCamera();
+    testCam->SetProjectionMatrix( CameraFOV, static_cast<float>( surfaceWidth ), static_cast<float>( surfaceHeight ) );
+    auto testCamNode = ( FreeCameraSceneNode* )g_CurrentScene->createFreeCamera( testCam, "DefaultCamera" );
+    testCamNode->enabled = true;
+
+    g_PhysicsDebugDraw->create( g_DynamicsWorld, g_DrawCommandBuilder );
+
+    DirectionalLightData sunLight = {};
+    sunLight.isSunLight = true;
+    sunLight.intensityInLux = 100000.0f;
+    sunLight.angularRadius = 0.007f;
+    const float solidAngle = ( 2.0f * glm::pi<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
+
+    sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
+    sunLight.sphericalCoordinates = glm::vec2( 1.0f, 0.5f );
+    sunLight.direction = flan::core::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
+    auto sunLightEntity = g_RenderableEntityManager->createDirectionalLight( std::move( sunLight ) );
+    auto sunLightNode = g_CurrentScene->createDirectionalLight( sunLightEntity );
+}
+
+void InitializeImGui()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+
+    // Allocate imgui draw cmdlist
+    g_EditorCmdListPool = new CommandListPool();
+    g_EditorCmdListPool->create( g_RenderDevice, 2 );
+
+    ImGui_ImplWin32_Init( g_MainDisplaySurface->getNativeDisplaySurface()->Handle );
+
+    // Setup style
+    ImGui::StyleColorsDark();
+
+    ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.14f, 0.14f, 0.14f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_TitleBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_SeparatorActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_TextSelectedBg, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_HeaderActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_HeaderHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBgHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_CheckMark, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_TitleBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_MenuBarBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_Header, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_PopupBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, ImVec4( 0.24f, 0.24f, 0.24f, 1.0f ) );
+}
+
 int InitializeSubsystems()
 {
     const ScopedTimer AppInitializationTimer( FLAN_STRING( "AppInitializationTimer" ) );
@@ -286,7 +402,7 @@ int InitializeSubsystems()
     // Parse Input Configuration
     FLAN_IMPORT_VAR_PTR( RebuildInputCfgFile, bool )
 
-        auto inputConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Input.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
+    auto inputConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Input.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
     if ( inputConfigurationFile == nullptr || *RebuildInputCfgFile ) {
         FLAN_CLOG << "Creating default input configuration file..." << std::endl;
 
@@ -322,11 +438,6 @@ int InitializeSubsystems()
 
     FLAN_CLOG << "Initialization done!" << std::endl;
 
-#if FLAN_DEVBUILD
-    //g_GraphicsProfiler->create( g_RenderDevice );
-
-    // TODO Remove this once menu and UI are set
-#if FLAN_DEVBUILD
     g_InputMapper->pushContext( FLAN_STRING_HASH( "Editor" ) );
 
     // Free Camera
@@ -381,62 +492,37 @@ int InitializeSubsystems()
         }
 
         auto cameraNode = ( FreeCameraSceneNode* )g_CurrentScene->findNodeByHashcode( FLAN_STRING_HASH( "DefaultCamera" ) );
+        auto mainCamera = cameraNode->camera;
 
-        // Compatibility Hack; to remove later
-        if ( cameraNode != nullptr ) {
-            auto mainCamera = cameraNode->camera;
+        if ( input.States.find( FLAN_STRING_HASH( "MoveCamera" ) ) != input.States.end() ) {
+            auto axisX = input.Ranges[FLAN_STRING_HASH( "CameraMoveHorizontal" )];
+            auto axisY = input.Ranges[FLAN_STRING_HASH( "CameraMoveVertical" )];
 
-            if ( input.States.find( FLAN_STRING_HASH( "MoveCamera" ) ) != input.States.end() ) {
-                auto axisX = input.Ranges[FLAN_STRING_HASH( "CameraMoveHorizontal" )];
-                auto axisY = input.Ranges[FLAN_STRING_HASH( "CameraMoveVertical" )];
+            mainCamera->OnMouseUpdate( frameTime, axisX, axisY );
+        }
 
-                mainCamera->OnMouseUpdate( frameTime, axisX, axisY );
-            }
-            ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO();
+        if ( !io.WantCaptureMouse ) {
+            if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
+                TerrainSceneNode* terrainSceneNode = ( TerrainSceneNode* )PickedNode;
+                if ( terrainSceneNode != nullptr
+                    && terrainSceneNode->instance.terrainAsset != nullptr ) {
+                    const auto& cameraData = mainCamera->GetData();
+                    Ray rayObj = GenerateMousePickingRay( io, cameraData );
 
-            if ( !io.WantCaptureMouse ) {
-                if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
-                    auto cameraData = mainCamera->GetData();
-                    auto viewMat = glm::transpose( cameraData.viewMatrix );
-                    auto projMat = cameraData.depthProjectionMatrix;
-
-                    auto inverseViewProj = glm::inverse( projMat * viewMat );
-
-                    glm::vec4 ray =
-                    {
-                        ( io.MousePos.x / io.DisplaySize.x ) * 2.f - 1.f,
-                        ( 1.f - ( io.MousePos.y / io.DisplaySize.y ) ) * 2.f - 1.f,
-                        0.0f,
-                        1.0f
-                    };
-
-                    glm::vec4 rayOrigin =
-                    {
-                        ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
-                        ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
-                        ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
-                        ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
-                    };
-                    rayOrigin *= ( 1.0f / rayOrigin.w );
-
-                    ray.z = 1.0f;
-                    glm::vec4 rayEnd =
-                    {
-                        ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
-                        ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
-                        ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
-                        ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
-                    };
-                    rayEnd *= ( 1.0f / rayEnd.w );
-
-                    auto rayDir = glm::normalize( rayEnd - rayOrigin );
-
-                    glm::vec3 rayDirection = glm::vec3( rayDir );
-                    glm::vec3 rayOrig = glm::vec3( rayOrigin );
-
-                    Ray rayObj( rayOrig, rayDirection );
-                    PickedNode = g_CurrentScene->intersect( rayObj );
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+                    cmdList->beginCommandList( g_RenderDevice );
+                    EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+                    cmdList->playbackCommandList( g_RenderDevice );
                 }
+            }
+
+            if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
+                const auto& cameraData = mainCamera->GetData();
+                Ray rayObj = GenerateMousePickingRay( io, cameraData );
+
+                PickedNode = g_CurrentScene->intersect( rayObj );
             }
         }
 
@@ -478,7 +564,7 @@ int InitializeSubsystems()
                     if ( cameraNode != nullptr ) {
                         cameraNode->enabled = true;
                     } else {
-                        FLAN_CWARN << "No camera defined/loaded; exepect garbage and weird stuff on screen..." << std::endl;
+                        FLAN_CWARN << "No camera defined/loaded; expect garbage and weird stuff on screen..." << std::endl;
                     }
 
                     //    paString_t fileNameWithoutExtension, sceneNameWithExt;
@@ -527,81 +613,14 @@ int InitializeSubsystems()
     }, -1 );
 
     g_EditorAutoSaveTimer.start();
-#endif
 
-    // Setup at least one base camera
-    uint32_t surfaceWidth = 0, surfaceHeight = 0;
-    g_MainDisplaySurface->getSurfaceDimension( surfaceWidth, surfaceHeight );
-
-    auto testCam = new FreeCamera();
-    testCam->SetProjectionMatrix( CameraFOV, static_cast<float>( surfaceWidth ), static_cast<float>( surfaceHeight ) );
-    auto testCamNode = ( FreeCameraSceneNode* )g_CurrentScene->createFreeCamera( testCam, "DefaultCamera" );
-    testCamNode->enabled = true;
-
-    g_PhysicsDebugDraw->create( g_DynamicsWorld, g_DrawCommandBuilder );
-
-    DirectionalLightData sunLight = {};
-    sunLight.isSunLight = true;
-    sunLight.intensityInLux = 100000.0f;
-    sunLight.angularRadius = 0.007f;
-    const float solidAngle = ( 2.0f * glm::pi<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
-
-    sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
-    sunLight.sphericalCoordinates = glm::vec2( 1.0f, 0.5f );
-    sunLight.direction = flan::core::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
-    auto sunLightEntity = g_RenderableEntityManager->createDirectionalLight( std::move( sunLight ) );
-    auto sunLightNode = g_CurrentScene->createDirectionalLight( sunLightEntity );
-
-    // Initialize ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-
-    // ImGui draw cmdlist
-    g_EditorCmdListPool = new CommandListPool();
-    g_EditorCmdListPool->create( g_RenderDevice, 2 );
-
-    ImGui_ImplWin32_Init( g_MainDisplaySurface->getNativeDisplaySurface()->Handle );
-
-    // Setup style
-    ImGui::StyleColorsDark();
-
-    ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.14f, 0.14f, 0.14f, 1.0f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_TitleBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_SeparatorActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_TextSelectedBg, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_HeaderActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_HeaderHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBgHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
-    ImGui::PushStyleColor( ImGuiCol_CheckMark, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_TitleBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_FrameBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_MenuBarBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_Header, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-    ImGui::PushStyleColor( ImGuiCol_PopupBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
-
-    ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, ImVec4( 0.24f, 0.24f, 0.24f, 1.0f ) );
+    CreateDefaultScene();
+    InitializeImGui();
 
     g_Profiler.create();
     g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 1.0f, 0.1f );
+
     g_FileSystemWatchdog->Create();
-#endif
 
     return 0;
 }

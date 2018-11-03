@@ -20,6 +20,7 @@
 
 #pragma once
 
+class CommandList;
 class RenderDevice;
 class VertexArrayObject;
 class Material;
@@ -28,24 +29,7 @@ class Buffer;
 class Mesh;
 
 #include <Core/Maths/AABB.h>
-
-struct GrassType
-{
-    // LOD0
-    VertexArrayObject*  vaoGeometry;
-    Material*           materialGeometry;
-
-    // LOD1
-    Material*           materialInspostor;
-};
-
-struct GrassGrid
-{
-    struct
-    {
-        GrassType*  type;
-    } cells[512 * 512];
-};
+#include <vector>
 
 class Terrain
 {
@@ -65,7 +49,18 @@ public:
     float                               getHeightmapLowestVertex() const;
     float                               getHeightmapHighestVertex() const;
 
+    // TODO Crap API for quick prototyping
+    void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
+    void uploadHeightmap( CommandList* cmdList );
+    void computePatchsBounds();
     Mesh* GRASS_TEST;
+
+private:
+    struct VertexLayout {
+        glm::vec3 positionWorldSpace;
+        glm::vec3 patchBoundsAndSkirtIndex;
+        glm::vec2 texCoordinates;
+    };
 
 private:
     fnString_t                          name;
@@ -73,14 +68,23 @@ private:
     AABB                                aabb;
 
     uint32_t                            meshIndiceCount;
+    uint32_t                            scalePatchX;
+    uint32_t                            scalePatchY;
+    uint32_t                            heightmapDimension;
 
     float                               heightmapHighestVertex;
     float                               heightmapLowestVertex;
 
+    float*                              editorHeightmap;
+
     float*                              heightmap;
     std::unique_ptr<Texture>            heightmapTexture;
 
-    std::unique_ptr<Buffer>             vertexBuffer;
+    std::vector<uint32_t>               indices;
+    std::vector<VertexLayout>           vertices;
+
+    int                                 currentVboIndex;
+    std::unique_ptr<Buffer>             vertexBuffer[2];
     std::unique_ptr<Buffer>             indiceBuffer;
-    std::unique_ptr<VertexArrayObject>  vertexArrayObject;
+    std::unique_ptr<VertexArrayObject>  vertexArrayObject[2];
 };
