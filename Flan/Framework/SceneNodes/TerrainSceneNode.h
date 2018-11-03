@@ -117,6 +117,9 @@ struct TerrainSceneNode : public SceneNode
 
     virtual bool intersect( const Ray& ray, float& hitDistance ) const override
     {
-        return false;
+        const auto& boundingBox = instance.terrainAsset->getAxisAlignedBoundingBox();
+        float dontCare = 0;
+
+        return flan::core::RayAABBIntersectionTest( boundingBox, ray, hitDistance, dontCare );
     }
 };
