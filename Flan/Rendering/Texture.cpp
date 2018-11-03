@@ -150,5 +150,5 @@ void Texture::copySubresourceAsynchronous( CommandList* cmdList, const Texture* 
 
 void Texture::updateSubresource( CommandList* cmdList, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData )
 {
-
+    flan::rendering::UpdateSubresourceImpl( cmdList->getNativeCommandList(), nativeTextureObject.get(), copyBox, regionWidth, regionHeight, regionComposition, regionData );
 }
