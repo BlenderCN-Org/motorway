@@ -67,6 +67,19 @@ float3 ToneMappingFilmic_Insomniac( float3 Color )
     return ( scale * Color );
 }
 
+float A = 0.15;
+float B = 0.50;
+float C = 0.10;
+float D = 0.20;
+float E = 0.02;
+float F = 0.30;
+float W = 11.2;
+
+float3 Uncharted2Tonemap(float3 x)
+{
+     return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+}
+
 float Vignette( const in float2 fragCoordinates )
 {
 	return 0.3 + 0.7 * pow( 16.0 * fragCoordinates.x * fragCoordinates.y * ( 1.0 - fragCoordinates.x ) * ( 1.0 - fragCoordinates.y ), 0.2 );
@@ -114,7 +127,12 @@ float4 EntryPointPS( psDataScreenQuad_t p ) : SV_TARGET0
     finalColor.rgb = lerp( finalColor.rgb, bloomLuminance.rgb, g_BloomStrength );
 
     // Apply Tonemapping
-	finalColor.rgb = ToneMappingFilmic_Insomniac( finalColor.rgb * currentExposure.EngineLuminanceFactor );
+	 float ExposureBias = 2.0f;
+     float3 curr = Uncharted2Tonemap(ExposureBias*finalColor.rgb * currentExposure.EngineLuminanceFactor);
+     float3 whiteScale = 1.0f/Uncharted2Tonemap(W);
+     float3 color = curr*whiteScale;
+    
+    //finalColor.rgb = ToneMappingFilmic_Insomniac( finalColor.rgb * currentExposure.EngineLuminanceFactor );
     
     // Do linear to SRGB colorspace conversion
     finalColor.rgb = accurateLinearToSRGB( finalColor.rgb );
