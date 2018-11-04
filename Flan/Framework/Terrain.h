@@ -52,6 +52,7 @@ public:
     // TODO Crap API for quick prototyping
     void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
     void uploadHeightmap( CommandList* cmdList );
+    void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
     Mesh* GRASS_TEST;
 
@@ -72,6 +73,7 @@ private:
     uint32_t                            scalePatchY;
     uint32_t                            heightmapDimension;
 
+    bool                                isEditionInProgress;
     float                               heightmapHighestVertex;
     float                               heightmapLowestVertex;
 
@@ -87,4 +89,7 @@ private:
     std::unique_ptr<Buffer>             vertexBuffer[2];
     std::unique_ptr<Buffer>             indiceBuffer;
     std::unique_ptr<VertexArrayObject>  vertexArrayObject[2];
+
+private:
+    void CalcYBounds( const glm::vec3& bottomLeft, const glm::vec3& topRight, glm::vec3& output );
 };

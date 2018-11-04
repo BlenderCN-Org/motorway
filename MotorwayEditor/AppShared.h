@@ -35,6 +35,7 @@ class AudioDevice;
 class FileSystemNative;
 class DynamicsWorld;
 class Scene;
+class CommandListPool;
 
 #if FLAN_DEVBUILD
 class GraphicsProfiler;
@@ -62,6 +63,7 @@ extern FileSystemNative*        g_SaveFileSystem;
 extern FileSystemNative*        g_DataFileSystem;
 
 extern Scene*                   g_CurrentScene;
+extern CommandListPool*         g_EditorCmdListPool;
 
 #if FLAN_DEVBUILD
 extern FileSystemWatchdog*      g_FileSystemWatchdog;

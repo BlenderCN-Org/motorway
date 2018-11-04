@@ -106,6 +106,9 @@
 #include <Framework/Scene.h>
 #include "EditorInterface.h"
 
+#include <Core/Allocators/AllocationHelpers.h>
+#include <Core/Allocators/LinearAllocator.h>
+
 static constexpr fnChar_t* const PROJECT_NAME = ( fnChar_t* const )FLAN_STRING( "MotorwayEditor" );
 
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -117,7 +120,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
-FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", true, bool )
+FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", false, bool )
 FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
@@ -129,14 +132,9 @@ FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
 
 FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seconds)", 120.0f, float )
 
-#include <Core/Allocators/AllocationHelpers.h>
-#include <Core/Allocators/LinearAllocator.h>
-
 // CRT allocated memory for base heap allocation
 char                g_BaseBuffer[1024];
 Timer               g_EditorAutoSaveTimer;
-
-CommandListPool*    g_EditorCmdListPool = nullptr;
 
 void*               g_AllocatedTable;
 LinearAllocator*    g_GlobalAllocator;

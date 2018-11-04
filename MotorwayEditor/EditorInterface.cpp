@@ -993,6 +993,8 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 }
 #endif
 
+#include <Core/ScopedTimer.h>
+
 void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
 {
     float* const vertices = terrain->getHeightmapValues();
@@ -1052,6 +1054,9 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
     }
 
     // Recompute patchs bounds (update patch culling data)
-    terrain->computePatchsBounds();
+    {
+        ScopedTimer timer( FLAN_STRING( "Scoped Recompute" ) );
+        terrain->computePatchsBounds();
+    }
     terrain->uploadHeightmap( cmdList );
 }

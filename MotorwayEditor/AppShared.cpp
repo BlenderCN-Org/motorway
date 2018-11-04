@@ -61,6 +61,7 @@ FileSystemNative*        g_SaveFileSystem( nullptr );
 FileSystemNative*        g_DataFileSystem( nullptr );
 DynamicsWorld*           g_DynamicsWorld( nullptr );
 Scene*                   g_CurrentScene( nullptr );
+CommandListPool*         g_EditorCmdListPool( nullptr );
 
 #if FLAN_DEVBUILD
 FileSystemWatchdog*      g_FileSystemWatchdog( nullptr );

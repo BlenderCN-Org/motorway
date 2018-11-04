@@ -25,30 +25,10 @@
 #include <Rendering/Texture.h>
 #include <Rendering/Buffer.h>
 
+#include <Core/ScopedTimer.h>
+
 #include "Material.h"
 #include "Mesh.h"
-
-glm::vec2 CalcYBounds( const float* texels, const int width, const glm::vec3& bottomLeft, const glm::vec3& topRight )
-{
-    float max = -std::numeric_limits<float>::max();
-    float min = std::numeric_limits<float>::max();
-
-    int bottomLeftX = ( bottomLeft.x == 0 ) ? ( int )bottomLeft.x : ( ( int )bottomLeft.x - 1 );
-    int bottomLeftY = ( bottomLeft.z == 0 ) ? ( int )bottomLeft.z : ( ( int )bottomLeft.z - 1 );
-    int topRightX = ( topRight.x >= width ) ? ( int )topRight.x : ( ( int )topRight.x + 1 );
-    int topRightY = ( topRight.z >= width ) ? ( int )topRight.z : ( ( int )topRight.z + 1 );
-
-    for ( int y = bottomLeftY; y <= topRightY; y++ ) {
-        for ( int x = bottomLeftX; x <= topRightX; x++ ) {
-            float texel = texels[static_cast< int >( y * width + x )];
-
-            max = std::max( max, texel );
-            min = std::min( min, texel );
-        }
-    }
-
-    return glm::vec2( min, max );
-}
 
 Terrain::Terrain( const fnString_t& TerrainName )
     : name( TerrainName )
@@ -59,6 +39,7 @@ Terrain::Terrain( const fnString_t& TerrainName )
     , heightmapHighestVertex( std::numeric_limits<float>::min() )
     , heightmap( nullptr )
     , heightmapTexture( nullptr )
+    , isEditionInProgress( false )
     , vertexBuffer{ nullptr, nullptr }
     , indiceBuffer( nullptr )
     , currentVboIndex( 0 )
@@ -125,8 +106,9 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
 
     // Update Terrain Bounding Geometry
     const int lod0VertexCount = static_cast<int>( scalePatchX * scalePatchY );
-    glm::vec2 zBounds = CalcYBounds( editorHeightmap, heightmapWidth, vertices[0].positionWorldSpace, vertices[lod0VertexCount - 1].positionWorldSpace );
-    flan::core::CreateAABB( aabb, glm::vec3( 0, 0, 0 ), glm::vec3( heightmapWidth / 2.0f, zBounds.y - zBounds.x, heightmapHeight / 2.0f ) );
+    glm::vec3 yBounds;
+    CalcYBounds( vertices[0].positionWorldSpace, vertices[lod0VertexCount - 1].positionWorldSpace, yBounds );
+    flan::core::CreateAABB( aabb, glm::vec3( 0, 0, 0 ), glm::vec3( heightmapWidth / 2.0f, yBounds.y - yBounds.x, heightmapHeight / 2.0f ) );
 
     meshIndiceCount = static_cast< uint32_t >( ( scalePatchX - 1 ) * ( scalePatchY - 1 ) ) * 4;
 
@@ -307,8 +289,19 @@ void Terrain::uploadHeightmap( CommandList* cmdList )
     cpyBox.mipLevel = 0;
 
     heightmapTexture->updateSubresource( cmdList, cpyBox, 512, 512, 1 * sizeof( float ), editorHeightmap );
-    vertexBuffer[currentVboIndex]->updateAsynchronous( cmdList, vertices.data(), vertices.size() * sizeof( VertexLayout ) );
+}
 
+void Terrain::uploadPatchBounds( CommandList* cmdList )
+{
+    TextureCopyBox cpyBox;
+    cpyBox.x = 0;
+    cpyBox.y = 0;
+    cpyBox.arrayIndex = 0;
+    cpyBox.mipLevel = 0;
+
+    heightmapTexture->updateSubresource( cmdList, cpyBox, 512, 512, 1 * sizeof( float ), editorHeightmap );
+
+    vertexBuffer[currentVboIndex]->updateAsynchronous( cmdList, vertices.data(), vertices.size() * sizeof( VertexLayout ) );
     currentVboIndex = ( currentVboIndex == 0 ) ? 1 : 0;
 }
 
@@ -317,15 +310,37 @@ void Terrain::computePatchsBounds()
     int i = 0;
     for ( uint32_t y = 0; y < ( scalePatchY - 1 ); y++ ) {
         for ( uint32_t x = 0; x < ( scalePatchX - 1 ); x++ ) {
-            // Compute Tile Bounding Sphere
             auto& vertex0 = vertices[indices[i + 0]];
             auto& vertex3 = vertices[indices[i + 3]];
-
-            glm::vec2 boundsZ = CalcYBounds( editorHeightmap, heightmapDimension, vertex0.positionWorldSpace, vertex3.positionWorldSpace );
-            vertex0.patchBoundsAndSkirtIndex = glm::vec3( boundsZ, 5.0f );
+    
+            CalcYBounds( vertex0.positionWorldSpace, vertex3.positionWorldSpace, vertex0.patchBoundsAndSkirtIndex );
 
             i += 4;
         }
     }
+}
 
+void Terrain::CalcYBounds( const glm::vec3& bottomLeft, const glm::vec3& topRight, glm::vec3& output )
+{
+    const float hmapDimensionFloat = static_cast< float >( heightmapDimension );
+
+    float max = -std::numeric_limits<float>::max();
+    float min = std::numeric_limits<float>::max();
+
+    const int bottomLeftX = ( bottomLeft.x == 0.0f ) ? ( int )bottomLeft.x : ( ( int )bottomLeft.x - 1 );
+    const int bottomLeftY = ( bottomLeft.z == 0.0f ) ? ( int )bottomLeft.z : ( ( int )bottomLeft.z - 1 );
+    const int topRightX = ( topRight.x >= hmapDimensionFloat ) ? ( int )topRight.x : ( ( int )topRight.x + 1 );
+    const int topRightY = ( topRight.z >= hmapDimensionFloat ) ? ( int )topRight.z : ( ( int )topRight.z + 1 );
+
+    for ( int y = bottomLeftY; y <= topRightY; y++ ) {
+        for ( int x = bottomLeftX; x <= topRightX; x++ ) {
+            float texel = editorHeightmap[static_cast< int >( y * heightmapDimension + x )];
+
+            max = std::max( max, texel );
+            min = std::min( min, texel );
+        }
+    }
+
+    output.x = min;
+    output.y = max;
 }
