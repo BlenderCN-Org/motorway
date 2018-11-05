@@ -609,7 +609,7 @@ FLAN_LAYERS_READ
 
 float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)  
 {  
-    float depth = 0.2;  
+    float depth = 0.2;
     float ma = max(texture1.a + a1, texture2.a + a2) - depth;  
   
     float b1 = max(texture1.a + a1 - ma, 0);  
@@ -651,6 +651,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     static const float Falloff = 2.0f;
     static const float InvTransitionDistance = 1.0f / TransitionDistance;
     
+    float slope = acos( N.y );
+
     float distanceWS = distance( VertexStage.positionWS.xyz, WorldPosition.xyz );
     distanceWS *= InvTransitionDistance;
     distanceWS = saturate( pow( distanceWS, Falloff ) );
@@ -687,18 +689,17 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	BaseLayer.BaseColor = 
     TerrainDepthBlend(
         float4( accurateSRGBToLinear( baseColor.rgb ), baseColor.a ), 1.0f - blendFactor,
-        float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor ); //float3( 0.42, 0.42, 0.42 );
-	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
-	BaseLayer.Roughness = 
-    TerrainDepthBlend(
+        float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor );
+        
+	BaseLayer.Reflectance = 0.25f; // baseColor.a;	
+	BaseLayer.Roughness = TerrainDepthBlend(
         float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor,
         float4( normalAndRoughness2.aaa, baseColor2.a ), blendFactor ).r;
-        //lerp( normalAndRoughness.a, normalAndRoughness2.a, blendFactor );
+        
 	BaseLayer.Metalness = 0.0f;
 	BaseLayer.AmbientOcclusion = 1.0f;
 	BaseLayer.Emissivity = 0.0f;
-	BaseLayer.Normal = 
-    TerrainDepthBlend(
+	BaseLayer.Normal =  TerrainDepthBlend(
         float4( normalize( normalAndRoughness.rgb * 2.0f - 1.0f  ), baseColor.a ), 1.0f - blendFactor,
         float4( normalize( normalAndRoughness2.rgb * 2.0f - 1.0f ), baseColor2.a ), blendFactor );
         
