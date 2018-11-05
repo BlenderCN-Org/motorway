@@ -4,7 +4,7 @@
 
 cbuffer PerPass : register( b2 )
 {
-   uint2 g_BackbufferDimension;
+   uint2  g_BackbufferDimension;
 };
 
 // Pixel Stage Input Layouts
@@ -688,7 +688,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     TerrainDepthBlend(
         float4( accurateSRGBToLinear( baseColor.rgb ), baseColor.a ), 1.0f - blendFactor,
         float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor ); //float3( 0.42, 0.42, 0.42 );
-	BaseLayer.Reflectance = 0.0f; // baseColor.a;	
+	BaseLayer.Reflectance = 1.0f; // baseColor.a;	
 	BaseLayer.Roughness = 
     TerrainDepthBlend(
         float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor,
@@ -974,8 +974,8 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Atmospheric Scattering Contribution
 	float3 atmosphereTransmittance = float3( 0, 0, 0 );
 
-    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, 1.0f ) * 0.05f;
-    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z, 1.0f ) * 0.05f;
+    float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, 1.0f );
+    float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z, 1.0f );
       
 	float3 atmosphereInScatter = GetSkyRadianceToPoint
 	( 

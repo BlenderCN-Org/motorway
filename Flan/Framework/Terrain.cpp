@@ -288,19 +288,11 @@ void Terrain::uploadHeightmap( CommandList* cmdList )
     cpyBox.arrayIndex = 0;
     cpyBox.mipLevel = 0;
 
-    heightmapTexture->updateSubresource( cmdList, cpyBox, 512, 512, 1 * sizeof( float ), editorHeightmap );
+    heightmapTexture->updateSubresource( cmdList, cpyBox, heightmapDimension, heightmapDimension, 1 * sizeof( float ), editorHeightmap );
 }
 
 void Terrain::uploadPatchBounds( CommandList* cmdList )
 {
-    TextureCopyBox cpyBox;
-    cpyBox.x = 0;
-    cpyBox.y = 0;
-    cpyBox.arrayIndex = 0;
-    cpyBox.mipLevel = 0;
-
-    heightmapTexture->updateSubresource( cmdList, cpyBox, 512, 512, 1 * sizeof( float ), editorHeightmap );
-
     vertexBuffer[currentVboIndex]->updateAsynchronous( cmdList, vertices.data(), vertices.size() * sizeof( VertexLayout ) );
     currentVboIndex = ( currentVboIndex == 0 ) ? 1 : 0;
 }

@@ -106,11 +106,11 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 	output.Skirt = (uint)ip[0].tileInfos.z;
    
 #ifdef PH_DEPTH_WRITE
-    output.EdgeTessFactor[0] = 32.0f;
-    output.EdgeTessFactor[1] = 32.0f;
-    output.EdgeTessFactor[2] = 32.0f;
-    output.EdgeTessFactor[3] = 32.0f;
-    output.InsideTessFactor[0] = 32.0f;
+    output.EdgeTessFactor[0] = 4.0f;
+    output.EdgeTessFactor[1] = 4.0f;
+    output.EdgeTessFactor[2] = 4.0f;
+    output.EdgeTessFactor[3] = 4.0f;
+    output.InsideTessFactor[0] = 4.0f;
     output.InsideTessFactor[1] = output.InsideTessFactor[0];
     
     return output;

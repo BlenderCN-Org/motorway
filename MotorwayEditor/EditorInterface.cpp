@@ -77,6 +77,7 @@ static int panelId = 0;
 
 static int g_TerrainEditorEditionRadius = 8; // In vertices count; 
 static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
+static int g_TerrainEditorBrushType = 0; // TODO Make it enum! Square Default
 static float g_TerrainEditorEditionHeight = 0.01f;
 static float g_TerrainEditorEditionHardness = 1.0f;
 
@@ -948,6 +949,9 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                     ImGui::DragFloat( "Height", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
                     ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 1.0f );
 
+                    ImGui::Text( "Shape" );
+                    ImGui::RadioButton( "Square", &g_TerrainEditorBrushType, 0 );
+                    ImGui::RadioButton( "Circle", &g_TerrainEditorBrushType, 1 );
                     ImGui::TreePop();
                 }
             }
@@ -995,6 +999,17 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 
 #include <Core/ScopedTimer.h>
 
+bool IsInRadius( const float rSquared, const int x, const int y, const int pointX, const int pointY )
+{
+    auto xSquared = ( pointX - x );
+    xSquared *= xSquared;
+
+    auto ySquared = ( pointY - y );
+    ySquared *= ySquared;
+
+    return ( xSquared + ySquared) < rSquared;
+}
+
 void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
 {
     float* const vertices = terrain->getHeightmapValues();
@@ -1018,7 +1033,6 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
 
     if ( g_TerrainEditorEditionMode == 2 ) {
         // Basic box filtering-ish smoothing
-
         const int sampleCount = ( hiY - lowY ) * ( hiX - lowX );
 
         float average = 0.0f;
@@ -1038,25 +1052,33 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
             }
         }
     } else {
+        float k = g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius;
+        
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {
+                float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) );
+                distance /= ( float )( g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius );
+               
                 int index = ( x + y * 512 );
                 float& vertexToEdit = vertices[index];
+                
+                if ( g_TerrainEditorBrushType == 1 
+                  && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                    continue;
+                } else {
+                    // For square brush ignore distance attenuation
+                    distance = 1.0f;
+                }
 
                 if ( g_TerrainEditorEditionMode == 0 )
-                    vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness );
+                    vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
                 else if ( g_TerrainEditorEditionMode == 1 )
-                    vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness );
+                    vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
 
                 terrain->setVertexHeight( index, vertexToEdit );
             }
         }
     }
 
-    // Recompute patchs bounds (update patch culling data)
-    {
-        ScopedTimer timer( FLAN_STRING( "Scoped Recompute" ) );
-        terrain->computePatchsBounds();
-    }
     terrain->uploadHeightmap( cmdList );
 }

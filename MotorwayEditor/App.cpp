@@ -139,6 +139,8 @@ Timer               g_EditorAutoSaveTimer;
 void*               g_AllocatedTable;
 LinearAllocator*    g_GlobalAllocator;
 
+bool                g_IsEditingTerrain = false;
+
 void CreateSubsystems()
 {
     g_AllocatedTable = flan::core::malloc( 1024 * 1024 * 1024 );
@@ -513,7 +515,20 @@ int InitializeSubsystems()
                     EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
                     cmdList->endCommandList( g_RenderDevice );
                     cmdList->playbackCommandList( g_RenderDevice );
+
+                    g_IsEditingTerrain = true;
                 }
+            } else if ( g_IsEditingTerrain && PickedNode != nullptr ) {
+                // Recompute visibility
+                auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+                cmdList->beginCommandList( g_RenderDevice );
+                auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
+                terrainSceneNode->instance.terrainAsset->computePatchsBounds();
+                terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
+                cmdList->endCommandList( g_RenderDevice );
+                cmdList->playbackCommandList( g_RenderDevice );
+
+                g_IsEditingTerrain = false;
             }
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
