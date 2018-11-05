@@ -265,6 +265,11 @@ float* Terrain::getHeightmapValues() const
     return editorHeightmap;
 }
 
+float* Terrain::getHeightmapValuesHeightScaled() const
+{
+    return heightmap;
+}
+
 float Terrain::getHeightmapLowestVertex() const
 {
     return heightmapLowestVertex;

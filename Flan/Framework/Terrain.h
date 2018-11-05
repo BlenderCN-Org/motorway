@@ -46,6 +46,8 @@ public:
     const uint32_t                      getIndiceCount() const;
     const AABB&                         getAxisAlignedBoundingBox() const;
     float*                              getHeightmapValues() const;
+    float*                              getHeightmapValuesHeightScaled() const;
+    
     float                               getHeightmapLowestVertex() const;
     float                               getHeightmapHighestVertex() const;
 

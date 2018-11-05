@@ -329,7 +329,7 @@ static void DisplayMenuBar()
                 float minH = terrain->getHeightmapLowestVertex();
                 float maxH = terrain->getHeightmapHighestVertex();
 
-                auto shape = new btHeightfieldTerrainShape( hmapTexels.width, hmapTexels.height, terrain->getHeightmapValues(), 1.0f, minH, maxH, 1, PHY_FLOAT, false );
+                auto shape = new btHeightfieldTerrainShape( hmapTexels.width, hmapTexels.height, terrain->getHeightmapValuesHeightScaled(), 1.0f, minH, maxH, 1, PHY_FLOAT, false );
 
                 float offset = ( minH + maxH ) * 0.5f;           
                 sceneNode->rigidBody = new RigidBody( 0.0f, glm::vec3( 256, offset, 256 ), sceneNode->transform.getWorldRotation() );
