@@ -30,7 +30,7 @@ AutomaticExposureModule::AutomaticExposureModule()
     : exposureTarget( 0 )
 {
     // Default Exposure Infos
-    autoExposureInfos.EngineLuminanceFactor = 0.70f;
+    autoExposureInfos.EngineLuminanceFactor = 0.0f;
     autoExposureInfos.TargetLuminance = 0.5f;
     autoExposureInfos.MinLuminanceLDR = 0.0f;
     autoExposureInfos.MaxLuminanceLDR = 1.0f;

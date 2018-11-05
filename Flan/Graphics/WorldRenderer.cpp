@@ -415,12 +415,6 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
         terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor128, i, 0, i, 1 );
     }
 
-    auto terrainBaseColor64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapbasecolor0.dds" ) );
-    auto& terrainBaseColor64Desc = terrainBaseColor64->getDescription();
-    for ( unsigned int i = 0; i < terrainBaseColor64Desc.mipCount; i++ ) {
-        terrainStreamedBaseColor->copySubresource( renderDevice, terrainBaseColor64, i, 0, i, 2 );
-    }
-
     auto terrainNormal0 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm2.dds" ) );
     auto& terrainNormalDesc = terrainNormal0->getDescription();
     for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
@@ -430,11 +424,6 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     auto terrainNormal128 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm1.dds" ) );
     for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
         terrainStreamedNormal->copySubresource( renderDevice, terrainNormal128, i, 0, i, 1 );
-    }
-
-    auto terrainNormal64 = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/hmapnm0.dds" ) );
-    for ( unsigned int i = 0; i < terrainNormalDesc.mipCount; i++ ) {
-        terrainStreamedNormal->copySubresource( renderDevice, terrainNormal64, i, 0, i, 2 );
     }
 
     terrainStreaming.terrainMaterialStreaming[0].terrainSampledSplatIndexes = 0;
