@@ -111,6 +111,7 @@
 
 static constexpr fnChar_t* const PROJECT_NAME = ( fnChar_t* const )FLAN_STRING( "MotorwayEditor" );
 
+// Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
 FLAN_ENV_OPTION_LIST( WindowMode, WIN_MODE_OPTION_LIST )
 
@@ -121,6 +122,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", false, bool )
+
 FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
 FLAN_ENV_VAR( EnableTemporalAA, "Enables Temporal Antialiasing [false/true]", false, bool )
@@ -152,22 +154,21 @@ void CreateSubsystems()
     g_TaskManager = flan::core::allocate<TaskManager>( g_GlobalAllocator );
     g_MainDisplaySurface = flan::core::allocate<DisplaySurface>( g_GlobalAllocator, PROJECT_NAME );
 
-    g_InputReader = ( flan::core::allocate<InputReader>( g_GlobalAllocator ) );
-    g_InputMapper = ( flan::core::allocate<InputMapper>( g_GlobalAllocator ) );
-    g_RenderDevice = ( flan::core::allocate<RenderDevice>( g_GlobalAllocator ) );
-    g_WorldRenderer = ( flan::core::allocate<WorldRenderer>( g_GlobalAllocator, g_GlobalAllocator ) );
-    g_ShaderStageManager = ( flan::core::allocate<ShaderStageManager>( g_GlobalAllocator, g_RenderDevice, g_VirtualFileSystem ) );
-    g_GraphicsAssetManager = ( flan::core::allocate<GraphicsAssetManager>( g_GlobalAllocator, g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_GlobalAllocator ) );
-    g_DrawCommandBuilder = ( flan::core::allocate<DrawCommandBuilder>( g_GlobalAllocator ) );
-    g_RenderableEntityManager = ( flan::core::allocate<RenderableEntityManager>( g_GlobalAllocator ) );
-    g_AudioDevice = ( flan::core::allocate<AudioDevice>( g_GlobalAllocator ) );
-    g_DynamicsWorld = ( flan::core::allocate<DynamicsWorld>( g_GlobalAllocator ) );
-    g_CurrentScene = ( flan::core::allocate<Scene>( g_GlobalAllocator ) );
+    g_InputReader = flan::core::allocate<InputReader>( g_GlobalAllocator );
+    g_InputMapper = flan::core::allocate<InputMapper>( g_GlobalAllocator );
+    g_RenderDevice = flan::core::allocate<RenderDevice>( g_GlobalAllocator );
+    g_WorldRenderer = flan::core::allocate<WorldRenderer>( g_GlobalAllocator, g_GlobalAllocator );
+    g_ShaderStageManager = flan::core::allocate<ShaderStageManager>( g_GlobalAllocator, g_RenderDevice, g_VirtualFileSystem );
+    g_GraphicsAssetManager = flan::core::allocate<GraphicsAssetManager>( g_GlobalAllocator, g_RenderDevice, g_ShaderStageManager, g_VirtualFileSystem, g_GlobalAllocator );
+    g_DrawCommandBuilder = flan::core::allocate<DrawCommandBuilder>( g_GlobalAllocator );
+    g_RenderableEntityManager = flan::core::allocate<RenderableEntityManager>( g_GlobalAllocator );
+    g_AudioDevice = flan::core::allocate<AudioDevice>( g_GlobalAllocator );
+    g_DynamicsWorld = flan::core::allocate<DynamicsWorld>( g_GlobalAllocator );
+    g_CurrentScene = flan::core::allocate<Scene>( g_GlobalAllocator );
 
 #if FLAN_DEVBUILD
-    //g_GraphicsProfiler =( new GraphicsProfiler() );
-    g_FileSystemWatchdog = ( flan::core::allocate<FileSystemWatchdog>( g_GlobalAllocator ) );
-    g_TransactionHandler = ( flan::core::allocate<TransactionHandler>( g_GlobalAllocator ) );
+    g_FileSystemWatchdog = flan::core::allocate<FileSystemWatchdog>( g_GlobalAllocator );
+    g_TransactionHandler = flan::core::allocate<TransactionHandler>( g_GlobalAllocator );
     g_PhysicsDebugDraw = flan::core::allocate<PhysicsDebugDraw>( g_GlobalAllocator );
 #endif
 }
@@ -195,6 +196,34 @@ void Shutdown()
     g_VirtualFileSystem->unmount( g_DataFileSystem );
 
     g_FileLogger->close();
+
+#if FLAN_DEVBUILD
+    flan::core::free( g_GlobalAllocator, g_PhysicsDebugDraw );
+    flan::core::free( g_GlobalAllocator, g_TransactionHandler );
+    flan::core::free( g_GlobalAllocator, g_FileSystemWatchdog );
+#endif
+
+    flan::core::free( g_GlobalAllocator, g_CurrentScene );
+    flan::core::free( g_GlobalAllocator, g_DynamicsWorld );
+    flan::core::free( g_GlobalAllocator, g_AudioDevice );
+    flan::core::free( g_GlobalAllocator, g_RenderableEntityManager );
+    flan::core::free( g_GlobalAllocator, g_DrawCommandBuilder );
+    flan::core::free( g_GlobalAllocator, g_GraphicsAssetManager );
+    flan::core::free( g_GlobalAllocator, g_ShaderStageManager );
+    flan::core::free( g_GlobalAllocator, g_WorldRenderer );
+    flan::core::free( g_GlobalAllocator, g_RenderDevice );
+    flan::core::free( g_GlobalAllocator, g_InputMapper );
+    flan::core::free( g_GlobalAllocator, g_InputReader );
+    flan::core::free( g_GlobalAllocator, g_MainDisplaySurface );
+    flan::core::free( g_GlobalAllocator, g_TaskManager );
+    flan::core::free( g_GlobalAllocator, g_VirtualFileSystem );
+    flan::core::free( g_GlobalAllocator, g_FileLogger );
+
+    // NOTE The Global Allocator should not be deleted (since it is allocated by the statically allocated g_BaseBuffer)
+    g_GlobalAllocator->clear();
+    g_GlobalAllocator->~LinearAllocator();
+
+    free( g_AllocatedTable );
 }
 
 Ray GenerateMousePickingRay( const ImGuiIO& io, const Camera::Data& cameraData )
@@ -358,8 +387,8 @@ int InitializeSubsystems()
     FLAN_CLOG << "SaveData folder at : '" << aloneSaveFolder << "'" << std::endl;
     FLAN_CLOG << "Mounting filesystems..." << std::endl;
 
-    g_SaveFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, aloneSaveFolder ) );
-    g_DataFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./data/" ) ) );
+    g_SaveFileSystem = flan::core::allocate<FileSystemNative>( g_GlobalAllocator, aloneSaveFolder );
+    g_DataFileSystem = flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./data/" ) );
 
     g_VirtualFileSystem->mount( g_SaveFileSystem, FLAN_STRING( "SaveData" ), UINT64_MAX );
     g_VirtualFileSystem->mount( g_DataFileSystem, FLAN_STRING( "GameData" ), 1 );
@@ -367,7 +396,7 @@ int InitializeSubsystems()
 #if FLAN_DEVBUILD
     FLAN_CLOG << "Mounting devbuild filesystem..." << std::endl;
 
-    g_DevFileSystem = ( flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./dev/" ) ) );
+    g_DevFileSystem = flan::core::allocate<FileSystemNative>( g_GlobalAllocator, FLAN_STRING( "./dev/" ) );
     g_VirtualFileSystem->mount( g_DevFileSystem, FLAN_STRING( "GameData" ), 0 );
 #endif
 
