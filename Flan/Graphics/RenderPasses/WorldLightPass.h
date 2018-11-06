@@ -60,6 +60,17 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
         uint32_t __PADDING__[2];
     };
 
+    struct PassBuffer
+    {
+        glm::uvec2 backbufferDimension;
+        float      brushRadius;
+        uint32_t   toggleBrush;
+        glm::vec3  mouseCoordinates;
+        uint32_t   __PADDING__;
+        glm::vec3  brushColor;
+        uint32_t   __PADDING2__;
+    };
+
     auto RenderPass = renderPipeline->addRenderPass(
         "Opaque Lighting Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
@@ -134,7 +145,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
             BufferDesc rtDimensionBuffer;
             rtDimensionBuffer.Type = BufferDesc::CONSTANT_BUFFER;
-            rtDimensionBuffer.Size = sizeof( glm::uvec4 );
+            rtDimensionBuffer.Size = sizeof( PassBuffer );
 
             passData.buffers[2] = renderPipelineBuilder->allocateBuffer( rtDimensionBuffer );
 
@@ -182,7 +193,6 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             }
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matSamplerDesc );
-
 
             SamplerDesc shadowComparisonSamplerDesc;
             shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
@@ -245,16 +255,20 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             csmShadowMap->bind( cmdList, TEXTURE_SLOT_INDEX_CSM_TEST, SHADER_STAGE_PIXEL );
 
             // Bind buffer
-            glm::uvec2 rtDimensions;
-
             auto& pipelineDimensions = renderPipelineResources->getActiveViewportGeometry();
             cmdList->setViewportCmd( pipelineDimensions );
 
-            rtDimensions.x = pipelineDimensions.Width;
-            rtDimensions.y = pipelineDimensions.Height;
+            PassBuffer passBuffer;
+            passBuffer.backbufferDimension.x = pipelineDimensions.Width;
+            passBuffer.backbufferDimension.y = pipelineDimensions.Height;
+            passBuffer.brushRadius = 8.0f;
+            passBuffer.toggleBrush = 1u;
+
+            FLAN_IMPORT_VAR_PTR( dev_TerrainMousePosition, glm::vec3 )
+            passBuffer.mouseCoordinates = *dev_TerrainMousePosition;
 
             auto rtBufferData = renderPipelineResources->getBuffer( passData.buffers[2] );
-            rtBufferData->updateAsynchronous( cmdList, &rtDimensions, sizeof( glm::uvec2 ) );
+            rtBufferData->updateAsynchronous( cmdList, &passBuffer, sizeof( PassBuffer ) );
             rtBufferData->bind( cmdList, 2, SHADER_STAGE_PIXEL );
 
             // Get Constant Buffer 

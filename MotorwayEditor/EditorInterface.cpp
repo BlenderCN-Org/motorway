@@ -85,6 +85,7 @@ FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, floa
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
 FLAN_DEV_VAR( dev_IsInputText, "Is Using a Text Input", false, bool )
+FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Position)", {}, glm::vec3 )
 
 static void RebuildRigidBody( RigidBody* rigidBody )
 {
@@ -542,6 +543,9 @@ bool VectorOfStringGetter( void* data, int n, const char** out_text )
 
 void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 {
+    std::string terrainEdPos = "TerrainEd Position: " + std::to_string( dev_TerrainMousePosition.x ).substr( 0, 6 ) + " " + std::to_string( dev_TerrainMousePosition.y ).substr( 0, 6 ) + " " + std::to_string( dev_TerrainMousePosition.z ).substr( 0, 6 );
+    g_WorldRenderer->drawDebugText( terrainEdPos, 0.3f, 0.0f, 0.17f );
+
     const auto& nativeContext = g_RenderDevice->getNativeRenderContext();
     const auto nativeCmdList = cmdList->getNativeCommandList();
     cmdList->beginCommandList( g_RenderDevice );
@@ -1026,10 +1030,14 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
         marchIteration++;
     }
 
+    dev_TerrainMousePosition = glm::vec3( rayMarch.x, pickedHeight, rayMarch.z );
+
     auto lowX = std::max( 0, abs( int( rayMarch.x ) ) - g_TerrainEditorEditionRadius );
     auto lowY = std::max( 0, abs( int( rayMarch.z ) ) - g_TerrainEditorEditionRadius );
     auto hiX = std::min( 512, abs( int( rayMarch.x ) ) + g_TerrainEditorEditionRadius );
     auto hiY = std::min( 512, abs( int( rayMarch.z ) ) + g_TerrainEditorEditionRadius );
+
+    float k = g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius;
 
     if ( g_TerrainEditorEditionMode == 2 ) {
         // Basic box filtering-ish smoothing
@@ -1048,16 +1056,20 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {
                 int index = ( x + y * 512 );
+
+                if ( g_TerrainEditorBrushType == 1
+                  && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                    continue;
+                }
+
                 terrain->setVertexHeight( index, average );
             }
         }
     } else {
-        float k = g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius;
-        
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {
-                float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) );
-                distance /= ( float )( g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius );
+                // Attenuation factor
+                float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) ) / k;
                
                 int index = ( x + y * 512 );
                 float& vertexToEdit = vertices[index];

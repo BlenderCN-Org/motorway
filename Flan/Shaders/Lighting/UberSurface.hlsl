@@ -5,6 +5,11 @@
 cbuffer PerPass : register( b2 )
 {
    uint2  g_BackbufferDimension;
+   float  g_TerrainEditorBrushSize;
+   uint   g_TerrainEditorToggleBrush;
+   float3 g_MouseCoordinates;
+   uint   PADDING_PER_PASS;
+   float3 g_BrushColor;
 };
 
 // Pixel Stage Input Layouts
@@ -830,6 +835,16 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float4 LightContribution = float4( 0, 0, 0, 1 );
     float3 L = float3( 0, 0, 0 );
     
+#if PA_EDITOR
+#if PA_TERRAIN
+	//if ( g_TerrainEditorToggleBrush == 1u ) {
+		float brushDistance = length( VertexStage.positionWS - g_MouseCoordinates ) / g_TerrainEditorBrushSize;
+		float brushStrength = ( brushDistance > 1.0f ) ? 0.0f : brushDistance;
+		LightContribution.rgb += float3( 1, 0, 0 ) * brushStrength;
+	//}
+#endif
+#endif
+	
 #if PA_SHADING_MODEL_SHADING_EMISSIVE
     LightContribution.rgb += DoShading( L, surface );
     LightContribution.rgb += ( LightContribution.rgb * BaseLayer.Emissivity );
@@ -1049,7 +1064,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	output.Buffer0 = LightContribution;
 	output.Buffer1 = Velocity;
 	output.Buffer2 = float4( BaseLayer.SSStrength, 0, 0, 0 );
-	
+
 	return output;
 }
 
