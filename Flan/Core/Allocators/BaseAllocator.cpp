@@ -31,6 +31,8 @@ BaseAllocator::BaseAllocator( const std::size_t size, void* baseAddress )
 
 BaseAllocator::~BaseAllocator()
 {
+    FLAN_CLOG << "DEBUG: allocationCount = " << allocationCount << " | memoryUsage = " << memoryUsage << std::endl;
+
     baseAddress = nullptr;
     memorySize = 0;
     memoryUsage = 0;

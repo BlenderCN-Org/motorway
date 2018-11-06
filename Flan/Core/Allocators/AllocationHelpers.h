@@ -29,7 +29,7 @@ namespace flan
     {
         inline static void* AlignForward( void* address, const uint8_t alignment )
         {
-            return ( void* )( *( (uint8_t*)( address ) + static_cast<uint8_t>( alignment - 1 ) ) 
+            return ( void* )( static_cast<uint64_t>( *( (uint8_t*)( address ) + static_cast<uint8_t>( alignment - 1 ) ) )
                               & static_cast<uint8_t>( ~( alignment - 1 ) ) );
         }
 
