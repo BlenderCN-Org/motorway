@@ -31,7 +31,7 @@ AutomaticExposureModule::AutomaticExposureModule()
 {
     // Default Exposure Infos
     autoExposureInfos.EngineLuminanceFactor = 0.0f;
-    autoExposureInfos.TargetLuminance = 0.5f;
+    autoExposureInfos.TargetLuminance = 0.6f;
     autoExposureInfos.MinLuminanceLDR = 0.0f;
     autoExposureInfos.MaxLuminanceLDR = 1.0f;
     autoExposureInfos.MiddleGreyLuminanceLDR = 1.0f;
@@ -45,7 +45,7 @@ AutomaticExposureModule::AutomaticExposureModule()
     parameters._clip_highlights = 1.00f;			    // (1.0) Highlights cropping in histogram (last buckets will be ignored, leading to darker image)
     parameters._EV = 0.0f;							// (0.0) Your typical EV setting
     parameters._fstop_bias = 0.0f;					// (0.0) F-stop number bias to override automatic computation (NOTE: This will NOT change exposure, only the F number)
-    parameters._reference_camera_fps = 30.0f;		// (30.0) Default camera at 30 FPS
+    parameters._reference_camera_fps = 60.0f;		// (30.0) Default camera at 30 FPS
     parameters._adapt_min_luminance = 0.03f;		// (0.03) Prevents the auto-exposure to adapt to luminances lower than this
     parameters._adapt_max_luminance = 2000.0f;		// (2000.0) Prevents the auto-exposure to adapt to luminances higher than this
     parameters._adapt_speed_up = 0.99f;	            // (0.99) Adaptation speed from low to high luminances

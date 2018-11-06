@@ -85,7 +85,7 @@ FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, floa
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
 FLAN_DEV_VAR( dev_IsInputText, "Is Using a Text Input", false, bool )
-FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Position)", {}, glm::vec3 )
+FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Space Position)", {}, glm::vec3 )
 
 static void RebuildRigidBody( RigidBody* rigidBody )
 {
@@ -526,6 +526,7 @@ static void DisplayMenuBar()
     }
 }
 
+// ImGui Getter for vector
 bool VectorOfStringGetter( void* data, int n, const char** out_text )
 {
     static constexpr char* SCENE_ROOT_NAME = "Scene Root";
@@ -965,7 +966,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
             ImGui::SetWindowPos( ImVec2( 16, 464 ) );
             ImGui::SetWindowSize( ImVec2( 800, 220 ) );
 
-            ImGui::LabelText( "##Scene Hiearchy", "Scene Hiearchy" );
+            ImGui::Text( "Scene Hiearchy" );
             ImGui::SameLine( 0, 0 );
             char sceneNodeSearch[256] = { '\0' };
             ImGui::InputText( "##SceneNodeLookup", sceneNodeSearch, 256, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue );
@@ -987,6 +988,7 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
     }
 
     ImGui::Render();
+
 #if FLAN_D3D11
     ImGui_ImplDX11_RenderDrawData( ImGui::GetDrawData() );
 #elif FLAN_GL460
@@ -1000,8 +1002,6 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
     cmdList->playbackCommandList( g_RenderDevice );
 }
 #endif
-
-#include <Core/ScopedTimer.h>
 
 bool IsInRadius( const float rSquared, const int x, const int y, const int pointX, const int pointY )
 {
@@ -1022,7 +1022,7 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
     int pickedIndex = 0;
     glm::vec3 rayMarch = mousePickingRay.origin;
     int marchIteration = 0;
-    while ( rayMarch.y > pickedHeight && marchIteration < 128 ) {
+    while ( rayMarch.y > pickedHeight && marchIteration < 512 ) {
         pickedIndex = ( abs( int( rayMarch.x ) ) + abs( int( rayMarch.z ) ) * 512 );
         pickedHeight = vertices[pickedIndex];
 
@@ -1037,7 +1037,7 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
     auto hiX = std::min( 512, abs( int( rayMarch.x ) ) + g_TerrainEditorEditionRadius );
     auto hiY = std::min( 512, abs( int( rayMarch.z ) ) + g_TerrainEditorEditionRadius );
 
-    float k = g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius;
+    float k = static_cast<float>( g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius );
 
     if ( g_TerrainEditorEditionMode == 2 ) {
         // Basic box filtering-ish smoothing

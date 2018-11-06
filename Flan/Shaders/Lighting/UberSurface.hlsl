@@ -838,7 +838,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 #if PA_EDITOR
 #if PA_TERRAIN
 	//if ( g_TerrainEditorToggleBrush == 1u ) {
-		float brushDistance = length( VertexStage.positionWS - g_MouseCoordinates ) / g_TerrainEditorBrushSize;
+		float brushDistance = length( VertexStage.positionWS.xz - g_MouseCoordinates.xz ) / g_TerrainEditorBrushSize;
 		float brushStrength = ( brushDistance > 1.0f ) ? 0.0f : brushDistance;
 		LightContribution.rgb += float3( 1, 0, 0 ) * brushStrength;
 	//}
