@@ -56,7 +56,7 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
-void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
+void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     heightmapDimension = heightmapWidth; // (assuming width = height)
 
@@ -67,7 +67,21 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
         editorHeightmap[texelIdx] = static_cast< float >( static_cast< float >( heightmapTexels[texelIdx] ) / std::numeric_limits<uint16_t>::max() );
     }
 
+    splatmap = new uint16_t[heightmapWidth * heightmapHeight];
+    memcpy( splatmap, splatmapTexels, ( heightmapWidth * heightmapHeight * sizeof( uint16_t ) ) );
+
     // Create GPU resource
+    TextureDescription splatmapTextureDesc;
+    splatmapTextureDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+    splatmapTextureDesc.format = IMAGE_FORMAT_R16G16B16A16_UINT;
+    splatmapTextureDesc.width = heightmapWidth;
+    splatmapTextureDesc.height = heightmapHeight;
+    splatmapTextureDesc.mipCount = 1;
+    splatmapTextureDesc.samplerCount = 1;
+
+    splatmapTexture.reset( new Texture() );
+    splatmapTexture->createAsTexture2D( renderDevice, splatmapTextureDesc, splatmap, ( heightmapWidth * heightmapHeight * sizeof( uint16_t ) ) );
+
     TextureDescription heightmapTextureDesc;
     heightmapTextureDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
     heightmapTextureDesc.format = IMAGE_FORMAT_R32_FLOAT;
@@ -283,6 +297,17 @@ float Terrain::getHeightmapHighestVertex() const
 void Terrain::setVertexHeight( const uint32_t vertexIndex, const float updatedHeight )
 {
     editorHeightmap[vertexIndex] = updatedHeight;
+}
+
+void Terrain::setVertexMaterial( const uint32_t vertexIndex, const uint32_t layerIndex, const int materialIndex, const float weight )
+{
+    splatmap[vertexIndex + layerIndex] = materialIndex;
+    splatmap[vertexIndex + 3] = weight;
+}
+
+void Terrain::setGrassWeight( const uint32_t vertexIndex, const float weight )
+{
+    splatmap[vertexIndex + 2] = weight;
 }
 
 void Terrain::uploadHeightmap( CommandList* cmdList )

@@ -671,23 +671,36 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         
 	uint streamedTextureIndex = g_TerrainMaterials[splatmapData.r / 257].splatIndex;
     
-    float4 baseColor = lerp(   g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
+    float4 baseColor = ( slope > 0.6f ) 
+						? TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, VertexStage.positionWS.xyz, N )
+						: lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
                                 g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
                                 distanceWS );
                                 
-    float4 normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );    
-
+    float4 normalAndRoughness = ( slope > 0.6f ) 
+						? TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex, VertexStage.positionWS.xyz, N )
+						: lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
+                                g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
+                                distanceWS );
+	
 	float4 samplingParameters2 = g_TerrainMaterials[splatmapData.g / 257].samplingParameters; // xy offset; zw scale
 	float2 samplingCoordinates2 = ( VertexStage.uvCoord.xy + samplingParameters2.xy ) * samplingParameters2.zw;
     float2 samplingCoordinates2Far = samplingCoordinates2 * 0.1f;
 		
 	uint streamedTextureIndex2 = g_TerrainMaterials[splatmapData.g / 257].splatIndex;
     
-    float4 baseColor2 = lerp(   g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) ),
-                                g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2Far.xy, streamedTextureIndex2 ) ),
+    float4 baseColor2 = ( slope > 0.6f ) 
+						? TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex2, VertexStage.positionWS.xyz, N )
+						: lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
+                                g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
                                 distanceWS );
-    float4 normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) );    
-
+                                
+    float4 normalAndRoughness2 = ( slope > 0.6f ) 
+						? TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex2, VertexStage.positionWS.xyz, N )
+						: lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
+                                g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
+                                distanceWS );
+								
     float blendFactor = (float)( splatmapData.b / 65535.0f );
     
 	MaterialReadLayer BaseLayer;

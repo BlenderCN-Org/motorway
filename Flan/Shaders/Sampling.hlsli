@@ -50,4 +50,21 @@ float3 TriplanarSample3D(Texture2DArray tex, sampler sample, uint textureIdx, fl
  
     return x * blending.x + y * blending.y + z * blending.z;
 }
+
+float4 TriplanarSample4D(Texture2DArray tex, sampler sample, uint textureIdx, float3 texcoord, float3 N) 
+{
+    float3 blending = abs( N );
+    
+	// Force weights to sum to 1.0
+    blending = normalize( max( blending, 0.00001 ) );
+	
+	float b = blending.x + blending.y + blending.z;
+    blending /= float3( b, b, b );
+ 
+    float4 x = tex.Sample( sample, float3( texcoord.yz, textureIdx ) );
+    float4 y = tex.Sample( sample, float3( texcoord.xz, textureIdx ) );
+    float4 z = tex.Sample( sample, float3( texcoord.xy, textureIdx ) );
+ 
+    return x * blending.x + y * blending.y + z * blending.z;
+}
 #endif

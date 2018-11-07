@@ -39,7 +39,7 @@ public:
                                         Terrain& operator = ( Terrain& Terrain ) = default;
                                         ~Terrain();
 
-    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
+    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
     const VertexArrayObject*            getVertexArrayObject() const;
     Material*                           getMaterial();
@@ -53,6 +53,9 @@ public:
 
     // TODO Crap API for quick prototyping
     void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
+    void                                setVertexMaterial( const uint32_t vertexIndex, const uint32_t layerIndex, const int materialIndex, const float weight );
+    void                                setGrassWeight( const uint32_t vertexIndex, const float weight );
+
     void uploadHeightmap( CommandList* cmdList );
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
@@ -83,6 +86,9 @@ private:
 
     float*                              heightmap;
     std::unique_ptr<Texture>            heightmapTexture;
+
+    uint16_t*                           splatmap;
+    std::unique_ptr<Texture>            splatmapTexture;
 
     std::vector<uint32_t>               indices;
     std::vector<VertexLayout>           vertices;
