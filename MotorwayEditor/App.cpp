@@ -678,13 +678,15 @@ void RebuildCameraPipeline( Camera* mainCamera )
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) ); 
     } else {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
 
         mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
