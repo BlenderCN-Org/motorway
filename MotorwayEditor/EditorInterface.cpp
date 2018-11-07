@@ -77,7 +77,9 @@ static int panelId = 0;
 
 static int g_TerrainEditorEditionRadius = 8; // In vertices count; 
 static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
+static int g_TerrainEditorMode = 0; // TODO Make it enum!
 static int g_TerrainEditorBrushType = 0; // TODO Make it enum! Square Default
+static int g_TerrainEditionMaterialIndex = 0;
 static float g_TerrainEditorEditionHeight = 0.01f;
 static float g_TerrainEditorEditionHardness = 1.0f;
 
@@ -319,10 +321,15 @@ static void DisplayMenuBar()
                 GraphicsAssetManager::RawTexels hmapTexels;
                 g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), hmapTexels );
 
+                GraphicsAssetManager::RawTexels splatMapTexels;
+                g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/splatmap.png16" ), splatMapTexels );
+
                 terrain->create( g_RenderDevice, 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
-                    (uint16_t*)hmapTexels.data, hmapTexels.width, hmapTexels.height );
+                    ( uint16_t* )hmapTexels.data,
+                    ( uint16_t* )splatMapTexels.data,
+                    hmapTexels.width, hmapTexels.height );
 
                 auto sceneNode = scene->createTerrain( terrain );
                 *PickedNode = sceneNode;
@@ -943,6 +950,10 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                     }
                 }
             } else if ( panelId == 2 ) {
+                ImGui::RadioButton( "Sculpting", &g_TerrainEditorMode, 0 );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Paiting", &g_TerrainEditorMode, 1 );
+
                 ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
                 ImGui::SameLine();
                 ImGui::RadioButton( "Lower", &g_TerrainEditorEditionMode, 1 );
@@ -951,7 +962,12 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
 
                 if ( ImGui::TreeNode( "Brush Settings" ) ) {
                     ImGui::SliderInt( "Radius", &g_TerrainEditorEditionRadius, 1, 256 );
-                    ImGui::DragFloat( "Height", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+
+                    if ( g_TerrainEditorMode == 0 )
+                        ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+                    else if ( g_TerrainEditorMode == 1 )
+                        ImGui::DragInt( "Value", &g_TerrainEditionMaterialIndex, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+
                     ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 1.0f );
 
                     ImGui::Text( "Shape" );
@@ -1016,6 +1032,10 @@ bool IsInRadius( const float rSquared, const int x, const int y, const int point
 
 void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
 {
+    if ( panelId != 2 ) {
+        return;
+    }
+
     float* const vertices = terrain->getHeightmapValues();
 
     float pickedHeight = -std::numeric_limits<float>::max();

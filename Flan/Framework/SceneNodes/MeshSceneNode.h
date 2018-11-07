@@ -118,42 +118,46 @@ struct MeshSceneNode : public SceneNode
                 continue;
             }
 
-            ImGui::LabelText( "##lod", std::string( "LOD" + std::to_string( lodIdx ) ).c_str() );
-            ImGui::LabelText( "##loddistance", std::string( "Distance: " + std::to_string( lod.lodDistance ) ).c_str() );
+            if ( ImGui::TreeNode( std::string( "LOD" + std::to_string( lodIdx ) ).c_str() ) ) {
+                ImGui::LabelText( "##loddistance", std::string( "Distance: " + std::to_string( lod.lodDistance ) ).c_str() );
 
-            for ( auto& subMesh : lod.subMeshes ) {
-                auto str = flan::core::WideStringToString( subMesh.name );
-                ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
-                
-                ImGui::SameLine();
+                for ( auto& subMesh : lod.subMeshes ) {
+                    auto str = flan::core::WideStringToString( subMesh.name );
+                    ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
 
-                if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
-                    fnString_t materialName;
-                    if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
-                        materialName = fnString_t( materialName.c_str() );
+                    ImGui::SameLine();
 
-                        auto workingDir = fnString_t( FLAN_STRING( "" ) );
-                        flan::core::RetrieveWorkingDirectory( workingDir );
-                        workingDir.append( FLAN_STRING( "data" ) );
+                    if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
+                        fnString_t materialName;
+                        if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
+                            materialName = fnString_t( materialName.c_str() );
 
-                        size_t poswd = materialName.find( workingDir );
+                            auto workingDir = fnString_t( FLAN_STRING( "" ) );
+                            flan::core::RetrieveWorkingDirectory( workingDir );
+                            workingDir.append( FLAN_STRING( "data" ) );
 
-                        if ( poswd != fnString_t::npos ) {
-                            // If found then erase it from string
-                            materialName.erase( poswd, workingDir.length() );
+                            size_t poswd = materialName.find( workingDir );
+
+                            if ( poswd != fnString_t::npos ) {
+                                // If found then erase it from string
+                                materialName.erase( poswd, workingDir.length() );
+                            }
+
+                            std::replace( materialName.begin(), materialName.end(), '\\', '/' );
+
+                            //subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
                         }
+                    }
 
-                        std::replace( materialName.begin(), materialName.end(), '\\', '/' );
+                    ImGui::SameLine();
 
-                        //subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
+                    if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
+                        FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
+                        *dev_EditorPickedMaterial = subMesh.material;
                     }
                 }
 
-                ImGui::SameLine();
-                if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
-                    FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
-                    *dev_EditorPickedMaterial = subMesh.material;
-                }
+                ImGui::TreePop();
             }
         }
     }
@@ -161,13 +165,11 @@ struct MeshSceneNode : public SceneNode
     virtual void collectDebugRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override
     {
         if ( DrawBoundingPrimitive ) {
-          /*  for ( auto& subMesh : instance.meshAsset->getSubMeshVector() ) {
-                auto subMeshBoundingSphere = subMesh.boundingSphere;
-                subMeshBoundingSphere.center += instance.meshTransform->getWorldTranslation();
-                subMeshBoundingSphere.radius *= instance.meshTransform->getWorldBiggestScale();
+            auto subMeshBoundingSphere = instance.meshAsset->getBoundingSphere(); // subMesh.boundingSphere;
+            subMeshBoundingSphere.center += instance.meshTransform->getWorldTranslation();
+            subMeshBoundingSphere.radius *= instance.meshTransform->getWorldBiggestScale();
 
-                drawCommandBuilder->addWireframeSphere( subMeshBoundingSphere.center, subMeshBoundingSphere.radius );
-            }*/
+            drawCommandBuilder->addWireframeSphere( subMeshBoundingSphere.center, subMeshBoundingSphere.radius );
         }
 
         FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* );
