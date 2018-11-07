@@ -70,7 +70,15 @@ public:
 #endif
 
     float getHeightmapScaleTEST() const { return editableMaterialData.layers[0].HeightmapWorldHeight; }
-    void setHeightmapTEST( Texture* tex ) { vertexTextureSet[0] = tex; editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  editableMaterialData.layers[0].Heightmap.InputTexture = tex; }
+    void setHeightmapTEST( Texture* tex, Texture* splatmap ) { 
+        vertexTextureSet[0] = tex; 
+        editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  
+        editableMaterialData.layers[0].Heightmap.InputTexture = tex;
+        
+        pixelTextureSet[17] = splatmap;
+        editableMaterialData.layers[0].TerrainSplatMap.InputType = MaterialEditionInput::TEXTURE;
+        editableMaterialData.layers[0].TerrainSplatMap.InputTexture = splatmap;
+    }
 
 private:
     fnString_t  name;

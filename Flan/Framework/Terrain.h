@@ -53,9 +53,10 @@ public:
 
     // TODO Crap API for quick prototyping
     void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
-    void                                setVertexMaterial( const uint32_t vertexIndex, const uint32_t layerIndex, const int materialIndex, const float weight );
+    void                                setVertexMaterial( const uint32_t vertexIndex, const int materialIndexBaseLayer, const int materialIndexOverlayLayer, const float overlayLayerStrength );
     void                                setGrassWeight( const uint32_t vertexIndex, const float weight );
 
+    void uploadSplatmap( CommandList* cmdList );
     void uploadHeightmap( CommandList* cmdList );
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();

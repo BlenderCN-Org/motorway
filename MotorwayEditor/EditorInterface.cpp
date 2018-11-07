@@ -79,7 +79,10 @@ static int g_TerrainEditorEditionRadius = 8; // In vertices count;
 static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
 static int g_TerrainEditorMode = 0; // TODO Make it enum!
 static int g_TerrainEditorBrushType = 0; // TODO Make it enum! Square Default
-static int g_TerrainEditionMaterialIndex = 0;
+static int g_TerrainEditionMaterialIndex1 = 0;
+static int g_TerrainEditionMaterialIndex2 = 0;
+static float g_TerrainEditionMaterialHardness1 = 1.0f;
+static float g_TerrainEditionMaterialHardness2 = 1.0f;
 static float g_TerrainEditorEditionHeight = 0.01f;
 static float g_TerrainEditorEditionHardness = 1.0f;
 
@@ -327,8 +330,8 @@ static void DisplayMenuBar()
                 terrain->create( g_RenderDevice, 
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
+                    ( uint16_t* )splatMapTexels.data, 
                     ( uint16_t* )hmapTexels.data,
-                    ( uint16_t* )splatMapTexels.data,
                     hmapTexels.width, hmapTexels.height );
 
                 auto sceneNode = scene->createTerrain( terrain );
@@ -954,21 +957,28 @@ void DrawEditorInterface( const float frameTime, CommandList* cmdList )
                 ImGui::SameLine();
                 ImGui::RadioButton( "Paiting", &g_TerrainEditorMode, 1 );
 
-                ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
-                ImGui::SameLine();
-                ImGui::RadioButton( "Lower", &g_TerrainEditorEditionMode, 1 );
-                ImGui::SameLine();
-                ImGui::RadioButton( "Smooth", &g_TerrainEditorEditionMode, 2 );
+                if ( g_TerrainEditorMode == 0 ) {
+                    ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
+                    ImGui::SameLine();
+                    ImGui::RadioButton( "Lower", &g_TerrainEditorEditionMode, 1 );
+                    ImGui::SameLine();
+                    ImGui::RadioButton( "Smooth", &g_TerrainEditorEditionMode, 2 );
+                }
 
                 if ( ImGui::TreeNode( "Brush Settings" ) ) {
                     ImGui::SliderInt( "Radius", &g_TerrainEditorEditionRadius, 1, 256 );
 
-                    if ( g_TerrainEditorMode == 0 )
+                    if ( g_TerrainEditorMode == 0 ) {
                         ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
-                    else if ( g_TerrainEditorMode == 1 )
-                        ImGui::DragInt( "Value", &g_TerrainEditionMaterialIndex, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+                    } else if ( g_TerrainEditorMode == 1 ) {
+                        // TODO User friendly!
+                        //  Selectable material (links to the biome editor?)
+                        //  Visual feedback in the panel (albedo texture?)
+                        ImGui::DragInt( "Base Material Index", &g_TerrainEditionMaterialIndex1, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+                        ImGui::DragInt( "Overlayer Material Index", &g_TerrainEditionMaterialIndex2, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+                    }
 
-                    ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 1.0f );
+                    ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 0.0f, 1.0f );
 
                     ImGui::Text( "Shape" );
                     ImGui::RadioButton( "Square", &g_TerrainEditorBrushType, 0 );
@@ -1059,58 +1069,76 @@ void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmd
 
     float k = static_cast<float>( g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius );
 
-    if ( g_TerrainEditorEditionMode == 2 ) {
-        // Basic box filtering-ish smoothing
-        const int sampleCount = ( hiY - lowY ) * ( hiX - lowX );
+    if ( g_TerrainEditorMode == 0 ) {
+        if ( g_TerrainEditorEditionMode == 2 ) {
+            // Basic box filtering-ish smoothing
+            const int sampleCount = ( hiY - lowY ) * ( hiX - lowX );
 
-        float average = 0.0f;
-        for ( int x = lowX; x < hiX; x++ ) {
-            for ( int y = lowY; y < hiY; y++ ) {
-                int index = ( x + y * 512 );
-                average += vertices[index];
-            }
-        }
-
-        average /= sampleCount;
-
-        for ( int x = lowX; x < hiX; x++ ) {
-            for ( int y = lowY; y < hiY; y++ ) {
-                int index = ( x + y * 512 );
-
-                if ( g_TerrainEditorBrushType == 1
-                  && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
-                    continue;
+            float average = 0.0f;
+            for ( int x = lowX; x < hiX; x++ ) {
+                for ( int y = lowY; y < hiY; y++ ) {
+                    int index = ( x + y * 512 );
+                    average += vertices[index];
                 }
+            }
 
-                terrain->setVertexHeight( index, average );
+            average /= sampleCount;
+
+            for ( int x = lowX; x < hiX; x++ ) {
+                for ( int y = lowY; y < hiY; y++ ) {
+                    int index = ( x + y * 512 );
+
+                    if ( g_TerrainEditorBrushType == 1
+                        && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                        continue;
+                    }
+
+                    terrain->setVertexHeight( index, average );
+                }
+            }
+        } else {
+            for ( int x = lowX; x < hiX; x++ ) {
+                for ( int y = lowY; y < hiY; y++ ) {
+                    // Attenuation factor
+                    float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) ) / k;
+
+                    int index = ( x + y * 512 );
+                    float& vertexToEdit = vertices[index];
+
+                    if ( g_TerrainEditorBrushType == 1
+                        && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                        continue;
+                    } else {
+                        // For square brush ignore distance attenuation
+                        distance = 1.0f;
+                    }
+
+                    if ( g_TerrainEditorEditionMode == 0 )
+                        vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
+                    else if ( g_TerrainEditorEditionMode == 1 )
+                        vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
+
+                    terrain->setVertexHeight( index, vertexToEdit );
+                }
             }
         }
+
+        terrain->uploadHeightmap( cmdList );
     } else {
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {
-                // Attenuation factor
                 float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) ) / k;
-               
-                int index = ( x + y * 512 );
-                float& vertexToEdit = vertices[index];
-                
-                if ( g_TerrainEditorBrushType == 1 
-                  && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                int index = ( x + y * 512 ) * 4;
+
+                if ( g_TerrainEditorBrushType == 1
+                    && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
                     continue;
-                } else {
-                    // For square brush ignore distance attenuation
-                    distance = 1.0f;
                 }
 
-                if ( g_TerrainEditorEditionMode == 0 )
-                    vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
-                else if ( g_TerrainEditorEditionMode == 1 )
-                    vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
-
-                terrain->setVertexHeight( index, vertexToEdit );
+                terrain->setVertexMaterial( index, g_TerrainEditionMaterialIndex1, g_TerrainEditionMaterialIndex2, g_TerrainEditorEditionHardness );
             }
         }
-    }
 
-    terrain->uploadHeightmap( cmdList );
+        terrain->uploadSplatmap( cmdList );
+    }
 }
