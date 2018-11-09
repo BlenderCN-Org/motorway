@@ -181,7 +181,7 @@ void FirstPersonCamera::setProjectionMatrix( const float fieldOfView, const floa
 
     data.projectionMatrix = flan::core::MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = glm::transpose( glm::inverse( data.projectionMatrix ) );
-    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 0.1f, 512.0f );
+    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 1.0f, 512.0f );
 }
 
 void FirstPersonCamera::setNextWorldPosition( const float frameTime, const glm::vec3& worldPosition )
