@@ -192,7 +192,7 @@ sampler g_DisplacementSampler : register( s9 );
 
 float3 estimateNormal(float2 texcoord) {
     static const float hmapSize = 512.0f;
-    static const float bumpHeightScale = 32.0f;
+    static const float bumpHeightScale = 128.0f;
     
     float me = g_TexHeightmap.SampleLevel( g_HeightmapSampler, texcoord, 0 ).x;
     float n = g_TexHeightmap.SampleLevel( g_HeightmapSampler,float2(texcoord.x,texcoord.y+1.0/hmapSize), 0 ).x;
