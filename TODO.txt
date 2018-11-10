@@ -22,7 +22,6 @@ Stuff todo for the project
     <Terrain Rendering/Physics>
         > Biome Presets / Define
         > Add SpecularAA precompute for biome materials
-        > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
         > Terrain Tile streaming w/ Hiearchal Structure (use a quadtree; check which terrain instance to stream from disk but cull on GPU at domain stage) < Wait until proper world streaming
         > Grass rendering (see Boulanger paper)
         > Terrain Height snapping (for assets/roads/etc.)
@@ -75,6 +74,7 @@ DONE
           the previous cmdlist to be finished)
     <Terrain Rendering/Physics>
         > Terrain Material Blending
+        > Terrain painting (using compute shader? see Ghost Recon gdc pdf)
         > Texture Splatting (3 levels should be enough)
         > GeoClipping / or something even more basic for LODing
         > Heightmap collision (built in Bullet's, """just need to read the doc""")
