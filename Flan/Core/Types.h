@@ -60,6 +60,10 @@ using fnStringHash32_t  = uint32_t;
 #define FLAN_MAX_PATH PATH_MAX
 #endif
 
+#if defined( FLAN_MSVC ) || defined( FLAN_GCC )
+#define FLAN_RESTRICT __restrict
+#endif
+
 namespace flan
 {
     namespace core
