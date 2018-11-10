@@ -65,6 +65,10 @@ endif( WIN32 )
 # Visual Studio specifics
 if ( MSVC )
     add_definitions( -DFLAN_MSVC )
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    add_definitions( -DFLAN_CLANG )
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_definitions( -DFLAN_GCC )
 endif ( MSVC )
 
 if ( FLAN_DEVBUILD )
