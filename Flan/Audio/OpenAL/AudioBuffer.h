@@ -43,7 +43,7 @@ namespace flan
 {
     namespace audio
     {
-        NativeAudioBuffer*      CreateAudioBufferImpl( NativeAudioContext* audioContext );
+        NativeAudioBuffer*      CreateAudioBufferImpl( NativeAudioContext* audioContext, BaseAllocator* allocator );
         void                    DestroyAudioBufferImpl( NativeAudioContext* audioContext, NativeAudioBuffer* audioBuffer );
         void                    UpdateAudioBufferImpl( NativeAudioContext* audioContext, NativeAudioBuffer* audioBuffer, void* dataToUpload, const std::size_t dataToUploadSize, const flan::audio::eAudioFormat audioFormat, const uint32_t sampleRate );
     }

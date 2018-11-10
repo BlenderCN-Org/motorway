@@ -31,7 +31,7 @@ public:
             AudioSource& operator = ( AudioSource& ) = default;
             ~AudioSource();
 
-    void    create( AudioDevice* audioDevice );
+    void    create( AudioDevice* audioDevice, BaseAllocator* allocator );
     void    destroy( AudioDevice* audioDevice );
 
     void    setPitch( AudioDevice* audioDevice, const float pitch );
@@ -44,5 +44,6 @@ public:
     void    play( AudioDevice* audioDevice );
 
 private:
-    std::unique_ptr<NativeAudioSource>  audioSource;
+    NativeAudioSource*  audioSource;
+    BaseAllocator*      sourceAllocator;
 };

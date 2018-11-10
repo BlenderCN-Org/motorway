@@ -24,7 +24,7 @@
 #include "AudioContext.h"
 #include "AudioBuffer.h"
 
-NativeAudioSource* flan::audio::CreateAudioSourceImpl( NativeAudioContext* audioContext )
+NativeAudioSource* flan::audio::CreateAudioSourceImpl( NativeAudioContext* audioContext, BaseAllocator* allocator )
 {
     ALuint sourceHandle = 0;
     alGenSources( (ALuint)1, &sourceHandle );
@@ -35,7 +35,7 @@ NativeAudioSource* flan::audio::CreateAudioSourceImpl( NativeAudioContext* audio
         return nullptr;
     }
 
-    NativeAudioSource* audioSource = new NativeAudioSource();
+    NativeAudioSource* audioSource = flan::core::allocate<NativeAudioSource>( allocator );
     audioSource->sourceHandle = sourceHandle;
 
     return audioSource;

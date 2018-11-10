@@ -41,7 +41,7 @@ namespace flan
 {
     namespace audio
     {
-        NativeAudioContext*     CreateAudioContextImpl();
+        NativeAudioContext*     CreateAudioContextImpl( BaseAllocator* allocator );
         void                    DestroyAudioContextImpl( NativeAudioContext* audioContext );
         void                    SetDefaultListenerPositionImpl( NativeAudioContext* audioContext, const glm::vec3& position );
         void                    SetDefaultListenerVelocityImpl( NativeAudioContext* audioContext, const glm::vec3& velocity );

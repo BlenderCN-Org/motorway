@@ -42,7 +42,7 @@ namespace flan
 {
     namespace audio
     {
-        NativeAudioSource*      CreateAudioSourceImpl( NativeAudioContext* audioContext );
+        NativeAudioSource*      CreateAudioSourceImpl( NativeAudioContext* audioContext, BaseAllocator* allocator );
         void                    DestroyAudioSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
         void                    SetSourcePitchImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const float pitch );
         void                    SetSourceGainImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const float gain );

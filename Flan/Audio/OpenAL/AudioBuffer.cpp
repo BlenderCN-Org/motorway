@@ -35,7 +35,7 @@ static constexpr ALenum OPENAL_AUDIO_FORMAT[flan::audio::eAudioFormat::AUDIO_FOR
     AL_FORMAT_STEREO16,
 };
 
-NativeAudioBuffer* flan::audio::CreateAudioBufferImpl( NativeAudioContext* audioContext )
+NativeAudioBuffer* flan::audio::CreateAudioBufferImpl( NativeAudioContext* audioContext, BaseAllocator* allocator )
 {
     ALuint bufferHandle = 0;
     alGenBuffers( (ALuint)1, &bufferHandle );
@@ -46,7 +46,7 @@ NativeAudioBuffer* flan::audio::CreateAudioBufferImpl( NativeAudioContext* audio
         return nullptr;
     }
 
-    NativeAudioBuffer* audioBuffer = new NativeAudioBuffer();
+    NativeAudioBuffer* audioBuffer = flan::core::allocate<NativeAudioBuffer>( allocator );
     audioBuffer->bufferHandle = bufferHandle;
 
     return audioBuffer;

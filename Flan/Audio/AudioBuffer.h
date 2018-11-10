@@ -33,7 +33,7 @@ public:
             AudioBuffer& operator = ( AudioBuffer& ) = default;
             ~AudioBuffer();
 
-    void    create( AudioDevice* audioDevice );
+    void    create( AudioDevice* audioDevice, BaseAllocator* allocator );
     void    destroy( AudioDevice* audioDevice );
 
     void    update( AudioDevice* audioDevice, void* dataToUpload, const std::size_t dataToUploadSize, const flan::audio::eAudioFormat audioFormat, const uint32_t sampleRate );
@@ -41,40 +41,6 @@ public:
     NativeAudioBuffer* getNativeAudioBuffer() const;
 
 private:
-    std::unique_ptr<NativeAudioBuffer>  audioBuffer;
+    NativeAudioBuffer* audioBuffer;
+    BaseAllocator*     bufferAllocator;
 };
-
-#if 0
-
-#include <AL/al.h>
-#include <AL/alc.h>
-
-struct NativeAudioContext;
-
-struct NativeAudioBuffer
-{
-    NativeAudioBuffer()
-        : sourceHandle( 0 )
-    {
-
-    }
-
-    ALCuint     sourceHandle;
-};
-
-namespace flan
-{
-    namespace audio
-    {
-        NativeAudioBuffer*      CreateAudioBufferImpl( NativeAudioContext* audioContext );
-        void                    DestroyAudioBufferImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer );
-        void                    SetSourcePitchImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer, const float pitch );
-        void                    SetSourceGainImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer, const float gain );
-        void                    SetSourcePositionImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer, const glm::vec3& position );
-        void                    SetSourceVelocityImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer, const glm::vec3& velocity );
-        void                    SetSourceLoopingImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer, const bool isLooping );
-
-        void                    PlaySourceImpl( NativeAudioContext* audioContext, NativeAudioBuffer* AudioBuffer );
-    }
-}
-#endif

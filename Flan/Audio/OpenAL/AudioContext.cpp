@@ -22,7 +22,7 @@
 #if FLAN_OPENAL
 #include "AudioContext.h"
 
-NativeAudioContext* flan::audio::CreateAudioContextImpl()
+NativeAudioContext* flan::audio::CreateAudioContextImpl( BaseAllocator* allocator )
 {
     FLAN_CLOG << "Creating render context (OpenAL)" << std::endl;
 
@@ -41,11 +41,11 @@ NativeAudioContext* flan::audio::CreateAudioContextImpl()
 
         int deviceIdx = 0;
         while ( device && *device != '\0' && next && *next != '\0' ) {
-                FLAN_CLOG << "- deviceList[" << deviceIdx << "] = '" << device << "'" << std::endl;
+            FLAN_CLOG << "- deviceList[" << deviceIdx << "] = '" << device << "'" << std::endl;
 
-                len = strlen( device );
-                device += ( len + 1 );
-                next += ( len + 2 );
+            len = strlen( device );
+            device += ( len + 1 );
+            next += ( len + 2 );
         }
 
         selectedDevice = device;
@@ -64,7 +64,7 @@ NativeAudioContext* flan::audio::CreateAudioContextImpl()
         return nullptr;
     }
 
-    NativeAudioContext* audioContext = new NativeAudioContext();
+    NativeAudioContext* audioContext = flan::core::allocate<NativeAudioContext>( allocator );
     audioContext->device = device;
     audioContext->context = context;
 

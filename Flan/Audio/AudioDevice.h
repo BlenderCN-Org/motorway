@@ -31,11 +31,13 @@ public:
 
     NativeAudioContext*     getNativeAudioContext() const;
 
-    void                    create();
+    void                    destroy();
+    void                    create( BaseAllocator* allocator );
 
     void                    setListenerPosition( const glm::vec3& position );
     void                    setListenerVelocity( const glm::vec3& velocity );
 
 private:
-    std::unique_ptr<NativeAudioContext> nativeAudioContext;
+    NativeAudioContext*     nativeAudioContext;
+    BaseAllocator*          deviceAllocator;
 };

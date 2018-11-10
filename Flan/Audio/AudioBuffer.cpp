@@ -38,25 +38,30 @@ AudioBuffer::AudioBuffer()
 
 AudioBuffer::~AudioBuffer()
 {
-
+    audioBuffer = nullptr;
+    bufferAllocator = nullptr;
 }
 
-void AudioBuffer::create( AudioDevice* audioDevice )
+void AudioBuffer::create( AudioDevice* audioDevice, BaseAllocator* allocator )
 {
-    audioBuffer.reset( flan::audio::CreateAudioBufferImpl( audioDevice->getNativeAudioContext() ) );
+    audioBuffer = flan::audio::CreateAudioBufferImpl( audioDevice->getNativeAudioContext(), allocator );
+
+    bufferAllocator = allocator;
 }
 
 void AudioBuffer::destroy( AudioDevice* audioDevice )
 {
-    flan::audio::DestroyAudioBufferImpl( audioDevice->getNativeAudioContext(), audioBuffer.get() );
+    flan::audio::DestroyAudioBufferImpl( audioDevice->getNativeAudioContext(), audioBuffer );
+
+    flan::core::free( bufferAllocator, audioBuffer );
 }
 
 void AudioBuffer::update( AudioDevice* audioDevice, void* dataToUpload, const std::size_t dataToUploadSize, const flan::audio::eAudioFormat audioFormat, const uint32_t sampleRate )
 {
-    flan::audio::UpdateAudioBufferImpl( audioDevice->getNativeAudioContext(), audioBuffer.get(), dataToUpload, dataToUploadSize, audioFormat, sampleRate );
+    flan::audio::UpdateAudioBufferImpl( audioDevice->getNativeAudioContext(), audioBuffer, dataToUpload, dataToUploadSize, audioFormat, sampleRate );
 }
 
 NativeAudioBuffer* AudioBuffer::getNativeAudioBuffer() const
 {
-    return audioBuffer.get();
+    return audioBuffer;
 }

@@ -28,31 +28,40 @@
 
 AudioDevice::AudioDevice()
     : nativeAudioContext( nullptr )
+    , deviceAllocator( nullptr )
 {
 
 }
 
 AudioDevice::~AudioDevice()
 {
-    flan::audio::DestroyAudioContextImpl( nativeAudioContext.get() );
+    nativeAudioContext = nullptr;
+    deviceAllocator = nullptr;
 }
 
 NativeAudioContext* AudioDevice::getNativeAudioContext() const
 {
-    return nativeAudioContext.get();
+    return nativeAudioContext;
 }
 
-void AudioDevice::create()
+void AudioDevice::destroy()
 {
-    nativeAudioContext.reset( flan::audio::CreateAudioContextImpl() );
+    flan::audio::DestroyAudioContextImpl( nativeAudioContext );
+
+    flan::core::free( deviceAllocator, nativeAudioContext );
+}
+
+void AudioDevice::create( BaseAllocator* allocator )
+{
+    nativeAudioContext = flan::audio::CreateAudioContextImpl( allocator );
 }
 
 void AudioDevice::setListenerPosition( const glm::vec3& position )
 {
-    flan::audio::SetDefaultListenerPositionImpl( nativeAudioContext.get(), position );
+    flan::audio::SetDefaultListenerPositionImpl( nativeAudioContext, position );
 }
 
 void AudioDevice::setListenerVelocity( const glm::vec3& velocity )
 {
-    flan::audio::SetDefaultListenerVelocityImpl( nativeAudioContext.get(), velocity );
+    flan::audio::SetDefaultListenerVelocityImpl( nativeAudioContext, velocity );
 }

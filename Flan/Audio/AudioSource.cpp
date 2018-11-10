@@ -33,56 +33,61 @@
 
 AudioSource::AudioSource()
     : audioSource( nullptr )
+    , sourceAllocator( nullptr )
 {
 
 }
 
 AudioSource::~AudioSource()
 {
-
+    audioSource = nullptr;
+    sourceAllocator = nullptr;
 }
 
-void AudioSource::create( AudioDevice* audioDevice )
+void AudioSource::create( AudioDevice* audioDevice, BaseAllocator* allocator )
 {
-    audioSource.reset( flan::audio::CreateAudioSourceImpl( audioDevice->getNativeAudioContext() ) );
+    audioSource = flan::audio::CreateAudioSourceImpl( audioDevice->getNativeAudioContext(), allocator );
+    sourceAllocator = allocator;
 }
 
 void AudioSource::destroy( AudioDevice* audioDevice )
 {
-    flan::audio::DestroyAudioSourceImpl( audioDevice->getNativeAudioContext(), audioSource.get() );
+    flan::audio::DestroyAudioSourceImpl( audioDevice->getNativeAudioContext(), audioSource );
+
+    flan::core::free( sourceAllocator, audioSource );
 }
 
 void AudioSource::setPitch( AudioDevice* audioDevice, const float pitch )
 {
-    flan::audio::SetSourcePitchImpl( audioDevice->getNativeAudioContext(), audioSource.get(), pitch );
+    flan::audio::SetSourcePitchImpl( audioDevice->getNativeAudioContext(), audioSource, pitch );
 }
 
 void AudioSource::setGain( AudioDevice* audioDevice, const float gain )
 {
-    flan::audio::SetSourceGainImpl( audioDevice->getNativeAudioContext(), audioSource.get(), gain );
+    flan::audio::SetSourceGainImpl( audioDevice->getNativeAudioContext(), audioSource, gain );
 }
 
 void AudioSource::setPosition( AudioDevice* audioDevice, const glm::vec3& position )
 {
-    flan::audio::SetSourcePositionImpl( audioDevice->getNativeAudioContext(), audioSource.get(), position );
+    flan::audio::SetSourcePositionImpl( audioDevice->getNativeAudioContext(), audioSource, position );
 }
 
 void AudioSource::setVelocity( AudioDevice* audioDevice, const glm::vec3& velocity )
 {
-    flan::audio::SetSourceVelocityImpl( audioDevice->getNativeAudioContext(), audioSource.get(), velocity );
+    flan::audio::SetSourceVelocityImpl( audioDevice->getNativeAudioContext(), audioSource, velocity );
 }
 
 void AudioSource::setLooping( AudioDevice* audioDevice, const bool isLooping )
 {
-    flan::audio::SetSourceLoopingImpl( audioDevice->getNativeAudioContext(), audioSource.get(), isLooping );
+    flan::audio::SetSourceLoopingImpl( audioDevice->getNativeAudioContext(), audioSource, isLooping );
 }
 
 void AudioSource::bindBuffer( AudioDevice* audioDevice, AudioBuffer* audioBuffer )
 {
-    flan::audio::BindBufferToSourceImpl( audioDevice->getNativeAudioContext(), audioSource.get(), audioBuffer->getNativeAudioBuffer() );
+    flan::audio::BindBufferToSourceImpl( audioDevice->getNativeAudioContext(), audioSource, audioBuffer->getNativeAudioBuffer() );
 }
 
 void AudioSource::play( AudioDevice* audioDevice )
 {
-    flan::audio::PlaySourceImpl( audioDevice->getNativeAudioContext(), audioSource.get() );
+    flan::audio::PlaySourceImpl( audioDevice->getNativeAudioContext(), audioSource );
 }
