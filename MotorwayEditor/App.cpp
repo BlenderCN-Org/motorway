@@ -107,7 +107,9 @@
 #include "EditorInterface.h"
 
 #include <Core/Allocators/AllocationHelpers.h>
+#include <Core/Allocators/GrowingStackAllocator.h>
 #include <Core/Allocators/LinearAllocator.h>
+#include <Core/Containers/String.h>
 
 static constexpr fnChar_t* const PROJECT_NAME = ( fnChar_t* const )FLAN_STRING( "MotorwayEditor" );
 
@@ -135,18 +137,24 @@ FLAN_DEV_VAR( IsDevMenuVisible, "IsDevMenuVisible [false/true]", false, bool )
 FLAN_DEV_VAR_PERSISTENT( EditorAutoSaveDelayInSeconds, "Auto save delay (in seconds)", 120.0f, float )
 
 // CRT allocated memory for base heap allocation
-char                g_BaseBuffer[1024];
-Timer               g_EditorAutoSaveTimer;
-
-void*               g_AllocatedTable;
-LinearAllocator*    g_GlobalAllocator;
-
-bool                g_IsEditingTerrain = false;
+char                    g_BaseBuffer[256];
+char                    g_BaseStringBuffer[256];
+Timer                   g_EditorAutoSaveTimer;
+void*                   g_AllocatedTable;
+void*                   g_AllocatedStringTable;
+bool                    g_IsEditingTerrain = false;
 
 void CreateSubsystems()
 {
     g_AllocatedTable = flan::core::malloc( 1024 * 1024 * 1024 );
+    g_AllocatedStringTable = flan::core::ReserveAddressSpace( 128 * 1024 * 1024 );
+
     g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
+    g_StringAllocator = new ( g_BaseStringBuffer ) GrowingStackAllocator( 128 * 1024 * 1024, g_AllocatedStringTable );
+
+    flan::string test( g_StringAllocator );
+    test.reserve( 32 );
+    test += 't';
 
     // Create global instances whenever the Application ctor is called
     g_FileLogger = flan::core::allocate<FileLogger>( g_GlobalAllocator, PROJECT_NAME );
@@ -223,7 +231,11 @@ void Shutdown()
     g_GlobalAllocator->clear();
     g_GlobalAllocator->~LinearAllocator();
 
-    free( g_AllocatedTable );
+    g_StringAllocator->clear();
+    g_StringAllocator->~GrowingStackAllocator();
+
+    flan::core::free( g_AllocatedTable );
+    flan::core::VirtualFree( g_AllocatedStringTable );
 }
 
 Ray GenerateMousePickingRay( const ImGuiIO& io, const Camera::Data& cameraData )
@@ -412,7 +424,7 @@ int InitializeSubsystems()
     // Parse Environment Configuration
     FLAN_IMPORT_VAR_PTR( RebuildGameCfgFile, bool )
 
-        auto envConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
+    auto envConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
     if ( envConfigurationFile == nullptr || *RebuildGameCfgFile ) {
         FLAN_CLOG << "Creating default user configuration!" << std::endl;
         auto newEnvConfigurationFile = g_VirtualFileSystem->openFile( FLAN_STRING( "SaveData/Game.cfg" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_WRITE );
@@ -460,7 +472,7 @@ int InitializeSubsystems()
     g_RenderableEntityManager->create( g_RenderDevice );
 
     FLAN_CLOG << "Initializing audio subsystems..." << std::endl;
-    g_AudioDevice->create();
+    g_AudioDevice->create( g_GlobalAllocator );
 
     FLAN_CLOG << "Initializing physics subsystems..." << std::endl;
     g_DynamicsWorld->create();

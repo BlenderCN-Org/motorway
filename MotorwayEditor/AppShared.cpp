@@ -37,6 +37,7 @@
 #include <Physics/DynamicsWorld.h>
 #include <Network/GameClient.h>
 #include <Framework/Scene.h>
+#include <Core/Allocators/GrowingStackAllocator.h>
 
 #if FLAN_DEVBUILD
 #include "Core/FileSystem/FileSystemWatchdog.h"
@@ -62,6 +63,8 @@ FileSystemNative*        g_DataFileSystem( nullptr );
 DynamicsWorld*           g_DynamicsWorld( nullptr );
 Scene*                   g_CurrentScene( nullptr );
 CommandListPool*         g_EditorCmdListPool( nullptr );
+LinearAllocator*         g_GlobalAllocator( nullptr );
+GrowingStackAllocator*   g_StringAllocator( nullptr );
 
 #if FLAN_DEVBUILD
 FileSystemWatchdog*      g_FileSystemWatchdog( nullptr );

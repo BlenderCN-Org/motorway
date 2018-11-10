@@ -36,6 +36,8 @@ class FileSystemNative;
 class DynamicsWorld;
 class Scene;
 class CommandListPool;
+class LinearAllocator;
+class GrowingStackAllocator;
 
 #if FLAN_DEVBUILD
 class GraphicsProfiler;
@@ -64,6 +66,8 @@ extern FileSystemNative*        g_DataFileSystem;
 
 extern Scene*                   g_CurrentScene;
 extern CommandListPool*         g_EditorCmdListPool;
+extern LinearAllocator*         g_GlobalAllocator;
+extern GrowingStackAllocator*   g_StringAllocator;
 
 #if FLAN_DEVBUILD
 extern FileSystemWatchdog*      g_FileSystemWatchdog;

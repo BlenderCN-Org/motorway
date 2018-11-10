@@ -72,6 +72,7 @@
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
 
 #include <Graphics/RenderPasses/CompositionPass.h>
+#include <Core/Allocators/LinearAllocator.h>
 
 static int panelId = 0;
 
@@ -174,7 +175,7 @@ static void DisplayMenuBar()
                 g_RenderableEntityManager->clear();
                 g_CurrentScene = ( new Scene() );
 
-                auto camera = new FreeCamera();
+                auto camera = flan::core::allocate<FreeCamera>( g_GlobalAllocator );
                 camera->SetProjectionMatrix( 80.0f, 1920.0f, 1080.0f );
 
                 auto sceneNode = (FreeCameraSceneNode*)g_CurrentScene->createFreeCamera( camera, "DefaultCamera" );
@@ -194,7 +195,7 @@ static void DisplayMenuBar()
                     Scene* loadedScene = new Scene();
 
                     // Trigger scene change (flush CPU/GPU buffers; discard current game state; etc.)
-                    g_CurrentScene = ( loadedScene );
+                    g_CurrentScene = loadedScene;
 
                     // Then load the scene
                     Io_ReadSceneFile( file, g_GraphicsAssetManager, g_RenderableEntityManager, *loadedScene );
@@ -319,7 +320,7 @@ static void DisplayMenuBar()
             }
 
             if ( ImGui::MenuItem( "Terrain" ) ) {
-                auto terrain = new Terrain();
+                auto terrain = flan::core::allocate<Terrain>( g_GlobalAllocator );
 
                 GraphicsAssetManager::RawTexels hmapTexels;
                 g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ), hmapTexels );
@@ -328,6 +329,7 @@ static void DisplayMenuBar()
                 g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/splatmap.png16" ), splatMapTexels );
 
                 terrain->create( g_RenderDevice, 
+                    g_GlobalAllocator,
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
                     ( uint16_t* )splatMapTexels.data, 
