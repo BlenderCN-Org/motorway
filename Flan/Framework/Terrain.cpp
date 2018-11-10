@@ -56,18 +56,18 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
-void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
+void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     heightmapDimension = heightmapWidth; // (assuming width = height)
 
     // Preprocess heightmap texels (uint16 to float 0..1 range precision)
-    heightmap = new float[heightmapWidth * heightmapHeight];
-    editorHeightmap = new float[heightmapWidth * heightmapHeight];
+    heightmap = flan::core::allocateArray<float>( allocator, heightmapWidth * heightmapHeight );
+    editorHeightmap = flan::core::allocateArray<float>( allocator, heightmapWidth * heightmapHeight );
     for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ); texelIdx++ ) {
         editorHeightmap[texelIdx] = static_cast< float >( static_cast< float >( heightmapTexels[texelIdx] ) / std::numeric_limits<uint16_t>::max() );
     }
 
-    splatmap = new uint16_t[heightmapWidth * heightmapHeight * 4];
+    splatmap = flan::core::allocateArray<uint16_t>( allocator, heightmapWidth * heightmapHeight * 4 );
     memcpy( splatmap, splatmapTexels, ( heightmapWidth * heightmapHeight * 4 * sizeof( uint16_t ) ) );
 
     // Create GPU resource
@@ -79,7 +79,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
     splatmapTextureDesc.mipCount = 1;
     splatmapTextureDesc.samplerCount = 1;
 
-    splatmapTexture.reset( new Texture() );
+    splatmapTexture = flan::core::allocate<Texture>( allocator );
     splatmapTexture->createAsTexture2D( renderDevice, splatmapTextureDesc, splatmap, ( heightmapWidth * heightmapHeight * 4 * sizeof( uint16_t ) ) );
 
     TextureDescription heightmapTextureDesc;
@@ -90,7 +90,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
     heightmapTextureDesc.mipCount = 1;
     heightmapTextureDesc.samplerCount = 1;
 
-    heightmapTexture.reset( new Texture() );
+    heightmapTexture = flan::core::allocate<Texture>( allocator );
     heightmapTexture->createAsTexture2D( renderDevice, heightmapTextureDesc, editorHeightmap, ( heightmapWidth * heightmapHeight * sizeof( float ) ) );
 
     // Scale vertices for physics rigid body
@@ -182,7 +182,7 @@ void Terrain::create( RenderDevice* renderDevice, Material* terrainMaterial, Mat
     }
 
     material = terrainMaterial;
-    material->setHeightmapTEST( heightmapTexture.get(), splatmapTexture.get() );
+    material->setHeightmapTEST( heightmapTexture, splatmapTexture );
 
     struct GrassLayout
     {
@@ -310,7 +310,7 @@ void Terrain::setVertexMaterial( const uint32_t vertexIndex, const int materialI
 
 void Terrain::setGrassWeight( const uint32_t vertexIndex, const float weight )
 {
-    splatmap[vertexIndex + 3] = weight;
+    splatmap[vertexIndex + 3] = static_cast<uint16_t>( weight * std::numeric_limits<uint16_t>::max() );
 }
 
 void Terrain::uploadSplatmap( CommandList* cmdList )
@@ -356,7 +356,7 @@ void Terrain::computePatchsBounds()
     }
 }
 
-void Terrain::CalcYBounds( const glm::vec3& bottomLeft, const glm::vec3& topRight, glm::vec3& output )
+void Terrain::CalcYBounds( const glm::vec3& FLAN_RESTRICT bottomLeft, const glm::vec3& FLAN_RESTRICT topRight, glm::vec3& FLAN_RESTRICT output )
 {
     const float hmapDimensionFloat = static_cast< float >( heightmapDimension );
 

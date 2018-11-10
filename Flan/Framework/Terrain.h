@@ -39,7 +39,7 @@ public:
                                         Terrain& operator = ( Terrain& Terrain ) = default;
                                         ~Terrain();
 
-    void                                create( RenderDevice* renderDevice, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
+    void                                create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
     const VertexArrayObject*            getVertexArrayObject() const;
     Material*                           getMaterial();
@@ -86,10 +86,10 @@ private:
     float*                              editorHeightmap;
 
     float*                              heightmap;
-    std::unique_ptr<Texture>            heightmapTexture;
+    Texture*                            heightmapTexture;
 
     uint16_t*                           splatmap;
-    std::unique_ptr<Texture>            splatmapTexture;
+    Texture*                            splatmapTexture;
 
     std::vector<uint32_t>               indices;
     std::vector<VertexLayout>           vertices;
@@ -100,5 +100,5 @@ private:
     std::unique_ptr<VertexArrayObject>  vertexArrayObject[2];
 
 private:
-    void CalcYBounds( const glm::vec3& bottomLeft, const glm::vec3& topRight, glm::vec3& output );
+    void CalcYBounds( const glm::vec3& FLAN_RESTRICT bottomLeft, const glm::vec3& FLAN_RESTRICT topRight, glm::vec3& FLAN_RESTRICT output );
 };
