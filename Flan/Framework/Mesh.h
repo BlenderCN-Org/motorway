@@ -66,11 +66,25 @@ public:
     const LevelOfDetail&        getLevelOfDetailByIndex( const uint32_t lodIndex ) const;
     const int                   getLevelOfDetailCount() const;
 
+    const bool                  isBatchable() const;
+
     void                        reset();
 
 private:
     fnString_t                          name;
     AABB                                aabb;
+    union
+    {
+        struct
+        {
+            uint8_t isVisible : 1;
+            uint8_t renderDepth : 1;
+            uint8_t useBatching : 1;
+            uint8_t : 0;
+        };
+
+        uint32_t                        flags;
+    };
 
     std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;

@@ -27,6 +27,7 @@
 Mesh::Mesh( const fnString_t& meshName )
     : name( meshName )
     , aabb{}
+    , flags( 0 )
     , vertexArrayObject( nullptr )
     , lodCount( 0 )
 {
@@ -64,6 +65,10 @@ void Mesh::create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDes
 
     // Implicitly resets bounding box
     aabb.maxPoint = aabb.maxPoint = glm::vec3( 0, 0, 0 );
+
+    isVisible = 1;
+    renderDepth = 1;
+    useBatching = 0;
 }
 
 void Mesh::addLevelOfDetail( const uint32_t lodIndex, const float lodDistance )
@@ -138,6 +143,11 @@ const Mesh::LevelOfDetail& Mesh::getLevelOfDetailByIndex( const uint32_t lodInde
 const int Mesh::getLevelOfDetailCount() const
 {
     return lodCount;
+}
+
+const bool Mesh::isBatchable() const
+{
+    return ( useBatching == 1 );
 }
 
 void Mesh::reset()
