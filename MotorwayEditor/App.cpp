@@ -564,6 +564,7 @@ int InitializeSubsystems()
                 auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                 cmdList->beginCommandList( g_RenderDevice );
                 auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
+
                 terrainSceneNode->instance.terrainAsset->computePatchsBounds();
                 terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
                 cmdList->endCommandList( g_RenderDevice );
@@ -690,15 +691,14 @@ void RebuildCameraPipeline( Camera* mainCamera )
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) ); 
     } else {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
 
         mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
@@ -708,6 +708,8 @@ void RebuildCameraPipeline( Camera* mainCamera )
         } else {
             mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
         }
+
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPassMSAA" ) );
     }
 
     FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
@@ -752,6 +754,9 @@ int motorway::game::Start()
         }
 
         frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
+        if ( frameTime > 1.0f / 10.0f ) {
+            frameTime = flan::framework::LOGIC_DELTA;
+        }
 
         logicCounter.onFrame( frameTime );
         g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 0.30f, 0.1f );
