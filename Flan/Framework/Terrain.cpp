@@ -252,6 +252,21 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     GRASS_TEST->addLevelOfDetail( 0, 256.0f );
     GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
+
+    int index = 0;
+    for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ); texelIdx += 2 ) {
+        if ( splatmap[texelIdx * 4 + 3] == 0 ) {
+            continue;
+        }
+
+        int j = texelIdx / heightmapWidth;
+        int i = texelIdx % heightmapWidth;
+
+        grassTestTransform[index].setLocalTranslation( glm::vec3( i + 3.0f, heightmap[texelIdx], j + 3.0f ) );
+        grassTestTransform[index].rebuildModelMatrix();
+
+        if ( ++index == 512 ) break;
+    }
 }
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const

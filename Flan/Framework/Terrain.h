@@ -29,6 +29,7 @@ class Buffer;
 class Mesh;
 
 #include <Core/Maths/AABB.h>
+#include <Core/Maths/Transform.h>
 #include <vector>
 
 class Terrain
@@ -61,6 +62,8 @@ public:
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
     Mesh* GRASS_TEST;
+
+    Transform grassTestTransform[512];
 
 private:
     struct VertexLayout {

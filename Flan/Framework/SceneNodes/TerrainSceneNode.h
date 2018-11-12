@@ -43,7 +43,7 @@ struct TerrainSceneNode : public SceneNode
     static constexpr fnStringHash_t Hashcode = FLAN_STRING_HASH( "TerrainSceneNode" );
 
     TerrainInstance instance;
-    MeshInstance grassInstane;
+    MeshInstance grassInstane[512];
     TerrainSceneNode( Terrain* nodeTerrain, const std::string& name = "Terrain" )
         : SceneNode( name )
         , instance()
@@ -51,8 +51,10 @@ struct TerrainSceneNode : public SceneNode
         instance.terrainAsset = nodeTerrain;
         instance.meshTransform = &transform;
 
-        grassInstane.meshAsset = nodeTerrain->GRASS_TEST;
-        grassInstane.meshTransform = &transform;
+        for ( int i = 0; i < 512; i++ ) {
+            grassInstane[i].meshAsset = nodeTerrain->GRASS_TEST;
+            grassInstane[i].meshTransform = &nodeTerrain->grassTestTransform[i];
+        }
 
         canCollectRenderKeys = true;
 
@@ -74,7 +76,10 @@ struct TerrainSceneNode : public SceneNode
     {
         if ( instance.terrainAsset != nullptr ) {
             drawCommandBuilder->addTerrainToRender( &instance );
-            drawCommandBuilder->addMeshToRender( &grassInstane );
+
+            for ( int i = 0; i < 512; i++ ) {
+                drawCommandBuilder->addMeshToRender( &grassInstane[i] );
+            }
         }
     }
 
