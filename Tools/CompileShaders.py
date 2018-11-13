@@ -310,8 +310,11 @@ compile_shader_VS( "Common/FullscreenQuad.hlsl", "FullscreenQuad", "EntryPointVS
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTrianglePresent", "EntryPointVS", {}, True )
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTriangle", "EntryPointVS", {}, False )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWrite" )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteInstanced", "EntryPointVS", { "PH_INSTANCED" : "1" } )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmap", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmapInstanced", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
 compile_shader_PS( "Common/CopyTexture.hlsl", "CopyTexture" )
 
 compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve1", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1", "PH_USE_TAA": "0" } )
@@ -352,9 +355,13 @@ compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPoint
 
 compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointHeightfieldVS", { "PH_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "Surface" )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceInstanced", "EntryPointVS", { "PH_INSTANCED": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUV", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUVInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVInstanced", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
 
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointDS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )

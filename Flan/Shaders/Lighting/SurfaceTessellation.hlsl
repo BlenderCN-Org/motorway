@@ -38,10 +38,12 @@ struct HS_CONSTANT_DATA_OUTPUT
  
 #include <CameraData.hlsli>
 
+#define PH_MAX_INSTANCE_COUNT 512
+
 #if PH_DEPTH_ONLY
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
     float4x4	g_DepthViewProjectionMatrix;
 };
 
@@ -53,7 +55,7 @@ struct DomainStageData
 #else
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
 };
 
 struct DomainStageData
