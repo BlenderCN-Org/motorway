@@ -66,7 +66,7 @@ public:
     void    create( TaskManager* taskManagerInstance, RenderableEntityManager* rEntityManInstance, GraphicsAssetManager* graphicsAssetManagerInstance, WorldRenderer* worldRendererInstance );
 
     void    addCamera( Camera* camera );
-    void    addMeshesToRender( MeshInstance** meshInstances, const int instanceCount );
+    void    addMeshesToRender( MeshInstance* meshInstances, const int instanceCount );
     void    addMeshToRender( MeshInstance* meshInstance );
     void    addTerrainToRender( TerrainInstance* meshInstance );
     void    addWireframeMeshToRender( MeshInstance* meshInstance );
@@ -99,7 +99,7 @@ public:
 private:
     struct MeshInstanceToRender
     {
-        MeshInstance** instances;
+        MeshInstance* instances;
         int instanceCount;
     };
     
@@ -120,6 +120,9 @@ private:
 
     MeshInstance*                           wireMeshInstances[1024];
     int                                     wireMeshInstancesCount;
+
+    glm::mat4x4 modelInstancedTEST[512 * 8];
+    int modelInstancePointer;
 
     std::list<Camera*>                      cameras;
 

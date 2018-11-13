@@ -77,9 +77,7 @@ struct TerrainSceneNode : public SceneNode
         if ( instance.terrainAsset != nullptr ) {
             drawCommandBuilder->addTerrainToRender( &instance );
 
-            for ( int i = 0; i < 512; i++ ) {
-                drawCommandBuilder->addMeshToRender( &grassInstane[i] );
-            }
+            drawCommandBuilder->addMeshesToRender( grassInstane, 512 );
         }
     }
 

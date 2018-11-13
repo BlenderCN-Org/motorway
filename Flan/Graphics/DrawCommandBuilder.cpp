@@ -185,6 +185,7 @@ DrawCommandBuilder::DrawCommandBuilder()
     , envProbeCaptureCount( 0 )
     , envProbeConvolutionCount( 0 )
     , hudRectangleMatriceCount( 0 )
+    , modelInstancePointer( 0 )
 {
 
 }
@@ -203,7 +204,7 @@ void DrawCommandBuilder::create( TaskManager* taskManagerInstance, RenderableEnt
     worldRenderer = worldRendererInstance;
 }
 
-void DrawCommandBuilder::addMeshesToRender( MeshInstance** meshInstances, const int instanceCount )
+void DrawCommandBuilder::addMeshesToRender( MeshInstance* meshInstances, const int instanceCount )
 {
     meshInstancedInstances[meshInstancedInstancesCount++] = { meshInstances, instanceCount };
 }
@@ -453,6 +454,9 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
         envProbeConvolutionCount--;
     }
 
+    FLAN_IMPORT_VAR_PTR( WindowWidth, int32_t )
+    FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
+
     // TODO It sucks.
     // Make this better (since CSM is viewport dependant, this is quite complicated to implement seamlessly...)
     auto directionalLight = renderableEntityManager->getDirectionalLightByIndex( 0 );
@@ -478,8 +482,6 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
             }
         }
         
-FLAN_IMPORT_VAR_PTR( WindowWidth, int32_t )
-FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
         Viewport viewportTest = {};
         viewportTest.X = 0;
         viewportTest.Y = 0;
@@ -518,6 +520,7 @@ FLAN_IMPORT_VAR_PTR( WindowHeight, int32_t )
     circleMatriceCount = 0;
     hudRectangleMatriceCount = 0;
     meshInstancedInstancesCount = 0;
+    modelInstancePointer = 0;
 }
 
 void DrawCommandBuilder::addGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
@@ -543,8 +546,10 @@ void DrawCommandBuilder::addGeometryForViewport( const Camera::Data& worldViewpo
         drawCmdGeo.material = terrainMaterial;
         drawCmdGeo.vao = terrain->getVertexArrayObject();
         drawCmdGeo.indiceBufferOffset = 0;
+        drawCmdGeo.instanceCount = 1;
         drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
         drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+        drawCmdGeo.alphaDitheringValue = 1.0f;
 
         worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
     }
@@ -579,8 +584,10 @@ void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldV
             drawCmdGeo.material = terrainMaterial;
             drawCmdGeo.vao = terrain->getVertexArrayObject();
             drawCmdGeo.indiceBufferOffset = 0;
+            drawCmdGeo.instanceCount = 1;
             drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
             drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+            drawCmdGeo.alphaDitheringValue = 1.0f;
 
             worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
         }
@@ -607,6 +614,7 @@ void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldV
             drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
 
             DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.instanceCount = 1;
             drawCmdGeo.material = wireframeMat;
             drawCmdGeo.vao = sphereVao;
             drawCmdGeo.indiceBufferOffset = 0u;
@@ -631,6 +639,7 @@ void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldV
             drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
 
             DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.instanceCount = 1;
             drawCmdGeo.material = wireframeMat;
             drawCmdGeo.vao = boxVao;
             drawCmdGeo.indiceBufferOffset = 0u;
@@ -655,6 +664,7 @@ void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldV
             drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
 
             DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.instanceCount = 1;
             drawCmdGeo.material = wireframeMat;
             drawCmdGeo.vao = coneVao;
             drawCmdGeo.indiceBufferOffset = 0u;
@@ -679,6 +689,7 @@ void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldV
             drawCmdKey.bitfield.materialSortKey = wireframeMat->getMaterialSortKey();
 
             DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.instanceCount = 1;
             drawCmdGeo.material = wireframeMat;
             drawCmdGeo.vao = circleVao;
             drawCmdGeo.indiceBufferOffset = 0u;
@@ -741,6 +752,7 @@ void DrawCommandBuilder::addHUDGeometryForViewport( const Camera::Data& worldVie
         drawCmdKey.bitfield.materialSortKey = material->getMaterialSortKey();
 
         DrawCommandInfos drawCmdGeo;
+        drawCmdGeo.instanceCount = 1;
         drawCmdGeo.material = material;
         drawCmdGeo.vao = rectangleVao;
         drawCmdGeo.indiceBufferOffset = 0u;
@@ -755,9 +767,66 @@ static constexpr float LOD_TRANSITION_START_DISTANCE = 32.0f;
 
 void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer )
 {
+    int instanceStartIndex = modelInstancePointer;
+
+    // Quick and dirty instanciation prototyping (code sucks but np)
     for ( int i = 0; i < meshInstancedInstancesCount; i++ ) {
-        for ( int j = 0; j < meshInstancedInstances[i].instanceCount; i++ ) {
-            addMeshInstance( meshInstancedInstances[i].instances[j], worldViewport, viewportIndex, viewportLayer, viewportFrustum, layer );
+        const Mesh* mesh = meshInstancedInstances[i].instances->meshAsset;
+        BoundingSphere sphere = mesh->getBoundingSphere();
+
+        float closestCamToInstanceDist = std::numeric_limits<float>::max();
+        MeshInstance* instanceArr = meshInstancedInstances[i].instances;
+        for ( int j = 0; j < meshInstancedInstances[i].instanceCount; j++ ) {
+            sphere.center += instanceArr->meshTransform->getWorldTranslation();
+            sphere.radius *= instanceArr->meshTransform->getWorldBiggestScale();
+
+            // Outside frustum; cull the mesh
+            if ( CullSphereInfReversedZ( viewportFrustum, sphere.center, sphere.radius ) <= 0 ) {
+                continue;
+            }
+
+            float distanceToCamera = glm::distance( sphere.center, worldViewport.worldPosition );
+            closestCamToInstanceDist = std::min( distanceToCamera, closestCamToInstanceDist );
+
+            modelInstancedTEST[++modelInstancePointer] = *instanceArr->meshTransform->getWorldModelMatrix();
+        }
+
+        int instanceCount = modelInstancePointer - instanceStartIndex;
+        if ( instanceCount == 0 ) {
+            continue;
+        }
+
+        const Mesh::LevelOfDetail& lod = mesh->getLevelOfDetail( closestCamToInstanceDist );
+
+        float alphaValue = 1.0f;
+        const int lodCount = mesh->getLevelOfDetailCount();
+
+        unsigned int useLodAlphaStippling = 0;
+        unsigned int lodTransitionIndex = lod.lodIndex;
+
+        // TODO Per submesh visibility?
+        const VertexArrayObject* meshVao = mesh->getVertexArrayObject();
+        for ( const auto& subMesh : lod.subMeshes ) {
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = layer;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = ( subMesh.material->isOpaque() )
+                ? DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK
+                : DrawCommandKey::SortOrder::SORT_BACK_TO_FRONT;
+            drawCmdKey.bitfield.depth = DepthToBits( closestCamToInstanceDist );
+            drawCmdKey.bitfield.materialSortKey = subMesh.material->getMaterialSortKey();
+
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = subMesh.material;
+            drawCmdGeo.vao = meshVao;
+            drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
+            drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
+            drawCmdGeo.modelMatrix = ( glm::mat4x4* )( modelInstancedTEST + instanceStartIndex );
+            drawCmdGeo.instanceCount = instanceCount;
+
+            drawCmdGeo.alphaDitheringValue = 1.0f;
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
         }
     }
 
@@ -793,7 +862,8 @@ void DrawCommandBuilder::addMeshInstance( MeshInstance* meshInstance, const Came
     unsigned int useLodAlphaStippling = 0;
     unsigned int lodTransitionIndex = lod.lodIndex;
 
-    if ( lodCount > 1 ) {
+    // TODO Proper LOD transition implementation (see TODO)
+    if ( lodCount > 1 && false ) {
         const float nextLodTransitionDistance = ( lod.lodDistance - distanceToCamera );
         const float previousLodTransitionDistance = ( distanceToCamera - lod.startDistance );
 
@@ -836,7 +906,8 @@ void DrawCommandBuilder::addMeshInstance( MeshInstance* meshInstance, const Came
             drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
             drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
             drawCmdGeo.modelMatrix = meshModelMatrix;
-            drawCmdGeo.enableAlphaStippling = 0;
+            drawCmdGeo.instanceCount = 1;
+
             drawCmdGeo.alphaDitheringValue = 1.0f;
             worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
         }
@@ -867,8 +938,8 @@ void DrawCommandBuilder::addMeshInstance( MeshInstance* meshInstance, const Came
                 drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
                 drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
                 drawCmdGeo.modelMatrix = meshModelMatrix;
-                drawCmdGeo.enableAlphaStippling = useLodAlphaStippling;
                 drawCmdGeo.alphaDitheringValue = alphaValue;
+                drawCmdGeo.instanceCount = 1;
 
                 worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
             }

@@ -65,7 +65,8 @@ struct DrawCommandKey
 
             uint16_t depth; // half float depth for distance sorting
             SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
-            uint8_t __PLACEHOLDER__ : 6;
+            uint8_t isInstanciated : 1; // instanciated geometry should be treated last
+            uint8_t __PLACEHOLDER__ : 5;
 
             Layer layer : 3;
             uint8_t viewportLayer : 2;
@@ -79,12 +80,11 @@ struct DrawCommandInfos
 {
     const Material*             material; // Geom cmd
     const VertexArrayObject*    vao;
-    unsigned int                indiceBufferOffset;
-    unsigned int                indiceBufferCount;
-    unsigned int                enableAlphaStippling; // TODO Remove (alpha stippling enable/disable is mesh specific and can be resolved at drawcmd build step)
-    float                       alphaDitheringValue; // 0..1
-    unsigned int                instanceCount;
-    glm::mat4*                  modelMatrix;
+    uint32_t                    indiceBufferOffset;
+    uint32_t                    indiceBufferCount;
+    float                       alphaDitheringValue; // 0..1 (1.0f if disabled)
+    uint32_t                    instanceCount; // 0 or 1 implicitly disable instancing
+    glm::mat4*                  modelMatrix; // Points to a single matrix or an array of matrix (if instanciation is used)
 };
 
 struct DrawCommand

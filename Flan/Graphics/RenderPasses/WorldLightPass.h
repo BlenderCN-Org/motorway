@@ -54,10 +54,9 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 {
     struct InstanceBuffer
     {
-        glm::mat4x4 modelMatrix;
+        glm::mat4x4 modelMatrix[512];
         float lodDitheringAlpha;
-        uint32_t enableAlphaStippling;
-        uint32_t __PADDING__[2];
+        uint32_t __PADDING__[3];
     };
 
     struct PassBuffer
@@ -326,22 +325,34 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
                 const auto& drawCmd = opaqueBucketList[i];
                 drawCmd.vao->bind( cmdList );
 
-                //if ( drawCmd.modelMatrix != previousModelMatrix ) {
-                    instance.modelMatrix = *drawCmd.modelMatrix;
-                    instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
-                    instance.enableAlphaStippling = drawCmd.enableAlphaStippling;
+                if ( drawCmd.instanceCount > 1 ) {
+                    memcpy( instance.modelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
+                    previousModelMatrix = nullptr;
+                } else {
+                    if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                        instance.modelMatrix[0] = *drawCmd.modelMatrix;
+                        previousModelMatrix = drawCmd.modelMatrix;
+                    }
+                }
+                    
+                instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
+                modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
+                  
+                if ( drawCmd.instanceCount > 1 ) {
+                    if ( !isRenderingProbe )
+                        drawCmd.material->bindInstanced( cmdList );
+                    else
+                        drawCmd.material->bindInstancedForProbeRendering( cmdList );
 
-                    modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
-                   
-                //    previousModelMatrix = drawCmd.modelMatrix;
-                //}
+                    cmdList->drawInstancedIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset, drawCmd.instanceCount );
+                } else {
+                    if ( !isRenderingProbe )
+                        drawCmd.material->bind( cmdList );
+                    else
+                        drawCmd.material->bindForProbeRendering( cmdList );
 
-                if ( !isRenderingProbe )
-                    drawCmd.material->bind( cmdList );
-                else
-                    drawCmd.material->bindForProbeRendering( cmdList );
-
-                cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                    cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                }
             }
 
             cmdList->bindBackbufferCmd();
