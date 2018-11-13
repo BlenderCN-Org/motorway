@@ -46,7 +46,9 @@ public:
     void                    playbackCommandList( RenderDevice* renderDevice );
 
     void                    drawCmd( const uint32_t vertexCount, const uint32_t vertexOffset = 0 );
+
     void                    drawIndexedCmd( const uint32_t indiceCount, const uint32_t indiceOffset = 0, const std::size_t indiceType = sizeof( uint32_t ), const uint32_t vertexOffset = 0 );
+    void                    drawInstancedIndexedCmd( const uint32_t indiceCount, const uint32_t indiceOffset, const uint32_t instanceCount, const std::size_t indiceType = sizeof( uint32_t ), const uint32_t vertexOffset = 0 );
     void                    dispatchComputeCmd( const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ );
 
     Viewport                getViewportCmd();

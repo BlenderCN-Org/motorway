@@ -173,6 +173,11 @@ void CommandList::drawIndexedCmd( const uint32_t indiceCount, const uint32_t ind
     flan::rendering::DrawIndexedImpl( nativeCommandList.get(), indiceCount, indiceOffset, indiceType, vertexOffset );
 }
 
+void CommandList::drawInstancedIndexedCmd( const uint32_t indiceCount, const uint32_t indiceOffset, const uint32_t instanceCount, const std::size_t indiceType, const uint32_t vertexOffset )
+{
+    flan::rendering::DrawInstancedIndexedImpl( nativeCommandList.get(), indiceCount, instanceCount, indiceOffset, vertexOffset );
+}
+
 void CommandList::dispatchComputeCmd( const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )
 {
     flan::rendering::DispatchComputeImpl( nativeCommandList.get(), threadCountX, threadCountY, threadCountZ );
