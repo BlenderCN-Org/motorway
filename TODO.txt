@@ -41,6 +41,7 @@ Stuff todo for the project
     > Automatic exposure override (to properly handle night time)
     > Profile containers and find hotspot (if any)
     > Refactor scene subsystem (aka make something efficient without the ECS gimmick)
+    > Refactor drawbuilder (code is unoptimized garbage)
     
 [Client]
     > Implement Client to Server connection (see old code)
