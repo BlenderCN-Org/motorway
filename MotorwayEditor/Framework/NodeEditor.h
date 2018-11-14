@@ -19,12 +19,10 @@
 */
 #pragma once
 
-class CommandList;
-
 namespace flan
 {
     namespace framework
     {
-        void DrawEditorInterface( const float frameTime, CommandList* cmdList );
+        void DisplayNodeEditor( const float deltaTime );
     }
 }

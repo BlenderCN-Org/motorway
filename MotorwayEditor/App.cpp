@@ -104,8 +104,10 @@
 
 #include <Framework/SceneNodes/EmptySceneNode.h>
 #include <Framework/Scene.h>
+
 #include "EditorInterface.h"
 
+#include <Framework/TerrainEditor.h>
 #include <Core/Allocators/AllocationHelpers.h>
 #include <Core/Allocators/GrowingStackAllocator.h>
 #include <Core/Allocators/LinearAllocator.h>
@@ -553,22 +555,25 @@ int InitializeSubsystems()
 
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                     cmdList->beginCommandList( g_RenderDevice );
-                    EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
+                    flan::framework::EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
                     cmdList->endCommandList( g_RenderDevice );
                     cmdList->playbackCommandList( g_RenderDevice );
 
                     g_IsEditingTerrain = true;
                 }
-            } else if ( g_IsEditingTerrain && PickedNode != nullptr ) {
-                // Recompute visibility
-                auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-                cmdList->beginCommandList( g_RenderDevice );
-                auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
+            } else if ( g_IsEditingTerrain ) {
+                FLAN_IMPORT_VAR_PTR( panelId, int );
+                if ( PickedNode != nullptr && *panelId == 2 ) {
+                    // Recompute visibility
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+                    cmdList->beginCommandList( g_RenderDevice );
+                    auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
 
-                terrainSceneNode->instance.terrainAsset->computePatchsBounds();
-                terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
-                cmdList->endCommandList( g_RenderDevice );
-                cmdList->playbackCommandList( g_RenderDevice );
+                    terrainSceneNode->instance.terrainAsset->computePatchsBounds();
+                    terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+                    cmdList->playbackCommandList( g_RenderDevice );
+                }
 
                 g_IsEditingTerrain = false;
             }
@@ -829,7 +834,7 @@ int motorway::game::Start()
         g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
 
         CommandList* cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-        DrawEditorInterface( interpolatedFrametime, cmdList );
+        flan::framework::DrawEditorInterface( interpolatedFrametime, cmdList );
 #endif
 
         g_RenderDevice->present();

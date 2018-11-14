@@ -19,12 +19,16 @@
 */
 #pragma once
 
+#include <Core/Maths/Ray.h>
+
+class Terrain;
 class CommandList;
 
 namespace flan
 {
     namespace framework
     {
-        void DrawEditorInterface( const float frameTime, CommandList* cmdList );
+        void DisplayTerrainEditor();
+        void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList );
     }
 }
