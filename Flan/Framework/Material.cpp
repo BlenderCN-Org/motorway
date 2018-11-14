@@ -283,6 +283,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             descriptor.tesselationControlStage = nullptr;
             descriptor.tesselationEvalStage = nullptr;
         } else if ( materialType == MaterialType::TERRAIN ) {
+            depthVertexStage = FLAN_STRING( "DepthWriteHeightmap" );
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
             depthVertexStageInstanced = FLAN_STRING( "DepthWriteHeightmap" );
 

@@ -260,11 +260,13 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             PassBuffer passBuffer;
             passBuffer.backbufferDimension.x = pipelineDimensions.Width;
             passBuffer.backbufferDimension.y = pipelineDimensions.Height;
-            passBuffer.brushRadius = 8.0f;
-            passBuffer.toggleBrush = 1u;
 
             FLAN_IMPORT_VAR_PTR( dev_TerrainMousePosition, glm::vec3 )
+            FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int )
+            FLAN_IMPORT_VAR_PTR( panelId, int )
             passBuffer.mouseCoordinates = *dev_TerrainMousePosition;
+            passBuffer.brushRadius = *g_TerrainEditorEditionRadius;
+            passBuffer.toggleBrush = ( *panelId == 2 ) ? 1 : 0;
 
             auto rtBufferData = renderPipelineResources->getBuffer( passData.buffers[2] );
             rtBufferData->updateAsynchronous( cmdList, &passBuffer, sizeof( PassBuffer ) );

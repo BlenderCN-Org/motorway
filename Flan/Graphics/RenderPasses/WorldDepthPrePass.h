@@ -177,10 +177,10 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
                     memcpy( matrices.modelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
                     previousModelMatrix = nullptr;
                 } else {
-                    if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                    //if ( drawCmd.modelMatrix != previousModelMatrix ) {
                         matrices.modelMatrix[0] = *drawCmd.modelMatrix;
                         previousModelMatrix = drawCmd.modelMatrix;
-                    }
+                   // }
                 }
 
                 matrices.lodBlendAlpha = drawCmd.alphaDitheringValue;

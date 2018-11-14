@@ -777,8 +777,8 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
         float closestCamToInstanceDist = std::numeric_limits<float>::max();
         MeshInstance* instanceArr = meshInstancedInstances[i].instances;
         for ( int j = 0; j < meshInstancedInstances[i].instanceCount; j++ ) {
-            sphere.center += instanceArr->meshTransform->getWorldTranslation();
-            sphere.radius *= instanceArr->meshTransform->getWorldBiggestScale();
+            sphere.center += instanceArr[j].meshTransform->getWorldTranslation();
+            sphere.radius *= instanceArr[j].meshTransform->getWorldBiggestScale();
 
             // Outside frustum; cull the mesh
             if ( CullSphereInfReversedZ( viewportFrustum, sphere.center, sphere.radius ) <= 0 ) {
@@ -788,7 +788,7 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
             float distanceToCamera = glm::distance( sphere.center, worldViewport.worldPosition );
             closestCamToInstanceDist = std::min( distanceToCamera, closestCamToInstanceDist );
 
-            modelInstancedTEST[++modelInstancePointer] = *instanceArr->meshTransform->getWorldModelMatrix();
+            modelInstancedTEST[modelInstancePointer++] = *instanceArr[j].meshTransform->getWorldModelMatrix();
         }
 
         int instanceCount = modelInstancePointer - instanceStartIndex;
@@ -822,7 +822,7 @@ void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, co
             drawCmdGeo.vao = meshVao;
             drawCmdGeo.indiceBufferOffset = subMesh.indiceBufferOffset;
             drawCmdGeo.indiceBufferCount = subMesh.indiceCount;
-            drawCmdGeo.modelMatrix = ( glm::mat4x4* )( modelInstancedTEST + instanceStartIndex );
+            drawCmdGeo.modelMatrix = &modelInstancedTEST[instanceStartIndex];
             drawCmdGeo.instanceCount = instanceCount;
 
             drawCmdGeo.alphaDitheringValue = 1.0f;

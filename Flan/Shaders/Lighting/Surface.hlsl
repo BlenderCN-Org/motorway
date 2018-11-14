@@ -73,6 +73,12 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
 {
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
+#if PH_INSTANCED
+    float4x4 ModelMatrix = ModelMatrices[InstanceId];
+#else  
+    float4x4 ModelMatrix = ModelMatrices[0];
+#endif
+    
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
     output.positionMS.y = SampleHeightmap( VertexBuffer.TexCoordinates );
     output.positionMS   = mul( ModelMatrices[0], output.positionMS );

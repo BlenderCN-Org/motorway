@@ -34,7 +34,7 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
 {
     struct MatricesBuffer
     {
-        glm::mat4 ModelMatrix;
+        glm::mat4 ModelMatrix[512];
         glm::mat4 ViewProjectionShadowMatrix;
     };
 
@@ -131,7 +131,6 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
             matInputDisplSampler->bind( cmdList, 9 );
 
             MatricesBuffer matrices;
-            matrices.ModelMatrix = glm::mat4( 1 );
 
             const auto backbufferViewport = cmdList->getViewportCmd();
             auto& cameraData = renderPipelineResources->getActiveCamera();
@@ -152,16 +151,24 @@ static fnPipelineMutableResHandle_t AddCascadedShadowMapCapturePass( RenderPipel
                     const auto& drawCmd = sliceDrawCmds[i];
                     drawCmd.vao->bind( cmdList );
 
-                    if ( previousModelMatrix != drawCmd.modelMatrix ) {
-                        matrices.ModelMatrix = *drawCmd.modelMatrix;
-                        matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
-
+                    if ( drawCmd.instanceCount > 1 ) {
+                        memcpy( matrices.ModelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
+                        previousModelMatrix = nullptr;
+                    } else {
+                        //if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                        matrices.ModelMatrix[0] = *drawCmd.modelMatrix;
                         previousModelMatrix = drawCmd.modelMatrix;
+                        // }
                     }
+                    matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
 
-                    drawCmd.material->bindDepthOnly( cmdList );
-
-                    cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                    if ( drawCmd.instanceCount > 1 ) {
+                        drawCmd.material->bindInstancedDepthOnly( cmdList );
+                        cmdList->drawInstancedIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset, drawCmd.instanceCount );
+                    } else {
+                        drawCmd.material->bindDepthOnly( cmdList );
+                        cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                    }
                 }
             }
 

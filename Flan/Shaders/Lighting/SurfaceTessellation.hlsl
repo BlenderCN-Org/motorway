@@ -56,6 +56,7 @@ struct DomainStageData
 cbuffer MatricesBuffer : register( b3 )
 {
     float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
+    float       g_LodBlendAlpha;
 };
 
 struct DomainStageData

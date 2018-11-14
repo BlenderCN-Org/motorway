@@ -191,32 +191,27 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
         glm::vec2 texCoords;
     };
 
-    GrassLayout grassBlade[4 * 4 * 2];
+    GrassLayout grassBlade[4 * 3];
 
-    // Grass test
-    for ( int quadId = 0; quadId < 4; quadId++ ) {
-        auto vertId = quadId * 4;
-        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
+    grassBlade[0] = { { -1.0f, 0.0f, 0.0f },{ 0, 1, 0 },{ 1, 1 } };
+    grassBlade[1] = { { 1.0f, 0.0f, 0.0f },{ 0, 1, 0 },{ 0, 1 } };
+    grassBlade[2] = { { 1.0f, 1.0f, 0.0f },{ 0, 1, 0 },{ 0, 0 } };
+    grassBlade[3] = { { -1.0f, 1.0f, 0.0f },{ 0, 1, 0 },{ 1, 0 } };
 
-        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 1, 1 } };
-        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 0, 1 } };
-        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 0, 0 } };
-        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 1, 0 } };
-    }
+    grassBlade[4] = { { -0.75f, 0.0f, -0.75f },{ 0, 1, 0 },{ 1, 1 } };
+    grassBlade[5] = { { 0.75f, 0.0f, 0.75f },{ 0, 1, 0 },{ 0, 1 } };
+    grassBlade[6] = { { 0.75f, 1.0f, 0.75f },{ 0, 1, 0 },{ 0, 0 } };
+    grassBlade[7] = { { -0.75f, 1.0f, -0.75f },{ 0, 1, 0 },{ 1, 0 } };
 
-    for ( int quadId = 0; quadId < 4; quadId++ ) {
-        auto vertId = quadId * 4 + 16;
-        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
 
-        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f }, { 0, 1, 0 }, { 1, 1 } };
-        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f }, { 0, 1, 0 }, { 0, 1 } };
-        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f }, { 0, 1, 0 }, { 0, 0 } };
-        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f }, { 0, 1, 0 }, { 1, 0 } };
-    }
+    grassBlade[8] = { { -0.75f, 0.0f, 0.75f },{ 0, 1, 0 },{ 1, 1 } };
+    grassBlade[9] = { { 0.75f, 0.0f, -0.75f },{ 0, 1, 0 },{ 0, 1 } };
+    grassBlade[10] = { { 0.75f, 1.0f, -0.75f },{ 0, 1, 0 },{ 0, 0 } };
+    grassBlade[11] = { { -0.75f, 1.0f, 0.75f },{ 0, 1, 0 },{ 1, 0 } };
 
-    uint32_t grassIndices[6 * 8];
+    uint32_t grassIndices[6 * 3];
     i = 0;
-    for ( int quadId = 0; quadId < 8; quadId++ ) {
+    for ( int quadId = 0; quadId < 3; quadId++ ) {
         grassIndices[i + 0] = quadId * 4 + 0;
         grassIndices[i + 1] = quadId * 4 + 1;
         grassIndices[i + 2] = quadId * 4 + 2;
@@ -227,15 +222,49 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
         i += 6;
     }
+    //// Grass test
+    //for ( int quadId = 0; quadId < 4; quadId++ ) {
+    //    auto vertId = quadId * 4;
+    //    auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
+
+    //    grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 1, 1 } };
+    //    grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 0, 1 } };
+    //    grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 0, 0 } };
+    //    grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 1, 0 } };
+    //}
+
+    //for ( int quadId = 0; quadId < 4; quadId++ ) {
+    //    auto vertId = quadId * 4 + 16;
+    //    auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
+
+    //    grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f }, { 0, 1, 0 }, { 1, 1 } };
+    //    grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f }, { 0, 1, 0 }, { 0, 1 } };
+    //    grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f }, { 0, 1, 0 }, { 0, 0 } };
+    //    grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f }, { 0, 1, 0 }, { 1, 0 } };
+    //}
+
+    //uint32_t grassIndices[6 * 8];
+    //i = 0;
+    //for ( int quadId = 0; quadId < 8; quadId++ ) {
+    //    grassIndices[i + 0] = quadId * 4 + 0;
+    //    grassIndices[i + 1] = quadId * 4 + 1;
+    //    grassIndices[i + 2] = quadId * 4 + 2;
+
+    //    grassIndices[i + 3] = quadId * 4 + 0;
+    //    grassIndices[i + 4] = quadId * 4 + 2;
+    //    grassIndices[i + 5] = quadId * 4 + 3;
+
+    //    i += 6;
+    //}
     
     BufferDesc vboGrassDesc;
     vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
-    vboGrassDesc.Size = 4 * 4 * 2 * sizeof( GrassLayout );
+    vboGrassDesc.Size = 4 * 3 * sizeof( GrassLayout );
     vboGrassDesc.Stride = sizeof( GrassLayout );
 
     BufferDesc iboGrassDesc;
     iboGrassDesc.Type = BufferDesc::INDICE_BUFFER;
-    iboGrassDesc.Size = 6 * 8 * sizeof( uint32_t );
+    iboGrassDesc.Size = 6 * 3 * sizeof( uint32_t );
     iboGrassDesc.Stride = sizeof( uint32_t );
 
     GRASS_TEST = new Mesh();
@@ -243,18 +272,18 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     SubMesh baseSubMesh;
     baseSubMesh.indiceBufferOffset = 0;
-    baseSubMesh.indiceCount = 6 * 8;
+    baseSubMesh.indiceCount = 6 * 3;
     baseSubMesh.material = grassTest;
     baseSubMesh.boundingSphere.center = { 0, 0, 0 };
-    baseSubMesh.boundingSphere.radius = 2.0f;
+    baseSubMesh.boundingSphere.radius = 8.0f;
     
-    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 2.0f, 2.0f, 2.0f } );
+    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
 
     GRASS_TEST->addLevelOfDetail( 0, 256.0f );
     GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
 
     int index = 0;
-    for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ); texelIdx += 2 ) {
+    for ( uint32_t texelIdx = 0; texelIdx < 4; texelIdx++ ) {
         if ( splatmap[texelIdx * 4 + 3] == 0 ) {
             continue;
         }
@@ -262,7 +291,8 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
         int j = texelIdx / heightmapWidth;
         int i = texelIdx % heightmapWidth;
 
-        grassTestTransform[index].setLocalTranslation( glm::vec3( i + 3.0f, heightmap[texelIdx], j + 3.0f ) );
+        grassTestTransform[index].setLocalTranslation( glm::vec3( i, heightmap[texelIdx], j ) );
+        grassTestTransform[index].setLocalScale( glm::vec3( 1.0f ) );
         grassTestTransform[index].rebuildModelMatrix();
 
         if ( ++index == 512 ) break;

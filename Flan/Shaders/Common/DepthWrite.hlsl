@@ -7,6 +7,7 @@ struct VertexStageData
 
 #include <CameraData.hlsli>
 #include <Tessellation.hlsli>
+
 #if PH_USE_HEIGHTFIELD
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
