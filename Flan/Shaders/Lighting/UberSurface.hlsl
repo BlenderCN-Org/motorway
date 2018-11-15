@@ -720,39 +720,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         
         normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
         normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) );
-        // [branch]
-        // if ( distanceWS >= 0.75 ) {
-            // // Far sampling only (use higher uv scale to avoid texture tiling)
-            // baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
-            // baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) );
-            
-            // normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
-            // normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) );
-        // } else if ( distanceWS >= 0.50 ) {
-            // // Linear interpolation between far and near (path with the highest shading cost; might worth optimizing)
-            // baseColor = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
-                              // g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
-                              // distanceWS );
-                              
-            // baseColor2 = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
-                               // g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
-                               // distanceWS );
-                               
-            // normalAndRoughness = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
-                                        // g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
-                                        // distanceWS );
-                                        
-            // normalAndRoughness2 = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
-                                        // g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
-                                        // distanceWS );
-        // } else {
-            // Basic texture sampling
-            // baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-            // baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) );
-            
-            // normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-            // normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) );
-        //}       
     }
 	
     // Build final layer
@@ -763,7 +730,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	BaseLayer.Metalness = 0.0f;
 	BaseLayer.AmbientOcclusion = 1.0f;
 	BaseLayer.Emissivity = 0.0f;
-	BaseLayer.Normal =  TerrainDepthBlend( float4( normalize( normalAndRoughness.rgb * 2.0f - 1.0f  ), baseColor.a ), 1.0f - blendFactor, float4( normalize( normalAndRoughness2.rgb * 2.0f - 1.0f ), baseColor2.a ), blendFactor );       
+	BaseLayer.Normal =  normalize( TerrainDepthBlend( float4( normalAndRoughness.rgb, baseColor.a ), 1.0f - blendFactor, float4( normalAndRoughness2.rgb, baseColor2.a ), blendFactor ) * 2.0f - 1.0f );       
 	BaseLayer.SecondaryNormal = N;
 	BaseLayer.AlphaMask = 1.0f;
 	BaseLayer.BlendMask = 1.0f;
