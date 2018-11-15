@@ -31,6 +31,14 @@
 
 #include <Io/Collider.h>
 
+#if FLAN_D3D11
+#include <Rendering/Direct3D11/Texture.h>
+#elif FLAN_VULKAN
+#include <Rendering/Vulkan/Texture.h>
+#endif
+
+#include <Core/PathHelpers.h>
+
 #include <imgui/imgui.h>
 
 static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
@@ -38,6 +46,8 @@ static int g_TerrainEditorMode = 0; // TODO Make it enum!
 static int g_TerrainEditorBrushType = 0; // TODO Make it enum! Square Default
 static int g_TerrainEditionMaterialIndex1 = 0;
 static int g_TerrainEditionMaterialIndex2 = 0;
+static Texture* g_TerrainEditionBaseMaterialBaseColor = nullptr;
+static Texture* g_TerrainEditionBaseMaterialNormal = nullptr;
 static float g_TerrainEditionMaterialHardness1 = 1.0f;
 static float g_TerrainEditionMaterialHardness2 = 1.0f;
 static float g_TerrainEditorEditionHeight = 0.01f;
@@ -45,6 +55,57 @@ static float g_TerrainEditorEditionHardness = 1.0f;
 
 FLAN_DEV_VAR( g_TerrainEditorEditionRadius, "TerrainEd Brush Radius (World Space)", 8, int )
 FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Space Position)", {}, glm::vec3 )
+
+void DisplayTextureInput( const std::string& name, Texture*& outputTexture )
+{
+    // Input label
+    ImVec2 texInfosSize = ImVec2( 318.0f, 64.0f );
+    std::string imageInfos = "No texture selected...";
+
+    ImGui::Text( name.c_str() );
+    if ( outputTexture != nullptr ) {
+        // Build Image Infos Text
+        imageInfos.clear();
+
+        const auto& textureName = outputTexture->getResourceName();
+        const auto& textureDesc = outputTexture->getDescription();
+
+        imageInfos += "Name: " + textureName + "\n";
+        imageInfos += "Dimensions: " + std::to_string( textureDesc.width ) + "x"
+            + std::to_string( textureDesc.height ) + "\n";
+        imageInfos += "Mip Count: " + std::to_string( textureDesc.mipCount );
+
+
+#if FLAN_D3D11
+        auto nativeObj = outputTexture->getNativeObject();
+        if ( ImGui::ImageButton( nativeObj->textureShaderResourceView, ImVec2( 58, 58 ) ) ) {
+#elif defined( FLAN_VULKAN ) || defined( FLAN_GL460 )
+        if ( ImGui::Button( "balh", ImVec2( 58, 58 ) ) ) {
+#endif
+            fnString_t filenameBuffer;
+            if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
+                fnString_t assetPath;
+                flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
+
+                outputTexture = g_GraphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
+            }
+        }
+    } else {
+        if ( ImGui::Button( ( "+##hidden_" + name ).c_str(), ImVec2( 64, 64 ) ) ) {
+            fnString_t filenameBuffer;
+            if ( flan::core::DisplayFileOpenPrompt( filenameBuffer, FLAN_STRING( "All (*.dds, *.jpg, *.png, *.png16, *.tga, *.lpng)\0*.dds;*.jpg;*.png;*.png16;*.tga;*.lpng\0DirectDraw Surface (*.dds)\0*.dds\0JPG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0PNG 16 Bits (*.png16)\0*.png16\0Low Precision PNG (*.lpng)\0*.lpng\0TGA (*.tga)\0*.tga\0" ), FLAN_STRING( "/." ), FLAN_STRING( "Select a Texture..." ) ) ) {
+                fnString_t assetPath;
+                flan::core::ExtractFilenameFromPath( filenameBuffer, assetPath );
+
+                outputTexture = g_GraphicsAssetManager->getTexture( ( FLAN_STRING( "GameData/Textures/" ) + assetPath ).c_str() );
+            }
+        }
+        texInfosSize.x += 2;
+    }
+
+    ImGui::SameLine();
+    ImGui::InputTextMultiline( ( "##hidden__TexInfos" + name ).c_str(), &imageInfos.front(), imageInfos.length(), ImVec2( 0, 0 ), ImGuiInputTextFlags_ReadOnly );
+}
 
 void flan::framework::DisplayTerrainEditor()
 {
@@ -66,6 +127,9 @@ void flan::framework::DisplayTerrainEditor()
         if ( g_TerrainEditorMode == 0 ) {
             ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
         } else if ( g_TerrainEditorMode == 1 ) {
+            DisplayTextureInput( "Base Color (RGB) + Height (A)", g_TerrainEditionBaseMaterialBaseColor );
+            DisplayTextureInput( "Normals (tangent space) (RGB) + Roughness (A)", g_TerrainEditionBaseMaterialNormal );
+
             // TODO User friendly!
             //  Selectable material (links to the biome editor?)
             //  Visual feedback in the panel (albedo texture?)

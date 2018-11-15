@@ -56,6 +56,9 @@
 #include <Framework/Scene.h>
 #include <Framework/Material.h>
 
+#include <Core/Allocators/LinearAllocator.h>
+#include <Core/BlueNoise.h>
+
 FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
@@ -166,6 +169,8 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
         if ( ImGui::Begin( "TabManager", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ) ) {
             ImGui::SetWindowPos( ImVec2( 16, 48 ) );
             ImGui::SetWindowSize( ImVec2( 800, 40 ) );
+            PrintTab( "Sandbox/Debug", 3 );
+            ImGui::SameLine( 0, 2 );
             PrintTab( "NodeEd", 0 );
             ImGui::SameLine( 0, 2 );
             PrintTab( "MaterialEd", 1 );
@@ -195,6 +200,27 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
                 flan::framework::DisplayTerrainEditor();
                 break;
 
+            case 3:
+                ImGui::Text( "Debug/Sandbox/Quick and dirty tests" );
+
+                if ( ImGui::Button( "Blue Noise generation test" ) ) {
+                    std::vector<float> texels;
+                    flan::core::ComputeBlueNoise( 128, 128, texels );
+
+                    TextureDescription noiseTest;
+                    noiseTest.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+                    noiseTest.width = 128;
+                    noiseTest.height = 128;
+                    noiseTest.format = IMAGE_FORMAT_R32_FLOAT;
+                    noiseTest.arraySize = 1;
+                    noiseTest.depth = 1;
+                    noiseTest.mipCount = 1;
+                    noiseTest.samplerCount = 1;
+
+                    Texture* noiseTex = flan::core::allocate<Texture>( g_GlobalAllocator );
+                    noiseTex->createAsTexture2D( g_RenderDevice, noiseTest, texels.data(), texels.size() );
+                }
+                break;
             }
         }
         
