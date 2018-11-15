@@ -79,10 +79,10 @@ void FreeCamera::Update( const float frameTime )
     data.worldPosition = glm::mix( data.worldPosition, nextWorldPosition, frameTime );
 
     if ( speedX > 0.0f ) {
-        speedX -= frameTime * moveSpeed * 0.20f;
+        speedX -= frameTime * moveSpeed * 0.50f;
         speedX = glm::max( speedX, 0.0f );
     } else if ( speedX < 0.0f ) {
-        speedX += frameTime * moveSpeed * 0.20f;
+        speedX += frameTime * moveSpeed * 0.50f;
         speedX = glm::min( speedX, 0.0f );
     }
 
@@ -90,10 +90,10 @@ void FreeCamera::Update( const float frameTime )
     data.worldPosition = glm::mix( data.worldPosition, nextWorldPosition, frameTime );
 
     if ( speedY > 0.0f ) {
-        speedY -= frameTime * moveSpeed * 0.20f;
+        speedY -= frameTime * moveSpeed * 0.50f;
         speedY = glm::max( speedY, 0.0f );
     } else if ( speedY < 0.0f ) {
-        speedY += frameTime * moveSpeed * 0.20f;
+        speedY += frameTime * moveSpeed * 0.50f;
         speedY = glm::min( speedY, 0.0f );
     }
 
@@ -101,10 +101,10 @@ void FreeCamera::Update( const float frameTime )
     data.worldPosition = glm::mix( data.worldPosition, nextUpWorldPosition, frameTime );
 
     if ( speedAltitude > 0.0f ) {
-        speedAltitude -= frameTime * moveSpeed * 0.20f;
+        speedAltitude -= frameTime * moveSpeed * 0.50f;
         speedAltitude = glm::max( speedAltitude, 0.0f );
     } else if ( speedAltitude < 0.0f ) {
-        speedAltitude += frameTime * moveSpeed * 0.20f;
+        speedAltitude += frameTime * moveSpeed * 0.50f;
         speedAltitude = glm::min( speedAltitude, 0.0f );
     }
 

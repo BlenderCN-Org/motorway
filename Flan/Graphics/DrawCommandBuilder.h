@@ -121,7 +121,7 @@ private:
     MeshInstance*                           wireMeshInstances[1024];
     int                                     wireMeshInstancesCount;
 
-    glm::mat4x4 modelInstancedTEST[512 * 8];
+    glm::mat4x4 modelInstancedTEST[( 512 * 512 ) * 8];
     int modelInstancePointer;
 
     std::list<Camera*>                      cameras;

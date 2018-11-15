@@ -30,6 +30,8 @@
 #include "Material.h"
 #include "Mesh.h"
 
+#include <Core/BlueNoise.h>
+
 Terrain::Terrain( const fnString_t& TerrainName )
     : name( TerrainName )
     , material( nullptr )
@@ -222,41 +224,7 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
         i += 6;
     }
-    //// Grass test
-    //for ( int quadId = 0; quadId < 4; quadId++ ) {
-    //    auto vertId = quadId * 4;
-    //    auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
 
-    //    grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 1, 1 } };
-    //    grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 }, { 0, 1 } };
-    //    grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 0, 0 } };
-    //    grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 }, { 1, 0 } };
-    //}
-
-    //for ( int quadId = 0; quadId < 4; quadId++ ) {
-    //    auto vertId = quadId * 4 + 16;
-    //    auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
-
-    //    grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f }, { 0, 1, 0 }, { 1, 1 } };
-    //    grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f }, { 0, 1, 0 }, { 0, 1 } };
-    //    grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f }, { 0, 1, 0 }, { 0, 0 } };
-    //    grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f }, { 0, 1, 0 }, { 1, 0 } };
-    //}
-
-    //uint32_t grassIndices[6 * 8];
-    //i = 0;
-    //for ( int quadId = 0; quadId < 8; quadId++ ) {
-    //    grassIndices[i + 0] = quadId * 4 + 0;
-    //    grassIndices[i + 1] = quadId * 4 + 1;
-    //    grassIndices[i + 2] = quadId * 4 + 2;
-
-    //    grassIndices[i + 3] = quadId * 4 + 0;
-    //    grassIndices[i + 4] = quadId * 4 + 2;
-    //    grassIndices[i + 5] = quadId * 4 + 3;
-
-    //    i += 6;
-    //}
-    
     BufferDesc vboGrassDesc;
     vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
     vboGrassDesc.Size = 4 * 3 * sizeof( GrassLayout );
@@ -282,20 +250,24 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
     GRASS_TEST->addLevelOfDetail( 0, 256.0f );
     GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
 
+    std::vector<float> texels;
+    flan::core::ComputeBlueNoise( 512, 512, texels );
+
     int index = 0;
-    for ( uint32_t texelIdx = 0; texelIdx < 4; texelIdx++ ) {
-        if ( splatmap[texelIdx * 4 + 3] == 0 ) {
-            continue;
+    for ( uint32_t x = 0; x < scalePatchX; x++ ) {
+        for ( uint32_t y = 0; y < scalePatchY; y++ ) {
+            const auto texelIndex = ( x * 8 ) * 512 + ( y * 8 );
+
+            if ( texels[texelIndex] < 0.85f ) {
+                continue;
+            }
+
+            grassTestTransform[index].setLocalTranslation( glm::vec3( x * 8.0f + 3.0f, heightmap[texelIndex], y * 8.0f + 3.0f ) );
+            grassTestTransform[index].setLocalScale( glm::vec3( 5.0f, 5.0f, 5.0f ) );
+            grassTestTransform[index].rebuildModelMatrix();
+
+            index++;
         }
-
-        int j = texelIdx / heightmapWidth;
-        int i = texelIdx % heightmapWidth;
-
-        grassTestTransform[index].setLocalTranslation( glm::vec3( i, heightmap[texelIdx], j ) );
-        grassTestTransform[index].setLocalScale( glm::vec3( 1.0f ) );
-        grassTestTransform[index].rebuildModelMatrix();
-
-        if ( ++index == 512 ) break;
     }
 }
 

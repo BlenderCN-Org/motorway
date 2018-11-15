@@ -43,7 +43,7 @@ struct TerrainSceneNode : public SceneNode
     static constexpr fnStringHash_t Hashcode = FLAN_STRING_HASH( "TerrainSceneNode" );
 
     TerrainInstance instance;
-    MeshInstance grassInstane[512];
+    MeshInstance grassInstane[512 * 512];
     TerrainSceneNode( Terrain* nodeTerrain, const std::string& name = "Terrain" )
         : SceneNode( name )
         , instance()
@@ -51,7 +51,7 @@ struct TerrainSceneNode : public SceneNode
         instance.terrainAsset = nodeTerrain;
         instance.meshTransform = &transform;
 
-        for ( int i = 0; i < 512; i++ ) {
+        for ( int i = 0; i < 512 * 512; i++ ) {
             grassInstane[i].meshAsset = nodeTerrain->GRASS_TEST;
             grassInstane[i].meshTransform = &nodeTerrain->grassTestTransform[i];
         }

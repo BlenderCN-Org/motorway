@@ -63,7 +63,7 @@ public:
     void computePatchsBounds();
     Mesh* GRASS_TEST;
 
-    Transform grassTestTransform[512];
+    Transform grassTestTransform[512*512];
 
 private:
     struct VertexLayout {
