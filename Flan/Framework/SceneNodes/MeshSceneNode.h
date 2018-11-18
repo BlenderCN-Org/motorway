@@ -80,85 +80,90 @@ struct MeshSceneNode : public SceneNode
     virtual void drawInEditor( GraphicsAssetManager* graphicsAssetManager, TransactionHandler* transactionHandler, const float frameTime )
     {
         SceneNode::drawInEditor( graphicsAssetManager, transactionHandler, frameTime );
-        
-        auto meshPath = ( instance.meshAsset != nullptr ) ? flan::core::WideStringToString( instance.meshAsset->getName() ) : "(empty)";
-        ImGui::LabelText( "##meshPath", meshPath.c_str() );
-        ImGui::SameLine();
 
-        if ( ImGui::Button( "..." ) ) {
-            fnString_t meshName;
-            if ( flan::core::DisplayFileOpenPrompt( meshName, FLAN_STRING( "Mesh file (*.mesh)\0*.mesh" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Mesh" ) ) ) {
-                meshName = fnString_t( meshName.c_str() );
+        if ( ImGui::TreeNode( "Mesh" ) ) {
+            auto meshPath = ( instance.meshAsset != nullptr ) ? flan::core::WideStringToString( instance.meshAsset->getName() ) : "(empty)";
+            ImGui::LabelText( "##meshPath", meshPath.c_str() );
+            ImGui::SameLine();
 
-                auto workingDir = fnString_t( FLAN_STRING( "" ) );
-                flan::core::RetrieveWorkingDirectory( workingDir );
+            if ( ImGui::Button( "..." ) ) {
+                fnString_t meshName;
+                if ( flan::core::DisplayFileOpenPrompt( meshName, FLAN_STRING( "Mesh file (*.mesh)\0*.mesh" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Mesh" ) ) ) {
+                    meshName = fnString_t( meshName.c_str() );
 
-                workingDir.append( FLAN_STRING( "data" ) );
-                size_t poswd = meshName.find( workingDir );
+                    auto workingDir = fnString_t( FLAN_STRING( "" ) );
+                    flan::core::RetrieveWorkingDirectory( workingDir );
 
-                if ( poswd != fnString_t::npos ) {
-                    // If found then erase it from string
-                    meshName.erase( poswd, workingDir.length() );
+                    workingDir.append( FLAN_STRING( "data" ) );
+                    size_t poswd = meshName.find( workingDir );
+
+                    if ( poswd != fnString_t::npos ) {
+                        // If found then erase it from string
+                        meshName.erase( poswd, workingDir.length() );
+                    }
+
+                    std::replace( meshName.begin(), meshName.end(), '\\', '/' );
+
+                    instance.meshAsset = graphicsAssetManager->getMesh( ( FLAN_STRING( "GameData" ) + meshName ).c_str() );
+                }
+            }
+
+            if ( instance.meshAsset == nullptr ) {
+                ImGui::TreePop();
+                return;
+            }
+
+            for ( int lodIdx = 0; lodIdx < Mesh::MAX_LOD_COUNT; lodIdx++ ) {
+                const auto& lod = instance.meshAsset->getLevelOfDetailByIndex( lodIdx );
+
+                if ( lod.startDistance < 0.0f ) {
+                    continue;
                 }
 
-                std::replace( meshName.begin(), meshName.end(), '\\', '/' );
+                if ( ImGui::TreeNode( std::string( "LOD" + std::to_string( lodIdx ) ).c_str() ) ) {
+                    ImGui::LabelText( "##loddistance", std::string( "Distance: " + std::to_string( lod.lodDistance ) ).c_str() );
 
-                instance.meshAsset = graphicsAssetManager->getMesh( ( FLAN_STRING( "GameData" ) + meshName ).c_str() );
-            }
-        }
+                    for ( auto& subMesh : lod.subMeshes ) {
+                        auto str = flan::core::WideStringToString( subMesh.name );
+                        ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
 
-        if ( instance.meshAsset == nullptr ) {
-            return;
-        }
-        
-        for ( int lodIdx = 0; lodIdx < Mesh::MAX_LOD_COUNT; lodIdx++ ) {
-            const auto& lod = instance.meshAsset->getLevelOfDetailByIndex( lodIdx );
+                        ImGui::SameLine();
 
-            if ( lod.startDistance < 0.0f ) {
-                continue;
-            }
+                        if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
+                            fnString_t materialName;
+                            if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
+                                materialName = fnString_t( materialName.c_str() );
 
-            if ( ImGui::TreeNode( std::string( "LOD" + std::to_string( lodIdx ) ).c_str() ) ) {
-                ImGui::LabelText( "##loddistance", std::string( "Distance: " + std::to_string( lod.lodDistance ) ).c_str() );
+                                auto workingDir = fnString_t( FLAN_STRING( "" ) );
+                                flan::core::RetrieveWorkingDirectory( workingDir );
+                                workingDir.append( FLAN_STRING( "data" ) );
 
-                for ( auto& subMesh : lod.subMeshes ) {
-                    auto str = flan::core::WideStringToString( subMesh.name );
-                    ImGui::LabelText( ( "##" + str ).c_str(), str.c_str() );
+                                size_t poswd = materialName.find( workingDir );
 
-                    ImGui::SameLine();
+                                if ( poswd != fnString_t::npos ) {
+                                    // If found then erase it from string
+                                    materialName.erase( poswd, workingDir.length() );
+                                }
 
-                    if ( ImGui::SmallButton( ( "...##" + str ).c_str() ) ) {
-                        fnString_t materialName;
-                        if ( flan::core::DisplayFileOpenPrompt( materialName, FLAN_STRING( "Material Asset file (*.amat)\0*.amat" ), FLAN_STRING( "./" ), FLAN_STRING( "Select a Material Asset" ) ) ) {
-                            materialName = fnString_t( materialName.c_str() );
+                                std::replace( materialName.begin(), materialName.end(), '\\', '/' );
 
-                            auto workingDir = fnString_t( FLAN_STRING( "" ) );
-                            flan::core::RetrieveWorkingDirectory( workingDir );
-                            workingDir.append( FLAN_STRING( "data" ) );
-
-                            size_t poswd = materialName.find( workingDir );
-
-                            if ( poswd != fnString_t::npos ) {
-                                // If found then erase it from string
-                                materialName.erase( poswd, workingDir.length() );
+                                //subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
                             }
+                        }
 
-                            std::replace( materialName.begin(), materialName.end(), '\\', '/' );
+                        ImGui::SameLine();
 
-                            //subMesh.material = graphicsAssetManager->getMaterialCopy( ( FLAN_STRING( "GameData" ) + materialName ).c_str() );
+                        if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
+                            FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
+                            *dev_EditorPickedMaterial = subMesh.material;
                         }
                     }
 
-                    ImGui::SameLine();
-
-                    if ( ImGui::SmallButton( ( flan::core::WideStringToString( subMesh.material->getName() ) + "##" + str ).c_str() ) ) {
-                        FLAN_IMPORT_VAR_PTR( dev_EditorPickedMaterial, Material* );
-                        *dev_EditorPickedMaterial = subMesh.material;
-                    }
+                    ImGui::TreePop();
                 }
-
-                ImGui::TreePop();
             }
+
+            ImGui::TreePop();
         }
     }
 
