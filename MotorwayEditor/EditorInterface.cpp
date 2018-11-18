@@ -56,6 +56,8 @@
 #include <Framework/Scene.h>
 #include <Framework/Material.h>
 
+#include <Input/InputMapper.h>
+
 #include <Core/Allocators/LinearAllocator.h>
 #include <Core/BlueNoise.h>
 
@@ -97,8 +99,9 @@ static void PrintNode( SceneNode* node )
     }
 }
 
-static void PrintTab( const char* tabName, const int tabIndex )
+static bool PrintTab( const char* tabName, const int tabIndex )
 {
+    bool hasChanged = false;
     if ( panelId == tabIndex ) {
         ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
         ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
@@ -108,10 +111,12 @@ static void PrintTab( const char* tabName, const int tabIndex )
         ImGui::PopStyleColor();
         ImGui::PopStyleColor();
     } else {
-        if ( ImGui::Button( tabName ) ) {
+        if ( hasChanged = ImGui::Button( tabName ) ) {
             panelId = tabIndex;
         }
     }
+
+    return hasChanged;
 }
 
 void MaterialEd()
@@ -169,13 +174,22 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
         if ( ImGui::Begin( "TabManager", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ) ) {
             ImGui::SetWindowPos( ImVec2( 16, 48 ) );
             ImGui::SetWindowSize( ImVec2( 800, 40 ) );
+
+            auto previousTabIndex = panelId;
+
             PrintTab( "Sandbox/Debug", 3 );
             ImGui::SameLine( 0, 2 );
             PrintTab( "NodeEd", 0 );
             ImGui::SameLine( 0, 2 );
             PrintTab( "MaterialEd", 1 );
             ImGui::SameLine( 0, 2 );
-            PrintTab( "TerrainEd", 2 );
+
+            // Trash code, but it just works
+            if ( PrintTab( "TerrainEd", 2 ) ) {
+                g_InputMapper->pushContext( FLAN_STRING_HASH( "TerrainEditor" ) );
+            } else if ( previousTabIndex == 2 && previousTabIndex != panelId ) {
+                g_InputMapper->popContext();
+            }
 
             ImGui::End();
         }

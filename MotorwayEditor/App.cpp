@@ -146,6 +146,8 @@ void*                   g_AllocatedTable;
 void*                   g_AllocatedStringTable;
 bool                    g_IsEditingTerrain = false;
 
+static TerrainSceneNode* g_EditedTerrainSceneEditor = nullptr;
+
 void CreateSubsystems()
 {
     g_AllocatedTable = flan::core::malloc( 1024 * 1024 * 1024 );
@@ -527,9 +529,20 @@ int InitializeSubsystems()
         if ( input.Actions.find( FLAN_STRING_HASH( "OpenDevMenu" ) ) != input.Actions.end() ) {
             IsDevMenuVisible = !IsDevMenuVisible;
 
+            FLAN_IMPORT_VAR_PTR( panelId, int )
+
             if ( IsDevMenuVisible ) {
                 g_InputMapper->pushContext( FLAN_STRING_HASH( "DebugUI" ) );
+
+                // Restore current editor input context
+                if ( *panelId == 2 ) {
+                    g_InputMapper->pushContext( FLAN_STRING_HASH( "TerrainEditor" ) );
+                }
             } else {
+                if ( *panelId == 2 ) {
+                    g_InputMapper->popContext();
+                }
+
                 g_InputMapper->popContext();
             }
         }
@@ -547,32 +560,33 @@ int InitializeSubsystems()
         ImGuiIO& io = ImGui::GetIO();
         if ( !io.WantCaptureMouse ) {
             if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
-                TerrainSceneNode* terrainSceneNode = ( TerrainSceneNode* )PickedNode;
-                if ( terrainSceneNode != nullptr
-                    && terrainSceneNode->instance.terrainAsset != nullptr ) {
+                if ( PickedNode != nullptr ) {
+                    g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
+
                     const auto& cameraData = mainCamera->GetData();
                     Ray rayObj = GenerateMousePickingRay( io, cameraData );
 
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                     cmdList->beginCommandList( g_RenderDevice );
-                    flan::framework::EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
+                    flan::framework::EditTerrain( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
                     cmdList->endCommandList( g_RenderDevice );
                     cmdList->playbackCommandList( g_RenderDevice );
 
                     g_IsEditingTerrain = true;
                 }
             } else if ( g_IsEditingTerrain ) {
-                FLAN_IMPORT_VAR_PTR( panelId, int );
-                if ( PickedNode != nullptr && *panelId == 2 ) {
-                    // Recompute visibility
+                if ( g_EditedTerrainSceneEditor != nullptr ) {
+                    // Recompute and upload updated tile visibility
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-                    cmdList->beginCommandList( g_RenderDevice );
-                    auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
 
-                    terrainSceneNode->instance.terrainAsset->computePatchsBounds();
-                    terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
+                    cmdList->beginCommandList( g_RenderDevice );
+                        g_EditedTerrainSceneEditor->instance.terrainAsset->computePatchsBounds();
+                        g_EditedTerrainSceneEditor->instance.terrainAsset->uploadPatchBounds( cmdList );
                     cmdList->endCommandList( g_RenderDevice );
+
                     cmdList->playbackCommandList( g_RenderDevice );
+
+                    g_EditedTerrainSceneEditor = nullptr;
                 }
 
                 g_IsEditingTerrain = false;
