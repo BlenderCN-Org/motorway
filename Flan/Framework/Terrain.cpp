@@ -58,43 +58,6 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
-glm::vec3 EstimateTerrainNormal( const float* heightmap, const glm::vec2& texcoord )
-{
-    static const float hmapSize = 512.0f;
-    static const float bumpHeightScale = 128.0f;
-
-    int linearIndex = texcoord.r * hmapSize + texcoord.g;
-    int linearIndex3 = linearIndex + hmapSize;
-    int linearIndex4 = linearIndex - hmapSize;
-    int linearIndex1 = linearIndex + 1;
-    int linearIndex2 = linearIndex - 1;
-
-    float me = heightmap[linearIndex];
-    float n = heightmap[linearIndex1];
-    float s = heightmap[linearIndex2];
-    float e = heightmap[linearIndex3];
-    float w = heightmap[linearIndex4];
-
-    //find perpendicular vector to norm:
-    float3 norm = float3( 0, 1, 0 );
-
-    float3 temp = norm; //a temporary vector that is not parallel to norm
-    if ( norm.x == 1 )
-        temp.y += 0.5;
-    else
-        temp.x += 0.5;
-
-    //form a basis with norm being one of the axes:
-    float3 perp1 = normalize( cross( norm, temp ) );
-    float3 perp2 = normalize( cross( norm, perp1 ) );
-
-    //use the basis to move the normal in its own space by the offset        
-    float3 normalOffset = -bumpHeightScale * ( ( ( n - me ) - ( s - me ) )*perp1 + ( ( e - me ) - ( w - me ) )*perp2 );
-    norm += normalOffset;
-
-    return normalize( norm );
-}
-
 void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     heightmapDimension = heightmapWidth; // (assuming width = height)
@@ -222,100 +185,102 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     material = terrainMaterial;
     material->setHeightmapTEST( heightmapTexture, splatmapTexture );
-
-    struct GrassLayout
-    {
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec2 texCoords;
-    };
-
-    GrassLayout grassBlade[4 * 4 * 2];
-
-    // Grass test
-    for ( int quadId = 0; quadId < 4; quadId++ ) {
-        auto vertId = quadId * 4;
-        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
-
-        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 1, 1 } };
-        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 0, 1 } };
-        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 0, 0 } };
-        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 1, 0 } };
-    }
-
-    for ( int quadId = 0; quadId < 4; quadId++ ) {
-        auto vertId = quadId * 4 + 16;
-        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
-
-        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f },{ 0, 1, 0 },{ 1, 1 } };
-        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f },{ 0, 1, 0 },{ 0, 1 } };
-        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f },{ 0, 1, 0 },{ 0, 0 } };
-        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f },{ 0, 1, 0 },{ 1, 0 } };
-    }
-
-    uint32_t grassIndices[6 * 8];
-    i = 0;
-    for ( int quadId = 0; quadId < 8; quadId++ ) {
-        grassIndices[i + 0] = quadId * 4 + 0;
-        grassIndices[i + 1] = quadId * 4 + 1;
-        grassIndices[i + 2] = quadId * 4 + 2;
-
-        grassIndices[i + 3] = quadId * 4 + 0;
-        grassIndices[i + 4] = quadId * 4 + 2;
-        grassIndices[i + 5] = quadId * 4 + 3;
-
-        i += 6;
-    }
-
-    BufferDesc vboGrassDesc;
-    vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
-    vboGrassDesc.Size = 4 * 4 * 2 * sizeof( GrassLayout );
-    vboGrassDesc.Stride = sizeof( GrassLayout );
-
-    BufferDesc iboGrassDesc;
-    iboGrassDesc.Type = BufferDesc::INDICE_BUFFER;
-    iboGrassDesc.Size = 6 * 8 * sizeof( uint32_t );
-    iboGrassDesc.Stride = sizeof( uint32_t );
-
-    GRASS_TEST = new Mesh();
-    GRASS_TEST->create( renderDevice, vboGrassDesc, iboGrassDesc, ( float* )&grassBlade[0], grassIndices );
-
-    SubMesh baseSubMesh;
-    baseSubMesh.indiceBufferOffset = 0;
-    baseSubMesh.indiceCount = 6 * 8;
-    baseSubMesh.material = grassTest;
-    baseSubMesh.boundingSphere.center = { 0, 0, 0 };
-    baseSubMesh.boundingSphere.radius = 8.0f;
-    
-    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
-
-    GRASS_TEST->addLevelOfDetail( 0, 256.0f );
-    GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
-
-    std::vector<float> texels;
-    flan::core::ComputeBlueNoise( 512, 512, texels );
-
-    int index = 0;
-    for ( uint32_t x = 0; x < scalePatchX; x++ ) {
-        for ( uint32_t y = 0; y < scalePatchY; y++ ) {
-            const auto texelIndex = ( x * 8 ) * 512 + ( y * 8 );
-
-            if ( texels[texelIndex] < 0.85f ) {
-                continue;
-            }
-
-            auto normal = EstimateTerrainNormal( heightmap, glm::vec2( x, y ) );
-            auto rotationAxis = glm::cross( normal, glm::vec3( 0, 1, 0 ) );
-            auto angle = glm::acos( glm::dot( normal, glm::vec3( 0, 1, 0 ) ) / ( glm::length( normal ) * glm::length( glm::vec3( 0, 1, 0 ) ) ) );
-
-            grassTestTransform[index].setLocalTranslation( glm::vec3( y * 8.0f + 4.0f, heightmap[texelIndex], x * 8.0f + 4.0f ) );
-            grassTestTransform[index].setLocalScale( glm::vec3( 5.0f, 5.0f, 5.0f ) );
-            grassTestTransform[index].setLocalRotation( glm::rotate( glm::quat( 1, 0, 0, 0 ), glm::degrees( angle ), rotationAxis ) );
-            grassTestTransform[index].rebuildModelMatrix();
-
-            index++;
-        }
-    }
+//
+//    struct GrassLayout
+//    {
+//        glm::vec3 position;
+//        glm::vec3 normal;
+//        glm::vec2 texCoords;
+//    };
+//
+//    GrassLayout grassBlade[4 * 4 * 2];
+//
+//    // Grass test
+//    for ( int quadId = 0; quadId < 4; quadId++ ) {
+//        auto vertId = quadId * 4;
+//        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
+//
+//        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 1, 1 } };
+//        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 0, 1 } };
+//        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 0, 0 } };
+//        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 1, 0 } };
+//    }
+//
+//    for ( int quadId = 0; quadId < 4; quadId++ ) {
+//        auto vertId = quadId * 4 + 16;
+//        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
+//
+//        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f },{ 0, 1, 0 },{ 1, 1 } };
+//        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f },{ 0, 1, 0 },{ 0, 1 } };
+//        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f },{ 0, 1, 0 },{ 0, 0 } };
+//        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f },{ 0, 1, 0 },{ 1, 0 } };
+//    }
+//
+//    uint32_t grassIndices[6 * 8];
+//    i = 0;
+//    for ( int quadId = 0; quadId < 8; quadId++ ) {
+//        grassIndices[i + 0] = quadId * 4 + 0;
+//        grassIndices[i + 1] = quadId * 4 + 1;
+//        grassIndices[i + 2] = quadId * 4 + 2;
+//
+//        grassIndices[i + 3] = quadId * 4 + 0;
+//        grassIndices[i + 4] = quadId * 4 + 2;
+//        grassIndices[i + 5] = quadId * 4 + 3;
+//
+//        i += 6;
+//    }
+//
+//    BufferDesc vboGrassDesc;
+//    vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
+//    vboGrassDesc.Size = 4 * 4 * 2 * sizeof( GrassLayout );
+//    vboGrassDesc.Stride = sizeof( GrassLayout );
+//
+//    BufferDesc iboGrassDesc;
+//    iboGrassDesc.Type = BufferDesc::INDICE_BUFFER;
+//    iboGrassDesc.Size = 6 * 8 * sizeof( uint32_t );
+//    iboGrassDesc.Stride = sizeof( uint32_t );
+//
+//    GRASS_TEST = new Mesh();
+//    GRASS_TEST->create( renderDevice, vboGrassDesc, iboGrassDesc, ( float* )&grassBlade[0], grassIndices );
+//
+//    SubMesh baseSubMesh;
+//    baseSubMesh.indiceBufferOffset = 0;
+//    baseSubMesh.indiceCount = 6 * 8;
+//    baseSubMesh.material = grassTest;
+//    baseSubMesh.boundingSphere.center = { 0, 0, 0 };
+//    baseSubMesh.boundingSphere.radius = 8.0f;
+//    
+//    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
+//
+//    GRASS_TEST->addLevelOfDetail( 0, 256.0f );
+//    GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
+//
+//    std::vector<float> texels;
+//    flan::core::ComputeBlueNoise( 512, 512, texels );
+//
+//    int index = 0;
+//    for ( uint32_t x = 0; x < scalePatchX; x++ ) {
+//        for ( uint32_t y = 0; y < scalePatchY; y++ ) {
+//            const auto texelIndex = ( x * 8 ) * 512 + ( y * 8 );
+//
+//            if ( texels[texelIndex] < 0.75f ) {
+//                continue;
+//            }
+//
+//            static const glm::vec3 upVector = glm::vec3( 0, 1, 0 );
+//
+//            //auto normal = normals[x * scalePatchX + y];
+//            //auto rotationAxis = glm::cross( normal, upVector );
+//            //auto angle = acos( glm::dot( normal, upVector ) / ( glm::length( normal ) * glm::length( upVector ) ) );
+//
+//            grassTestTransform[index].setLocalTranslation( glm::vec3( y * 8.0f + 4.0f, heightmap[texelIndex] - 0.5f, x * 8.0f + 4.0f ) );
+//            grassTestTransform[index].setLocalScale( glm::vec3( 3.0f ) );
+////grassTestTransform[index].setLocalRotation( glm::rotate( glm::quat( 1, 0, 0, 0 ), glm::degrees( angle ), rotationAxis ) );
+//            grassTestTransform[index].rebuildModelMatrix();
+//
+//            index++;
+//        }
+//    }
 }
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const
