@@ -33,7 +33,7 @@
 static fnPipelineMutableResHandle_t AddBloomBrightPass( RenderPipeline* renderPipeline, const fnPipelineMutableResHandle_t renderTarget )
 {
     auto RenderPass = renderPipeline->addRenderPass(
-        "Weighted Stabilized Downsample Pass",
+        "Bloom Bright Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
             RenderPassTextureDesc passRenderTargetDesc = {};
             passRenderTargetDesc.description.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
