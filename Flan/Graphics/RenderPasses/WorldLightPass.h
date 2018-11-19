@@ -280,7 +280,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
             // Bind Camera Buffer
             auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[3] );
-            auto passCamera = renderPipelineResources->getActiveCamera();
+            auto& passCamera = renderPipelineResources->getActiveCamera();
             cameraCbuffer->updateAsynchronous( cmdList, &passCamera, sizeof( Camera::Data ) );
             cameraCbuffer->bind( cmdList, 0 );
 
