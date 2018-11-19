@@ -156,10 +156,6 @@ void CreateSubsystems()
     g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
     g_StringAllocator = new ( g_BaseStringBuffer ) GrowingStackAllocator( 128 * 1024 * 1024, g_AllocatedStringTable );
 
-    flan::string test( g_StringAllocator );
-    test.reserve( 32 );
-    test += 't';
-
     // Create global instances whenever the Application ctor is called
     g_FileLogger = flan::core::allocate<FileLogger>( g_GlobalAllocator, PROJECT_NAME );
     g_VirtualFileSystem = flan::core::allocate<VirtualFileSystem>( g_GlobalAllocator );
@@ -214,7 +210,7 @@ void Shutdown()
     flan::core::free( g_GlobalAllocator, g_TransactionHandler );
     flan::core::free( g_GlobalAllocator, g_FileSystemWatchdog );
 #endif
-
+    
     flan::core::free( g_GlobalAllocator, g_CurrentScene );
     flan::core::free( g_GlobalAllocator, g_DynamicsWorld );
     flan::core::free( g_GlobalAllocator, g_AudioDevice );
@@ -470,7 +466,7 @@ int InitializeSubsystems()
     g_RenderDevice->setVSyncState( *EnableVSync );
 
     g_WorldRenderer->create( g_RenderDevice );
-    g_WorldRenderer->loadCachedResources( g_ShaderStageManager, g_GraphicsAssetManager );
+    g_WorldRenderer->loadCachedResources(g_GlobalAllocator, g_ShaderStageManager, g_GraphicsAssetManager );
 
     g_DrawCommandBuilder->create( g_TaskManager, g_RenderableEntityManager, g_GraphicsAssetManager, g_WorldRenderer );
     g_RenderableEntityManager->create( g_RenderDevice );
