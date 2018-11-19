@@ -351,6 +351,8 @@ compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteri
 compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur2" )
 
 # Lighting
+compile_shader_PS( "Lighting/TopDownTerrainCapture.hlsl", "TopDownTerrainCapture" )
+
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
 
@@ -384,3 +386,4 @@ compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissiveProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_EDITOR": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_PROBE_CAPTURE" : "1"  } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
+

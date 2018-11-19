@@ -302,7 +302,9 @@ void WorldRenderer::loadCachedResources( BaseAllocator* baseAllocator, ShaderSta
     atmosphereRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
     autoExposureModule->loadCachedResources( renderDevice, graphicsAssetManager );
     lineRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
+    
     grassRenderingModule->create( renderDevice, baseAllocator );
+    grassRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
 
     // Load DFG LUT for standard BRDF
     auto dfgLut = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/DFG_LUT_Standard.dds" ) );

@@ -700,6 +700,7 @@ void RebuildCameraPipeline( Camera* mainCamera )
     mainCamera->clearRenderPasses();
     mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "TopDownTerrainCapture" ) );
 
     if ( MSAASamplerCount <= 1 ) {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
@@ -726,11 +727,11 @@ void RebuildCameraPipeline( Camera* mainCamera )
 
         mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPassMSAA" ) );
     }
-
+    
     FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-        if ( *SSAAMultiplicator > 1.0f ) {
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
-        }
+    if ( *SSAAMultiplicator > 1.0f ) {
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
+    }
 
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AutoExposurePass" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );

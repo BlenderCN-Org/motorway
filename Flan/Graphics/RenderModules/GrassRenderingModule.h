@@ -25,6 +25,7 @@
 class Texture;
 class RenderDevice;
 class RenderPipeline;
+class GraphicsAssetManager;
 
 class GrassRenderingModule
 {
@@ -35,12 +36,15 @@ public:
                     ~GrassRenderingModule();
 
     void            create( RenderDevice* renderDevice, BaseAllocator* allocator );
+    void            loadCachedResources( RenderDevice* renderDevice, GraphicsAssetManager* graphicsAssetManager );
 
 private:
     BaseAllocator*  textureAllocator;
+    Texture*        heightmapTestTexture;
     Texture*        grassMapTexture;
     Texture*        randomnessTexture;
 
 private:
+    fnPipelineMutableResHandle_t    addTopDownTerrainCapturePass( RenderPipeline* renderPipeline );
     fnPipelineMutableResHandle_t    addGrassGenerationPass( RenderPipeline* renderPipeline );
 };
