@@ -34,13 +34,13 @@ float ComputeTexelEnergy( const std::vector<float>& input, const uint32_t x, con
             int sx = x + ox;
             if ( sx < 0 )
                 sx += width;
-            if ( sx >= width )
+            if ( sx >= static_cast<int32_t>( width ) )
                 sx -= width;
 
             int sy = y + oy;
             if ( sy < 0 )
                 sy += height;
-            if ( sy >= height )
+            if ( sy >= static_cast<int32_t>( height ) )
                 sy -= height;
 
             float dx = abs( (float)x - ( float )sx );
@@ -60,7 +60,7 @@ float ComputeTexelEnergy( const std::vector<float>& input, const uint32_t x, con
     }
 
     float total = 0;
-    for ( int sy = 0; sy < height; ++sy )
+    for ( unsigned int sy = 0; sy < height; ++sy )
         total += sum[sy];
 
     return total;

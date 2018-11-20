@@ -267,7 +267,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             FLAN_IMPORT_VAR_PTR( IsDevMenuVisible, bool )
                 
             passBuffer.mouseCoordinates = *dev_TerrainMousePosition;
-            passBuffer.brushRadius = *g_TerrainEditorEditionRadius;
+            passBuffer.brushRadius = static_cast<float>( *g_TerrainEditorEditionRadius );
             passBuffer.toggleBrush = ( *panelId == 2 && *IsDevMenuVisible ) ? 1 : 0;
 
             auto rtBufferData = renderPipelineResources->getBuffer( passData.buffers[2] );
