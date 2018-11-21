@@ -66,7 +66,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
     || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_1D
     || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D
     || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D
-    || description.Type == BufferDesc::STRUCTURED_BUFFER ) {
+    || description.Type == BufferDesc::STRUCTURED_BUFFER 
+    || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
         bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
 
@@ -74,7 +75,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
 
     DXGI_FORMAT nativeTextureFormat = static_cast< DXGI_FORMAT >( description.ViewFormat );
 
-    if ( description.Type == BufferDesc::STRUCTURED_BUFFER ) {
+    if ( description.Type == BufferDesc::STRUCTURED_BUFFER
+      || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
         bufferDescription.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
         bufferDescription.StructureByteStride = static_cast<UINT>( description.Size );
 
@@ -129,6 +131,10 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
         || description.Type == BufferDesc::STRUCTURED_BUFFER ) {
         unorderedAccessViewDesc.Buffer.FirstElement = 0;
         unorderedAccessViewDesc.Buffer.NumElements = ( UINT )description.Stride;
+    } else if ( description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
+        unorderedAccessViewDesc.Buffer.FirstElement = 0;
+        unorderedAccessViewDesc.Buffer.NumElements = ( UINT )description.Stride;
+        unorderedAccessViewDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_APPEND;
     }
 
     auto nativeDevice = nativeRenderContext->nativeDevice;
@@ -150,7 +156,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
     }
 
     if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER 
-      || description.Type == BufferDesc::STRUCTURED_BUFFER ) {
+      || description.Type == BufferDesc::STRUCTURED_BUFFER
+      || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
         nativeDevice->CreateShaderResourceView( bufferObject->bufferObject, &shaderResourceViewDesc, &bufferObject->bufferResourceView );
         nativeDevice->CreateUnorderedAccessView( bufferObject->bufferObject, &unorderedAccessViewDesc, &bufferObject->bufferUAVObject );
     }
@@ -272,6 +279,7 @@ void flan::rendering::BindBufferCmdImpl( NativeCommandList* nativeCmdList, Nativ
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_2D:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_3D:
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
+    case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
     {
         nativeDeviceContext->CSSetUnorderedAccessViews( bindingIndex, 1, &bufferObject->bufferUAVObject, nullptr );
@@ -297,6 +305,7 @@ void flan::rendering::BindBufferReadOnlyCmdImpl( NativeCommandList* nativeCmdLis
         break;
 
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
+    case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_1D:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_2D:
@@ -375,6 +384,7 @@ void flan::rendering::UnbindBufferCmdImpl( NativeCommandList* nativeCmdList, Nat
     } break;
 
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
+    case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_1D:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_2D:

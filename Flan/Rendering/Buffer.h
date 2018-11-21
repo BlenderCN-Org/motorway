@@ -45,6 +45,7 @@ struct BufferDesc
         UNORDERED_ACCESS_VIEW_TEXTURE_3D,
 
         STRUCTURED_BUFFER,
+        APPEND_STRUCTURED_BUFFER,
     } Type;
 
     eImageFormat    ViewFormat; // Required by UAV only
