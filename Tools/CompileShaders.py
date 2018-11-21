@@ -353,6 +353,8 @@ compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteri
 compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur2" )
 
 # Lighting
+compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
+
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
 

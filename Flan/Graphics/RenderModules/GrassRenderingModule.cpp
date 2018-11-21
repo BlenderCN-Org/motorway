@@ -74,13 +74,18 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
 
 void GrassRenderingModule::loadCachedResources( RenderDevice* renderDevice, GraphicsAssetManager* graphicsAssetManager )
 {
-    heightmapTestTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ) );
     grassMapTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/grassmap_test.dds" ) );
 
     Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "TopDownWorldCapture" ),
         [=]( RenderPipeline* renderPipeline ) {
             return addTopDownTerrainCapturePass( renderPipeline );
         } );
+
+    Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "GrassGeneration" ),
+        [=]( RenderPipeline* renderPipeline ) {
+        return addGrassGenerationPass( renderPipeline );
+    } );
+    
 }
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass( RenderPipeline* renderPipeline )
@@ -107,6 +112,8 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
             passRenderTargetDesc.initialState = RenderPassTextureDesc::CLEAR;
 
             passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
+
+            renderPipelineBuilder->registerWellKnownResource( FLAN_STRING_HASH( "TopDownWorldTexture" ), passData.output[0] );
 
             BufferDesc cameraBuffer = {};
             cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
@@ -195,33 +202,72 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( RenderPipeline* renderPipeline )
 {
+    struct PerPassBuffer
+    {
+        glm::vec4   mainCameraFrustumPlanes;
+        glm::vec3   mainCameraPositionWorldSpace;
+        float       topDownMapSize;
+        glm::vec2   terrainOriginWorldSpace;
+        float       grassMapSize;
+    };
+
     auto data = renderPipeline->addRenderPass(
-    "Grass Generation Pass",
-    [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
-        BufferDesc grassAppendBuffer;
-        grassAppendBuffer.Type = BufferDesc::STRUCTURED_BUFFER;
-        grassAppendBuffer.ViewFormat = IMAGE_FORMAT_R32_UINT;
-        grassAppendBuffer.SingleElementSize = 1;
-        grassAppendBuffer.Size = 48;
-        grassAppendBuffer.Stride = 1;
+        "Grass Generation Pass",
+        [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
+            // Pipeline State
+            RenderPassPipelineStateDesc passPipelineState = {};
+            passPipelineState.hashcode = FLAN_STRING_HASH( "GrassGenerationPass" );
+            passPipelineState.computeStage = FLAN_STRING( "GrassGeneration" );
+            passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
 
-        passData.buffers[0] = renderPipelineBuilder->allocateBuffer( grassAppendBuffer );
-    },
-    [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
-        // Bind Pass Pipeline State
-        auto pipelineState = renderPipelineResources->getPipelineState( passData.pipelineState );
-        cmdList->bindPipelineStateCmd( pipelineState );
+            BufferDesc grassAppendBuffer;
+            grassAppendBuffer.Type = BufferDesc::APPEND_STRUCTURED_BUFFER;
+            grassAppendBuffer.ViewFormat = IMAGE_FORMAT_R32_UINT;
+            grassAppendBuffer.SingleElementSize = 1;
+            grassAppendBuffer.Size = ( 512 * 512 ); // 1 grass blade per pixel as max density
+            grassAppendBuffer.Stride = 1;
 
-        const auto& backbufferSize = renderPipelineResources->getActiveViewport();
-        const auto& passCamera = renderPipelineResources->getActiveCamera();
+            passData.buffers[0] = renderPipelineBuilder->allocateBuffer( grassAppendBuffer );
 
-        // Build Ortho Camera view in order to generate grass instances
-        glm::mat4x4 orthoMatrix = glm::orthoLH( 0.0f, static_cast<float>( backbufferSize.Width ), static_cast<float>( backbufferSize.Height ), 0.0f, -1.0f, 1.0f );
-        auto grassCameraPosition = passCamera.worldPosition + glm::vec3( 0.0f, 64.0f, 0.0f );
-        glm::mat4x4 lookAtMatrix = glm::lookAt( grassCameraPosition, glm::vec3( 0, -1, 0 ), glm::vec3( 0, 1, 0 ) );
+            BufferDesc perPassBuffer;
+            perPassBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            perPassBuffer.Size = sizeof( PerPassBuffer );
 
+            passData.buffers[1] = renderPipelineBuilder->allocateBuffer( perPassBuffer );
 
-    } );
+            // Retrieve current frame top down render target
+            passData.input[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "TopDownWorldTexture" ) );
+        },
+        [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
+            // Bind Pass Pipeline State
+            auto pipelineState = renderPipelineResources->getPipelineState( passData.pipelineState );
+            cmdList->bindPipelineStateCmd( pipelineState );
+
+            // Bind Resources
+            grassMapTexture->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
+
+            auto topDownTexture = renderPipelineResources->getRenderTarget( passData.input[0] );
+            topDownTexture->bind( cmdList, 1, SHADER_STAGE_COMPUTE );
+
+            randomnessTexture->bind( cmdList, 2, SHADER_STAGE_COMPUTE );
+
+            // Bind append buffer
+            auto grassAppendBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
+            grassAppendBuffer->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
+
+            // Bind cbuffer
+            PerPassBuffer perPassBuffer;
+            perPassBuffer.grassMapSize = 2048.0f;
+            perPassBuffer.topDownMapSize = 1024.0f;
+
+            auto passConstantBuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
+            passConstantBuffer->updateAsynchronous( cmdList, &perPassBuffer, sizeof( PerPassBuffer ) );
+            passConstantBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_COMPUTE );
+
+            // Start GPU Compute
+            cmdList->dispatchComputeCmd( 1024.0f / 32.0f, 1024.0f / 32.0f, 1.0f );
+        } 
+    );
 
     return data.buffers[0];
 }

@@ -40,7 +40,6 @@ public:
 
 private:
     BaseAllocator*  textureAllocator;
-    Texture*        heightmapTestTexture;
     Texture*        grassMapTexture;
     Texture*        randomnessTexture;
 
