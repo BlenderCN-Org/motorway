@@ -54,6 +54,8 @@ public:
     void                        bind( CommandList* cmdList ) const;
     void                        bindInstanced( CommandList* cmdList ) const;
 
+    void                        bindTopDown( CommandList* cmdList ) const;
+
     // Conditional bindings
     bool                        bindReversedDepthOnly( CommandList* cmdList ) const; // Reversed Z rendering (e.g. depth prepass)
     bool                        bindInstancedReversedDepthOnly( CommandList* cmdList ) const; // Reversed Z rendering (e.g. depth prepass)
@@ -117,6 +119,7 @@ private:
     fnTextureSet_t   vertexTextureSet;
 
     std::unique_ptr<PipelineState>          pipelineState;
+    std::unique_ptr<PipelineState>          topDownPipelineState;
     std::unique_ptr<PipelineState>          depthPipelineState;
     std::unique_ptr<PipelineState>          reversedDepthPipelineState;
     std::unique_ptr<PipelineState>          pipelineStateProbe;

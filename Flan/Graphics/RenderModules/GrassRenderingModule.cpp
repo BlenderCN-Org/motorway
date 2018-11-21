@@ -23,8 +23,12 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 #include <Rendering/Texture.h>
+#include <Rendering/VertexArrayObject.h>
 
+#include <Graphics/CBufferIndexes.h>
 #include <Graphics/GraphicsAssetManager.h>
+#include <Framework/Material.h>
+
 #include <Core/Factory.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -73,7 +77,7 @@ void GrassRenderingModule::loadCachedResources( RenderDevice* renderDevice, Grap
     heightmapTestTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/heightmap_test.hmap" ) );
     grassMapTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/grassmap_test.dds" ) );
 
-    Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "TopDownTerrainCapture" ),
+    Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "TopDownWorldCapture" ),
         [=]( RenderPipeline* renderPipeline ) {
             return addTopDownTerrainCapturePass( renderPipeline );
         } );
@@ -81,31 +85,16 @@ void GrassRenderingModule::loadCachedResources( RenderDevice* renderDevice, Grap
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass( RenderPipeline* renderPipeline )
 {
-    struct PassBuffer
+    struct InstanceBuffer
     {
-        glm::vec3   positionWorldSpace;
-        float       heightmapSize;
-        glm::vec3   cameraPositionWorldSpace;
-        uint32_t    __PADDING__;
+        glm::mat4x4 modelMatrix[512];
+        float lodDitheringAlpha;
+        uint32_t __PADDING__[3];
     };
-    FLAN_IS_MEMORY_ALIGNED( 16, PassBuffer );
 
-    // TODO Retrieve the closest heightmap to the main viewport world position ONLY
     auto data = renderPipeline->addRenderPass(
         "Terrain Top Down Capture Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
-            // Pipeline State
-            RenderPassPipelineStateDesc passPipelineState = {};
-            passPipelineState.hashcode = FLAN_STRING_HASH( "TerrainTopDownPass" );
-            passPipelineState.vertexStage = FLAN_STRING( "FullscreenTriangle" );
-            passPipelineState.pixelStage = FLAN_STRING( "TopDownTerrainCapture" );
-            passPipelineState.primitiveTopology = flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-            passPipelineState.rasterizerState.cullMode = flan::rendering::eCullMode::CULL_MODE_NONE;
-            passPipelineState.depthStencilState.enableDepthTest = false;
-            passPipelineState.depthStencilState.enableDepthWrite = false;
-
-            passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
-
             RenderPassTextureDesc passRenderTargetDesc = {};
             passRenderTargetDesc.description.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
             passRenderTargetDesc.description.depth = 1;
@@ -115,63 +104,91 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
             passRenderTargetDesc.description.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
             passRenderTargetDesc.description.width = 1024;
             passRenderTargetDesc.description.height = 1024;
+            passRenderTargetDesc.initialState = RenderPassTextureDesc::CLEAR;
 
             passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
 
-            BufferDesc constantBuffer;
-            constantBuffer.Type = BufferDesc::CONSTANT_BUFFER;
-            constantBuffer.Size = sizeof( PassBuffer );
+            BufferDesc cameraBuffer = {};
+            cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            cameraBuffer.Size = sizeof( Camera::Data );
 
-            passData.buffers[0] = renderPipelineBuilder->allocateBuffer( constantBuffer );
+            passData.buffers[0] = renderPipelineBuilder->allocateBuffer( cameraBuffer );
+
+            BufferDesc passBuffer = {};
+            passBuffer.Type = BufferDesc::CONSTANT_BUFFER;
+            passBuffer.Size = sizeof( InstanceBuffer );
+
+            passData.buffers[1] = renderPipelineBuilder->allocateBuffer( passBuffer );
+
+            using namespace flan::rendering;
+            SamplerDesc matDisplacementSamplerDesc;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+
+            passData.samplers[0] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
             auto viewport = cmdList->getViewportCmd();
-
-            // Update viewport
-            Viewport topDownDimensions = {
-                0,
-                0,
-                1024,
-                1024,
-                0.0f,
-                1.0f
-            };
-            cmdList->setViewportCmd( topDownDimensions );
-
-            // Bind heightmap
-            heightmapTestTexture->bind( cmdList, 0, SHADER_STAGE_PIXEL );
+            cmdList->setViewportCmd( renderPipelineResources->getActiveViewport() );
 
             const Camera::Data& cameraData = renderPipelineResources->getActiveCamera();
 
-            PassBuffer bufferInfos;
-            bufferInfos.heightmapSize = 512.0f;
-            bufferInfos.cameraPositionWorldSpace = cameraData.worldPosition;
-            bufferInfos.positionWorldSpace = glm::vec3( 0, 0, 0 );
-
             // Retrieve and update constant buffer
             auto constantBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
-            constantBuffer->updateAsynchronous( cmdList, &bufferInfos, sizeof( PassBuffer ) );
-            constantBuffer->bind( cmdList, 0, SHADER_STAGE_PIXEL );
+            constantBuffer->updateAsynchronous( cmdList, &cameraData, sizeof( Camera::Data ) );
+            constantBuffer->bind( cmdList, 0, SHADER_STAGE_ALL );
+
+            auto modelMatrixBuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
+            modelMatrixBuffer->bind( cmdList, CBUFFER_INDEX_MATRICES, SHADER_STAGE_ALL );
 
             // Set Ouput Target
             auto ouputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );
             cmdList->bindRenderTargetsCmd( &ouputRenderTarget );
 
-            // Bind Pass Pipeline State
-            auto pipelineState = renderPipelineResources->getPipelineState( passData.pipelineState );
-            cmdList->bindPipelineStateCmd( pipelineState );
+            auto hmapSampler = renderPipelineResources->getSampler( passData.samplers[0] );
+            hmapSampler->bind( cmdList, 8 );
 
-            cmdList->unbindVertexArrayCmd();
+            // Render opaque geometry
+            int cmdCount = 0;
+            auto* opaqueBucketList = renderPipelineResources->getLayerBucket( DrawCommandKey::Layer::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT, cmdCount );
 
-            // Downsample
-            cmdList->drawCmd( 3 );
+            InstanceBuffer instance;
+            glm::mat4x4* previousModelMatrix = nullptr;
+            for ( int i = 0; i < cmdCount; i++ ) {
+                const auto& drawCmd = opaqueBucketList[i];
+                drawCmd.vao->bind( cmdList );
 
+                if ( drawCmd.instanceCount > 1 ) {
+                    memcpy( instance.modelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
+                    previousModelMatrix = nullptr;
+                } else {
+                    if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                        instance.modelMatrix[0] = *drawCmd.modelMatrix;
+                        previousModelMatrix = drawCmd.modelMatrix;
+                    }
+                }
+
+                instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
+                modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
+
+                if ( drawCmd.instanceCount > 1 ) {
+                    drawCmd.material->bindInstanced( cmdList );
+
+                    cmdList->drawInstancedIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset, drawCmd.instanceCount );
+                } else {
+                    drawCmd.material->bindTopDown( cmdList );
+                    
+                    cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                }
+            }
+                
             cmdList->bindBackbufferCmd();
             cmdList->setViewportCmd( viewport );
-
             constantBuffer->unbind( cmdList );
             ouputRenderTarget->unbind( cmdList );
-    } );
+        } );
 
     return data.output[0];
 }

@@ -222,7 +222,7 @@ void flan::framework::DisplayEditorMenuBar()
                 terrain->create( g_RenderDevice,
                     g_GlobalAllocator,
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
-                    g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
+                    nullptr, //g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
                     ( uint16_t* )splatMapTexels.data,
                     ( uint16_t* )hmapTexels.data,
                     hmapTexels.width, hmapTexels.height );

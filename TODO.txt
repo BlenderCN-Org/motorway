@@ -1,4 +1,4 @@
-MOTORWAY (SHITTY) TODO
+MOTORWAY TODO
 ----------
 Stuff todo for the project
 

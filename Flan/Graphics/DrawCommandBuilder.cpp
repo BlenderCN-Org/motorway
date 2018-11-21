@@ -461,6 +461,51 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
     // Make this better (since CSM is viewport dependant, this is quite complicated to implement seamlessly...)
     auto directionalLight = renderableEntityManager->getDirectionalLightByIndex( 0 );
     for ( auto& camera : cameras ) {
+        if ( terrainInstancesCount != 0
+            && camera->isUsingRenderPass( FLAN_STRING_HASH( "TopDownWorldCaptureRequest" ) ) ) {
+            static constexpr int32_t TOPDOWN_DIMENSION = 1024;
+            static constexpr float TOPDOWN_VP_DIMENSION = TOPDOWN_DIMENSION / 8.0f;
+
+            // Capture top down view for various effects (grass generation, wetness generation, ...)
+            const Camera::Data& currentCamera = camera->GetData();
+
+            // Build Ortho Camera view in order to generate grass instances
+            Camera::Data topDownCamera = {};
+            topDownCamera.worldPosition = glm::vec3( currentCamera.worldPosition.x, 64.0f, currentCamera.worldPosition.z );
+
+            topDownCamera.projectionMatrix = glm::orthoLH( 0.0f, TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, 0.0f, 0.0f, 64.0f );
+            topDownCamera.inverseProjectionMatrix = glm::transpose( glm::inverse( topDownCamera.projectionMatrix ) );
+            topDownCamera.viewMatrix = glm::lookAtLH( topDownCamera.worldPosition, topDownCamera.worldPosition + glm::vec3( 0, -1, 0 ), glm::vec3( 0, 0, 1 ) );
+            topDownCamera.inverseViewMatrix = glm::inverse( topDownCamera.viewMatrix );
+
+            topDownCamera.viewProjectionMatrix = glm::transpose( topDownCamera.projectionMatrix * topDownCamera.viewMatrix );
+            topDownCamera.viewMatrix = glm::transpose( topDownCamera.viewMatrix );
+
+            topDownCamera.inverseViewProjectionMatrix = glm::inverse( topDownCamera.viewProjectionMatrix );
+
+            Viewport viewportTopDown = {};
+            viewportTopDown.X = 0;
+            viewportTopDown.Y = 0;
+            viewportTopDown.Width = TOPDOWN_DIMENSION;
+            viewportTopDown.Height = TOPDOWN_DIMENSION;
+            viewportTopDown.MinDepth = 0.0f;
+            viewportTopDown.MaxDepth = 1.0f;
+
+            // Build viewport
+            auto& viewport = worldRenderer->addViewport( viewportIndex );
+            viewport.worldViewport = topDownCamera;
+            viewport.rendererViewport = viewportTopDown;
+            viewport.renderPasses.push_back( FLAN_STRING_HASH( "TopDownWorldCapture" ) );
+
+            // Create temporary frustum to cull geometry
+            Frustum topDownCameraFrustum;
+            flan::core::UpdateFrustumPlanes( topDownCamera.viewProjectionMatrix, topDownCameraFrustum );
+
+            addTerrainInstances( topDownCamera, viewportIndex, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT, &topDownCameraFrustum, DrawCommandKey::Layer::LAYER_WORLD );
+
+            viewportIndex++;
+        }
+
         if ( directionalLight != nullptr
           && camera->isUsingRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) ) ) {
             // Update Camera CSM data
@@ -481,7 +526,7 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
                 addDepthGeometryForViewport( cameraData, viewportIndex, DrawCommandKey::DEPTH_VIEWPORT_LAYER_CSM0 + sliceIdx, &csmCameraFrustum, worldRenderer );
             }
         }
-        
+
         Viewport viewportTest = {};
         viewportTest.X = 0;
         viewportTest.Y = 0;
@@ -525,75 +570,14 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
 
 void DrawCommandBuilder::addGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
 {
-    // TODO Terrain/Frustum visibility (per tile or per patch culling?)
-    for ( int i = 0; i < terrainInstancesCount; i++ ) {
-        auto* terrainInstance = terrainInstances[i];
-
-        auto* terrain = terrainInstance->terrainAsset;
-        auto* terrainMaterial = terrain->getMaterial();
-
-        auto distanceToCamera = 0.0f; // glm::distance( sphere.center, worldViewport.worldPosition );
-
-        DrawCommandKey drawCmdKey;
-        drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_WORLD;
-        drawCmdKey.bitfield.viewportId = viewportIndex;
-        drawCmdKey.bitfield.viewportLayer = viewportLayer;
-        drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
-        drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
-        drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
-
-        DrawCommandInfos drawCmdGeo;
-        drawCmdGeo.material = terrainMaterial;
-        drawCmdGeo.vao = terrain->getVertexArrayObject();
-        drawCmdGeo.indiceBufferOffset = 0;
-        drawCmdGeo.instanceCount = 1;
-        drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
-        drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
-        drawCmdGeo.alphaDitheringValue = 1.0f;
-
-        worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
-    }
-
+    addTerrainInstances( worldViewport, viewportIndex, viewportLayer, viewportFrustum, DrawCommandKey::Layer::LAYER_WORLD );
     addMeshInstances( worldViewport, viewportIndex, viewportLayer, viewportFrustum, DrawCommandKey::Layer::LAYER_WORLD );
 }
 
 void DrawCommandBuilder::addDepthGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
 {
-    // TODO Terrain/Frustum visibility (per tile or per patch culling?)
-    for ( int i = 0; i < terrainInstancesCount; i++ ) {
-        auto* terrainInstance = terrainInstances[i];
-
-        auto* terrain = terrainInstance->terrainAsset;
-        auto* terrainMaterial = terrain->getMaterial();
-
-        const auto& aabb = terrain->getAxisAlignedBoundingBox();
-        if ( CullAABB( viewportFrustum, aabb ) ) {
-            auto center = aabb.minPoint + aabb.maxPoint;
-
-            auto distanceToCamera = glm::distance( center, worldViewport.worldPosition );
-
-            DrawCommandKey drawCmdKey;
-            drawCmdKey.bitfield.layer = DrawCommandKey::LAYER_DEPTH;
-            drawCmdKey.bitfield.viewportId = viewportIndex;
-            drawCmdKey.bitfield.viewportLayer = viewportLayer;
-            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
-            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
-            drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
-
-            DrawCommandInfos drawCmdGeo;
-            drawCmdGeo.material = terrainMaterial;
-            drawCmdGeo.vao = terrain->getVertexArrayObject();
-            drawCmdGeo.indiceBufferOffset = 0;
-            drawCmdGeo.instanceCount = 1;
-            drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
-            drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
-            drawCmdGeo.alphaDitheringValue = 1.0f;
-
-            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
-        }
-    }
-
-    addMeshInstances( worldViewport, viewportIndex, viewportLayer, viewportFrustum, DrawCommandKey::Layer::LAYER_DEPTH );
+    addTerrainInstances( worldViewport, viewportIndex, viewportLayer, viewportFrustum, DrawCommandKey::Layer::LAYER_DEPTH );
+    addMeshInstances( worldViewport , viewportIndex, viewportLayer, viewportFrustum, DrawCommandKey::Layer::LAYER_DEPTH );
 }
 
 void DrawCommandBuilder::addDebugGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer )
@@ -764,6 +748,43 @@ void DrawCommandBuilder::addHUDGeometryForViewport( const Camera::Data& worldVie
 }
 
 static constexpr float LOD_TRANSITION_START_DISTANCE = 32.0f;
+
+void DrawCommandBuilder::addTerrainInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer )
+{
+    // TODO Terrain/Frustum visibility (per tile or per patch culling?)
+    for ( int i = 0; i < terrainInstancesCount; i++ ) {
+        auto* terrainInstance = terrainInstances[i];
+
+        auto* terrain = terrainInstance->terrainAsset;
+        auto* terrainMaterial = terrain->getMaterial();
+
+        //const auto& aabb = terrain->getAxisAlignedBoundingBox();
+        //if ( CullAABB( viewportFrustum, aabb ) ) {
+            //auto center = aabb.minPoint + aabb.maxPoint;
+
+            auto distanceToCamera = 0; // glm::distance( center, worldViewport.worldPosition );
+
+            DrawCommandKey drawCmdKey;
+            drawCmdKey.bitfield.layer = layer;
+            drawCmdKey.bitfield.viewportId = viewportIndex;
+            drawCmdKey.bitfield.viewportLayer = viewportLayer;
+            drawCmdKey.bitfield.sortOrder = DrawCommandKey::SortOrder::SORT_FRONT_TO_BACK;
+            drawCmdKey.bitfield.depth = DepthToBits( distanceToCamera );
+            drawCmdKey.bitfield.materialSortKey = terrainMaterial->getMaterialSortKey();
+
+            DrawCommandInfos drawCmdGeo;
+            drawCmdGeo.material = terrainMaterial;
+            drawCmdGeo.vao = terrain->getVertexArrayObject();
+            drawCmdGeo.indiceBufferOffset = 0;
+            drawCmdGeo.instanceCount = 1;
+            drawCmdGeo.indiceBufferCount = terrain->getIndiceCount();
+            drawCmdGeo.modelMatrix = terrainInstance->meshTransform->getWorldModelMatrix();
+            drawCmdGeo.alphaDitheringValue = 1.0f;
+
+            worldRenderer->addDrawCommand( { drawCmdKey, drawCmdGeo } );
+        //}
+    }
+}
 
 void DrawCommandBuilder::addMeshInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer )
 {

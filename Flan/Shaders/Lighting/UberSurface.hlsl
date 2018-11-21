@@ -624,6 +624,11 @@ float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)
     return (texture1.rgb * b1 + texture2.rgb * b2) / (b1 + b2);  
 }
 
+float4 EntryPointTopDownPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace ) : SV_TARGET0
+{
+	return VertexStage.positionWS.yyyy;
+}
+	
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
     [branch]

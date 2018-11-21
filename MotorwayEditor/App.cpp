@@ -699,8 +699,8 @@ void RebuildCameraPipeline( Camera* mainCamera )
 {
     mainCamera->clearRenderPasses();
     mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "TopDownWorldCaptureRequest" ) ); // Fullfiled if there is any frametime left
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
-    mainCamera->addRenderPass( FLAN_STRING_HASH( "TopDownTerrainCapture" ) );
 
     if ( MSAASamplerCount <= 1 ) {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );

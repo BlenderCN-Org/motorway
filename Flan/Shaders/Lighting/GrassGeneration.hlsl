@@ -17,7 +17,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <CameraData.hlsli>
 
 struct Instance
 {
@@ -30,21 +29,19 @@ struct Instance
 };
 
 cbuffer GrassGenerationBuffer : register( b0 )
-{                   
-	// Grass Camera
-	float4x4 g_ProjectionMatrix;	
-	float4x4 g_ViewMatrix;
-	
-	float4 	 g_CameraFrustumPlanes[6];
+{
+	float4 	 g_CameraFrustumPlanes[6]; // NOTE This is main camera frustum (NOT top down camera!)
+	float3	 g_CameraPositionWorldSpace;
 }
 
+Texture2D<float4> 	g_TexGrassMap  		: register( t0 ); // RGB color A height
+Texture2D<float4> 	g_TexTopDownCapture : register( t1 );
 
-Texture2D<float4> 	g_TexGrassMap  : register( t0 ); // RGB color A height
-Texture2D<float> 	g_TexHeightmap : register( t1 );
-
-[numthreads( 64, 1, 1 )]
-void EntryPointCS( uint3 _GroupID : SV_GROUPID, uint3 _GroupThreadID : SV_GROUPTHREADID, uint3 _DispatchThreadID : SV_DISPATCHTHREADID )
+[numthreads( 32, 32, 1 )]
+void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID )
 {
 	// Cull 32 texel per thread (assuming 2k x 2k grass map)
+	float4 grassMapSample = g_TexGrassMap.Load( uint3( DispatchThreadID.xy, 0 ) );
+	
 	
 }
