@@ -42,6 +42,7 @@ private:
     BaseAllocator*  textureAllocator;
     Texture*        grassMapTexture;
     Texture*        randomnessTexture;
+    RenderTarget*   topDownRenderTarget;
 
 private:
     fnPipelineMutableResHandle_t    addTopDownTerrainCapturePass( RenderPipeline* renderPipeline );
