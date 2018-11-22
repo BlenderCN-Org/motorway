@@ -180,6 +180,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
                 instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
                 modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
 
+            
                 if ( drawCmd.instanceCount > 1 ) {
                     drawCmd.material->bindInstanced( cmdList );
 
@@ -204,12 +205,24 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
 {
     struct PerPassBuffer
     {
-        glm::vec4   mainCameraFrustumPlanes;
+        glm::vec4   mainCameraFrustumPlanes[6];
         glm::vec3   mainCameraPositionWorldSpace;
         float       topDownMapSize;
         glm::vec2   terrainOriginWorldSpace;
         float       grassMapSize;
     };
+
+    // For reference only, everything should be GPU sided
+    struct Instance
+    {
+        glm::vec3   position;
+        float       specular;
+        glm::vec3   albedo;
+        uint32_t    vertexOffsetAndSkew;
+        glm::vec2   rotation;
+        glm::vec2   scale;
+    };
+    FLAN_IS_MEMORY_ALIGNED( 16, Instance );
 
     auto data = renderPipeline->addRenderPass(
         "Grass Generation Pass",
@@ -224,8 +237,8 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             grassAppendBuffer.Type = BufferDesc::APPEND_STRUCTURED_BUFFER;
             grassAppendBuffer.ViewFormat = IMAGE_FORMAT_R32_UINT;
             grassAppendBuffer.SingleElementSize = 1;
-            grassAppendBuffer.Size = ( 512 * 512 ); // 1 grass blade per pixel as max density
-            grassAppendBuffer.Stride = 1;
+            grassAppendBuffer.Size = sizeof( Instance ); // 1 grass blade per pixel as max density
+            grassAppendBuffer.Stride = ( 512 * 512 );
 
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( grassAppendBuffer );
 
@@ -255,17 +268,22 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             auto grassAppendBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
             grassAppendBuffer->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
 
+            const auto& camera = renderPipelineResources->getActiveCamera();
+
             // Bind cbuffer
             PerPassBuffer perPassBuffer;
             perPassBuffer.grassMapSize = 2048.0f;
             perPassBuffer.topDownMapSize = 1024.0f;
+            perPassBuffer.terrainOriginWorldSpace = glm::vec2( 0.0f, 0.0f );
+            perPassBuffer.mainCameraPositionWorldSpace = camera.worldPosition;
+            memcpy( perPassBuffer.mainCameraFrustumPlanes, camera.frustum.planes, 6 * sizeof( glm::vec4 ) );
 
             auto passConstantBuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
             passConstantBuffer->updateAsynchronous( cmdList, &perPassBuffer, sizeof( PerPassBuffer ) );
             passConstantBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_COMPUTE );
 
             // Start GPU Compute
-            cmdList->dispatchComputeCmd( 1024.0f / 32.0f, 1024.0f / 32.0f, 1.0f );
+            cmdList->dispatchComputeCmd( 1024.0f / 32, 1024.0f / 32, 1 );
         } 
     );
 
