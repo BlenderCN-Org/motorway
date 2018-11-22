@@ -79,6 +79,7 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
       || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
         bufferDescription.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
         bufferDescription.StructureByteStride = static_cast<UINT>( description.Size );
+        bufferDescription.ByteWidth *= static_cast<UINT>( description.Stride );
 
         nativeTextureFormat = DXGI_FORMAT_UNKNOWN;
     }
@@ -106,8 +107,6 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
     } else if ( description.Type != BufferDesc::VERTEX_BUFFER || description.Type != BufferDesc::DYNAMIC_VERTEX_BUFFER
         || description.Type != BufferDesc::INDICE_BUFFER || description.Type != BufferDesc::DYNAMIC_INDICE_BUFFER ) {
         shaderResourceViewDesc.Buffer.FirstElement = 0;
-        shaderResourceViewDesc.Buffer.ElementOffset = 0;
-        shaderResourceViewDesc.Buffer.ElementWidth = ( UINT )description.Stride;
         shaderResourceViewDesc.Buffer.NumElements = ( UINT )description.Stride;
     }
 
@@ -279,10 +278,15 @@ void flan::rendering::BindBufferCmdImpl( NativeCommandList* nativeCmdList, Nativ
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_2D:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_3D:
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
-    case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
     {
         nativeDeviceContext->CSSetUnorderedAccessViews( bindingIndex, 1, &bufferObject->bufferUAVObject, nullptr );
+    } break;
+
+    case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
+    {
+        constexpr UINT initialValueCount[1] = { 0 };
+        nativeDeviceContext->CSSetUnorderedAccessViews( bindingIndex, 1, &bufferObject->bufferUAVObject, initialValueCount );
     } break;
 
     default:
