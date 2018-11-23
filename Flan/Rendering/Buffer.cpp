@@ -117,6 +117,11 @@ void Buffer::updateRange( RenderDevice* renderDevice, const void* dataToUpload, 
     }
 }
 
+void Buffer::copyStructureCount( CommandList* cmdList, Buffer* source, const uint32_t byteOffset )
+{
+    flan::rendering::CopyStructureCountImpl( cmdList->getNativeCommandList(), source->getNativeBufferObject(), getNativeBufferObject(), byteOffset );
+}
+
 const BufferDesc& Buffer::getDescription() const
 {
     return bufferDescription;

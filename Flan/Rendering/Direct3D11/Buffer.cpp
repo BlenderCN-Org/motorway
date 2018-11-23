@@ -67,7 +67,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
     || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D
     || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D
     || description.Type == BufferDesc::STRUCTURED_BUFFER 
-    || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
+    || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER
+    || description.Type == BufferDesc::INDIRECT_DRAW_ARGUMENTS ) {
         bindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
 
@@ -82,6 +83,11 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
         bufferDescription.ByteWidth *= static_cast<UINT>( description.Stride );
 
         nativeTextureFormat = DXGI_FORMAT_UNKNOWN;
+    } else if ( description.Type == BufferDesc::INDIRECT_DRAW_ARGUMENTS ) {
+        bufferDescription.MiscFlags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+
+        bufferDescription.StructureByteStride = static_cast<UINT>( description.Size );
+        bufferDescription.ByteWidth *= static_cast<UINT>( description.Stride );
     }
 
     // Subresource description
@@ -127,7 +133,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
         unorderedAccessViewDesc.Texture3D.MipSlice = 0;
         unorderedAccessViewDesc.Texture3D.WSize = description.Depth;
     } else if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER
-        || description.Type == BufferDesc::STRUCTURED_BUFFER ) {
+             || description.Type == BufferDesc::STRUCTURED_BUFFER
+             || description.Type == BufferDesc::INDIRECT_DRAW_ARGUMENTS ) {
         unorderedAccessViewDesc.Buffer.FirstElement = 0;
         unorderedAccessViewDesc.Buffer.NumElements = ( UINT )description.Stride;
     } else if ( description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
@@ -156,7 +163,8 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
 
     if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER 
       || description.Type == BufferDesc::STRUCTURED_BUFFER
-      || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
+      || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER
+      || description.Type == BufferDesc::INDIRECT_DRAW_ARGUMENTS ) {
         nativeDevice->CreateShaderResourceView( bufferObject->bufferObject, &shaderResourceViewDesc, &bufferObject->bufferResourceView );
         nativeDevice->CreateUnorderedAccessView( bufferObject->bufferObject, &unorderedAccessViewDesc, &bufferObject->bufferUAVObject );
     }
@@ -279,6 +287,7 @@ void flan::rendering::BindBufferCmdImpl( NativeCommandList* nativeCmdList, Nativ
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_TEXTURE_3D:
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
+    case BufferDesc::BufferType::INDIRECT_DRAW_ARGUMENTS:
     {
         nativeDeviceContext->CSSetUnorderedAccessViews( bindingIndex, 1, &bufferObject->bufferUAVObject, nullptr );
     } break;
@@ -308,6 +317,7 @@ void flan::rendering::BindBufferReadOnlyCmdImpl( NativeCommandList* nativeCmdLis
         BindBufferCmdImpl( nativeCmdList, bufferObject, shaderStagesToBindTo, bindingIndex );
         break;
 
+    case BufferDesc::BufferType::INDIRECT_DRAW_ARGUMENTS:
     case BufferDesc::BufferType::STRUCTURED_BUFFER:
     case BufferDesc::BufferType::APPEND_STRUCTURED_BUFFER:
     case BufferDesc::BufferType::UNORDERED_ACCESS_VIEW_BUFFER:
@@ -422,5 +432,10 @@ void flan::rendering::UnbindBufferCmdImpl( NativeCommandList* nativeCmdList, Nat
     default:
         break;
     }
+}
+
+void flan::rendering::CopyStructureCountImpl( NativeCommandList* nativeCmdList, NativeBufferObject* sourceBufferObject, NativeBufferObject* destinationBufferObject, const uint32_t byteOffset )
+{
+    nativeCmdList->deferredContext->CopyStructureCount( destinationBufferObject->bufferObject, byteOffset, sourceBufferObject->bufferUAVObject );
 }
 #endif
