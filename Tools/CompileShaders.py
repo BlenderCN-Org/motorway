@@ -94,7 +94,7 @@ def need_to_recompile( filename_input, filename_output, ext ):
         with open( cache_file, "r" ) as stream:
             for line in stream:
                 if line == file_timestamp:
-                    print( filename_output + " : skipped (no changes detected)" )
+                    #print( filename_output + " : skipped (no changes detected)" )
                     return False
         
     with open( cache_file, 'w' ) as stream:
@@ -354,6 +354,10 @@ compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteri
 
 # Lighting
 compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
+compile_shader_CS( "Lighting/GrassIndirectDrawSetup.hlsl", "GrassIndirectDrawSetup" )
+
+compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
+compile_shader_PS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
 
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )

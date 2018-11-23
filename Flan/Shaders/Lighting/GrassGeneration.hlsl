@@ -17,16 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-struct Instance
-{
-	float3	position;
-	float 	specular;
-	float3	albedo;
-	uint	vertexOffsetAndSkew;
-	float2	rotation;
-	float2	scale;
-};
+#include "GrassShared.hlsli"
 
 cbuffer GrassGenerationBuffer : register( b0 )
 {
@@ -59,7 +50,7 @@ static const float2 scatterKernel[8] =
 };
 
 [numthreads( 32, 32, 1 )]
-void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID )
+void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID, uint3 GroupThreadID : SV_GroupThreadID )
 {
     // TODO Frustum culling (using main viewport frustum)
     // See GRID Autosport paper for more details
@@ -68,7 +59,7 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID )
 	// Cull 32 texel per thread (assuming 2k x 2k grass map)
 	float heightSample = g_TexTopDownCapture.Load( uint3( DispatchThreadID.xy, 0 ) ).r;	
 	float4 grassMapSample = g_TexGrassMap.Load( uint3( grassToCaptureOffset + DispatchThreadID.xy, 0 ) );
-    float4 randomNoise = g_TexRandomness.Load( uint3( DispatchThreadID.xy * 2, 0 ) ); // Assuming 64x64 RGBA noise texture
+    float4 randomNoise = g_TexRandomness.Load( uint3( GroupThreadID.xy * 2, 0 ) ); // Assuming 64x64 RGBA noise texture
 	
     // TODO Could be precomputed
     const float texelScale = ( g_GrassMapSize / g_HeightfieldSize );
@@ -85,7 +76,7 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID )
         instance.specular = lerp( 0.25f, 0.50f, randomNoise.r );
         instance.albedo = grassMapSample.rgb * max( 0.1f, randomNoise.ggg );
         instance.vertexOffsetAndSkew = 0;
-        instance.rotation = float2( 90.0f, 0.0f ) * randomNoise.bb;
+        instance.rotation = float2( sin( 90.0f ), cos( 0.0f ) ) * randomNoise.bb;
         instance.scale = float2( 1, 1 ) * randomNoise.aa;
 
         g_GrassInstanceBuffer.Append( instance );

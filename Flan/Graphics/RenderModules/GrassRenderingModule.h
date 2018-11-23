@@ -45,6 +45,10 @@ private:
     RenderTarget*   topDownRenderTarget;
 
 private:
+    fnPipelineResHandle_t           addGrassSetupPass( RenderPipeline* renderPipeline );
+
     fnPipelineMutableResHandle_t    addTopDownTerrainCapturePass( RenderPipeline* renderPipeline );
     fnPipelineMutableResHandle_t    addGrassGenerationPass( RenderPipeline* renderPipeline );
+    fnPipelineMutableResHandle_t    addIndirectDrawSetupPass( RenderPipeline* renderPipeline, const fnPipelineMutableResHandle_t instanceBuffer );
+    fnPipelineMutableResHandle_t    addGrassRenderPass( RenderPipeline* renderPipeline, const bool enableMSAA );
 };
