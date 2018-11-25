@@ -79,7 +79,7 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
     topDownDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
     topDownDesc.arraySize = 1;
     topDownDesc.depth = 1;
-    topDownDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    topDownDesc.format = IMAGE_FORMAT_R32G32B32A32_FLOAT;
     topDownDesc.width = 1024.0f;
     topDownDesc.height = 1024.0f;
     topDownDesc.mipCount = 1;
@@ -92,6 +92,15 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
 void GrassRenderingModule::loadCachedResources( RenderDevice* renderDevice, GraphicsAssetManager* graphicsAssetManager )
 {
     grassMapTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/grassmap_test.dds" ) );
+
+    grassAlbedoTest = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/T_Grass_D.dds" ) );
+    grassAlphaMaskTest = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/T_Grass_A.dds" ) );
+    
+    Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "TopDownWorldCapture" ),
+        [=]( RenderPipeline* renderPipeline ) {
+            return addTopDownTerrainCapturePass( renderPipeline );
+        }
+    );
 
     Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "GrassSetupPass" ),
         [=]( RenderPipeline* renderPipeline ) {
@@ -135,6 +144,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
         float lodDitheringAlpha;
         uint32_t __PADDING__[3];
     };
+
 
     auto topDownRTResource = renderPipeline->importRenderTarget( topDownRenderTarget );
 
@@ -181,6 +191,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
             // Set Ouput Target
             auto ouputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );
             cmdList->bindRenderTargetsCmd( &ouputRenderTarget );
+            cmdList->clearColorRenderTargetCmd(); // TODO Avoid cleaning render target in the middle of a renderpass...
 
             auto hmapSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             hmapSampler->bind( cmdList, 8 );
@@ -266,7 +277,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             BufferDesc grassAppendBuffer;
             grassAppendBuffer.Type = BufferDesc::APPEND_STRUCTURED_BUFFER;
             grassAppendBuffer.Size = sizeof( Instance ); // 1 grass blade per pixel as max density
-            grassAppendBuffer.Stride = ( 512 * 512 );
+            grassAppendBuffer.Stride = ( 1024 * 1024 ) * 8.0f;
 
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( grassAppendBuffer );
 
@@ -275,7 +286,6 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             perPassBuffer.Size = sizeof( PerPassBuffer );
 
             passData.buffers[1] = renderPipelineBuilder->allocateBuffer( perPassBuffer );
-
             // Retrieve current frame top down render target
             passData.input[0] = renderPipelineBuilder->readRenderTarget( topDownRTResource );
         },
@@ -303,7 +313,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
 
             // Bind cbuffer
             PerPassBuffer perPassBuffer;
-            perPassBuffer.grassMapSize = 2048.0f;
+            perPassBuffer.grassMapSize = 512.0f;
             perPassBuffer.topDownMapSize = 1024.0f;
             perPassBuffer.terrainOriginWorldSpace = glm::vec2( 0.0f, 0.0f );
             perPassBuffer.mainCameraPositionWorldSpace = camera.worldPosition;
@@ -315,6 +325,11 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
 
             // Start GPU Compute
             cmdList->dispatchComputeCmd( 1024.0f / 32, 1024.0f / 32, 1 );
+
+            grassAppendBuffer->unbind( cmdList );
+            randomnessTexture->unbind( cmdList );
+            topDownTexture->unbind( cmdList );
+            grassMapTexture->unbind( cmdList );
         } 
     );
 
@@ -337,6 +352,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addIndirectDrawSetupPass( Ren
             cbufferCount.Size = 16;
             
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( cbufferCount );
+
             passData.buffers[1] = renderPipelineBuilder->readBuffer( instanceBuffer );
 
             BufferDesc drawArgsBuffer;
@@ -365,6 +381,9 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addIndirectDrawSetupPass( Ren
 
             // Start GPU Compute
             cmdList->dispatchComputeCmd( 1, 1, 1 );
+
+            argsBuffer->unbind( cmdList );
+            countBuffer->unbind( cmdList );
         }
     );
 
@@ -373,8 +392,6 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addIndirectDrawSetupPass( Ren
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPipeline* renderPipeline, const bool enableMSAA )
 {
-    return -1;
-
     auto RenderPass = renderPipeline->addRenderPass(
         "Grass Draw Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
@@ -384,14 +401,19 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             pipelineState.vertexStage = FLAN_STRING( "FoliageIndirect" );
             pipelineState.pixelStage = FLAN_STRING( "FoliageIndirect" );
 
-            pipelineState.rasterizerState.cullMode = flan::rendering::eCullMode::CULL_MODE_FRONT;
+            pipelineState.rasterizerState.cullMode = flan::rendering::eCullMode::CULL_MODE_NONE;
             pipelineState.rasterizerState.fillMode = flan::rendering::eFillMode::FILL_MODE_SOLID;
             pipelineState.rasterizerState.useTriangleCCW = false;
+            pipelineState.primitiveTopology = flan::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
             pipelineState.depthStencilState.enableDepthTest = true;
-            pipelineState.depthStencilState.enableDepthWrite = false;
+            pipelineState.depthStencilState.enableDepthWrite = true;
             pipelineState.depthStencilState.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GEQUAL;
-     
+
+            pipelineState.blendState.enableBlend = false;
+            pipelineState.blendState.sampleMask = ~0;
+            pipelineState.blendState.enableAlphaToCoverage = true;
+
             passData.pipelineState = renderPipelineBuilder->allocatePipelineState( pipelineState );
 
             // Color RT
@@ -421,6 +443,15 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             passData.buffers[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "GrassInstanceBuffer" ) );
             passData.buffers[2] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "GrassDrawArgsBuffer" ) );
 
+
+            SamplerDesc bilinearSamplerDesc;
+            bilinearSamplerDesc.addressU = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            bilinearSamplerDesc.addressV = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            bilinearSamplerDesc.addressW = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            bilinearSamplerDesc.filter = flan::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+
+            passData.samplers[0] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
+
             BufferDesc cameraBuffer = {};
             cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
             cameraBuffer.Size = sizeof( Camera::Data );
@@ -428,20 +459,30 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             passData.buffers[1] = renderPipelineBuilder->allocateBuffer( cameraBuffer );
         },
         [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
+            // Bind Pass Pipeline State
+            auto pipelineState = renderPipelineResources->getPipelineState( passData.pipelineState );
+            cmdList->bindPipelineStateCmd( pipelineState );
+
             // Bind Output Buffers
             auto colorBuffer = renderPipelineResources->getRenderTarget( passData.output[0] );
             auto depthBuffer = renderPipelineResources->getRenderTarget( passData.input[0] );
 
             cmdList->bindRenderTargetsCmd( &colorBuffer, depthBuffer );
 
+            auto bilinearSampler = renderPipelineResources->getSampler( passData.samplers[0] );
+            bilinearSampler->bind( cmdList );
+
             // Bind Camera Buffer
             auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
-            auto passCamera = renderPipelineResources->getActiveCamera();
+            auto& passCamera = renderPipelineResources->getActiveCamera();
             cameraCbuffer->updateAsynchronous( cmdList, &passCamera, sizeof( Camera::Data ) );
             cameraCbuffer->bind( cmdList, 2 );
 
             auto grassInstanceBuffer = renderPipelineResources->getBuffer( passData.buffers[0] );
             grassInstanceBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_VERTEX );
+
+            grassAlbedoTest->bind( cmdList, 1, SHADER_STAGE_PIXEL );
+            grassAlphaMaskTest->bind( cmdList, 2, SHADER_STAGE_PIXEL );
 
             auto drawArgsBuffer = renderPipelineResources->getBuffer( passData.buffers[2] );
 
@@ -451,6 +492,8 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             cmdList->drawInstancedIndirectCmd( drawArgsBuffer );
      
             cmdList->bindBackbufferCmd();
+
+            grassInstanceBuffer->unbind( cmdList );
         }
     );
 

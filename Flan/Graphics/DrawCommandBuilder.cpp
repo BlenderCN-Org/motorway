@@ -464,16 +464,16 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
         if ( terrainInstancesCount != 0
             && camera->isUsingRenderPass( FLAN_STRING_HASH( "TopDownWorldCaptureRequest" ) ) ) {
             static constexpr int32_t TOPDOWN_DIMENSION = 1024;
-            static constexpr float TOPDOWN_VP_DIMENSION = TOPDOWN_DIMENSION / 8.0f;
+            static constexpr float TOPDOWN_VP_DIMENSION = TOPDOWN_DIMENSION / 4.0f - 2.0f;
 
             // Capture top down view for various effects (grass generation, wetness generation, ...)
             const Camera::Data& currentCamera = camera->GetData();
 
             // Build Ortho Camera view in order to generate grass instances
             Camera::Data topDownCamera = {};
-            topDownCamera.worldPosition = glm::vec3( currentCamera.worldPosition.x, 64.0f, currentCamera.worldPosition.z );
+            topDownCamera.worldPosition = glm::vec3( 256, 64.0f, 256 );
 
-            topDownCamera.projectionMatrix = glm::orthoLH( 0.0f, TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, 0.0f, 0.0f, 64.0f );
+            topDownCamera.projectionMatrix = glm::orthoLH( -TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, -TOPDOWN_VP_DIMENSION, 0.0f, 64.0f );
             topDownCamera.inverseProjectionMatrix = glm::transpose( glm::inverse( topDownCamera.projectionMatrix ) );
             topDownCamera.viewMatrix = glm::lookAtLH( topDownCamera.worldPosition, topDownCamera.worldPosition + glm::vec3( 0, -1, 0 ), glm::vec3( 0, 0, 1 ) );
             topDownCamera.inverseViewMatrix = glm::inverse( topDownCamera.viewMatrix );

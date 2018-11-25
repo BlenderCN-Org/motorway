@@ -41,7 +41,13 @@ public:
 private:
     BaseAllocator*  textureAllocator;
     Texture*        grassMapTexture;
+
+    Texture*        grassAlbedoTest;
+    Texture*        grassAlphaMaskTest;
+
     Texture*        randomnessTexture;
+    
+    
     RenderTarget*   topDownRenderTarget;
 
 private:

@@ -39,45 +39,101 @@ AppendStructuredBuffer<Instance> g_GrassInstanceBuffer : register( u0 );
 // Scatter of foliage around a fin centre. 
 static const float2 scatterKernel[8] =
 {
-  float2(0 , 0),
-  float2(0.8418381f , -0.8170416f),
-  float2(-0.9523101f , 0.5290064f),
-  float2(-0.1188585f , -0.1276977f),
-  float2(-0.207716f, 0.09361804f),
-  float2(0.1588526f , 0.440437f),
-  float2(-0.6105742f , 0.07276237f),
-  float2(-0.09883061f , 0.4942337f)
+    float2(0 , 0),
+    float2(0.8418381f , -0.8170416f),
+    float2(-0.9523101f , 0.5290064f),
+    float2(-0.1188585f , -0.1276977f),
+    float2(-0.207716f, 0.09361804f),
+    float2(0.1588526f , 0.440437f),
+    float2(-0.6105742f , 0.07276237f),
+    float2(-0.09883061f , 0.4942337f)
 };
 
+inline float DistanceToPlane( const float4 plane, const float3 vPoint )
+{
+    return dot( plane, float4( vPoint, 1.0f ) );
+}
+
+float CullSphere( const float3 sphereCenter, const float fRadius )
+{
+    float dist01 = min( DistanceToPlane( g_CameraFrustumPlanes[0], sphereCenter ), DistanceToPlane( g_CameraFrustumPlanes[1], sphereCenter ) );
+    float dist23 = min( DistanceToPlane( g_CameraFrustumPlanes[2], sphereCenter ), DistanceToPlane( g_CameraFrustumPlanes[3], sphereCenter ) );
+    float dist45 = min( DistanceToPlane( g_CameraFrustumPlanes[4], sphereCenter ), DistanceToPlane( g_CameraFrustumPlanes[5], sphereCenter ) );
+
+    return min( min( dist01, dist23 ), dist45 ) + fRadius;
+}
+
 [numthreads( 32, 32, 1 )]
-void EntryPointCS( uint3 DispatchThreadID : SV_DISPATCHTHREADID, uint3 GroupThreadID : SV_GroupThreadID )
+void EntryPointCS( uint3 DispatchThreadID : SV_DispatchThreadID, uint3 GroupThreadID : SV_GroupThreadID )
 {
     // TODO Frustum culling (using main viewport frustum)
     // See GRID Autosport paper for more details
-    float2 grassToCaptureOffset = g_CameraPositionWorldSpace.xz - g_HeightfieldOriginWorldSpace;
-	
-	// Cull 32 texel per thread (assuming 2k x 2k grass map)
-	float heightSample = g_TexTopDownCapture.Load( uint3( DispatchThreadID.xy, 0 ) ).r;	
-	float4 grassMapSample = g_TexGrassMap.Load( uint3( grassToCaptureOffset + DispatchThreadID.xy, 0 ) );
-    float4 randomNoise = g_TexRandomness.Load( uint3( GroupThreadID.xy * 2, 0 ) ); // Assuming 64x64 RGBA noise texture
-	
+
     // TODO Could be precomputed
     const float texelScale = ( g_GrassMapSize / g_HeightfieldSize );
-    float3 generatedWorldPosition = float3( g_HeightfieldOriginWorldSpace.x + ( DispatchThreadID.x * texelScale ), heightSample, g_HeightfieldOriginWorldSpace.y + ( DispatchThreadID.y * texelScale ) );
     
+    //float2 grassToCaptureOffset = g_HeightfieldOriginWorldSpace - g_CameraPositionWorldSpace.xz; 
+    //grassToCaptureOffset *= texelScale;
+    
+	// Cull 32 texel per thread (assuming 2k x 2k grass map)
+	float heightSample = g_TexTopDownCapture.Load( uint3( DispatchThreadID.xy, 0 ) ).r;
+    
+    uint3 grassMapSampleCoords = uint3( DispatchThreadID.xy * texelScale, 0 );
+	float4 grassMapSample = g_TexGrassMap.Load( grassMapSampleCoords.xyz );
+    
+    float4 randomNoise = g_TexRandomness.Load( uint3( GroupThreadID.xy * 2, 0 ) ); // Assuming 64x64 RGBA noise texture
+	
+    // TODO Per terrain instance height value (right now we assume the height scale is ALWAYS 64.0f, which might not be true in the future)
+    [branch]
+    if ( grassMapSample.a < ( heightSample / 64.0f ) ) {
+        return;
+    }
+    
+    [branch]
+    if ( DispatchThreadID.x >= (uint)g_HeightfieldSize 
+      && DispatchThreadID.y >= (uint)g_HeightfieldSize ) {
+        return;
+    }
+    
+    const float texelScale2 = ( g_HeightfieldSize / g_GrassMapSize );
+    float3 generatedWorldPosition = float3(  ( DispatchThreadID.x / texelScale2 ), heightSample, ( DispatchThreadID.y / texelScale2 ) );
+    
+    // Frustum cull once we know the world position
+    [branch]
+    if ( CullSphere( generatedWorldPosition, ( 1.0f / texelScale2 ) ) <= 0.0f ) {
+        return;
+    }
+    
+    float distanceToCamera = distance( g_CameraPositionWorldSpace, generatedWorldPosition ) / 512.0f;
+    
+    // Use LoD to draw as little as possible
+    [branch]
+    if ( distanceToCamera > 0.05f ) {        
+        // Use noise for the farest LoD
+        int cullProba = ( distanceToCamera > 0.9f ) 
+                        ? (int)( distanceToCamera * ( 100.0f * randomNoise.a ) ) 
+                        : (int)( distanceToCamera * 100.0f );
+        
+        if ( generatedWorldPosition.x % cullProba == 0 
+          && generatedWorldPosition.z % cullProba == 0 ) {
+            return;
+        } 
+    }
+    
+  
     // Create a scatter around the single pixel sampled from the drape.
     [unroll]
     for ( int scatterKernelIndex = 0; scatterKernelIndex < 8; ++scatterKernelIndex ) {
         // Build and append grass instances to the buffer
         Instance instance = (Instance)0;
-        instance.position = float3( generatedWorldPosition.x + ( scatterKernel[scatterKernelIndex].x * texelScale ), 
+        instance.position = float3(  generatedWorldPosition.x + ( scatterKernel[scatterKernelIndex].x * texelScale2 ), 
                                     generatedWorldPosition.y, 
-                                    generatedWorldPosition.z + ( scatterKernel[scatterKernelIndex].y * texelScale ) );
+                                    generatedWorldPosition.z + ( scatterKernel[scatterKernelIndex].y * texelScale2 ) );
         instance.specular = lerp( 0.25f, 0.50f, randomNoise.r );
         instance.albedo = grassMapSample.rgb * max( 0.1f, randomNoise.ggg );
         instance.vertexOffsetAndSkew = 0;
-        instance.rotation = float2( sin( 90.0f ), cos( 0.0f ) ) * randomNoise.bb;
-        instance.scale = float2( 1, 1 ) * randomNoise.aa;
+        instance.rotation = float2( sin( 145.0f ), cos( 0.0f ) ) * randomNoise.bb;
+        instance.scale = max( float2( 0.25f, 0.25f ), float2( 2, 2 ) * randomNoise.aa );
 
         g_GrassInstanceBuffer.Append( instance );
     }

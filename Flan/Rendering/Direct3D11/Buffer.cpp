@@ -110,6 +110,9 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
 
         shaderResourceViewDesc.Texture3D.MostDetailedMip = 0;
         shaderResourceViewDesc.Texture3D.MipLevels = -1;
+    } else if ( description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
+        shaderResourceViewDesc.Buffer.FirstElement = 0;
+        shaderResourceViewDesc.Buffer.ElementWidth = ( UINT )description.Stride;
     } else if ( description.Type != BufferDesc::VERTEX_BUFFER || description.Type != BufferDesc::DYNAMIC_VERTEX_BUFFER
         || description.Type != BufferDesc::INDICE_BUFFER || description.Type != BufferDesc::DYNAMIC_INDICE_BUFFER ) {
         shaderResourceViewDesc.Buffer.FirstElement = 0;
