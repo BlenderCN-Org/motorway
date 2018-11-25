@@ -230,7 +230,8 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             };
         }
 
-        if ( editableMaterialData.EnableAlphaBlend == 1 ) {
+        if ( editableMaterialData.EnableAlphaBlend == 1 
+            || editableMaterialData.AlphaToCoverage == 1 ) {
             descriptor.blendState = new BlendState();
 
             BlendStateDesc blendStateDesc;
@@ -242,7 +243,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             blendStateDesc.blendConfAlpha.source = flan::rendering::eBlendSource::BLEND_SOURCE_INV_DEST_ALPHA;
             blendStateDesc.blendConfAlpha.dest = flan::rendering::eBlendSource::BLEND_SOURCE_ONE;
 
-            blendStateDesc.enableBlend = true;
+            blendStateDesc.enableBlend = ( editableMaterialData.EnableAlphaBlend == 1 );
             blendStateDesc.sampleMask = ~0;
             blendStateDesc.enableAlphaToCoverage = ( editableMaterialData.AlphaToCoverage == 1 );
 

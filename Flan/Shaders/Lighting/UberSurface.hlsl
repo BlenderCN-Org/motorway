@@ -1047,9 +1047,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_ENABLE_ALPHA_BLEND
         LightContribution.a = BaseLayer.AlphaMask;
-        
-        // Premultiply alpha
-        //LightContribution.rgb *= LightContribution.a;
 #endif
 
 #if PA_EDITOR
