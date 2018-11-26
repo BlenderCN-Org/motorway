@@ -17,6 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#ifndef PA_DONT_RECEIVE_SHADOWS
 #include <RenderableEntities.hlsli>
 #include <CameraData.hlsli>
 #include <ShadowMappingShared.h>
@@ -145,3 +146,4 @@ float3 SampleShadowCascade( in DirectionalLight light, in float3 shadowPosition,
 
     return  + SampleCascadedShadowMapOptimizedPCF( shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
 }
+#endif

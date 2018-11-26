@@ -1,11 +1,10 @@
 #include <BRDF.hlsli>
+
 #include <CascadedShadowMapHelpers.hlsli>
+
 #include <Atmosphere/Atmosphere.hlsli>
 
 #include <ImageEffects/SeparableSSS.h>
-
-static const float PI = 3.1415926535897932384626433f;
-static const float INV_PI = ( 1.0 / PI );
 
 cbuffer AtmosphereBuffer : register( b5 )
 {

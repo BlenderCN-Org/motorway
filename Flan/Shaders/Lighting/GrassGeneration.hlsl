@@ -108,28 +108,31 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DispatchThreadID, uint3 GroupThre
     
     // Use LoD to draw as little as possible
     [branch]
-    if ( distanceToCamera > 0.05f ) {        
+    if ( distanceToCamera > 0.025f ) {      
         // Use noise for the farest LoD
-        int cullProba = ( distanceToCamera > 0.9f ) 
-                        ? (int)( distanceToCamera * ( 100.0f * randomNoise.a ) ) 
-                        : (int)( distanceToCamera * 100.0f );
+        uint cullProba = (uint)( distanceToCamera * 200.0f );
         
-        if ( generatedWorldPosition.x % cullProba == 0 
-          && generatedWorldPosition.z % cullProba == 0 ) {
+        if ( DispatchThreadID.x % cullProba != 0u 
+          && DispatchThreadID.y % cullProba != 0u ) {
             return;
         } 
+		
+		if ( distanceToCamera > 1.0f ) {
+			return;
+        } 	
     }
     
   
     // Create a scatter around the single pixel sampled from the drape.
     [unroll]
-    for ( int scatterKernelIndex = 0; scatterKernelIndex < 8; ++scatterKernelIndex ) {
+    for ( int scatterKernelIndex = 0; scatterKernelIndex < 2; ++scatterKernelIndex ) {
         // Build and append grass instances to the buffer
         Instance instance = (Instance)0;
-        instance.position = float3(  generatedWorldPosition.x + ( scatterKernel[scatterKernelIndex].x * texelScale2 ), 
+        instance.position = float3( generatedWorldPosition.x + ( scatterKernel[scatterKernelIndex].x * randomNoise.r * texelScale2 ), 
                                     generatedWorldPosition.y, 
-                                    generatedWorldPosition.z + ( scatterKernel[scatterKernelIndex].y * texelScale2 ) );
-        instance.specular = lerp( 0.25f, 0.50f, randomNoise.r );
+                                    generatedWorldPosition.z + ( scatterKernel[scatterKernelIndex].y * randomNoise.b * texelScale2 ) );
+	
+        instance.specular = lerp( 0.0f, 0.15f, randomNoise.r );
         instance.albedo = grassMapSample.rgb * max( 0.1f, randomNoise.ggg );
         instance.vertexOffsetAndSkew = 0;
         instance.rotation = float2( sin( 145.0f ), cos( 0.0f ) ) * randomNoise.bb;

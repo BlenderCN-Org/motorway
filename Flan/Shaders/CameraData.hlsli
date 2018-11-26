@@ -1,3 +1,5 @@
+#ifndef __CAMERA_DATA_H__
+#define __CAMERA_DATA_H__ 1
 cbuffer ActiveCameraBuffer : register( b0 )
 {
     float4x4	ViewMatrix;
@@ -21,3 +23,4 @@ cbuffer ActiveCameraBuffer : register( b0 )
     float2      g_CameraPreviousJitteringOffset;
     float4      g_CameraFrustumPlanes[6];
 };
+#endif

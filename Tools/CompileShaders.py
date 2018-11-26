@@ -356,8 +356,8 @@ compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteri
 compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
 compile_shader_CS( "Lighting/GrassIndirectDrawSetup.hlsl", "GrassIndirectDrawSetup" )
 
-compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
-compile_shader_PS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
+compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect", "EntryPointVS", { "PA_DONT_RECEIVE_SHADOWS": "1" } )
+compile_shader_PS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect", "EntryPointPS", { "PA_DONT_RECEIVE_SHADOWS": "1" } )
 
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
