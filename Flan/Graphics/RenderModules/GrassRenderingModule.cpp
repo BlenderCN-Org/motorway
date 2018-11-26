@@ -38,6 +38,7 @@ GrassRenderingModule::GrassRenderingModule()
     , grassMapTexture( nullptr )
     , randomnessTexture( nullptr )
     , topDownRenderTarget( nullptr )
+    , isTopDownCaptured( false )
 {
 
 }
@@ -72,7 +73,6 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
     randomnessTexture = flan::core::allocate<Texture>( allocator );
     randomnessTexture->createAsTexture2D( renderDevice, description, randomValues, sizeof( float ) * 64 * 64 * 4 );
     randomnessTexture->setResourceName( renderDevice, "Grass Random Noise" );
-
 
     // Allocate top down rendertarget (since the resource is permanent and shared between viewports in a same world)
     TextureDescription topDownDesc;
@@ -144,7 +144,6 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
         float lodDitheringAlpha;
         uint32_t __PADDING__[3];
     };
-
 
     auto topDownRTResource = renderPipeline->importRenderTarget( topDownRenderTarget );
 
@@ -237,6 +236,8 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
             ouputRenderTarget->unbind( cmdList );
         } );
 
+    isTopDownCaptured = true;
+
     return data.output[0];
 }
 
@@ -297,11 +298,8 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             // Bind Resources
             grassMapTexture->bind( cmdList, 0, SHADER_STAGE_COMPUTE );
 
-            // TODO Top Down texture might be null during the first frames (which kinda suck tbh)
             auto topDownTexture = renderPipelineResources->getRenderTarget( passData.input[0] );
-            if ( topDownTexture != nullptr ) {
-                topDownTexture->bind( cmdList, 1, SHADER_STAGE_COMPUTE );
-            }
+            topDownTexture->bind( cmdList, 1, SHADER_STAGE_COMPUTE );
 
             randomnessTexture->bind( cmdList, 2, SHADER_STAGE_COMPUTE );
 
@@ -392,6 +390,12 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addIndirectDrawSetupPass( Ren
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPipeline* renderPipeline, const bool enableMSAA )
 {
+    if ( !isTopDownCaptured ) {
+        return -1;
+    }
+
+    isTopDownCaptured = false;
+
     auto RenderPass = renderPipeline->addRenderPass(
         "Grass Draw Pass",
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {

@@ -47,8 +47,8 @@ private:
 
     Texture*        randomnessTexture;
     
-    
     RenderTarget*   topDownRenderTarget;
+    bool            isTopDownCaptured;
 
 private:
     fnPipelineResHandle_t           addGrassSetupPass( RenderPipeline* renderPipeline );
