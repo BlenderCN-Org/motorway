@@ -98,12 +98,13 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DispatchThreadID, uint3 GroupThre
         return;
     }
     
+    static const float SCALE_BIAS = 0.1f;
     const float texelScale2 = ( g_HeightfieldSize / g_GrassMapSize );
     float3 generatedWorldPosition = float3(  ( texelIndex.x / texelScale2 ), heightSample, ( texelIndex.y / texelScale2 ) );
     
     // Frustum cull once we know the world position
     [branch]
-    if ( CullSphere( generatedWorldPosition, texelScale2 ) <= 0.0f ) {
+    if ( CullSphere( generatedWorldPosition, 1.0f ) <= 0.0f ) {
         return;
     }
     
@@ -159,7 +160,7 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DispatchThreadID, uint3 GroupThre
     instance.position.xz += float2( lodScaleFactor, lodScaleFactor ) * 0.5f * randomNoise.ra;
     
     instance.specular = lerp( 0.05f, 0.45f, randomNoise.r );
-    instance.albedo = grassMapSample.rgb * clamp( 0.5f + randomNoise.ggg, 0.5f, 1.0f );
+    instance.albedo = grassMapSample.rgb * max( randomNoise.ggg, 0.4f );
     
     // Calculate lighting per instance (instead of per pixel/vertex)
     float3 N = float3( 0, 1, 0 );
@@ -225,7 +226,7 @@ void EntryPointCS( uint3 DispatchThreadID : SV_DispatchThreadID, uint3 GroupThre
         lightContribution += Diffuse_LambertWrapped( NoL, surface.LinearRoughness ) * surface.Albedo * directionalLightIlluminance;
     }
     
-    instance.albedo = lightContribution;
+    instance.albedo = surface.Albedo; //lightContribution;
     
 #if PA_GRASS_LOD_DEBUG_COLOR
     instance.albedo = lodColor;

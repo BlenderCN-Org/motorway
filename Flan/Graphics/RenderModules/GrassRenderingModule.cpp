@@ -449,7 +449,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
 
             // Read Depth Buffer
             passData.input[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainDepthRT" ) );
-            passData.input[1] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "SSOcclusionMask" ) );
+            passData.input[1] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "CascadedShadowMappingShadowMap" ) );
             
             // Constant Buffer
             passData.buffers[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "GrassInstanceBuffer" ) );
@@ -463,6 +463,17 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             bilinearSamplerDesc.filter = flan::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
+
+            using namespace flan::rendering;
+
+            SamplerDesc shadowComparisonSamplerDesc;
+            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_COMPARISON_TRILINEAR;
+            shadowComparisonSamplerDesc.comparisonFunction = eComparisonFunction::COMPARISON_FUNCTION_LEQUAL;
+
+            passData.samplers[1] = renderPipelineBuilder->allocateSampler( shadowComparisonSamplerDesc );
 
             BufferDesc cameraBuffer = {};
             cameraBuffer.Type = BufferDesc::CONSTANT_BUFFER;
@@ -485,6 +496,9 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             auto bilinearSampler = renderPipelineResources->getSampler( passData.samplers[0] );
             bilinearSampler->bind( cmdList );
 
+            auto shadowSampler = renderPipelineResources->getSampler( passData.samplers[1] );
+            shadowSampler->bind( cmdList, 15 );
+
             // Bind Camera Buffer
             auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[1] );
             auto& passCamera = renderPipelineResources->getActiveCamera();
@@ -495,7 +509,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             grassInstanceBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_VERTEX );
 
             grassAlbedoTest->bind( cmdList, 1, SHADER_STAGE_PIXEL );
-            occlusionMask->bind( cmdList, 2, SHADER_STAGE_PIXEL );
+            occlusionMask->bind( cmdList, 15, SHADER_STAGE_PIXEL );
 
             auto drawArgsBuffer = renderPipelineResources->getBuffer( passData.buffers[2] );
 

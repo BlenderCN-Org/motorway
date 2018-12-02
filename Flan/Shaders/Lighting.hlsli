@@ -1,7 +1,5 @@
 #include <BRDF.hlsli>
-
 #include <CascadedShadowMapHelpers.hlsli>
-
 #include <Atmosphere/Atmosphere.hlsli>
 
 #include <ImageEffects/SeparableSSS.h>
@@ -189,6 +187,11 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
             shadowVisibility = saturate( shadowVisibility );
         }
     }
+
+#ifdef FLAN_USE_FAKE_ATTENUATION
+    // Fake GI if not available
+    shadowVisibility.r = max( shadowVisibility.r, 0.1f );
+#endif
     
     [branch]
     if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
@@ -220,7 +223,7 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     float3 sunIrradiance = GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy * 1.0 - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
 #endif
 
-    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility );
+    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.r );
     
     return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }

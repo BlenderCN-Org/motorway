@@ -18,8 +18,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #ifndef PA_DONT_RECEIVE_SHADOWS
-#include <RenderableEntities.hlsli>
-#include <CameraData.hlsli>
 #include <ShadowMappingShared.h>
 
 Texture2D ShadowMapTest : register( t15 );
