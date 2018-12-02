@@ -273,9 +273,16 @@ DomainStageData EntryPointDS(
 #if PH_DEPTH_ONLY
     output.position = mul( float4( positionWS.xyz, 1.0f ), g_DepthViewProjectionMatrix );
 #else
+
     output.positionWS = positionWS;
 	output.positionMS = positionMS;
 	
+#ifdef PH_LQ_RENDERING
+    // LQ rendering is only meant to be used for any 2D rendering
+    // Which is why viewspace height should be canceled to avoid distorsions
+    positionWS.y = 0.0f;
+#endif
+
     output.position = mul( float4( positionWS.xyz, 1.0f ), ViewProjectionMatrix );
     output.previousPosition = mul( float4( positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ); //.xywz;
    

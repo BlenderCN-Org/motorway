@@ -704,7 +704,7 @@ void RebuildCameraPipeline( Camera* mainCamera )
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
 
     if ( MSAASamplerCount <= 1 ) {
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DepthPrePass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "GrassRenderingPass" ) );
@@ -713,7 +713,7 @@ void RebuildCameraPipeline( Camera* mainCamera )
         mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPass" ) );
     } else {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DepthPreMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "GrassRenderingMSAAPass" ) );

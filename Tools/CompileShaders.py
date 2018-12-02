@@ -354,6 +354,7 @@ compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteri
 
 # Lighting
 compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
+compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGenerationLODDebugColor", "EntryPointCS", { "PA_GRASS_LOD_DEBUG_COLOR": "1" } )
 compile_shader_CS( "Lighting/GrassIndirectDrawSetup.hlsl", "GrassIndirectDrawSetup" )
 
 compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect", "EntryPointVS", { "PA_DONT_RECEIVE_SHADOWS": "1" } )

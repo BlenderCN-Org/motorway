@@ -15,6 +15,7 @@ Layer
 {
 	Heightmap: "GameData/Textures/heightmap_test.hmap"
 	TerrainSplatMap: "GameData/Textures/splatmap.png16"
+	TerrainGrassMap: "GameData/Textures/grassmap_test.dds"
     HeightmapNormal: None
     AlphaMask: None
     Reflectance: 0.00

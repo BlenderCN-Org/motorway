@@ -246,6 +246,12 @@ Texture* GraphicsAssetManager::getTexture( const fnChar_t* assetName, const bool
 
 FontDescriptor* GraphicsAssetManager::getFont( const fnChar_t* assetName, const bool forceReload )
 {
+    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
+    if ( file == nullptr ) {
+        FLAN_CERR << "'" << assetName << "' does not exist!" << std::endl;
+        return nullptr;
+    }
+
     fnStringHash_t assetHashcode = CRC32( assetName );
 
     auto mapIterator = fontMap.find( assetHashcode );

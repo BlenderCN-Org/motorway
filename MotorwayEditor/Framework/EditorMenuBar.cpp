@@ -56,7 +56,8 @@ void flan::framework::DisplayEditorMenuBar()
     FLAN_IMPORT_VAR_PTR( DisplayTileHeat, bool )
     FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
     FLAN_IMPORT_VAR_PTR( CopiedNode, SceneNode* )
-
+    FLAN_IMPORT_VAR_PTR( GrassLODDebugView, bool )
+        
     FLAN_IMPORT_VAR_PTR( GraphicsCompositionSettings, CompositionSettings )
 
     if ( ImGui::BeginMainMenuBar() ) {
@@ -358,7 +359,8 @@ void flan::framework::DisplayEditorMenuBar()
             ImGui::Checkbox( "Enable CPU Framerate Print", EnableCPUFPSPrint );
             ImGui::Checkbox( "Display Dynamics World Colliders", EnableDebugPhysicsColliders );
             ImGui::Checkbox( "Display Tile Heat", DisplayTileHeat );
-
+            ImGui::Checkbox( "Display Grass LOD Debug Color", GrassLODDebugView );
+            
             ImGui::EndMenu();
         }
 

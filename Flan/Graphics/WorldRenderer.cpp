@@ -227,13 +227,17 @@ void WorldRenderer::onFrame( const float interpolatedFrameTime, TaskManager* tas
 
         g_Profiler.beginSection( "Viewport_" + std::to_string( viewportId ) + "::RenderPipelineExecution" );
 #if FLAN_DEVBUILD
-        renderPipeline->executeProfiled( renderDevice, taskManager, shaderStageManager, this );
+        renderPipeline->executeProfiled( renderDevice, taskManager, shaderStageManager );
 #else
-        renderPipeline->execute( renderDevice, shaderStageManager );
+        renderPipeline->execute( renderDevice, taskManager, shaderStageManager );
 #endif
         g_Profiler.endSection();
         g_Profiler.endSection();
     }
+
+#if FLAN_DEVBUILD
+    renderPipeline->printPassProfiling( renderDevice, this );
+#endif
 
     drawCommands.clear();
     transparentDrawCommands.clear();

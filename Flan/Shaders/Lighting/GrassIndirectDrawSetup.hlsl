@@ -29,7 +29,7 @@ cbuffer BufferCounter : register( b0 )
 void EntryPointCS( uint3 id : SV_DispatchThreadID )
 {
     if ( id.x == 0 && id.y == 0 && id.z == 0 ) {
-        g_DrawInstancedBuffer[0] = 6u * g_NumInstances;// vertexCountPerInstance
+        g_DrawInstancedBuffer[0] = 12u * g_NumInstances;// vertexCountPerInstance
         g_DrawInstancedBuffer[1] = 1u; // instanceCount
         g_DrawInstancedBuffer[2] = 0u; // startVertexLocation
         g_DrawInstancedBuffer[3] = 0u; // startInstanceLocation

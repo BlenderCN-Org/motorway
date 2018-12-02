@@ -8,7 +8,7 @@ float3 Fresnel_Schlick( in float3 f0, in float f90, in float u )
 
 float Diffuse_LambertWrapped( in float NoL, in float linearRoughness )
 {
-	return saturate( ( NoL + linearRoughness ) / ( ( 1 + linearRoughness ) * ( 1 + linearRoughness ) ) );
+	return saturate( ( NoL + linearRoughness ) / ( ( 1 + linearRoughness ) * ( 1 + linearRoughness ) ) ) * INV_PI;
 }
 
 float Specular_Phong( in float VoR, in float specularStrength )

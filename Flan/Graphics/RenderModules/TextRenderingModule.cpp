@@ -177,6 +177,12 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Graph
 {
     // Load Default Font
     fontDescriptor = graphicsAssetManager->getFont( FLAN_STRING( "GameData/Fonts/SegoeUI.fnt" ) );
+
+    if ( fontDescriptor == nullptr ) {
+        FLAN_CERR << "Could not load default font descriptor; stopping here" << std::endl;
+        return;
+    }
+
     fontAtlas = graphicsAssetManager->getTexture( fontDescriptor->Name.c_str() );
 
     // Create static indice buffer

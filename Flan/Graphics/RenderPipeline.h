@@ -46,12 +46,14 @@ public:
     void                            destroy( RenderDevice* renderDevice );
     RenderPassData&                 addRenderPass( const std::string& name, fnRenderPassSetup_t setup, fnRenderPassCallback_t execute );
     void                            addPipelineSetupPass( fnRenderPassPipelineSetup_t setup );
-    void                            execute( RenderDevice* renderDevice, ShaderStageManager* shaderStageManager );
-    void                            executeProfiled( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager, WorldRenderer* worldRenderer );
+    void                            execute( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager );
+    void                            executeProfiled( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager );
     void                            setPipelineType( const bool shoudlRebuildEveryFrame = false );
     void                            reset();
     void                            setRendererViewport( const RenderPipelineViewport& viewport );
     void                            setTimeDelta( const float timeDelta );
+
+    void                            printPassProfiling( RenderDevice* renderDevice, WorldRenderer* worldRenderer );
 
     template<typename T>
     void importWellKnownResource( T* resource )
