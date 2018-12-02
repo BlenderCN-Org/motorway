@@ -873,4 +873,9 @@ void flan::rendering::UpdateSubresourceImpl( NativeCommandList* nativeCommandLis
     auto deviceContext = nativeCommandList->deferredContext;
     deviceContext->UpdateSubresource( textureObject->texture2D, subResource, &box, regionData, regionWidth * regionComposition, regionWidth * regionHeight * regionComposition );
 }
+
+void flan::rendering::CopyRenderTargetImpl( NativeCommandList* nativeCmdList, NativeTextureObject* source, NativeTextureObject* dest )
+{
+    nativeCmdList->deferredContext->CopyResource( dest->textureResource, source->textureResource );
+}
 #endif

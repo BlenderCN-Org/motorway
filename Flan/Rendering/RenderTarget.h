@@ -57,6 +57,8 @@ public:
     void        retrieveTexelsHDR( RenderDevice* renderDevice, std::vector<float>& texels );
     void        retrieveLayerTexelsHDR( RenderDevice* renderDevice, const unsigned int layerIndex, std::vector<float>& texels );
 
+    void        copyTo( CommandList* cmdList, RenderTarget* destination );
+
 private:
     TextureDescription                          textureDescription;
     std::unique_ptr<NativeTextureObject>        nativeTextureObject;
