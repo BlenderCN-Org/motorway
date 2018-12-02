@@ -57,6 +57,7 @@ void flan::framework::DisplayEditorMenuBar()
     FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
     FLAN_IMPORT_VAR_PTR( CopiedNode, SceneNode* )
     FLAN_IMPORT_VAR_PTR( GrassLODDebugView, bool )
+    FLAN_IMPORT_VAR_PTR( PrintMemoryDebugInfos, bool )
         
     FLAN_IMPORT_VAR_PTR( GraphicsCompositionSettings, CompositionSettings )
 
@@ -305,8 +306,6 @@ void flan::framework::DisplayEditorMenuBar()
                 *PickedNode = sceneNode;
             }
 
-            ImGui::Separator();
-
             //if ( ImGui::MenuItem( "Car Test" ) ) {
             //    auto rootNode = scene->createEmptyNode( "CarTest" );
             //    rootNode->transform.setLocalTranslation( glm::vec3( 0, 10.0f, 0 ) );
@@ -360,6 +359,7 @@ void flan::framework::DisplayEditorMenuBar()
             ImGui::Checkbox( "Display Dynamics World Colliders", EnableDebugPhysicsColliders );
             ImGui::Checkbox( "Display Tile Heat", DisplayTileHeat );
             ImGui::Checkbox( "Display Grass LOD Debug Color", GrassLODDebugView );
+            ImGui::Checkbox( "Print Memory Debug Infos", PrintMemoryDebugInfos );
             
             ImGui::EndMenu();
         }

@@ -29,6 +29,7 @@ namespace flan
     namespace framework
     {
         void DisplayTerrainEditor();
+        void UpdateHeightfieldMouseCircle( const Ray& mousePickingRay, Terrain* terrain );
         void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList );
     }
 }

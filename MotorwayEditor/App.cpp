@@ -126,6 +126,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", false, bool )
+FLAN_DEV_VAR( PrintMemoryDebugInfos, "Print Memory related debug infos [false/true]", true, bool )
 
 FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
@@ -555,12 +556,21 @@ int InitializeSubsystems()
 
         ImGuiIO& io = ImGui::GetIO();
         if ( !io.WantCaptureMouse ) {
+            if ( g_EditedTerrainSceneEditor != nullptr ) {
+                const auto& cameraData = mainCamera->GetData();
+                Ray rayObj = GenerateMousePickingRay( io, cameraData );
+
+                flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
+            }
+
             if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
                 if ( PickedNode != nullptr ) {
                     g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
 
                     const auto& cameraData = mainCamera->GetData();
                     Ray rayObj = GenerateMousePickingRay( io, cameraData );
+
+                    flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
 
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                     cmdList->beginCommandList( g_RenderDevice );
@@ -582,7 +592,7 @@ int InitializeSubsystems()
 
                     cmdList->playbackCommandList( g_RenderDevice );
 
-                    g_EditedTerrainSceneEditor = nullptr;
+                    //g_EditedTerrainSceneEditor = nullptr;
                 }
 
                 g_IsEditingTerrain = false;
@@ -837,15 +847,17 @@ int motorway::game::Start()
         FLAN_PROFILE_SECTION( g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager ) );
 
 #if FLAN_DEVBUILD
-        // Print debug memory usage
-        float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
-        std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
-        g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
+        if ( PrintMemoryDebugInfos ) {
+            // Print debug memory usage
+            float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
+            std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
+            g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
 
-        float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
-        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
+            float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
+            std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
 
-        g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+            g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+        }
 
         CommandList* cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
         flan::framework::DrawEditorInterface( interpolatedFrametime, cmdList );

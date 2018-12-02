@@ -157,29 +157,36 @@ bool IsInRadius( const float rSquared, const int x, const int y, const int point
     return ( xSquared + ySquared ) < rSquared;
 }
 
+static glm::vec3 g_RayMarch = glm::vec3( 0, 0, 0 );
 
-void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
+void flan::framework::UpdateHeightfieldMouseCircle( const Ray& mousePickingRay, Terrain* terrain )
 {
     float* const vertices = terrain->getHeightmapValues();
 
     float pickedHeight = -std::numeric_limits<float>::max();
     int pickedIndex = 0;
-    glm::vec3 rayMarch = mousePickingRay.origin;
+
+    g_RayMarch = mousePickingRay.origin;
     int marchIteration = 0;
-    while ( rayMarch.y > pickedHeight && marchIteration < 512 ) {
-        pickedIndex = ( abs( int( rayMarch.x ) ) + abs( int( rayMarch.z ) ) * 512 );
+    while ( g_RayMarch.y > pickedHeight && marchIteration < 512 ) {
+        pickedIndex = ( abs( int( g_RayMarch.x ) ) + abs( int( g_RayMarch.z ) ) * 512 );
         pickedHeight = vertices[pickedIndex];
 
-        rayMarch += mousePickingRay.direction;
+        g_RayMarch += mousePickingRay.direction;
         marchIteration++;
     }
 
-    dev_TerrainMousePosition = glm::vec3( rayMarch.x, pickedHeight, rayMarch.z );
+    dev_TerrainMousePosition = glm::vec3( g_RayMarch.x, pickedHeight, g_RayMarch.z );
+}
 
-    auto lowX = std::max( 0, abs( int( rayMarch.x ) ) - g_TerrainEditorEditionRadius );
-    auto lowY = std::max( 0, abs( int( rayMarch.z ) ) - g_TerrainEditorEditionRadius );
-    auto hiX = std::min( 512, abs( int( rayMarch.x ) ) + g_TerrainEditorEditionRadius );
-    auto hiY = std::min( 512, abs( int( rayMarch.z ) ) + g_TerrainEditorEditionRadius );
+void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
+{
+    float* const vertices = terrain->getHeightmapValues();
+
+    auto lowX = std::max( 0, abs( int( g_RayMarch.x ) ) - g_TerrainEditorEditionRadius );
+    auto lowY = std::max( 0, abs( int( g_RayMarch.z ) ) - g_TerrainEditorEditionRadius );
+    auto hiX = std::min( 512, abs( int( g_RayMarch.x ) ) + g_TerrainEditorEditionRadius );
+    auto hiY = std::min( 512, abs( int( g_RayMarch.z ) ) + g_TerrainEditorEditionRadius );
 
     float k = static_cast<float>( g_TerrainEditorEditionRadius * g_TerrainEditorEditionRadius );
 
@@ -203,7 +210,7 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
                     int index = ( x + y * 512 );
 
                     if ( g_TerrainEditorBrushType == 1
-                        && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                        && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
                         continue;
                     }
 
@@ -214,13 +221,13 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
             for ( int x = lowX; x < hiX; x++ ) {
                 for ( int y = lowY; y < hiY; y++ ) {
                     // Attenuation factor
-                    float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) ) / k;
+                    float distance = glm::length( glm::vec2( g_RayMarch.x, g_RayMarch.z ) - glm::vec2( x, y ) ) / k;
 
                     int index = ( x + y * 512 );
                     float& vertexToEdit = vertices[index];
 
                     if ( g_TerrainEditorBrushType == 1
-                        && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                        && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
                         continue;
                     } else {
                         // For square brush ignore distance attenuation
@@ -241,11 +248,11 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
     } else {
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {
-                float distance = glm::length( glm::vec2( rayMarch.x, rayMarch.z ) - glm::vec2( x, y ) ) / k;
+                float distance = glm::length( glm::vec2( g_RayMarch.x, g_RayMarch.z ) - glm::vec2( x, y ) ) / k;
                 int index = ( x + y * 512 ) * 4;
 
                 if ( g_TerrainEditorBrushType == 1
-                    && !IsInRadius( k, int( rayMarch.x ), int( rayMarch.z ), x, y ) ) {
+                    && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
                     continue;
                 }
 
