@@ -27,11 +27,13 @@
 
 #include <Graphics/CBufferIndexes.h>
 #include <Graphics/GraphicsAssetManager.h>
+#include <Graphics/RenderableEntityManager.h>
+
 #include <Framework/Material.h>
 
 #include <Core/Factory.h>
 
-#include <glm/gtc/matrix_transform.hpp>
+FLAN_DEV_VAR( GrassLODDebugView, "Display Grass LOD Debug color", false, bool )
 
 GrassRenderingModule::GrassRenderingModule()
     : textureAllocator( nullptr )
@@ -54,6 +56,8 @@ GrassRenderingModule::~GrassRenderingModule()
 void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* allocator )
 {
     textureAllocator = allocator;
+
+    srand( time( nullptr ) );
 
     float randomValues[64 * 64 * 4] = { 0.0f };
     for ( int i = 0; i < 64 * 64 * 4; i++ ) {
@@ -80,8 +84,8 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
     topDownDesc.arraySize = 1;
     topDownDesc.depth = 1;
     topDownDesc.format = IMAGE_FORMAT_R32G32B32A32_FLOAT;
-    topDownDesc.width = 1024.0f;
-    topDownDesc.height = 1024.0f;
+    topDownDesc.width = 512.0f;
+    topDownDesc.height = 512.0f;
     topDownDesc.mipCount = 1;
     topDownDesc.samplerCount = 1;
 
@@ -166,9 +170,9 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
 
             using namespace flan::rendering;
             SamplerDesc matDisplacementSamplerDesc;
-            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
@@ -271,14 +275,14 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
         [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
             // Pipeline State
             RenderPassPipelineStateDesc passPipelineState = {};
-            passPipelineState.hashcode = FLAN_STRING_HASH( "GrassGenerationPass" );
-            passPipelineState.computeStage = FLAN_STRING( "GrassGeneration" );
+            passPipelineState.hashcode = GrassLODDebugView ? FLAN_STRING_HASH( "GrassGenerationPassLODDebug" ) : FLAN_STRING_HASH( "GrassGenerationPass" );
+            passPipelineState.computeStage = GrassLODDebugView ? FLAN_STRING( "GrassGenerationLODDebugColor" ) : FLAN_STRING( "GrassGeneration" );
             passData.pipelineState = renderPipelineBuilder->allocatePipelineState( passPipelineState );
 
             BufferDesc grassAppendBuffer;
             grassAppendBuffer.Type = BufferDesc::APPEND_STRUCTURED_BUFFER;
             grassAppendBuffer.Size = sizeof( Instance ); // 1 grass blade per pixel as max density
-            grassAppendBuffer.Stride = ( 1024 * 1024 ) * 8.0f;
+            grassAppendBuffer.Stride = ( 512 * 512 );
 
             passData.buffers[0] = renderPipelineBuilder->allocateBuffer( grassAppendBuffer );
 
@@ -312,7 +316,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             // Bind cbuffer
             PerPassBuffer perPassBuffer;
             perPassBuffer.grassMapSize = 512.0f;
-            perPassBuffer.topDownMapSize = 1024.0f;
+            perPassBuffer.topDownMapSize = 512.0f;
             perPassBuffer.terrainOriginWorldSpace = glm::vec2( 0.0f, 0.0f );
             perPassBuffer.mainCameraPositionWorldSpace = camera.worldPosition;
             memcpy( perPassBuffer.mainCameraFrustumPlanes, camera.frustum.planes, 6 * sizeof( glm::vec4 ) );
@@ -321,8 +325,11 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( Rende
             passConstantBuffer->updateAsynchronous( cmdList, &perPassBuffer, sizeof( PerPassBuffer ) );
             passConstantBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_COMPUTE );
 
+            auto renderableEntities = renderPipelineResources->getWellKnownImportedResource<RenderableEntityManager::EntityBuffer>()->buffer;
+            renderableEntities->bind( cmdList, CBUFFER_INDEX_LIGHTBUFFER, SHADER_STAGE_COMPUTE );
+
             // Start GPU Compute
-            cmdList->dispatchComputeCmd( 1024.0f / 32, 1024.0f / 32, 1 );
+            cmdList->dispatchComputeCmd( 512u / 32u, 512u / 32u, 1u );
 
             grassAppendBuffer->unbind( cmdList );
             randomnessTexture->unbind( cmdList );
@@ -442,16 +449,17 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
 
             // Read Depth Buffer
             passData.input[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainDepthRT" ) );
-
+            passData.input[1] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "SSOcclusionMask" ) );
+            
             // Constant Buffer
             passData.buffers[0] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "GrassInstanceBuffer" ) );
             passData.buffers[2] = renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "GrassDrawArgsBuffer" ) );
 
 
             SamplerDesc bilinearSamplerDesc;
-            bilinearSamplerDesc.addressU = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            bilinearSamplerDesc.addressV = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            bilinearSamplerDesc.addressW = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            bilinearSamplerDesc.addressU = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            bilinearSamplerDesc.addressV = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            bilinearSamplerDesc.addressW = flan::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             bilinearSamplerDesc.filter = flan::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
@@ -470,6 +478,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             // Bind Output Buffers
             auto colorBuffer = renderPipelineResources->getRenderTarget( passData.output[0] );
             auto depthBuffer = renderPipelineResources->getRenderTarget( passData.input[0] );
+            auto occlusionMask = renderPipelineResources->getRenderTarget( passData.input[1] ); 
 
             cmdList->bindRenderTargetsCmd( &colorBuffer, depthBuffer );
 
@@ -486,7 +495,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             grassInstanceBuffer->bindReadOnly( cmdList, 0, SHADER_STAGE_VERTEX );
 
             grassAlbedoTest->bind( cmdList, 1, SHADER_STAGE_PIXEL );
-            grassAlphaMaskTest->bind( cmdList, 2, SHADER_STAGE_PIXEL );
+            occlusionMask->bind( cmdList, 2, SHADER_STAGE_PIXEL );
 
             auto drawArgsBuffer = renderPipelineResources->getBuffer( passData.buffers[2] );
 
@@ -498,6 +507,7 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addGrassRenderPass( RenderPip
             cmdList->bindBackbufferCmd();
 
             grassInstanceBuffer->unbind( cmdList );
+            depthBuffer->unbind( cmdList );
         }
     );
 

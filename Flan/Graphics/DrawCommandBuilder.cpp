@@ -17,6 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 #include <Shared.h>
 #include "DrawCommandBuilder.h"
 
@@ -463,15 +464,15 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
     for ( auto& camera : cameras ) {
         if ( terrainInstancesCount != 0
             && camera->isUsingRenderPass( FLAN_STRING_HASH( "TopDownWorldCaptureRequest" ) ) ) {
-            static constexpr int32_t TOPDOWN_DIMENSION = 1024;
-            static constexpr float TOPDOWN_VP_DIMENSION = TOPDOWN_DIMENSION / 4.0f - 2.0f;
+            static constexpr int32_t TOPDOWN_DIMENSION = 512;
+            static constexpr float TOPDOWN_VP_DIMENSION = TOPDOWN_DIMENSION / 2.0f; // -4.0f; // -4.0f;
 
             // Capture top down view for various effects (grass generation, wetness generation, ...)
             const Camera::Data& currentCamera = camera->GetData();
 
             // Build Ortho Camera view in order to generate grass instances
             Camera::Data topDownCamera = {};
-            topDownCamera.worldPosition = glm::vec3( 256, 64.0f, 256 );
+            topDownCamera.worldPosition = glm::vec3( TOPDOWN_VP_DIMENSION, 64.0f, TOPDOWN_VP_DIMENSION );
 
             topDownCamera.projectionMatrix = glm::orthoLH( -TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, TOPDOWN_VP_DIMENSION, -TOPDOWN_VP_DIMENSION, 0.0f, 64.0f );
             topDownCamera.inverseProjectionMatrix = glm::transpose( glm::inverse( topDownCamera.projectionMatrix ) );
