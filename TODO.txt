@@ -22,9 +22,13 @@ Stuff todo for the project
         > Biome Presets / Define
         > Add SpecularAA precompute for biome materials
         > Terrain Tile streaming w/ Hiearchal Structure (use a quadtree; check which terrain instance to stream from disk but cull on GPU at domain stage) < Wait until proper world streaming
-        > Grass rendering (see Boulanger paper)
         > Terrain Height snapping (for assets/roads/etc.)
     > Implement Software Occlusion Culling (see Intel mess and whitepapers)
+    <Advanced grass rendering>
+        > Grass deformation (see GRID Autosport paper)
+        > Optimize shading
+        > Add Wind support
+        > Support foliage atlas / variety
     > Finish Vulkan port
     > Fix LOD blend transition (alpha stippling breaks because of the z prepass and both LOD being at the same position...)
     > Decals Support (might be useless if megatexture?) OR MegaTexturing (terrain as a first class citizen)
@@ -81,6 +85,7 @@ DONE
         > Texture Splatting (3 levels should be enough)
         > GeoClipping / or something even more basic for LODing
         > Heightmap collision (built in Bullet's, """just need to read the doc""")
+        > Grass rendering (see Boulanger paper)
     > SSAA Implementation
     
 [Client]
