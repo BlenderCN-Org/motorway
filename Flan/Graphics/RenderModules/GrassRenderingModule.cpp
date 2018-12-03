@@ -95,11 +95,8 @@ void GrassRenderingModule::create( RenderDevice* renderDevice, BaseAllocator* al
 
 void GrassRenderingModule::loadCachedResources( RenderDevice* renderDevice, GraphicsAssetManager* graphicsAssetManager )
 {
-    grassMapTexture = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/grassmap_test.dds" ) );
-
     grassAlbedoTest = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/T_Grass_D.dds" ) );
-    grassAlphaMaskTest = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/T_Grass_A.dds" ) );
-    
+   
     Factory<fnPipelineResHandle_t, RenderPipeline*>::registerComponent( FLAN_STRING_HASH( "TopDownWorldCapture" ),
         [=]( RenderPipeline* renderPipeline ) {
             return addTopDownTerrainCapturePass( renderPipeline );
@@ -247,6 +244,10 @@ fnPipelineMutableResHandle_t GrassRenderingModule::addTopDownTerrainCapturePass(
 
 fnPipelineMutableResHandle_t GrassRenderingModule::addGrassGenerationPass( RenderPipeline* renderPipeline )
 {
+    if ( grassMapTexture == nullptr ) {
+        return -1;
+    }
+
     struct PerPassBuffer
     {
         glm::vec4   mainCameraFrustumPlanes[6];

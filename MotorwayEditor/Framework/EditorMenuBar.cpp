@@ -221,13 +221,17 @@ void flan::framework::DisplayEditorMenuBar()
                 GraphicsAssetManager::RawTexels splatMapTexels;
                 g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/splatmap.png16" ), splatMapTexels );
 
+                GraphicsAssetManager::RawTexels grassMapTexels;
+                g_GraphicsAssetManager->getImageTexels( FLAN_STRING( "GameData/Textures/grassmap_test.png16" ), grassMapTexels );
+
                 terrain->create( g_RenderDevice,
                     g_GlobalAllocator,
                     g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultTerrainMaterial.amat" ) ),
-                    nullptr, //g_GraphicsAssetManager->getMaterialCopy( FLAN_STRING( "GameData/Materials/DefaultGrassMaterial.amat" ) ),
+                    ( uint16_t* )grassMapTexels.data,
                     ( uint16_t* )splatMapTexels.data,
                     ( uint16_t* )hmapTexels.data,
-                    hmapTexels.width, hmapTexels.height );
+                    hmapTexels.width, 
+                    hmapTexels.height );
 
                 auto sceneNode = scene->createTerrain( terrain );
                 *PickedNode = sceneNode;

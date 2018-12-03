@@ -76,7 +76,7 @@ public:
 #endif
 
     float getHeightmapScaleTEST() const { return editableMaterialData.layers[0].HeightmapWorldHeight; }
-    void setHeightmapTEST( Texture* tex, Texture* splatmap ) { 
+    void setHeightmapTEST( Texture* tex, Texture* splatmap, Texture* grassmap ) {
         vertexTextureSet[0] = tex; 
         editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  
         editableMaterialData.layers[0].Heightmap.InputTexture = tex;
@@ -84,6 +84,10 @@ public:
         pixelTextureSet[17] = splatmap;
         editableMaterialData.layers[0].TerrainSplatMap.InputType = MaterialEditionInput::TEXTURE;
         editableMaterialData.layers[0].TerrainSplatMap.InputTexture = splatmap;
+
+        pixelTextureSet[18] = grassmap;
+        editableMaterialData.layers[0].TerrainGrassMap.InputType = MaterialEditionInput::TEXTURE;
+        editableMaterialData.layers[0].TerrainGrassMap.InputTexture = grassmap;
     }
 
 private:

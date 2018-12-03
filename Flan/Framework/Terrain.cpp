@@ -41,6 +41,8 @@ Terrain::Terrain( const fnString_t& TerrainName )
     , heightmapHighestVertex( std::numeric_limits<float>::min() )
     , heightmap( nullptr )
     , heightmapTexture( nullptr )
+    , grassmap( nullptr )
+    , grassmapTexture( nullptr )
     , isEditionInProgress( false )
     , vertexBuffer{ nullptr, nullptr }
     , indiceBuffer( nullptr )
@@ -58,7 +60,7 @@ Terrain::~Terrain()
     material = nullptr;
 }
 
-void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
+void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, const uint16_t* grassmapTexels, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight )
 {
     heightmapDimension = heightmapWidth; // (assuming width = height)
 
@@ -71,6 +73,14 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     splatmap = flan::core::allocateArray<uint16_t>( allocator, heightmapWidth * heightmapHeight * 4 );
     memcpy( splatmap, splatmapTexels, ( heightmapWidth * heightmapHeight * 4 * sizeof( uint16_t ) ) );
+
+    grassmap = flan::core::allocateArray<float>( allocator, heightmapWidth * heightmapHeight * 4 );
+    for ( uint32_t texelIdx = 0; texelIdx < ( heightmapWidth * heightmapHeight ) * 4; texelIdx += 4 ) {
+        grassmap[texelIdx] = static_cast< float >( static_cast< float >( grassmapTexels[texelIdx] ) / std::numeric_limits<uint16_t>::max() );
+        grassmap[texelIdx + 1] = static_cast< float >( static_cast< float >( grassmapTexels[texelIdx + 1] ) / std::numeric_limits<uint16_t>::max() );
+        grassmap[texelIdx + 2] = static_cast< float >( static_cast< float >( grassmapTexels[texelIdx + 2] ) / std::numeric_limits<uint16_t>::max() );
+        grassmap[texelIdx + 3] = static_cast< float >( static_cast< float >( grassmapTexels[texelIdx + 3] ) / std::numeric_limits<uint16_t>::max() );
+    }
 
     // Create GPU resource
     TextureDescription splatmapTextureDesc;
@@ -94,6 +104,17 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     heightmapTexture = flan::core::allocate<Texture>( allocator );
     heightmapTexture->createAsTexture2D( renderDevice, heightmapTextureDesc, editorHeightmap, ( heightmapWidth * heightmapHeight * sizeof( float ) ) );
+
+    TextureDescription grassmapTextureDesc;
+    grassmapTextureDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+    grassmapTextureDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    grassmapTextureDesc.width = 512;
+    grassmapTextureDesc.height = 512;
+    grassmapTextureDesc.mipCount = 1;
+    grassmapTextureDesc.samplerCount = 1;
+
+    grassmapTexture = flan::core::allocate<Texture>( allocator );
+    grassmapTexture->createAsTexture2D( renderDevice, grassmapTextureDesc );
 
     // Scale vertices for physics rigid body
     float heightmapHeightScale = terrainMaterial->getHeightmapScaleTEST();
@@ -147,6 +168,7 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
     const std::size_t vertexCount = ( vertices.size() * 8 );
 
     BufferDesc vboDesc;
+
 #if FLAN_DEVBUILD
     // Allows CPU-side binding (for patch bounds recomputing)
     // Theorically this should be slower than a static vbo
@@ -154,6 +176,7 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 #else
     vboDesc.Type = BufferDesc::VERTEX_BUFFER;
 #endif
+
     vboDesc.Size = vertexCount * sizeof( float );
     vboDesc.Stride = 8 * sizeof( float );
 
@@ -184,103 +207,7 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
     }
 
     material = terrainMaterial;
-    material->setHeightmapTEST( heightmapTexture, splatmapTexture );
-//
-//    struct GrassLayout
-//    {
-//        glm::vec3 position;
-//        glm::vec3 normal;
-//        glm::vec2 texCoords;
-//    };
-//
-//    GrassLayout grassBlade[4 * 4 * 2];
-//
-//    // Grass test
-//    for ( int quadId = 0; quadId < 4; quadId++ ) {
-//        auto vertId = quadId * 4;
-//        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
-//
-//        grassBlade[vertId + 0] = { { -1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 1, 1 } };
-//        grassBlade[vertId + 1] = { { 1.0f, 0.0f, planeDepth },{ 0, 1, 0 },{ 0, 1 } };
-//        grassBlade[vertId + 2] = { { 1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 0, 0 } };
-//        grassBlade[vertId + 3] = { { -1.0f, 1.0f, planeDepth },{ 0, 1, 0 },{ 1, 0 } };
-//    }
-//
-//    for ( int quadId = 0; quadId < 4; quadId++ ) {
-//        auto vertId = quadId * 4 + 16;
-//        auto planeDepth = static_cast< float >( quadId ) * 0.5f - 0.750f;
-//
-//        grassBlade[vertId + 0] = { { planeDepth, 0.0f, -1.0f },{ 0, 1, 0 },{ 1, 1 } };
-//        grassBlade[vertId + 1] = { { planeDepth, 0.0f, 1.0f },{ 0, 1, 0 },{ 0, 1 } };
-//        grassBlade[vertId + 2] = { { planeDepth, 1.0f, 1.0f },{ 0, 1, 0 },{ 0, 0 } };
-//        grassBlade[vertId + 3] = { { planeDepth, 1.0f, -1.0f },{ 0, 1, 0 },{ 1, 0 } };
-//    }
-//
-//    uint32_t grassIndices[6 * 8];
-//    i = 0;
-//    for ( int quadId = 0; quadId < 8; quadId++ ) {
-//        grassIndices[i + 0] = quadId * 4 + 0;
-//        grassIndices[i + 1] = quadId * 4 + 1;
-//        grassIndices[i + 2] = quadId * 4 + 2;
-//
-//        grassIndices[i + 3] = quadId * 4 + 0;
-//        grassIndices[i + 4] = quadId * 4 + 2;
-//        grassIndices[i + 5] = quadId * 4 + 3;
-//
-//        i += 6;
-//    }
-//
-//    BufferDesc vboGrassDesc;
-//    vboGrassDesc.Type = BufferDesc::VERTEX_BUFFER;
-//    vboGrassDesc.Size = 4 * 4 * 2 * sizeof( GrassLayout );
-//    vboGrassDesc.Stride = sizeof( GrassLayout );
-//
-//    BufferDesc iboGrassDesc;
-//    iboGrassDesc.Type = BufferDesc::INDICE_BUFFER;
-//    iboGrassDesc.Size = 6 * 8 * sizeof( uint32_t );
-//    iboGrassDesc.Stride = sizeof( uint32_t );
-//
-//    GRASS_TEST = new Mesh();
-//    GRASS_TEST->create( renderDevice, vboGrassDesc, iboGrassDesc, ( float* )&grassBlade[0], grassIndices );
-//
-//    SubMesh baseSubMesh;
-//    baseSubMesh.indiceBufferOffset = 0;
-//    baseSubMesh.indiceCount = 6 * 8;
-//    baseSubMesh.material = grassTest;
-//    baseSubMesh.boundingSphere.center = { 0, 0, 0 };
-//    baseSubMesh.boundingSphere.radius = 8.0f;
-//    
-//    flan::core::CreateAABB( baseSubMesh.aabb, baseSubMesh.boundingSphere.center, { 8.0f, 8.0f, 8.0f } );
-//
-//    GRASS_TEST->addLevelOfDetail( 0, 256.0f );
-//    GRASS_TEST->addSubMesh( 0, std::move( baseSubMesh ) );
-//
-//    std::vector<float> texels;
-//    flan::core::ComputeBlueNoise( 512, 512, texels );
-//
-//    int index = 0;
-//    for ( uint32_t x = 0; x < scalePatchX; x++ ) {
-//        for ( uint32_t y = 0; y < scalePatchY; y++ ) {
-//            const auto texelIndex = ( x * 8 ) * 512 + ( y * 8 );
-//
-//            if ( texels[texelIndex] < 0.75f ) {
-//                continue;
-//            }
-//
-//            static const glm::vec3 upVector = glm::vec3( 0, 1, 0 );
-//
-//            //auto normal = normals[x * scalePatchX + y];
-//            //auto rotationAxis = glm::cross( normal, upVector );
-//            //auto angle = acos( glm::dot( normal, upVector ) / ( glm::length( normal ) * glm::length( upVector ) ) );
-//
-//            grassTestTransform[index].setLocalTranslation( glm::vec3( y * 8.0f + 4.0f, heightmap[texelIndex] - 0.5f, x * 8.0f + 4.0f ) );
-//            grassTestTransform[index].setLocalScale( glm::vec3( 3.0f ) );
-////grassTestTransform[index].setLocalRotation( glm::rotate( glm::quat( 1, 0, 0, 0 ), glm::degrees( angle ), rotationAxis ) );
-//            grassTestTransform[index].rebuildModelMatrix();
-//
-//            index++;
-//        }
-//    }
+    material->setHeightmapTEST( heightmapTexture, splatmapTexture, grassmapTexture );
 }
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const
@@ -337,9 +264,13 @@ void Terrain::setVertexMaterial( const uint32_t vertexIndex, const int materialI
     splatmap[vertexIndex + 2] = blendWeight;
 }
 
-void Terrain::setGrassWeight( const uint32_t vertexIndex, const float weight )
+void Terrain::setGrassHeight( const uint32_t vertexIndex, const glm::vec3& grassColor, const float updatedGrassHeight )
 {
-    splatmap[vertexIndex + 3] = static_cast<uint16_t>( weight * std::numeric_limits<uint16_t>::max() );
+    grassmap[vertexIndex] = grassColor.r;
+    grassmap[vertexIndex + 1] = grassColor.g;
+    grassmap[vertexIndex + 2] = grassColor.b;
+
+    grassmap[vertexIndex + 3] = updatedGrassHeight;
 }
 
 void Terrain::uploadSplatmap( CommandList* cmdList )
@@ -351,6 +282,17 @@ void Terrain::uploadSplatmap( CommandList* cmdList )
     cpyBox.mipLevel = 0;
 
     splatmapTexture->updateSubresource( cmdList, cpyBox, heightmapDimension, heightmapDimension, 4 * sizeof( uint16_t ), splatmap );
+}
+
+void Terrain::uploadGrassmap( CommandList* cmdList )
+{
+    TextureCopyBox cpyBox;
+    cpyBox.x = 0;
+    cpyBox.y = 0;
+    cpyBox.arrayIndex = 0;
+    cpyBox.mipLevel = 0;
+
+    grassmapTexture->updateSubresource( cmdList, cpyBox, heightmapDimension, heightmapDimension, 4 * sizeof( float ), grassmap );
 }
 
 void Terrain::uploadHeightmap( CommandList* cmdList )

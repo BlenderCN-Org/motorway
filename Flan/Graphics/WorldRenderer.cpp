@@ -943,3 +943,8 @@ fnPipelineResHandle_t WorldRenderer::addSSAAResolvePass( RenderPipeline* renderP
 
     return -1;
 }
+
+void WorldRenderer::setGrassMap( Texture* grassmap )
+{
+    grassRenderingModule->setGrassMap( grassmap );
+}

@@ -43,7 +43,7 @@
 
 static int g_TerrainEditorEditionMode = 0; // TODO Make it enum!
 static int g_TerrainEditorMode = 0; // TODO Make it enum!
-static int g_TerrainEditorBrushType = 0; // TODO Make it enum! Square Default
+static int g_TerrainEditorBrushType = 1; // TODO Make it enum! Square Default
 static int g_TerrainEditionMaterialIndex1 = 0;
 static int g_TerrainEditionMaterialIndex2 = 0;
 static Texture* g_TerrainEditionBaseMaterialBaseColor = nullptr;
@@ -52,6 +52,7 @@ static float g_TerrainEditionMaterialHardness1 = 1.0f;
 static float g_TerrainEditionMaterialHardness2 = 1.0f;
 static float g_TerrainEditorEditionHeight = 0.01f;
 static float g_TerrainEditorEditionHardness = 1.0f;
+static glm::vec3 g_TerrainEditorGrassColor = glm::vec3( 0, 1, 0 );
 
 FLAN_DEV_VAR( g_TerrainEditorEditionRadius, "TerrainEd Brush Radius (World Space)", 8, int )
 FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Space Position)", {}, glm::vec3 )
@@ -112,6 +113,8 @@ void flan::framework::DisplayTerrainEditor()
     ImGui::RadioButton( "Sculpting", &g_TerrainEditorMode, 0 );
     ImGui::SameLine();
     ImGui::RadioButton( "Paiting", &g_TerrainEditorMode, 1 );
+    ImGui::SameLine();
+    ImGui::RadioButton( "Foliage Paiting", &g_TerrainEditorMode, 1 );
 
     if ( g_TerrainEditorMode == 0 ) {
         ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
@@ -135,6 +138,9 @@ void flan::framework::DisplayTerrainEditor()
             //  Visual feedback in the panel (albedo texture?)
             ImGui::DragInt( "Base Material Index", &g_TerrainEditionMaterialIndex1, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
             ImGui::DragInt( "Overlayer Material Index", &g_TerrainEditionMaterialIndex2, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+        } else if ( g_TerrainEditorMode == 2 ) {
+            ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+            ImGui::ColorPicker3( "Color", &g_TerrainEditorGrassColor[0] );
         }
 
         ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 0.0f, 1.0f );
@@ -245,6 +251,22 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
         }
 
         terrain->uploadHeightmap( cmdList );
+    } else if ( g_TerrainEditorMode == 2 ) {
+        for ( int x = lowX; x < hiX; x++ ) {
+            for ( int y = lowY; y < hiY; y++ ) {
+                float distance = glm::length( glm::vec2( g_RayMarch.x, g_RayMarch.z ) - glm::vec2( x, y ) ) / k;
+                int index = ( x + y * 512 ) * 4;
+
+                if ( g_TerrainEditorBrushType == 1
+                    && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
+                    continue;
+                }
+
+                terrain->setGrassHeight( index, g_TerrainEditorGrassColor, g_TerrainEditorEditionHardness );
+            }
+        }
+
+        terrain->uploadGrassmap( cmdList );
     } else {
         for ( int x = lowX; x < hiX; x++ ) {
             for ( int y = lowY; y < hiY; y++ ) {

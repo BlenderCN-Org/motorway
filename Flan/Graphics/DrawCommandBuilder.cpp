@@ -505,6 +505,10 @@ FLAN_IMPORT_VAR_PTR( EnvProbeDimension, uint32_t )
             addTerrainInstances( topDownCamera, viewportIndex, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT, &topDownCameraFrustum, DrawCommandKey::Layer::LAYER_WORLD );
 
             viewportIndex++;
+
+            // TODO THIS IS POOP
+            // Find a way to retrieve the closest grassmap (based on streaming parameters)
+            worldRenderer->setGrassMap( terrainInstances[0]->terrainAsset->getGrassMap() );
         }
 
         if ( directionalLight != nullptr

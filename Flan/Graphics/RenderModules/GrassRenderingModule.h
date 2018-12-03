@@ -38,12 +38,14 @@ public:
     void            create( RenderDevice* renderDevice, BaseAllocator* allocator );
     void            loadCachedResources( RenderDevice* renderDevice, GraphicsAssetManager* graphicsAssetManager );
 
+    // TODO this is bad
+    void            setGrassMap( Texture* grassmap ) { grassMapTexture = grassmap; }
+
 private:
     BaseAllocator*  textureAllocator;
     Texture*        grassMapTexture;
 
     Texture*        grassAlbedoTest;
-    Texture*        grassAlphaMaskTest;
 
     Texture*        randomnessTexture;
     

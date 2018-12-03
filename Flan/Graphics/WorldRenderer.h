@@ -104,6 +104,8 @@ public:
     void                    precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap );
     void                    precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap, const bool thightPackedTexture = false );
 
+    void                    setGrassMap( Texture* grassmap );
+
 #if FLAN_DEVBUILD
     // TODO Nothing to do in the worldRenderer...
     Material* getWireframeMaterial() const;

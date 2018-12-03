@@ -40,7 +40,7 @@ public:
                                         Terrain& operator = ( Terrain& Terrain ) = default;
                                         ~Terrain();
 
-    void                                create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
+    void                                create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, const uint16_t* grassmapTexels, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
     const VertexArrayObject*            getVertexArrayObject() const;
     Material*                           getMaterial();
@@ -55,15 +55,14 @@ public:
     // TODO Crap API for quick prototyping
     void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
     void                                setVertexMaterial( const uint32_t vertexIndex, const int materialIndexBaseLayer, const int materialIndexOverlayLayer, const float overlayLayerStrength );
-    void                                setGrassWeight( const uint32_t vertexIndex, const float weight );
+    void                                setGrassHeight( const uint32_t vertexIndex, const glm::vec3& grassColor, const float updatedGrassHeight );
 
     void uploadSplatmap( CommandList* cmdList );
+    void uploadGrassmap( CommandList* cmdList );
     void uploadHeightmap( CommandList* cmdList );
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
-    Mesh* GRASS_TEST;
-
-    Transform grassTestTransform[512*512];
+    Texture* getGrassMap() const { return grassmapTexture; }
 
 private:
     struct VertexLayout {
@@ -93,6 +92,9 @@ private:
 
     uint16_t*                           splatmap;
     Texture*                            splatmapTexture;
+
+    float*                              grassmap;
+    Texture*                            grassmapTexture;
 
     std::vector<uint32_t>               indices;
     std::vector<VertexLayout>           vertices;
