@@ -107,14 +107,14 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
     TextureDescription grassmapTextureDesc;
     grassmapTextureDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-    grassmapTextureDesc.format = IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    grassmapTextureDesc.format = IMAGE_FORMAT_R32G32B32A32_FLOAT;
     grassmapTextureDesc.width = 512;
     grassmapTextureDesc.height = 512;
     grassmapTextureDesc.mipCount = 1;
     grassmapTextureDesc.samplerCount = 1;
 
     grassmapTexture = flan::core::allocate<Texture>( allocator );
-    grassmapTexture->createAsTexture2D( renderDevice, grassmapTextureDesc );
+    grassmapTexture->createAsTexture2D( renderDevice, grassmapTextureDesc, grassmap, ( heightmapWidth * heightmapHeight * 4 * sizeof( float ) ) );
 
     // Scale vertices for physics rigid body
     float heightmapHeightScale = terrainMaterial->getHeightmapScaleTEST();
@@ -266,7 +266,7 @@ void Terrain::setVertexMaterial( const uint32_t vertexIndex, const int materialI
 
 void Terrain::setGrassHeight( const uint32_t vertexIndex, const glm::vec3& grassColor, const float updatedGrassHeight )
 {
-    grassmap[vertexIndex] = grassColor.r;
+    grassmap[vertexIndex + 0] = grassColor.r;
     grassmap[vertexIndex + 1] = grassColor.g;
     grassmap[vertexIndex + 2] = grassColor.b;
 

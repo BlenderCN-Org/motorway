@@ -127,6 +127,11 @@ fnPipelineResHandle_t GrassRenderingModule::addGrassSetupPass( RenderPipeline* r
     renderPipeline->addPipelineSetupPass(
         [&]( RenderPipeline* renderPipeline, RenderPipelineBuilder* renderPipelineBuilder ) {
             auto instanceBufferHandle = addGrassGenerationPass( renderPipeline );
+
+            if ( instanceBufferHandle == -1 ) {
+                return;
+            }
+
             auto indirectArgsBufferHandle = addIndirectDrawSetupPass( renderPipeline, instanceBufferHandle );
 
             renderPipelineBuilder->registerWellKnownResource( FLAN_STRING_HASH( "GrassDrawArgsBuffer" ), indirectArgsBufferHandle );

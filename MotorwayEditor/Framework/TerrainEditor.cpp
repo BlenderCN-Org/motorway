@@ -114,7 +114,7 @@ void flan::framework::DisplayTerrainEditor()
     ImGui::SameLine();
     ImGui::RadioButton( "Paiting", &g_TerrainEditorMode, 1 );
     ImGui::SameLine();
-    ImGui::RadioButton( "Foliage Paiting", &g_TerrainEditorMode, 1 );
+    ImGui::RadioButton( "Foliage Paiting", &g_TerrainEditorMode, 2 );
 
     if ( g_TerrainEditorMode == 0 ) {
         ImGui::RadioButton( "Raise", &g_TerrainEditorEditionMode, 0 );
@@ -140,7 +140,7 @@ void flan::framework::DisplayTerrainEditor()
             ImGui::DragInt( "Overlayer Material Index", &g_TerrainEditionMaterialIndex2, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
         } else if ( g_TerrainEditorMode == 2 ) {
             ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
-            ImGui::ColorPicker3( "Color", &g_TerrainEditorGrassColor[0] );
+            ImGui::ColorEdit3( "Color", &g_TerrainEditorGrassColor[0] );
         }
 
         ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 0.0f, 1.0f );
