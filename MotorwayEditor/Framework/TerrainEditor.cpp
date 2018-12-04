@@ -26,6 +26,8 @@
 #include <Framework/TransactionHandler/TransactionHandler.h>
 #include <Framework/TransactionHandler/SceneNodeCopyCommand.h>
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
+#include <Framework/TransactionHandler/ImGuiEditCommand.h>
+#include <Core/Allocators/LinearAllocator.h>
 
 #include <FileSystem/FileSystemObjectNative.h>
 
@@ -105,6 +107,7 @@ void DisplayTextureInput( const std::string& name, Texture*& outputTexture )
     }
 
     ImGui::SameLine();
+
     ImGui::InputTextMultiline( ( "##hidden__TexInfos" + name ).c_str(), &imageInfos.front(), imageInfos.length(), ImVec2( 0, 0 ), ImGuiInputTextFlags_ReadOnly );
 }
 
@@ -125,10 +128,10 @@ void flan::framework::DisplayTerrainEditor()
     }
 
     if ( ImGui::TreeNode( "Brush Settings" ) ) {
-        ImGui::SliderInt( "Radius", &g_TerrainEditorEditionRadius, 1, 256 );
+        FLAN_IMGUI_SLIDER_INT( g_TerrainEditorEditionRadius, 1, 64 )
 
         if ( g_TerrainEditorMode == 0 ) {
-            ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+            FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
         } else if ( g_TerrainEditorMode == 1 ) {
             DisplayTextureInput( "Base Color (RGB) + Height (A)", g_TerrainEditionBaseMaterialBaseColor );
             DisplayTextureInput( "Normals (tangent space) (RGB) + Roughness (A)", g_TerrainEditionBaseMaterialNormal );
@@ -136,14 +139,14 @@ void flan::framework::DisplayTerrainEditor()
             // TODO User friendly!
             //  Selectable material (links to the biome editor?)
             //  Visual feedback in the panel (albedo texture?)
-            ImGui::DragInt( "Base Material Index", &g_TerrainEditionMaterialIndex1, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
-            ImGui::DragInt( "Overlayer Material Index", &g_TerrainEditionMaterialIndex2, 1.0f, 0, std::numeric_limits<uint16_t>::max() );
+            FLAN_IMGUI_DRAG_INT( g_TerrainEditionMaterialIndex1, 1, 0, std::numeric_limits<uint16_t>::max() )
+            FLAN_IMGUI_DRAG_INT( g_TerrainEditionMaterialIndex2, 1, 0, std::numeric_limits<uint16_t>::max() )
         } else if ( g_TerrainEditorMode == 2 ) {
-            ImGui::DragFloat( "Value", &g_TerrainEditorEditionHeight, 0.00001f, 1.0f );
+            FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
             ImGui::ColorEdit3( "Color", &g_TerrainEditorGrassColor[0] );
         }
 
-        ImGui::DragFloat( "Hardness", &g_TerrainEditorEditionHardness, 0.00001f, 0.0f, 1.0f );
+        FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHardness, 0.1f, 0.00001f, 1.0f )
 
         ImGui::Text( "Shape" );
         ImGui::RadioButton( "Square", &g_TerrainEditorBrushType, 0 );
