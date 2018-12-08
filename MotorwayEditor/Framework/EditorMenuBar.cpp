@@ -164,13 +164,13 @@ void flan::framework::DisplayEditorMenuBar()
 
             if ( ImGui::MenuItem( "Paste" ) ) {
                 if ( CopiedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeCopyCommand( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                    g_TransactionHandler->commit<SceneNodeCopyCommand>( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                 }
             }
 
             if ( ImGui::MenuItem( "Delete" ) ) {
                 if ( PickedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeDeleteCommand( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                    g_TransactionHandler->commit<SceneNodeDeleteCommand>( *PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                     PickedNode = nullptr;
                 }
             }

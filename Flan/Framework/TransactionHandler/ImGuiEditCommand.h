@@ -21,7 +21,7 @@
 
 #include "TransactionCommand.h"
 #include <Core/Allocators/LinearAllocator.h>
-#include <imgui_internal.h>
+#include <imgui/imgui_internal.h>
 
 static bool IsItemActiveLastFrame()
 {
@@ -31,55 +31,59 @@ static bool IsItemActiveLastFrame()
     return false;
 }
 
-#define FLAN_IMGUI_UNDO_IMPL( variable, cmdType )\
-    static decltype( variable ) variable##_Backup = 0; \
+#define FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, cmdType )\
+    static decltype( variable ) variable##_Backup = {}; \
     if ( ImGui::IsItemActive() && !IsItemActiveLastFrame() ) {\
         variable##_Backup = variable;\
     }\
     if ( ImGui::IsItemDeactivatedAfterEdit() ) {\
-        g_TransactionHandler->commit( flan::core::allocate<cmdType>( g_GlobalAllocator, &variable, variable, variable##_Backup ) );\
+        transactionHandler->commit<cmdType>( &variable, variable, variable##_Backup );\
     }
 
-#define FLAN_IMGUI_UNDO_IMPL_PTR( variable, cmdType )\
-    static decltype( variable ) variable##_Backup = 0; \
+#define FLAN_IMGUI_UNDO_IMPL_PTR( transactionHandler, variable, cmdType )\
+    static decltype( variable ) variable##_Backup = {}; \
     if ( ImGui::IsItemActive() && !IsItemActiveLastFrame() ) {\
         variable##_Backup = variable;\
     }\
     if ( ImGui::IsItemDeactivatedAfterEdit() ) {\
-        g_TransactionHandler->commit( flan::core::allocate<cmdType>( g_GlobalAllocator, variable, *variable, variable##_Backup ) );\
+        transactionHandler->commit<cmdType>( variable, *variable, variable##_Backup );\
     }
 
-#define FLAN_IMGUI_DRAG_FLOAT( variable, step, rangeMin, rangeMax )\
+#define FLAN_IMGUI_DRAG_FLOAT( transactionHandler, variable, step, rangeMin, rangeMax )\
     ImGui::DragFloat( #variable, &variable, rangeMin, rangeMax );\
-    FLAN_IMGUI_UNDO_IMPL( variable, FloatEditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, FloatEditCommand )
 
-#define FLAN_IMGUI_DRAG_FLOAT_PTR( variable, step, rangeMin, rangeMax )\
+#define FLAN_IMGUI_DRAG_FLOAT_PTR( transactionHandler, variable, step, rangeMin, rangeMax )\
     ImGui::DragFloat( #variable, variable, rangeMin, rangeMax );\
     FLAN_IMGUI_UNDO_IMPL_PTR( variable, FloatEditCommand )
 
-#define FLAN_IMGUI_DRAG_INT( variable, step, rangeMin, rangeMax )\
+#define FLAN_IMGUI_DRAG_INT( transactionHandler, variable, step, rangeMin, rangeMax )\
     ImGui::DragInt( #variable, &variable, step, rangeMin, rangeMax );\
-    FLAN_IMGUI_UNDO_IMPL( variable, IntEditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, IntEditCommand )
 
-#define FLAN_IMGUI_DRAG_FLOAT2( variable, step, rangeMin, rangeMax )\
+#define FLAN_IMGUI_DRAG_FLOAT2( transactionHandler, variable, step, rangeMin, rangeMax )\
     ImGui::DragFloat2( #variable, &variable, step, rangeMin, rangeMax );\
-    FLAN_IMGUI_UNDO_IMPL( variable, Float2EditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, Float2EditCommand )
 
-#define FLAN_IMGUI_DRAG_FLOAT3( variable, step, rangeMin, rangeMax )\
+#define FLAN_IMGUI_DRAG_FLOAT3( transactionHandler, variable, step, rangeMin, rangeMax )\
     ImGui::DragFloat3( #variable, (float*)&variable, step, rangeMin, rangeMax );\
-    FLAN_IMGUI_UNDO_IMPL( variable, Float3EditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, Float3EditCommand )
 
-#define FLAN_IMGUI_SLIDER_INT( variable, rangeMin, rangeMax )\
+#define FLAN_IMGUI_INPUT_FLOAT3( transactionHandler, variable )\
+    ImGui::InputFloat3( #variable, (float*)&variable );\
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, Float3EditCommand )
+
+#define FLAN_IMGUI_SLIDER_INT( transactionHandler, variable, rangeMin, rangeMax )\
     ImGui::SliderInt( #variable, &variable, rangeMin, rangeMax );\
-    FLAN_IMGUI_UNDO_IMPL( variable, IntEditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, IntEditCommand )
 
-#define FLAN_IMGUI_CHECKBOX( variable, onChecked )\
+#define FLAN_IMGUI_CHECKBOX( transactionHandler, variable, onChecked )\
     if ( ImGui::Checkbox( #variable, &variable ) ) {\
         onChecked\
     }\
-    FLAN_IMGUI_UNDO_IMPL( variable, BoolEditCommand )
+    FLAN_IMGUI_UNDO_IMPL( transactionHandler, variable, BoolEditCommand )
 
-#define FLAN_IMGUI_CHECKBOX_PTR( variable, onChecked )\
+#define FLAN_IMGUI_CHECKBOX_PTR( transactionHandler, variable, onChecked )\
     if ( ImGui::Checkbox( #variable, variable ) ) {\
         onChecked\
     }\

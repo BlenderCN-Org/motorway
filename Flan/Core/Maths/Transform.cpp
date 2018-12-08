@@ -86,6 +86,9 @@ void Transform::deserialize( FileSystemObject* stream )
 #if FLAN_DEVBUILD
 #include <imgui/imgui.h>
 #include <ImGuizmo/ImGuizmo.h>
+
+#include <Framework/TransactionHandler/ImGuiEditCommand.h>
+
 void Transform::drawInEditor( const float frameTime, TransactionHandler* transactionHandler )
 {
     if ( ImGui::TreeNode( "Transform" ) ) {
@@ -139,50 +142,50 @@ void Transform::drawInEditor( const float frameTime, TransactionHandler* transac
         ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
         ImGuizmo::Manipulate( *dev_GuizmoViewMatrix, *dev_GuizmoProjMatrix, static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, ( float* )modelMatrix, NULL, useSnap ? &snap[activeManipulationMode] : NULL );
 
-        glm::vec3 scaleDecomposed;
+        glm::vec3 Scale;
         glm::quat rotationDecomposed;
         glm::vec3 skewDecomposed;
-        glm::vec3 translationDecomposed;
+        glm::vec3 Translation;
         glm::vec4 perspectiveDecomposed;
-        glm::decompose( *modelMatrix, scaleDecomposed, rotationDecomposed, translationDecomposed, skewDecomposed, perspectiveDecomposed );
+        glm::decompose( *modelMatrix, Scale, rotationDecomposed, Translation, skewDecomposed, perspectiveDecomposed );
 
-        ImGui::InputFloat3( "Translation", ( float* )&translationDecomposed, 3 );
+        FLAN_IMGUI_INPUT_FLOAT3( transactionHandler, Translation )
 
-        auto euler = glm::eulerAngles( rotationDecomposed );
+        auto Rotation = glm::eulerAngles( rotationDecomposed );
 
         glm::quat nextRotation = localRotation;
 
         // TODO FIXME Why the fuck rotation sperg out when it's enabled (loss of precision when converting euler angles to quaternion?)
-        if ( ImGui::InputFloat3( "Rotation", ( float* )&euler, 3 ) ) {
-            nextRotation = glm::toQuat( glm::eulerAngleXYZ( euler.x, euler.y, euler.z ) );
+        if ( ImGui::InputFloat3( "Rotation", ( float* )&Rotation, 3 ) ) {
+            nextRotation = glm::toQuat( glm::eulerAngleXYZ( Rotation.x, Rotation.y, Rotation.z ) );
         } else {
             nextRotation = rotationDecomposed;
         }
 
-        ImGui::InputFloat3( "Scale", ( float* )&scaleDecomposed, 3 );
+        FLAN_IMGUI_INPUT_FLOAT3( transactionHandler, Scale )
 
         isManipulating = ImGuizmo::IsUsing();
 
         if ( !isManipulating ) {
-            if ( translationDecomposed != localTranslation ) {
+            if ( Translation != localTranslation ) {
                 if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                    transactionHandler->commit( new LocalTranslateCommand( this, translationDecomposed ) );
+                    transactionHandler->commit<LocalTranslateCommand>( this, Translation );
                 else
-                    transactionHandler->commit( new WorldTranslateCommand( this, translationDecomposed ) );
+                    transactionHandler->commit<WorldTranslateCommand>( this, Translation );
             }
 
-            if ( scaleDecomposed != localScale ) {
+            if ( Scale != localScale ) {
                 if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                    transactionHandler->commit( new LocalScaleCommand( this, scaleDecomposed ) );
+                    transactionHandler->commit<LocalScaleCommand>( this, Scale );
                 else
-                    transactionHandler->commit( new WorldScaleCommand( this, scaleDecomposed ) );
+                    transactionHandler->commit<WorldScaleCommand>( this, Scale );
             }
 
             if ( nextRotation != localRotation ) {
                 if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                    transactionHandler->commit( new LocalRotateCommand( this, nextRotation ) );
+                    transactionHandler->commit<LocalRotateCommand>( this, nextRotation );
                 else
-                    transactionHandler->commit( new WorldRotateCommand( this, nextRotation ) );
+                    transactionHandler->commit<WorldRotateCommand>( this, nextRotation );
             }
         }
     

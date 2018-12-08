@@ -177,7 +177,7 @@ void CreateSubsystems()
 
 #if FLAN_DEVBUILD
     g_FileSystemWatchdog = flan::core::allocate<FileSystemWatchdog>( g_GlobalAllocator );
-    g_TransactionHandler = flan::core::allocate<TransactionHandler>( g_GlobalAllocator );
+    g_TransactionHandler = flan::core::allocate<TransactionHandler>( g_GlobalAllocator, g_StringAllocator );
     g_PhysicsDebugDraw = flan::core::allocate<PhysicsDebugDraw>( g_GlobalAllocator );
 #endif
 }
@@ -671,7 +671,7 @@ int InitializeSubsystems()
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PasteNode" ) ) != input.Actions.end() ) {
                 if ( CopiedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeCopyCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                    g_TransactionHandler->commit<SceneNodeCopyCommand>( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                 }
             }
 
@@ -686,7 +686,7 @@ int InitializeSubsystems()
 
         if ( input.Actions.find( FLAN_STRING_HASH( "DeleteNode" ) ) != input.Actions.end() ) {
             if ( PickedNode != nullptr ) {
-                g_TransactionHandler->commit( new SceneNodeDeleteCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                g_TransactionHandler->commit<SceneNodeDeleteCommand>( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                 PickedNode = nullptr;
             }
         }
@@ -852,11 +852,17 @@ int motorway::game::Start()
             float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
             std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
             g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
-
+            
+            const float heapSizeMib = ( float )g_GlobalAllocator->getSize() / ( 1024.0f * 1024.0f );
             float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
-            std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
+            std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/" + std::to_string( heapSizeMib ).substr( 0, 6 ) +  "MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
+
+            const float pageSizeMib = ( float )g_StringAllocator->getSize() / ( 1024.0f * 1024.0f );
+            float pageMib = ( float )g_StringAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
+            std::string pageUsage = "Commited Page Usage: " + std::to_string( pageMib ).substr( 0, 6 ) + "/" + std::to_string( pageSizeMib ).substr( 0, 6 ) + "MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
 
             g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+            g_WorldRenderer->drawDebugText( pageUsage, 0.3f, 0.0f, 0.14f );
         }
 
         CommandList* cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );

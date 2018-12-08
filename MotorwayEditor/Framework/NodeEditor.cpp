@@ -70,7 +70,7 @@ void flan::framework::DisplayNodeEditor( const float deltaTime )
         if ( ImGui::Button( "Delete!" ) ) {
             ImGui::PopStyleColor();
 
-            g_TransactionHandler->commit( new SceneNodeDeleteCommand( node, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+            g_TransactionHandler->commit<SceneNodeDeleteCommand>( node, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
             *PickedNode = nullptr;
         } else {
             ImGui::PopStyleColor();

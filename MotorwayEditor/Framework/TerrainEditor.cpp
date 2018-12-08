@@ -128,10 +128,10 @@ void flan::framework::DisplayTerrainEditor()
     }
 
     if ( ImGui::TreeNode( "Brush Settings" ) ) {
-        FLAN_IMGUI_SLIDER_INT( g_TerrainEditorEditionRadius, 1, 64 )
+        FLAN_IMGUI_SLIDER_INT( g_TransactionHandler, g_TerrainEditorEditionRadius, 1, 64 )
 
         if ( g_TerrainEditorMode == 0 ) {
-            FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
+            FLAN_IMGUI_DRAG_FLOAT( g_TransactionHandler, g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
         } else if ( g_TerrainEditorMode == 1 ) {
             DisplayTextureInput( "Base Color (RGB) + Height (A)", g_TerrainEditionBaseMaterialBaseColor );
             DisplayTextureInput( "Normals (tangent space) (RGB) + Roughness (A)", g_TerrainEditionBaseMaterialNormal );
@@ -139,14 +139,14 @@ void flan::framework::DisplayTerrainEditor()
             // TODO User friendly!
             //  Selectable material (links to the biome editor?)
             //  Visual feedback in the panel (albedo texture?)
-            FLAN_IMGUI_DRAG_INT( g_TerrainEditionMaterialIndex1, 1, 0, std::numeric_limits<uint16_t>::max() )
-            FLAN_IMGUI_DRAG_INT( g_TerrainEditionMaterialIndex2, 1, 0, std::numeric_limits<uint16_t>::max() )
+            FLAN_IMGUI_DRAG_INT( g_TransactionHandler, g_TerrainEditionMaterialIndex1, 1, 0, std::numeric_limits<uint16_t>::max() )
+            FLAN_IMGUI_DRAG_INT( g_TransactionHandler, g_TerrainEditionMaterialIndex2, 1, 0, std::numeric_limits<uint16_t>::max() )
         } else if ( g_TerrainEditorMode == 2 ) {
-            FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
+            FLAN_IMGUI_DRAG_FLOAT( g_TransactionHandler, g_TerrainEditorEditionHeight, 0.1f, 0.00001f, 1.0f )
             ImGui::ColorEdit3( "Color", &g_TerrainEditorGrassColor[0] );
         }
 
-        FLAN_IMGUI_DRAG_FLOAT( g_TerrainEditorEditionHardness, 0.1f, 0.00001f, 1.0f )
+        FLAN_IMGUI_DRAG_FLOAT( g_TransactionHandler, g_TerrainEditorEditionHardness, 0.1f, 0.00001f, 1.0f )
 
         ImGui::Text( "Shape" );
         ImGui::RadioButton( "Square", &g_TerrainEditorBrushType, 0 );
