@@ -188,6 +188,9 @@ void flan::framework::UpdateHeightfieldMouseCircle( const Ray& mousePickingRay, 
     dev_TerrainMousePosition = glm::vec3( g_RayMarch.x, pickedHeight, g_RayMarch.z );
 }
 
+
+#include <Framework/TransactionHandler/HeightEditionCommand.h>
+
 void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
 {
     float* const vertices = terrain->getHeightmapValues();
@@ -227,30 +230,12 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
                 }
             }
         } else {
-            for ( int x = lowX; x < hiX; x++ ) {
-                for ( int y = lowY; y < hiY; y++ ) {
-                    // Attenuation factor
-                    float distance = glm::length( glm::vec2( g_RayMarch.x, g_RayMarch.z ) - glm::vec2( x, y ) ) / k;
-
-                    int index = ( x + y * 512 );
-                    float& vertexToEdit = vertices[index];
-
-                    if ( g_TerrainEditorBrushType == 1
-                        && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
-                        continue;
-                    } else {
-                        // For square brush ignore distance attenuation
-                        distance = 1.0f;
-                    }
-
-                    if ( g_TerrainEditorEditionMode == 0 )
-                        vertexToEdit += ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
-                    else if ( g_TerrainEditorEditionMode == 1 )
-                        vertexToEdit -= ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness ) * distance;
-
-                    terrain->setVertexHeight( index, vertexToEdit );
-                }
-            }
+            g_TransactionHandler->commit<HeightEditionCommand>( 
+                terrain, 
+                g_RayMarch, 
+                g_TerrainEditorEditionRadius, 
+                ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness * ( ( g_TerrainEditorEditionMode == 0 ) ? +1.0f : -1.0f ) ) 
+            );
         }
 
         terrain->uploadHeightmap( cmdList );

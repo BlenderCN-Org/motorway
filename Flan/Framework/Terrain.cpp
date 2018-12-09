@@ -253,6 +253,8 @@ float Terrain::getHeightmapHighestVertex() const
 void Terrain::setVertexHeight( const uint32_t vertexIndex, const float updatedHeight )
 {
     editorHeightmap[vertexIndex] = updatedHeight;
+
+    isEditionInProgress = true;
 }
 
 void Terrain::setVertexMaterial( const uint32_t vertexIndex, const int materialIndexBaseLayer, const int materialIndexOverlayLayer, const float overlayLayerStrength )
@@ -304,6 +306,8 @@ void Terrain::uploadHeightmap( CommandList* cmdList )
     cpyBox.mipLevel = 0;
 
     heightmapTexture->updateSubresource( cmdList, cpyBox, heightmapDimension, heightmapDimension, 1 * sizeof( float ), editorHeightmap );
+
+    isEditionInProgress = false;
 }
 
 void Terrain::uploadPatchBounds( CommandList* cmdList )

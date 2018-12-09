@@ -591,8 +591,17 @@ int InitializeSubsystems()
                     cmdList->endCommandList( g_RenderDevice );
 
                     cmdList->playbackCommandList( g_RenderDevice );
+                }
 
-                    //g_EditedTerrainSceneEditor = nullptr;
+                // Update GPU data in case of undo/redo
+                if ( g_EditedTerrainSceneEditor->instance.terrainAsset->needReupload() ) {
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+
+                    cmdList->beginCommandList( g_RenderDevice );
+                    g_EditedTerrainSceneEditor->instance.terrainAsset->uploadHeightmap( cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+
+                    cmdList->playbackCommandList( g_RenderDevice );
                 }
 
                 g_IsEditingTerrain = false;

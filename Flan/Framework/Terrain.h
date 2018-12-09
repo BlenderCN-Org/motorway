@@ -62,7 +62,9 @@ public:
     void uploadHeightmap( CommandList* cmdList );
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
+
     Texture* getGrassMap() const { return grassmapTexture; }
+    const bool needReupload() const { return isEditionInProgress; }
 
 private:
     struct VertexLayout {
