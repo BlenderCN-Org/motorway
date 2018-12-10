@@ -25,7 +25,7 @@
 #include <Core/FileLogger.h>
 #include <FileSystem/VirtualFileSystem.h>
 #include <FileSystem/FileSystemNative.h>
-#include<FileSystem/FileSystemObject.h>
+#include <FileSystem/FileSystemObject.h>
 #include <Core/TaskManager.h>
 #include <Display/DisplaySurface.h>
 
@@ -102,6 +102,8 @@
 #include <Framework/TransactionHandler/SceneNodeCopyCommand.h>
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
 
+#include <Framework/TransactionHandler/HeightEditionCommand.h>
+
 #include <Framework/SceneNodes/EmptySceneNode.h>
 #include <Framework/Scene.h>
 
@@ -145,7 +147,9 @@ char                    g_BaseStringBuffer[256];
 Timer                   g_EditorAutoSaveTimer;
 void*                   g_AllocatedTable;
 void*                   g_AllocatedStringTable;
+
 bool                    g_IsEditingTerrain = false;
+bool                    g_NeedCommitTerrain = false;
 
 static TerrainSceneNode* g_EditedTerrainSceneEditor = nullptr;
 
@@ -567,6 +571,15 @@ int InitializeSubsystems()
                 if ( PickedNode != nullptr ) {
                     g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
 
+                    // Reset edition height delta
+                    if ( !g_IsEditingTerrain ) {
+                        FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
+
+                        *TerrainEditionHeightDelta = 0.0f;
+                        g_IsEditingTerrain = true;
+                        g_NeedCommitTerrain = true;
+                    }
+
                     const auto& cameraData = mainCamera->GetData();
                     Ray rayObj = GenerateMousePickingRay( io, cameraData );
 
@@ -576,9 +589,8 @@ int InitializeSubsystems()
                     cmdList->beginCommandList( g_RenderDevice );
                     flan::framework::EditTerrain( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
                     cmdList->endCommandList( g_RenderDevice );
+                    
                     cmdList->playbackCommandList( g_RenderDevice );
-
-                    g_IsEditingTerrain = true;
                 }
             } else if ( g_IsEditingTerrain ) {
                 if ( g_EditedTerrainSceneEditor != nullptr ) {
@@ -592,7 +604,7 @@ int InitializeSubsystems()
 
                     cmdList->playbackCommandList( g_RenderDevice );
                 }
-
+            
                 // Update GPU data in case of undo/redo
                 if ( g_EditedTerrainSceneEditor->instance.terrainAsset->needReupload() ) {
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
@@ -605,7 +617,22 @@ int InitializeSubsystems()
                 }
 
                 g_IsEditingTerrain = false;
+            } else if ( g_EditedTerrainSceneEditor != nullptr 
+                     && g_NeedCommitTerrain ) {
+                FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
+                FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int );
+                FLAN_IMPORT_VAR_PTR( g_RayMarch, glm::vec3 );
+
+                g_TransactionHandler->commit< HeightEditionCommand >(
+                    g_EditedTerrainSceneEditor->instance.terrainAsset,
+                    *g_RayMarch,
+                    *g_TerrainEditorEditionRadius,
+                    *TerrainEditionHeightDelta
+                );
+
+                g_NeedCommitTerrain = false;
             }
+
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
                 const auto& cameraData = mainCamera->GetData();

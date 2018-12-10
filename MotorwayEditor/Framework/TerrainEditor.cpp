@@ -23,6 +23,7 @@
 #include <AppShared.h>
 
 #include <Framework/SceneNodes/SceneNode.h>
+
 #include <Framework/TransactionHandler/TransactionHandler.h>
 #include <Framework/TransactionHandler/SceneNodeCopyCommand.h>
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
@@ -56,8 +57,10 @@ static float g_TerrainEditorEditionHeight = 0.01f;
 static float g_TerrainEditorEditionHardness = 1.0f;
 static glm::vec3 g_TerrainEditorGrassColor = glm::vec3( 0, 1, 0 );
 
+FLAN_DEV_VAR( TerrainEditionHeightDelta, "", 0.0f, float )
 FLAN_DEV_VAR( g_TerrainEditorEditionRadius, "TerrainEd Brush Radius (World Space)", 8, int )
 FLAN_DEV_VAR( dev_TerrainMousePosition, "TerrainEd Mouse Position (World Space Position)", {}, glm::vec3 )
+FLAN_DEV_VAR( g_RayMarch, "TerrainEd RayMouse Position (World Space Position)", glm::vec3( 0, 0, 0 ), glm::vec3 )
 
 void DisplayTextureInput( const std::string& name, Texture*& outputTexture )
 {
@@ -166,8 +169,6 @@ bool IsInRadius( const float rSquared, const int x, const int y, const int point
     return ( xSquared + ySquared ) < rSquared;
 }
 
-static glm::vec3 g_RayMarch = glm::vec3( 0, 0, 0 );
-
 void flan::framework::UpdateHeightfieldMouseCircle( const Ray& mousePickingRay, Terrain* terrain )
 {
     float* const vertices = terrain->getHeightmapValues();
@@ -187,9 +188,6 @@ void flan::framework::UpdateHeightfieldMouseCircle( const Ray& mousePickingRay, 
 
     dev_TerrainMousePosition = glm::vec3( g_RayMarch.x, pickedHeight, g_RayMarch.z );
 }
-
-
-#include <Framework/TransactionHandler/HeightEditionCommand.h>
 
 void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList )
 {
@@ -230,12 +228,31 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
                 }
             }
         } else {
-            g_TransactionHandler->commit<HeightEditionCommand>( 
-                terrain, 
-                g_RayMarch, 
-                g_TerrainEditorEditionRadius, 
-                ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness * ( ( g_TerrainEditorEditionMode == 0 ) ? +1.0f : -1.0f ) ) 
-            );
+            auto editSign = ( ( g_TerrainEditorEditionMode == 0 ) ? +1.0f : -1.0f );
+            auto frameHeightUpdate = ( g_TerrainEditorEditionHeight * g_TerrainEditorEditionHardness * editSign );
+            
+            TerrainEditionHeightDelta += frameHeightUpdate;
+            
+            for ( int x = lowX; x < hiX; x++ ) {
+                for ( int y = lowY; y < hiY; y++ ) {
+                    // Attenuation factor
+                    float distance = glm::length( glm::vec2( g_RayMarch.x, g_RayMarch.z ) - glm::vec2( x, y ) ) / k;
+
+                    int index = ( x + y * 512 );
+                    float& vertexToEdit = vertices[index];
+
+                    if ( !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
+                        continue;
+                    } else {
+                        // For square brush ignore distance attenuation
+                        distance = 1.0f;
+                    }
+
+                    vertexToEdit += ( frameHeightUpdate * distance );
+                    
+                    terrain->setVertexHeight( index, vertexToEdit );
+                }
+            }
         }
 
         terrain->uploadHeightmap( cmdList );
@@ -246,7 +263,7 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
                 int index = ( x + y * 512 ) * 4;
 
                 if ( g_TerrainEditorBrushType == 1
-                    && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
+                  && !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
                     continue;
                 }
 

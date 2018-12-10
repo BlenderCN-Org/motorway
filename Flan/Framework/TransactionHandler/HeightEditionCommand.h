@@ -64,7 +64,6 @@ public:
         updateHeight( -1.0f );
     }
 
-
 private:
     // Edition Bounds (world units)
     int         lowX;
@@ -82,7 +81,7 @@ private:
     {
         float* const vertices = editedTerrain->getHeightmapValues();
 
-        float k = static_cast<float>( radius * radius );
+        const float k = static_cast< float >( radius * radius );
 
         for ( int x = lowX; x < maxX; x++ ) {
             for ( int y = lowY; y < maxY; y++ ) {
@@ -94,12 +93,9 @@ private:
 
                 if ( !isInRadius( k, int( mouseCoordinates.x ), int( mouseCoordinates.z ), x, y ) ) {
                     continue;
-                } else {
-                    // For square brush ignore distance attenuation
-                    distance = 1.0f;
                 }
 
-                vertexToEdit += ( editionHeight * actionSign * distance );
+                vertexToEdit += ( editionHeight * distance * actionSign );
                 editedTerrain->setVertexHeight( index, vertexToEdit );
             }
         }

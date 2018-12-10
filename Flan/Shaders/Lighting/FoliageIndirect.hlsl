@@ -105,7 +105,6 @@ sampler     g_BilinearSampler   : register( s0 );
 Texture2D   g_TexAlbedo         : register( t1 );
 SamplerComparisonState  g_ShadowMapSampler  : register( s15 );
 
-#define FLAN_USE_FAKE_ATTENUATION
 #include <RenderableEntities.hlsli>
 #include <Lighting.hlsli>
 
