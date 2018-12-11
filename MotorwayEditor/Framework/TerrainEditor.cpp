@@ -243,9 +243,6 @@ void flan::framework::EditTerrain( const Ray& mousePickingRay, Terrain* terrain,
 
                     if ( !IsInRadius( k, int( g_RayMarch.x ), int( g_RayMarch.z ), x, y ) ) {
                         continue;
-                    } else {
-                        // For square brush ignore distance attenuation
-                        distance = 1.0f;
                     }
 
                     vertexToEdit += ( frameHeightUpdate * distance );

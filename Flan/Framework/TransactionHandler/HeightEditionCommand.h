@@ -45,6 +45,7 @@ public:
         , mouseCoordinates( mouseToTerrainCoords )
         , radius( editionRadius )
         , editionHeight( editionHeightWithSign )
+        , isFirstEdit( true )
     {
         lowX = std::max( 0, abs( int( mouseToTerrainCoords.x ) ) - editionRadius );
         lowY = std::max( 0, abs( int( mouseToTerrainCoords.z ) ) - editionRadius );
@@ -56,6 +57,11 @@ public:
 
     virtual void execute() override
     {
+        if ( isFirstEdit ) {
+            isFirstEdit = false;
+            return;
+        }
+
         updateHeight( +1.0f );
     }
 
@@ -71,10 +77,12 @@ private:
     int         maxX;
     int         maxY;
 
-    const glm::vec3&    mouseCoordinates;
+    const glm::vec3     mouseCoordinates;
     Terrain*            editedTerrain;
     const int           radius;
     float               editionHeight;
+
+    bool isFirstEdit;
 
 private:
     void updateHeight( const float actionSign )

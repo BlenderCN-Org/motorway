@@ -148,10 +148,8 @@ Timer                   g_EditorAutoSaveTimer;
 void*                   g_AllocatedTable;
 void*                   g_AllocatedStringTable;
 
-bool                    g_IsEditingTerrain = false;
-bool                    g_NeedCommitTerrain = false;
-
-static TerrainSceneNode* g_EditedTerrainSceneEditor = nullptr;
+bool                    g_IsEditingTerrain          = false;
+TerrainSceneNode*       g_EditedTerrainSceneEditor  = nullptr;
 
 void CreateSubsystems()
 {
@@ -560,41 +558,27 @@ int InitializeSubsystems()
 
         ImGuiIO& io = ImGui::GetIO();
         if ( !io.WantCaptureMouse ) {
-            if ( g_EditedTerrainSceneEditor != nullptr ) {
-                const auto& cameraData = mainCamera->GetData();
-                Ray rayObj = GenerateMousePickingRay( io, cameraData );
-
-                flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
-            }
-
             if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
                 if ( PickedNode != nullptr ) {
                     g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
-
-                    // Reset edition height delta
-                    if ( !g_IsEditingTerrain ) {
-                        FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
-
-                        *TerrainEditionHeightDelta = 0.0f;
-                        g_IsEditingTerrain = true;
-                        g_NeedCommitTerrain = true;
-                    }
+                    g_IsEditingTerrain = true;
 
                     const auto& cameraData = mainCamera->GetData();
                     Ray rayObj = GenerateMousePickingRay( io, cameraData );
 
-                    flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
-
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                     cmdList->beginCommandList( g_RenderDevice );
-                    flan::framework::EditTerrain( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
-                    cmdList->endCommandList( g_RenderDevice );
-                    
+                        flan::framework::EditTerrain( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
+                    cmdList->endCommandList( g_RenderDevice );                 
                     cmdList->playbackCommandList( g_RenderDevice );
                 }
-            } else if ( g_IsEditingTerrain ) {
-                if ( g_EditedTerrainSceneEditor != nullptr ) {
-                    // Recompute and upload updated tile visibility
+            } else if ( g_EditedTerrainSceneEditor != nullptr ) {
+                const auto& cameraData = mainCamera->GetData();
+                Ray rayObj = GenerateMousePickingRay( io, cameraData );
+                flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
+
+                if ( g_IsEditingTerrain ) {
+                    // Compute and upload updated tile visibility
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
 
                     cmdList->beginCommandList( g_RenderDevice );
@@ -603,8 +587,22 @@ int InitializeSubsystems()
                     cmdList->endCommandList( g_RenderDevice );
 
                     cmdList->playbackCommandList( g_RenderDevice );
-                }
             
+                    FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
+                    FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int );
+                    FLAN_IMPORT_VAR_PTR( g_RayMarch, glm::vec3 );
+
+                    g_TransactionHandler->commit< HeightEditionCommand >(
+                        g_EditedTerrainSceneEditor->instance.terrainAsset,
+                        *g_RayMarch,
+                        *g_TerrainEditorEditionRadius,
+                        *TerrainEditionHeightDelta
+                    );
+
+                    *TerrainEditionHeightDelta = 0.0f;
+                    g_IsEditingTerrain = false;
+                }
+
                 // Update GPU data in case of undo/redo
                 if ( g_EditedTerrainSceneEditor->instance.terrainAsset->needReupload() ) {
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
@@ -615,24 +613,7 @@ int InitializeSubsystems()
 
                     cmdList->playbackCommandList( g_RenderDevice );
                 }
-
-                g_IsEditingTerrain = false;
-            } else if ( g_EditedTerrainSceneEditor != nullptr 
-                     && g_NeedCommitTerrain ) {
-                FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
-                FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int );
-                FLAN_IMPORT_VAR_PTR( g_RayMarch, glm::vec3 );
-
-                g_TransactionHandler->commit< HeightEditionCommand >(
-                    g_EditedTerrainSceneEditor->instance.terrainAsset,
-                    *g_RayMarch,
-                    *g_TerrainEditorEditionRadius,
-                    *TerrainEditionHeightDelta
-                );
-
-                g_NeedCommitTerrain = false;
             }
-
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
                 const auto& cameraData = mainCamera->GetData();
