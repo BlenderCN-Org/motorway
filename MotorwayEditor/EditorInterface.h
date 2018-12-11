@@ -20,10 +20,11 @@
 #pragma once
 
 class CommandList;
-class Terrain;
 
-#include <Core/Maths/Ray.h>
-
-void DrawEditorInterface( const float frameTime, CommandList* cmdList );
-
-void EditTerrain( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList );
+namespace flan
+{
+    namespace framework
+    {
+        void DrawEditorInterface( const float frameTime, CommandList* cmdList );
+    }
+}

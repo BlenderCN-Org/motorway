@@ -26,12 +26,33 @@
 class TransactionHandler
 {
 public:
-                                TransactionHandler();
+                                TransactionHandler( BaseAllocator* allocator );
                                 TransactionHandler( TransactionHandler& ) = delete;
                                 TransactionHandler& operator = ( TransactionHandler& ) = delete;
                                 ~TransactionHandler();
 
-    void                        commit( TransactionCommand* cmd );
+    template<typename T, typename... TArgs>
+    void commit( TArgs... args )
+    {
+        if ( commandCount >= MAX_HISTORY_SIZE ) {
+            FLAN_CERR << "Transaction Commands limit reached (check TransactionHandler::MAX_HISTORY_SIZE)" << std::endl;
+            return;
+        }
+
+        commandCount++;
+        commandIdx++;
+
+        // If we are in the past, clear the future commits
+        if ( commandCount - commandIdx > 1 ) {
+            commandCount -= ( commandCount - commandIdx );
+        }
+
+        auto cmd = flan::core::allocate<T>( cmdAllocator, std::forward<TArgs>( args )... );
+        cmd->execute();
+
+        commands[commandIdx] = cmd;
+    }
+
     void                        undo();
     void                        redo();
 
@@ -39,7 +60,12 @@ public:
     const std::string&          getNextActionName() const;
 
 private:
+    static constexpr int32_t MAX_HISTORY_SIZE = 4096;
+
+private:
+    BaseAllocator*                          cmdAllocator;
+    TransactionCommand*                     commands[MAX_HISTORY_SIZE];
+
     int                                     commandIdx;
     int                                     commandCount;
-    std::vector<TransactionCommand*>        commands;
 };

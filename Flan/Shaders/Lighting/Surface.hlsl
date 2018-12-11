@@ -19,11 +19,12 @@
 */
 #include <CameraData.hlsli>
 
+#define PH_MAX_INSTANCE_COUNT 512
+
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
-    float       g_lodDitherAlphaValue;
-	uint		g_EnableAlphaStippling;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
+    float       g_LodBlendAlpha;
 };
 
 struct VertexBufferData
@@ -72,9 +73,15 @@ VertexStageHeightfieldData EntryPointHeightfieldVS( VertexBufferData VertexBuffe
 {
     VertexStageHeightfieldData output = (VertexStageHeightfieldData)0;
 
+#if PH_INSTANCED
+    float4x4 ModelMatrix = ModelMatrices[InstanceId];
+#else  
+    float4x4 ModelMatrix = ModelMatrices[0];
+#endif
+    
 	output.positionMS = float4( VertexBuffer.Position, 0.0f );
     output.positionMS.y = SampleHeightmap( VertexBuffer.TexCoordinates );
-    output.positionMS   = mul( ModelMatrix, output.positionMS );
+    output.positionMS   = mul( ModelMatrices[0], output.positionMS );
 	
     output.uvCoord = VertexBuffer.TexCoordinates;
     output.tileInfos = float4( VertexBuffer.Normal, 0.0f );
@@ -93,10 +100,16 @@ struct VertexStageData
     float2 uvCoord      : TEXCOORD0;
 };
 
-VertexStageData EntryPointVS( VertexBufferData VertexBuffer )
+VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : SV_InstanceID )
 {
     VertexStageData output = (VertexStageData)0;
 
+#if PH_INSTANCED
+    float4x4 ModelMatrix = ModelMatrices[InstanceId];
+#else  
+    float4x4 ModelMatrix = ModelMatrices[0];
+#endif
+    
     float2 uvCoordinates =  VertexBuffer.TexCoordinates;
     
 #if PH_SCALE_UV_BY_MODEL_SCALE

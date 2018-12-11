@@ -38,10 +38,12 @@ struct HS_CONSTANT_DATA_OUTPUT
  
 #include <CameraData.hlsli>
 
+#define PH_MAX_INSTANCE_COUNT 512
+
 #if PH_DEPTH_ONLY
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
     float4x4	g_DepthViewProjectionMatrix;
 };
 
@@ -53,7 +55,8 @@ struct DomainStageData
 #else
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
+    float       g_LodBlendAlpha;
 };
 
 struct DomainStageData
@@ -114,7 +117,21 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
     output.InsideTessFactor[1] = output.InsideTessFactor[0];
     
     return output;
-#else
+#endif
+
+#ifdef PH_LQ_RENDERING
+	// Cull terrain tiles but don't tessellate when using low
+	// quality rendering
+	output.EdgeTessFactor[0] = 1.0f;
+	output.EdgeTessFactor[1] = 1.0f;
+	output.EdgeTessFactor[2] = 1.0f;
+	output.EdgeTessFactor[3] = 1.0f;
+	output.InsideTessFactor[0] = 1.0f;
+	output.InsideTessFactor[1] = 1.0f;
+
+	return output;
+#endif
+
 	float3 vMin = float3(ip[0].positionMS.x, ip[0].tileInfos.x * g_Layers[0].HeightmapWorldHeight - 0.5f, ip[0].positionMS.z);
 	float3 vMax = float3(ip[3].positionMS.x, ip[0].tileInfos.y * g_Layers[0].HeightmapWorldHeight + 0.5f, ip[3].positionMS.z);
 	
@@ -132,7 +149,6 @@ HS_CONSTANT_DATA_OUTPUT ConstantHS( InputPatch<VertexStageHeightfieldData, NUM_C
 
 		return output;
 	}
-#endif
 
     float3 e0 = 0.5f * (ip[0].positionMS.xyz + ip[2].positionMS.xyz);
     float3 e1 = 0.5f * (ip[0].positionMS.xyz + ip[1].positionMS.xyz);
@@ -208,25 +224,15 @@ float3 estimateNormal(float2 texcoord) {
         temp.y+=0.5;
     else
         temp.x+=0.5;
-    //form a basis with norm being one of the axes:
+    
+	//form a basis with norm being one of the axes:
     float3 perp1 = normalize(cross(norm,temp));
     float3 perp2 = normalize(cross(norm,perp1));
     //use the basis to move the normal in its own space by the offset        
     float3 normalOffset = -bumpHeightScale*(((n-me)-(s-me))*perp1 + ((e-me)-(w-me))*perp2);
     norm += normalOffset;
+	
     return normalize(norm);
-
-	// float2 leftTex = texcoord + float2(-1.0f / (float)512, 0.0f);
-	// float2 rightTex = texcoord + float2(1.0f / (float)512, 0.0f);
-	// float2 bottomTex = texcoord + float2(0.0f, 1.0f / (float)512);
-	// float2 topTex = texcoord + float2(0.0f, -1.0f / (float)512);
-
-	// float leftZ = g_TexHeightmap[leftTex].r * g_Layers[0].HeightmapWorldHeight;
-	// float rightZ = g_TexHeightmap[rightTex].r * g_Layers[0].HeightmapWorldHeight;
-	// float bottomZ = g_TexHeightmap[bottomTex].r * g_Layers[0].HeightmapWorldHeight;
-	// float topZ = g_TexHeightmap[topTex].r * g_Layers[0].HeightmapWorldHeight;
-
-	// return normalize(float3(leftZ - rightZ, 8.0f, topZ - bottomZ));
 }
 
 [domain("quad")]
@@ -267,9 +273,16 @@ DomainStageData EntryPointDS(
 #if PH_DEPTH_ONLY
     output.position = mul( float4( positionWS.xyz, 1.0f ), g_DepthViewProjectionMatrix );
 #else
+
     output.positionWS = positionWS;
 	output.positionMS = positionMS;
 	
+#ifdef PH_LQ_RENDERING
+    // LQ rendering is only meant to be used for any 2D rendering
+    // Which is why viewspace height should be canceled to avoid distorsions
+    positionWS.y = 0.0f;
+#endif
+
     output.position = mul( float4( positionWS.xyz, 1.0f ), ViewProjectionMatrix );
     output.previousPosition = mul( float4( positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix ); //.xywz;
    

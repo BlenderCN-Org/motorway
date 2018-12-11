@@ -25,6 +25,7 @@
 
 #include "PipelineState.h"
 #include "RenderTarget.h"
+#include "Buffer.h"
 
 #include <d3d11.h>
 
@@ -125,6 +126,11 @@ void flan::rendering::DrawIndexedImpl( NativeCommandList* cmdList, const uint32_
 void flan::rendering::DrawInstancedIndexedImpl( NativeCommandList* cmdList, const unsigned int indiceCount, const unsigned int instanceCount, const unsigned int indexOffset, const unsigned int vertexOffset, const unsigned int instanceOffset )
 {
     cmdList->deferredContext->DrawIndexedInstanced( indiceCount, instanceCount, indexOffset, vertexOffset, instanceOffset );
+}
+
+void flan::rendering::DrawInstancedIndirectImpl( NativeCommandList* cmdList, const NativeBufferObject* drawArgsBuffer, const unsigned int bufferDataOffset )
+{
+    cmdList->deferredContext->DrawInstancedIndirect( drawArgsBuffer->bufferObject, bufferDataOffset );
 }
 
 void flan::rendering::DispatchComputeImpl( NativeCommandList* cmdList, const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )

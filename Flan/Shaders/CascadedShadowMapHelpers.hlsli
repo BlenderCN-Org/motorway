@@ -17,8 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <RenderableEntities.hlsli>
-#include <CameraData.hlsli>
+#ifndef PA_DONT_RECEIVE_SHADOWS
 #include <ShadowMappingShared.h>
 
 Texture2D ShadowMapTest : register( t15 );
@@ -145,3 +144,4 @@ float3 SampleShadowCascade( in DirectionalLight light, in float3 shadowPosition,
 
     return  + SampleCascadedShadowMapOptimizedPCF( shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
 }
+#endif

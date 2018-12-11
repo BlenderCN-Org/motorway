@@ -31,8 +31,8 @@
 
 struct CompositionSettings
 {
-    float BloomExposureCompensation = -16.0f;
-    float BloomStrength = 0.03f;
+    float BloomExposureCompensation = 0.0f;
+    float BloomStrength = 0.01f;
     float WhitePoint = 1.0f;
     float BlackPoint = 0.0f;
 

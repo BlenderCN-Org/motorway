@@ -66,6 +66,7 @@ public:
     void    create( TaskManager* taskManagerInstance, RenderableEntityManager* rEntityManInstance, GraphicsAssetManager* graphicsAssetManagerInstance, WorldRenderer* worldRendererInstance );
 
     void    addCamera( Camera* camera );
+    void    addMeshesToRender( MeshInstance* meshInstances, const int instanceCount );
     void    addMeshToRender( MeshInstance* meshInstance );
     void    addTerrainToRender( TerrainInstance* meshInstance );
     void    addWireframeMeshToRender( MeshInstance* meshInstance );
@@ -96,6 +97,13 @@ public:
     unsigned int getFrameNumber() const;
 
 private:
+    struct MeshInstanceToRender
+    {
+        MeshInstance* instances;
+        int instanceCount;
+    };
+    
+private:
     TaskManager*                            taskManager;
     GraphicsAssetManager*                   graphicsAssetManager;
     RenderableEntityManager*                renderableEntityManager;
@@ -104,11 +112,17 @@ private:
     TerrainInstance*                        terrainInstances[16];
     int                                     terrainInstancesCount;
 
+    MeshInstanceToRender                    meshInstancedInstances[1024 * 16];
+    int                                     meshInstancedInstancesCount;
+
     MeshInstance*                           meshInstances[1024 * 16];
     int                                     meshInstancesCount;
 
     MeshInstance*                           wireMeshInstances[1024];
     int                                     wireMeshInstancesCount;
+
+    glm::mat4x4 modelInstancedTEST[( 512 * 512 ) * 8];
+    int modelInstancePointer;
 
     std::list<Camera*>                      cameras;
 
@@ -150,5 +164,7 @@ private:
     void    addDebugGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, WorldRenderer* worldRenderer );
     void    addHUDGeometryForViewport( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, WorldRenderer* worldRenderer );
 
+    void    addTerrainInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer );
     void    addMeshInstances( const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer );
+    void    addMeshInstance( MeshInstance* meshInstance, const Camera::Data& worldViewport, const int viewportIndex, const uint8_t viewportLayer, const Frustum* viewportFrustum, const DrawCommandKey::Layer layer );
 };

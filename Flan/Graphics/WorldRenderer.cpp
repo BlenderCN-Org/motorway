@@ -45,6 +45,7 @@
 #include "RenderModules/AtmosphereModule.h"
 #include "RenderModules/AutomaticExposureModule.h"
 #include "RenderModules/LineRenderingModule.h"
+#include "RenderModules/GrassRenderingModule.h"
 
 #include "RenderPasses/PresentPass.h"
 #include "RenderPasses/BloomPass.h"
@@ -97,6 +98,7 @@ WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     , atmosphereRenderingModule( flan::core::allocate<AtmosphereModule>( allocator ) )
     , autoExposureModule( flan::core::allocate<AutomaticExposureModule>( allocator ) )
     , lineRenderingModule( flan::core::allocate<LineRenderingModule>( allocator ) )
+    , grassRenderingModule( flan::core::allocate<GrassRenderingModule>( allocator ) )
     , environmentProbes{ nullptr, nullptr, nullptr }
     , sphereVao( flan::core::allocate<VertexArrayObject>( allocator ) )
     , rectangleVao( flan::core::allocate<VertexArrayObject>( allocator ) )
@@ -123,7 +125,7 @@ void WorldRenderer::create( RenderDevice* activeRenderDevice )
     renderDevice = activeRenderDevice;
 
     renderPipeline->create( renderDevice );
-
+    
 #if FLAN_DEVBUILD
     renderPipeline->enableProfiling( renderDevice );
     createPrimitives();
@@ -225,13 +227,17 @@ void WorldRenderer::onFrame( const float interpolatedFrameTime, TaskManager* tas
 
         g_Profiler.beginSection( "Viewport_" + std::to_string( viewportId ) + "::RenderPipelineExecution" );
 #if FLAN_DEVBUILD
-        renderPipeline->executeProfiled( renderDevice, taskManager, shaderStageManager, this );
+        renderPipeline->executeProfiled( renderDevice, taskManager, shaderStageManager );
 #else
-        renderPipeline->execute( renderDevice, shaderStageManager );
+        renderPipeline->execute( renderDevice, taskManager, shaderStageManager );
 #endif
         g_Profiler.endSection();
         g_Profiler.endSection();
     }
+
+#if FLAN_DEVBUILD
+    renderPipeline->printPassProfiling( renderDevice, this );
+#endif
 
     drawCommands.clear();
     transparentDrawCommands.clear();
@@ -290,7 +296,7 @@ void WorldRenderer::drawDebugLine( const glm::vec3& from, const glm::vec3& to, c
     lineRenderingModule->addLine( from, to, thickness, color );
 }
 
-void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager )
+void WorldRenderer::loadCachedResources( BaseAllocator* baseAllocator, ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager )
 {
     this->shaderStageManager = shaderStageManager;
 
@@ -300,6 +306,9 @@ void WorldRenderer::loadCachedResources( ShaderStageManager* shaderStageManager,
     atmosphereRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
     autoExposureModule->loadCachedResources( renderDevice, graphicsAssetManager );
     lineRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
+    
+    grassRenderingModule->create( renderDevice, baseAllocator );
+    grassRenderingModule->loadCachedResources( renderDevice, graphicsAssetManager );
 
     // Load DFG LUT for standard BRDF
     auto dfgLut = graphicsAssetManager->getTexture( FLAN_STRING( "GameData/Textures/DFG_LUT_Standard.dds" ) );
@@ -933,4 +942,9 @@ fnPipelineResHandle_t WorldRenderer::addSSAAResolvePass( RenderPipeline* renderP
     );
 
     return -1;
+}
+
+void WorldRenderer::setGrassMap( Texture* grassmap )
+{
+    grassRenderingModule->setGrassMap( grassmap );
 }

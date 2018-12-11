@@ -58,9 +58,6 @@ void RenderPipeline::create( RenderDevice* renderDevice )
 void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
 {
     graphicsProfiler->create( renderDevice );
-
-    graphicsProfiler->drawOnScreen( true, 1.0f, 0.450f );
-
     useProfiling = true;
 }
 
@@ -95,7 +92,7 @@ void RenderPipeline::addPipelineSetupPass( fnRenderPassPipelineSetup_t setup )
     setup( this, renderPipelineBuilder.get() );
 }
 
-void RenderPipeline::execute( RenderDevice* renderDevice, ShaderStageManager* shaderStageManager )
+void RenderPipeline::execute( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager )
 {
     /*renderPipelineBuilder->allocateResourcesAndBuild( renderDevice, shaderStageManager, renderPipelineResources.get() );
 
@@ -112,14 +109,16 @@ void RenderPipeline::execute( RenderDevice* renderDevice, ShaderStageManager* sh
     }*/
 }
 
-void RenderPipeline::executeProfiled( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager, WorldRenderer* worldRenderer )
+void RenderPipeline::executeProfiled( RenderDevice* renderDevice, TaskManager* taskManager, ShaderStageManager* shaderStageManager )
 {
     auto setupCmdList = pipelineCmdListPool->allocateCmdList( renderDevice );
 
     setupCmdList->beginCommandList( renderDevice );
+
     g_Profiler.beginSection( "RenderPipelineBuilder::allocateResourcesAndBuild" );
         renderPipelineBuilder->allocateResourcesAndBuild( renderDevice, setupCmdList, shaderStageManager, renderPipelineResources.get() );
     g_Profiler.endSection();
+
     setupCmdList->endCommandList( renderDevice );
     setupCmdList->playbackCommandList( renderDevice );
 
@@ -156,11 +155,6 @@ void RenderPipeline::executeProfiled( RenderDevice* renderDevice, TaskManager* t
 
     renderPipelineResources->clearBuckets();
 
-    g_Profiler.beginSection( "GraphicsProfiler::onFrame" );
-    graphicsProfiler->drawOnScreen( EnablePipelineProfiling, 1.0f, 0.450f );
-    graphicsProfiler->onFrame( renderDevice, worldRenderer );
-    g_Profiler.endSection();
-
     // Reset the pass count if the pipeline is dynamically built
     if ( rebuildEveryFrame ) {
         renderPassCount = 0;
@@ -170,6 +164,14 @@ void RenderPipeline::executeProfiled( RenderDevice* renderDevice, TaskManager* t
 void RenderPipeline::setTimeDelta( const float timeDelta )
 {
     renderPipelineResources->setTimeDelta( timeDelta );
+}
+
+void RenderPipeline::printPassProfiling( RenderDevice* renderDevice, WorldRenderer* worldRenderer )
+{
+    g_Profiler.beginSection( "GraphicsProfiler::onFrame" );
+    graphicsProfiler->drawOnScreen( EnablePipelineProfiling, 1.00f, 0.05f );
+    graphicsProfiler->onFrame( renderDevice, worldRenderer );
+    g_Profiler.endSection();
 }
 
 void RenderPipeline::setPipelineType( const bool shoudlRebuildEveryFrame )

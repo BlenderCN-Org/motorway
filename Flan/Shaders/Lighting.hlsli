@@ -4,9 +4,6 @@
 
 #include <ImageEffects/SeparableSSS.h>
 
-static const float PI = 3.1415926535897932384626433f;
-static const float INV_PI = ( 1.0 / PI );
-
 cbuffer AtmosphereBuffer : register( b5 )
 {
     float3  g_EarthCenter;
@@ -190,6 +187,11 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
             shadowVisibility = saturate( shadowVisibility );
         }
     }
+
+#ifdef FLAN_USE_FAKE_ATTENUATION
+    // Fake GI if not available
+    shadowVisibility.r = max( shadowVisibility.r, 0.1f );
+#endif
     
     [branch]
     if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
@@ -215,9 +217,13 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     // Get Sun Irradiance
     // NOTE Do not add sky irradiance since we already have IBL as ambient term
     float3 skyIrradiance = float3( 0, 0, 0 );
+#ifdef PA_FAKE_IRRADIANCE
+    float3 sunIrradiance = float3( 1, 1, 1 );
+#else
     float3 sunIrradiance = GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy * 1.0 - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
+#endif
 
-    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility );
+    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.r );
     
     return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }

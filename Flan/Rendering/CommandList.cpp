@@ -21,6 +21,7 @@
 #include "CommandList.h"
 
 #include "RenderDevice.h"
+#include "Buffer.h"
 
 #if FLAN_D3D11
 #include "Direct3D11/CommandList.h"
@@ -171,6 +172,16 @@ void CommandList::drawCmd( const uint32_t vertexCount, const uint32_t vertexOffs
 void CommandList::drawIndexedCmd( const uint32_t indiceCount, const uint32_t indiceOffset, const std::size_t indiceType, const uint32_t vertexOffset )
 {
     flan::rendering::DrawIndexedImpl( nativeCommandList.get(), indiceCount, indiceOffset, indiceType, vertexOffset );
+}
+
+void CommandList::drawInstancedIndexedCmd( const uint32_t indiceCount, const uint32_t indiceOffset, const uint32_t instanceCount, const std::size_t indiceType, const uint32_t vertexOffset )
+{
+    flan::rendering::DrawInstancedIndexedImpl( nativeCommandList.get(), indiceCount, instanceCount, indiceOffset, vertexOffset );
+}
+
+void CommandList::drawInstancedIndirectCmd( Buffer* drawArgsBuffer, const unsigned int bufferDataOffset )
+{
+    flan::rendering::DrawInstancedIndirectImpl( nativeCommandList.get(), drawArgsBuffer->getNativeBufferObject(), bufferDataOffset );
 }
 
 void CommandList::dispatchComputeCmd( const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )

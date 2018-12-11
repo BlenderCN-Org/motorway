@@ -15,7 +15,7 @@ cbuffer PerPass : register( b2 )
 // Pixel Stage Input Layouts
 struct VertexStageData
 {
-    float4 position		: SV_POSITION;
+    float4 position        : SV_POSITION;
     float4 positionWS   : POSITION0;
     float4 previousPosition : POSITION1;
     float3 normal       : NORMAL0;
@@ -29,7 +29,7 @@ struct VertexStageData
 
 struct VertexDepthOnlyStageShaderData
 {
-    float4 position		: SV_POSITION;
+    float4 position        : SV_POSITION;
     float2 uvCoord      : TEXCOORD0;
 };
 
@@ -62,8 +62,9 @@ sampler  g_DiffuseEnvProbeSampler           : register( s12 );
 
 #ifdef PA_TERRAIN
 Texture2D<uint4> g_TexSplatMap : register( t17 );
-Texture2DArray 		g_TerrainBaseColorHeightArray : register( t6 );
-Texture2DArray 		g_TerrainNormalRoughnessArray : register( t7 );
+Texture2D g_TexGrassMap : register( t18 );
+Texture2DArray         g_TerrainBaseColorHeightArray : register( t6 );
+Texture2DArray         g_TerrainNormalRoughnessArray : register( t7 );
 
 struct TerrainSamplingParameter
 {
@@ -74,7 +75,7 @@ struct TerrainSamplingParameter
 
 cbuffer Terrain : register( b7 )
 {
-	TerrainSamplingParameter g_TerrainMaterials[256];
+    TerrainSamplingParameter g_TerrainMaterials[256];
 };
 #else
 #if PA_EDITOR
@@ -133,12 +134,13 @@ FLAN_BAKED_TEXTURE_SLOTS
 #include "ShadingModels/Debug.hlsl"
 #endif
 
+#define PH_MAX_INSTANCE_COUNT 512
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	g_ModelMatrix;
+    float4x4    ModelMatrices[PH_MAX_INSTANCE_COUNT];
     float       g_LodBlendAlpha;
-	uint		g_EnableAlphaStippling;
 };
+
 
 struct MaterialReadLayer
 {
@@ -388,18 +390,18 @@ READ_LAYER_FUNC( 2 )
 
 float3x3 compute_tangent_frame(float3 N, float3 P, float2 UV, out float3 T, out float3 B)
 {
-	// ddx_coarse can be faster than ddx, but could result in artifacts. Haven't observed any artifacts yet.
-	float3 dp1 = ddx_coarse(P);
-	float3 dp2 = ddy_coarse(P);
-	float2 duv1 = ddx_coarse(UV);
-	float2 duv2 = ddy_coarse(UV);
+    // ddx_coarse can be faster than ddx, but could result in artifacts. Haven't observed any artifacts yet.
+    float3 dp1 = ddx_coarse(P);
+    float3 dp2 = ddy_coarse(P);
+    float2 duv1 = ddx_coarse(UV);
+    float2 duv2 = ddy_coarse(UV);
 
-	float3x3 M = float3x3(dp1, dp2, cross(dp1, dp2));
-	float2x3 inverseM = float2x3(cross(M[1], M[2]), cross(M[2], M[0]));
-	T = normalize(mul(float2(duv1.x, duv2.x), inverseM));
-	B = normalize(mul(float2(duv1.y, duv2.y), inverseM));
+    float3x3 M = float3x3(dp1, dp2, cross(dp1, dp2));
+    float2x3 inverseM = float2x3(cross(M[1], M[2]), cross(M[2], M[0]));
+    T = normalize(mul(float2(duv1.x, duv2.x), inverseM));
+    B = normalize(mul(float2(duv1.y, duv2.y), inverseM));
 
-	return float3x3(T, B, N);
+    return float3x3(T, B, N);
 }
 
 uint GetEntityCountForCurrentTile( float2 positionScreenSpace )
@@ -623,15 +625,15 @@ float3 TerrainDepthBlend(float4 texture1, float a1, float4 texture2, float a2)
     return (texture1.rgb * b1 + texture2.rgb * b2) / (b1 + b2);  
 }
 
+float4 EntryPointTopDownPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace ) : SV_TARGET0
+{
+    return VertexStage.positionWS.yyyy;
+}
+    
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
-    // // Alpha Stippling for LOD Transition
-    // [branch]
-    // if ( g_EnableAlphaStippling == 1 ) {
-        // clip( ( ( ( VertexStage.position.x + VertexStage.position.y ) % 2 == 0 ) ? -1 : 1 ) * g_lodDitherAlphaValue );
-    // }
     [branch]
-    if ( g_EnableAlphaStippling == 1 ) {
+    if ( g_LodBlendAlpha != 1.0f ) {
         static const float4x4 thresholdMatrix = {
             1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
             13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
@@ -666,92 +668,101 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
     const float blendFactor = (float)( splatmapData.b / 65535.0f );
     
-	// Retrieve texture coordinates
-	float4 samplingParameters = g_TerrainMaterials[splatmapData.r / 257].samplingParameters; // xy offset; zw scale
-	float2 samplingCoordinates = ( VertexStage.uvCoord.xy + samplingParameters.xy ) * samplingParameters.zw;
+    // Retrieve texture coordinates
+    float4 samplingParameters = g_TerrainMaterials[splatmapData.r / 257].samplingParameters; // xy offset; zw scale
+    float2 samplingCoordinates = ( VertexStage.uvCoord.xy + samplingParameters.xy ) * samplingParameters.zw;
     float2 samplingCoordinatesFar = samplingCoordinates * 0.5f;
-	uint streamedTextureIndex = g_TerrainMaterials[splatmapData.r / 257].splatIndex;
+    uint streamedTextureIndex = g_TerrainMaterials[splatmapData.r / 257].splatIndex;
     
-	float4 samplingParameters2 = g_TerrainMaterials[splatmapData.g / 257].samplingParameters; // xy offset; zw scale
-	float2 samplingCoordinates2 = ( VertexStage.uvCoord.xy + samplingParameters2.xy ) * samplingParameters2.zw;
-    float2 samplingCoordinates2Far = samplingCoordinates2 * 0.5f;	
-	uint streamedTextureIndex2 = g_TerrainMaterials[splatmapData.g / 257].splatIndex;
+    float4 samplingParameters2 = g_TerrainMaterials[splatmapData.g / 257].samplingParameters; // xy offset; zw scale
+    float2 samplingCoordinates2 = ( VertexStage.uvCoord.xy + samplingParameters2.xy ) * samplingParameters2.zw;
+    float2 samplingCoordinates2Far = samplingCoordinates2 * 0.5f;    
+    uint streamedTextureIndex2 = g_TerrainMaterials[splatmapData.g / 257].splatIndex;
            
-    float3 triSamplingCoordinates = VertexStage.positionWS.xyz / 512.0f * samplingParameters.zwz;
+    float3 triSamplingCoordinates = VertexStage.positionWS.xyz / 1024.0f * samplingParameters.zwz;
      
     float4 baseColor = float4( 0, 0, 0, 0 );
     float4 baseColor2 = float4( 0, 0, 0, 0 );
     float4 normalAndRoughness = float4( 0, 0, 0, 0 );
     float4 normalAndRoughness2 = float4( 0, 0, 0, 0 );
+
+    // Triplanar sampling; no distance based blend (too costy and doesn't have much impact on the final look)
+    float4 slopeBaseColor = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, triSamplingCoordinates, N );
+    float4 slopeBaseColor2 = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex2, triSamplingCoordinates, N );
     
-    [branch]
-    if ( slope > 0.8f ) {
-        // Triplanar sampling; no distance based blend (too costy and doesn't have much impact on the final look)
-        baseColor = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, triSamplingCoordinates, N );
-        baseColor2 = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex2, triSamplingCoordinates, N );
+    float4 slopeNormalAndRoughness = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex, triSamplingCoordinates, N );
+    float4 slopeNormalAndRoughness2 = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex2, triSamplingCoordinates, N );
+    
+    baseColor = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ), slopeBaseColor, slope );
+    baseColor2 = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ), slopeBaseColor2, slope );
+    
+    normalAndRoughness = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ), slopeNormalAndRoughness, slope );
+    normalAndRoughness2 = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ), slopeNormalAndRoughness2, slope );
         
+    [branch]
+    if ( distanceWS > 0.5f ) {
+        baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
+        baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2Far.xy, streamedTextureIndex2 ) );
+        
+        normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
+        normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates2Far.xy, streamedTextureIndex2 ) );
+    } else if ( slope > 0.8f ) {
+        // Triplanar sampling; no distance based blend (too costy and doesn't have much impact on the final look)  
         normalAndRoughness = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex, triSamplingCoordinates, N );
         normalAndRoughness2 = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex2, triSamplingCoordinates, N );
-    } else {
-        [branch]
-        if ( distanceWS >= 0.75 ) {
-            // Far sampling only (use higher uv scale to avoid texture tiling)
-            baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
-            baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) );
-            
-            normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) );
-            normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) );
-        } else if ( distanceWS >= 0.50 ) {
-            // Linear interpolation between far and near (path with the highest shading cost; might worth optimizing)
-            baseColor = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
-                              g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
-                              distanceWS );
-                              
-            baseColor2 = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
-                               g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
-                               distanceWS );
-                               
-            normalAndRoughness = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ),
-                                        g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex ) ),
-                                        distanceWS );
-                                        
-            normalAndRoughness2 = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) ),
-                                        g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinatesFar.xy, streamedTextureIndex2 ) ),
-                                        distanceWS );
-        } else {
-            // Basic texture sampling
-            baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-            baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) );
-            
-            normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
-            normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex2 ) );
-        }       
+        
+        baseColor = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, triSamplingCoordinates, N );
+        baseColor2 = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex2, triSamplingCoordinates, N );
+    } else if ( slope <= 0.80f && slope >= 0.70f ) {
+        // Triplanar sampling; no distance based blend (too costy and doesn't have much impact on the final look)
+        float4 slopeBaseColor = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex, triSamplingCoordinates, N );
+        float4 slopeBaseColor2 = TriplanarSample4D( g_TerrainBaseColorHeightArray, g_BaseColorSampler, streamedTextureIndex2, triSamplingCoordinates, N );
+        
+        float4 slopeNormalAndRoughness = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex, triSamplingCoordinates, N );
+        float4 slopeNormalAndRoughness2 = TriplanarSample4D( g_TerrainNormalRoughnessArray, g_NormalMapSampler, streamedTextureIndex2, triSamplingCoordinates, N );
+        
+        baseColor = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ), slopeBaseColor, slope );
+        baseColor2 = lerp( g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) ), slopeBaseColor2, slope );
+        
+        normalAndRoughness = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) ), slopeNormalAndRoughness, slope );
+        normalAndRoughness2 = lerp( g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) ), slopeNormalAndRoughness2, slope );          
+    } else {   
+        baseColor = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
+        baseColor2 = g_TerrainBaseColorHeightArray.Sample( g_BaseColorSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) );
+        
+        normalAndRoughness = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates.xy, streamedTextureIndex ) );
+        normalAndRoughness2 = g_TerrainNormalRoughnessArray.Sample( g_NormalMapSampler, float3( samplingCoordinates2.xy, streamedTextureIndex2 ) );
     }
-	
+
+    // Darken terrain under grass
+    // TODO Make this editable on the CPU side
+    float grassHeight = g_TexGrassMap.Load( int3( VertexStage.positionWS.xz, 0 ) ).a * g_Layers[0].HeightmapWorldHeight;
+    float grassDarkening = ( grassHeight <= VertexStage.positionWS.y ) ? 1.0f : 0.5f;
+
     // Build final layer
-	MaterialReadLayer BaseLayer;
-	BaseLayer.BaseColor = TerrainDepthBlend( float4( accurateSRGBToLinear( baseColor.rgb ), baseColor.a ), 1.0f - blendFactor, float4( accurateSRGBToLinear( baseColor2.rgb ), baseColor2.a ), blendFactor );        
-	BaseLayer.Reflectance = 0.25f; // baseColor.a;	
-	BaseLayer.Roughness = TerrainDepthBlend( float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor, float4( normalAndRoughness2.aaa, baseColor2.a ), blendFactor ).r;     
-	BaseLayer.Metalness = 0.0f;
-	BaseLayer.AmbientOcclusion = 1.0f;
-	BaseLayer.Emissivity = 0.0f;
-	BaseLayer.Normal =  TerrainDepthBlend( float4( normalize( normalAndRoughness.rgb * 2.0f - 1.0f  ), baseColor.a ), 1.0f - blendFactor, float4( normalize( normalAndRoughness2.rgb * 2.0f - 1.0f ), baseColor2.a ), blendFactor );       
-	BaseLayer.SecondaryNormal = N;
-	BaseLayer.AlphaMask = 1.0f;
-	BaseLayer.BlendMask = 1.0f;
-	BaseLayer.Refraction = 0.0f;
-	BaseLayer.RefractionIor = 0.0f;
-	BaseLayer.ClearCoat = 0.0f;
-	BaseLayer.ClearCoatGlossiness = 0.0f;
-	BaseLayer.DiffuseContribution = 1.0f;
-	BaseLayer.SpecularContribution = 1.0f;
-	BaseLayer.NormalContribution = 1.0f;
-	BaseLayer.AlphaCutoff = 0.0f;
-	BaseLayer.SSStrength = 0.0f;
+    MaterialReadLayer BaseLayer;
+    BaseLayer.BaseColor = accurateSRGBToLinear( TerrainDepthBlend( float4( baseColor.rgb, baseColor.a ), 1.0f - blendFactor, float4( baseColor2.rgb, baseColor2.a ), blendFactor ) ) * grassDarkening;        
+    BaseLayer.Reflectance = 0.01f; // baseColor.a;    
+    BaseLayer.Roughness = TerrainDepthBlend( float4( normalAndRoughness.aaa, baseColor.a ), 1.0f - blendFactor, float4( normalAndRoughness2.aaa, baseColor2.a ), blendFactor ).r;     
+    BaseLayer.Metalness = 0.0f;
+    BaseLayer.AmbientOcclusion = 1.0f;
+    BaseLayer.Emissivity = 0.0f;
+    BaseLayer.Normal =  normalize( TerrainDepthBlend( float4( normalAndRoughness.rgb, baseColor.a ), 1.0f - blendFactor, float4( normalAndRoughness2.rgb, baseColor2.a ), blendFactor ) * 2.0f - 1.0f );       
+    BaseLayer.SecondaryNormal = N;
+    BaseLayer.AlphaMask = 1.0f;
+    BaseLayer.BlendMask = 1.0f;
+    BaseLayer.Refraction = 0.0f;
+    BaseLayer.RefractionIor = 0.0f;
+    BaseLayer.ClearCoat = 0.0f;
+    BaseLayer.ClearCoatGlossiness = 0.0f;
+    BaseLayer.DiffuseContribution = 1.0f;
+    BaseLayer.SpecularContribution = 1.0f;
+    BaseLayer.NormalContribution = 1.0f;
+    BaseLayer.AlphaCutoff = 0.0f;
+    BaseLayer.SSStrength = 0.0f;
     
     
-	BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space	
+    BaseLayer.Normal = normalize( mul( BaseLayer.Normal, TBNMatrix ) ); // Tangent to World Space    
 #else
     bool needNormalMapUnpack0 = false, needNormalMapUnpack1 = false, needNormalMapUnpack2 = false;
     bool needSecondaryNormalMapUnpack0 = false, needSecondaryNormalMapUnpack1 = false, needSecondaryNormalMapUnpack2 = false;
@@ -802,18 +813,18 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }  
 #endif
 #else
-	FLAN_BUILD_LAYERS
+    FLAN_BUILD_LAYERS
 #endif
   
-	N = BaseLayer.Normal;
-	
+    N = BaseLayer.Normal;
+    
 #if PA_EDITOR
     // Flip the normal for the backface
     if ( g_IsDoubleFace == 1 && isFrontFace ) {
 #elif PA_IS_DOUBLE_FACE
     if ( !isFrontFace ) {
 #endif
-        N = N * float3( -1, -1, 1 );
+        N = N * float3( -1, -1, -1 );
     }
 
     float3 R = reflect( -V, N );
@@ -866,14 +877,14 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
 #if PA_EDITOR
 #if PA_TERRAIN
-	//if ( g_TerrainEditorToggleBrush == 1u ) {
-		float brushDistance = length( VertexStage.positionWS.xz - g_MouseCoordinates.xz ) / g_TerrainEditorBrushSize;
-		float brushStrength = ( brushDistance > 1.0f ) ? 0.0f : brushDistance;
-		LightContribution.rgb += float3( 1, 0, 0 ) * brushStrength;
-	//}
+    if ( g_TerrainEditorToggleBrush == 1u ) {
+        float brushDistance = length( VertexStage.positionWS.xz - g_MouseCoordinates.xz ) / g_TerrainEditorBrushSize;
+        float brushStrength = ( brushDistance > 1.0f ) ? 0.0f : brushDistance;
+        LightContribution.rgb += float3( 1, 0, 0 ) * brushStrength;
+    }
 #endif
 #endif
-	
+    
 #if PA_SHADING_MODEL_SHADING_EMISSIVE
     LightContribution.rgb += DoShading( L, surface );
     LightContribution.rgb += ( LightContribution.rgb * BaseLayer.Emissivity );
@@ -1017,21 +1028,21 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #ifndef PA_PROBE_CAPTURE
     // Atmospheric Scattering Contribution
-	float3 atmosphereTransmittance = float3( 0, 0, 0 );
+    float3 atmosphereTransmittance = float3( 0, 0, 0 );
 
     float3 atmosphereSamplingPos = float3( WorldPosition.x, WorldPosition.z, 1.0f );
     float3 atmosphereVertexPos = float3( VertexStage.positionWS.x, VertexStage.positionWS.z, 1.0f );
       
-	float3 atmosphereInScatter = GetSkyRadianceToPoint
-	( 
-		atmosphereSamplingPos - g_EarthCenter,
-		atmosphereVertexPos - g_EarthCenter,
-		VertexStage.depth,
-		g_SunDirection,
-		atmosphereTransmittance 
-	);
+    float3 atmosphereInScatter = GetSkyRadianceToPoint
+    ( 
+        atmosphereSamplingPos - g_EarthCenter,
+        atmosphereVertexPos - g_EarthCenter,
+        VertexStage.depth,
+        g_SunDirection,
+        atmosphereTransmittance 
+    );
 
-	LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
+    LightContribution.rgb = LightContribution.rgb + atmosphereInScatter;
 #endif
 
     // PA_ENABLE_ALPHA_BLEND
@@ -1042,9 +1053,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 
 #if PA_ENABLE_ALPHA_BLEND
         LightContribution.a = BaseLayer.AlphaMask;
-        
-        // Premultiply alpha
-        LightContribution.rgb *= LightContribution.a;
 #endif
 
 #if PA_EDITOR
@@ -1059,7 +1067,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 #endif
 
 #if PA_ENABLE_ALPHA_TO_COVERAGE
-		// Sharpen cutoff
+        // Sharpen cutoff
         LightContribution.a = ( LightContribution.a - BaseLayer.AlphaCutoff ) / max( fwidth( LightContribution.a ), 0.0001f ) + 0.5f;
 #endif
 
@@ -1068,7 +1076,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 #endif    
 #endif
 
-	// PA_WRITE_VELOCITY
+    // PA_WRITE_VELOCITY
     float2 Velocity = float2( 0, 0 );
 
 #if PA_EDITOR
@@ -1083,18 +1091,18 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         Velocity = VertexStage.position.xy - prevPositionSS;
         Velocity -= g_CameraJitteringOffset;
 #endif
-		
+        
 #if PA_EDITOR
     }
 #endif
     
     // Write output to buffer(s)
-	PixelStageData output;
-	output.Buffer0 = LightContribution;
-	output.Buffer1 = Velocity;
-	output.Buffer2 = float4( BaseLayer.SSStrength, 0, 0, 0 );
+    PixelStageData output;
+    output.Buffer0 = LightContribution;
+    output.Buffer1 = Velocity;
+    output.Buffer2 = float4( BaseLayer.SSStrength, 0, 0, 0 );
 
-	return output;
+    return output;
 }
 
 void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float alphaCutoff, in float nextAlphaMask, in float nextAlphaCutoff )
@@ -1105,8 +1113,8 @@ void BlendDepthLayers( in float blendMask, inout float alphaMask, inout float al
 
 // cbuffer MatricesBuffer : register( b3 )
 // {
-    // float4x4	ModelMatrix;
-    // float4x4	g_DepthViewProjectionMatrix;
+    // float4x4    ModelMatrix;
+    // float4x4    g_DepthViewProjectionMatrix;
     // float       g_LodBlendAlpha;
 // };
 

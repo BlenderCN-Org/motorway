@@ -61,7 +61,11 @@ NativePipelineStateObject* flan::rendering::CreatePipelineStateImpl( NativeRende
     nativePipelineStateObject->primitiveTopology = _D3D11_PRIMITIVE_TOPOLOGY[description.primitiveTopology];
     
     if ( !description.inputLayout.empty() ) {
-        nativePipelineStateObject->inputLayout = CreateInputLayout( nativeRenderContext->nativeDevice, description.inputLayout, description.vertexStage->getShaderBytecode() );
+        if ( description.vertexStage == nullptr ) {
+            FLAN_CWARN << "Input layout specified without a valid vertex shader instance; input layout will be ignored" << std::endl;
+        } else {
+            nativePipelineStateObject->inputLayout = CreateInputLayout( nativeRenderContext->nativeDevice, description.inputLayout, description.vertexStage->getShaderBytecode() );
+        }
     }
 
 #define D3D11_ADD_STAGE_TO_PIPELINE( stageName )\

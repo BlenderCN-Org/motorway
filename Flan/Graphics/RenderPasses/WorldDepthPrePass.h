@@ -28,13 +28,15 @@
 #include <Framework/Material.h>
 #include <Shared.h>
 
+#include "CopyTexturePass.h"
+
 using namespace flan::rendering;
 
 static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPipeline, const bool enableMSAA = false )
 {
     struct MatricesBuffer
     {
-        glm::mat4 ModelMatrix;
+        glm::mat4x4 modelMatrix[512];
         glm::mat4 ViewProjectionShadowMatrix;
         float     lodBlendAlpha;
         uint32_t  __PADDING__[3];
@@ -116,9 +118,9 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             passData.samplers[0] = renderPipelineBuilder->allocateSampler( matSamplerDesc );
 
             SamplerDesc matDisplacementSamplerDesc;
-            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[1] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
@@ -148,7 +150,6 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
             cameraCbuffer->bind( cmdList, 0 );
 
             MatricesBuffer matrices;
-            matrices.ModelMatrix = glm::mat4( 1 );
             matrices.ViewProjectionShadowMatrix = cameraData.viewProjectionMatrix;
 
             matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
@@ -174,18 +175,32 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
                 const auto& drawCmd = opaqueBucketList[i];
                 drawCmd.vao->bind( cmdList );
 
-                //if ( drawCmd.modelMatrix != previousModelMatrix ) {
-                    matrices.ModelMatrix = *drawCmd.modelMatrix;
-                    matrices.lodBlendAlpha = drawCmd.alphaDitheringValue;
-                    matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
-                    previousModelMatrix = drawCmd.modelMatrix;
-                //}
-
-                if ( !drawCmd.material->bindReversedDepthOnly( cmdList ) ) {
-                    continue;
+                if ( drawCmd.instanceCount > 1 ) {
+                    memcpy( matrices.modelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
+                    previousModelMatrix = nullptr;
+                } else {
+                    //if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                        matrices.modelMatrix[0] = *drawCmd.modelMatrix;
+                        previousModelMatrix = drawCmd.modelMatrix;
+                   // }
                 }
 
-                cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                matrices.lodBlendAlpha = drawCmd.alphaDitheringValue;
+                matricesConstantBuffer->updateAsynchronous( cmdList, &matrices, sizeof( MatricesBuffer ) );
+
+                if ( drawCmd.instanceCount > 1 ) {
+                    if ( !drawCmd.material->bindInstancedReversedDepthOnly( cmdList ) ) {
+                        continue;
+                    }
+
+                    cmdList->drawInstancedIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset, drawCmd.instanceCount );
+                } else {
+                    if ( !drawCmd.material->bindReversedDepthOnly( cmdList ) ) {
+                        continue;
+                    }
+
+                    cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                }
             }
 
             // Unbind everything for extra safety
@@ -195,6 +210,25 @@ static fnPipelineMutableResHandle_t AddOpaqueZPrePass( RenderPipeline* renderPip
 
     return RenderPass.output[0];
 }
+
+static fnPipelineMutableResHandle_t AddDepthPrePass( RenderPipeline* renderPipeline, const bool enableMSAA = false )
+{
+    renderPipeline->addPipelineSetupPass(
+        [&]( RenderPipeline* renderPipeline, RenderPipelineBuilder* renderPipelineBuilder ) {
+            auto depthBuffer = AddOpaqueZPrePass( renderPipeline, enableMSAA );
+
+            // Make a copy of the depth buffer to allow depth sampling during geometry rendering
+            // This is used for any gpu driven entity (e.g. grass rendering)
+            auto copiedDepthBuffer = AddCopyDepthTexturePass( renderPipeline, enableMSAA, 0, 0, -1, depthBuffer );
+            renderPipelineBuilder->registerWellKnownResource( FLAN_STRING_HASH( "SSOcclusionMask" ), copiedDepthBuffer );
+        }
+    );
+
+    return -1;
+}
+
+FLAN_REGISTER_RENDERPASS( DepthPrePass, AddDepthPrePass )
+FLAN_REGISTER_RENDERPASS_CUSTOM_INVOC( DepthPreMSAAPass, [=]( RenderPipeline* renderPipeline ) { return AddDepthPrePass( renderPipeline, true ); } )
 
 FLAN_REGISTER_RENDERPASS( WorldDepthPass, AddOpaqueZPrePass )
 FLAN_REGISTER_RENDERPASS_CUSTOM_INVOC( WorldDepthMSAAPass, [=]( RenderPipeline* renderPipeline ) { return AddOpaqueZPrePass( renderPipeline, true ); } )

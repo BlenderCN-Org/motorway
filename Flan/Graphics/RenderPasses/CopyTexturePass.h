@@ -112,6 +112,38 @@ static fnPipelineMutableResHandle_t AddCopyTexturePass( RenderPipeline* renderPi
     return RenderPass.output[0];
 }
 
+static fnPipelineMutableResHandle_t AddCopyDepthTexturePass( RenderPipeline* renderPipeline, const bool enableMSAA = false, const uint32_t mipLevel = 0, const uint32_t layer = 0, fnPipelineMutableResHandle_t output = -1,  fnPipelineMutableResHandle_t input = -1 )
+{
+    auto RenderPass = renderPipeline->addRenderPass(
+        "Copy Depth Texture",
+        [&]( RenderPipelineBuilder* renderPipelineBuilder, RenderPassData& passData ) {
+            passData.input[0] = ( input == -1 ) ? renderPipelineBuilder->getWellKnownResource( FLAN_STRING_HASH( "MainDepthRT" ) )
+                                                 : renderPipelineBuilder->readRenderTarget( input );
+
+            if ( output == -1 ) {
+                RenderPassTextureDesc passRenderTargetDesc = {};
+                passRenderTargetDesc.resourceToCopy = passData.input[0];
+                passRenderTargetDesc.copyResource = true;
+                passRenderTargetDesc.description.flags.isDepthResource = 1;
+
+                passRenderTargetDesc.useGlobalMultisamplingState = enableMSAA;
+
+                passData.output[0] = renderPipelineBuilder->allocateTexture( passRenderTargetDesc );
+            } else {
+                passData.output[0] = renderPipelineBuilder->readRenderTarget( output );
+            }
+        },
+        [=]( CommandList* cmdList, const RenderPipelineResources* renderPipelineResources, const RenderPassData& passData ) {
+            auto ouputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );
+            auto inputRenderTarget = renderPipelineResources->getRenderTarget( passData.input[0] );
+
+            inputRenderTarget->copyTo( cmdList, ouputRenderTarget );
+        }
+    );
+
+    return RenderPass.output[0];
+}
+
 static fnPipelineMutableResHandle_t AddCopyTextureUAVPass( RenderPipeline* renderPipeline, const bool enableMSAA = false, const uint32_t mipLevel = 0, const uint32_t layer = 0, fnPipelineMutableResHandle_t output = -1, fnPipelineMutableResHandle_t input = -1 )
 {
     auto RenderPass = renderPipeline->addRenderPass(

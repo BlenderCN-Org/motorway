@@ -20,43 +20,20 @@
 #include <Shared.h>
 #include "TransactionHandler.h"
 
-TransactionHandler::TransactionHandler()
-    : commandIdx( -1 )
+TransactionHandler::TransactionHandler( BaseAllocator* allocator )
+    : cmdAllocator( allocator )
+    , commandIdx( -1 )
     , commandCount( 0 )
-    , commands( 64, nullptr )
+    , commands{ nullptr }
 {
 
 }
 
 TransactionHandler::~TransactionHandler()
 {
-
-}
-
-void TransactionHandler::commit( TransactionCommand* cmd )
-{
-    commandCount++;
-    commandIdx++;
-
-    if ( commandCount > commands.size() ) {
-        commands.push_back( nullptr );
+    for ( int i = 0; i < commandCount; i++ ) {
+        flan::core::free( cmdAllocator, commands[i] );
     }
-
-    cmd->execute();
-
-    // If we are in the past, clear the future commits
-    if ( commandCount - commandIdx > 1 ) {
-        for ( int i = commandIdx; i < commandCount; i++ ) {
-            if ( commands[i] != nullptr ) {
-                delete commands[i];
-                commands[i] = nullptr;
-            }
-        }
-
-        commandCount -= ( commandCount - commandIdx );
-    }
-
-    commands[commandIdx] = cmd;
 }
 
 void TransactionHandler::undo()
@@ -75,8 +52,8 @@ void TransactionHandler::redo()
         return;
     }
 
-    commandIdx++;
     commands[commandIdx + 1]->execute();
+    commandIdx++;
 }
 
 const std::string& TransactionHandler::getPreviousActionName() const

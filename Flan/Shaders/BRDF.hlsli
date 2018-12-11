@@ -1,6 +1,19 @@
+static const float PI = 3.1415926535897932384626433f;
+static const float INV_PI = ( 1.0 / PI );
+
 float3 Fresnel_Schlick( in float3 f0, in float f90, in float u )
 {
     return f0 + ( f90 - f0 ) * pow( 1.0 - u, 5.0 );
+}
+
+float Diffuse_LambertWrapped( in float NoL, in float linearRoughness )
+{
+	return saturate( ( NoL + linearRoughness ) / ( ( 1 + linearRoughness ) * ( 1 + linearRoughness ) ) ) * INV_PI;
+}
+
+float Specular_Phong( in float VoR, in float specularStrength )
+{
+	return INV_PI * pow( VoR, specularStrength );
 }
 
 float Diffuse_Disney( in float NoV, in float NoL, in float LoH, in float linearRoughness )

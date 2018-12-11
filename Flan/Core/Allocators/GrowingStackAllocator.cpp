@@ -64,7 +64,7 @@ void* GrowingStackAllocator::allocate( const std::size_t allocationSize, const s
         }
 
         flan::core::VirtualAlloc( neededPhysicalSize, currentEndPosition );
-        *(uint8_t*)currentEndPosition += neededPhysicalSize;
+        *(size_t*)currentEndPosition += neededPhysicalSize;
     }
 
     AllocationHeader* header = ( AllocationHeader* )( allocatedAddress - sizeof( AllocationHeader ) );

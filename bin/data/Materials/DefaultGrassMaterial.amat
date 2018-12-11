@@ -12,13 +12,14 @@ ReceiveShadow: True
 ScaleUVByModelScale: False
 IsNormalMapTangentSpace: True
 UseBaseColorsRGBSource: True
+SnapToHeightmap: True
 
 Layer 
 {
     BaseColor: "GameData/Textures/T_Grass_D.dds"
     AlphaMask: "GameData/Textures/T_Grass_A.dds"
-    AlphaCutoff: 0.33
-    Reflectance: 0.25
+    AlphaCutoff: 0.3333333
+    Reflectance: 0.01
     AmbientOcclusion: None
     Normal: None
     Roughness: "GameData/Textures/T_Grass_R.dds"

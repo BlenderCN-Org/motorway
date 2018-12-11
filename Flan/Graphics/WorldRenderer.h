@@ -34,6 +34,7 @@ class RenderPipeline;
 class TextRenderingModule;
 class AtmosphereModule;
 class AutomaticExposureModule;
+class GrassRenderingModule;
 class TaskManager;
 class LineRenderingModule;
 class BaseAllocator;
@@ -93,7 +94,7 @@ public:
     void                    drawDebugText( const std::string& text, const float scale, const float x, const float y, const float outlineThickness = 0.8f, const glm::vec4& color = glm::vec4( 1, 1, 1, 1 ), const bool useNormalizedCoordinates = true );
     void                    drawDebugLine( const glm::vec3& from, const glm::vec3& to, const float thickness, const glm::vec4& color );
 
-    void                    loadCachedResources( ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager );
+    void                    loadCachedResources( BaseAllocator* baseAllocator, ShaderStageManager* shaderStageManager, GraphicsAssetManager* graphicsAssetManager );
 
     unsigned int            getFrameNumber() const;
     float                   getTimeDelta() const;
@@ -102,6 +103,8 @@ public:
     void                    saveTexture( RenderTarget* outputTarget, const fnString_t& outputTargetName );
     void                    precomputeVMF( Texture* normalMap, const float roughnessValue, RenderTarget* outputRoughnessMap );
     void                    precomputeVMF( Texture* normalMap, Texture* roughnessMap, RenderTarget* outputRoughnessMap, const bool thightPackedTexture = false );
+
+    void                    setGrassMap( Texture* grassmap );
 
 #if FLAN_DEVBUILD
     // TODO Nothing to do in the worldRenderer...
@@ -148,6 +151,7 @@ private:
     AtmosphereModule*        atmosphereRenderingModule;
     AutomaticExposureModule* autoExposureModule;
     LineRenderingModule*     lineRenderingModule;
+    GrassRenderingModule*    grassRenderingModule;
 
     // TODO Move this
     RenderTarget*           previousFrameRenderTarget;

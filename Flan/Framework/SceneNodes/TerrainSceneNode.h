@@ -35,6 +35,8 @@
 
 struct TerrainSceneNode : public SceneNode
 {
+    TerrainInstance instance;
+
     virtual TerrainSceneNode* clone( RenderableEntityManager* renderableEntityManager )
     {
         return new TerrainSceneNode( *this );
@@ -42,17 +44,12 @@ struct TerrainSceneNode : public SceneNode
 
     static constexpr fnStringHash_t Hashcode = FLAN_STRING_HASH( "TerrainSceneNode" );
 
-    TerrainInstance instance;
-    MeshInstance grassInstane;
     TerrainSceneNode( Terrain* nodeTerrain, const std::string& name = "Terrain" )
         : SceneNode( name )
         , instance()
     {
         instance.terrainAsset = nodeTerrain;
         instance.meshTransform = &transform;
-
-        grassInstane.meshAsset = nodeTerrain->GRASS_TEST;
-        grassInstane.meshTransform = &transform;
 
         canCollectRenderKeys = true;
 
@@ -74,7 +71,6 @@ struct TerrainSceneNode : public SceneNode
     {
         if ( instance.terrainAsset != nullptr ) {
             drawCommandBuilder->addTerrainToRender( &instance );
-            drawCommandBuilder->addMeshToRender( &grassInstane );
         }
     }
 

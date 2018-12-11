@@ -20,6 +20,8 @@
 
 import sys, string, os, argparse, platform, codecs
 from pathlib import Path
+import subprocess
+
 
 # Script args (see description below)
 isProd = False
@@ -92,7 +94,7 @@ def need_to_recompile( filename_input, filename_output, ext ):
         with open( cache_file, "r" ) as stream:
             for line in stream:
                 if line == file_timestamp:
-                    print( filename_output + " : skipped (no changes detected)" )
+                    #print( filename_output + " : skipped (no changes detected)" )
                     return False
         
     with open( cache_file, 'w' ) as stream:
@@ -112,7 +114,7 @@ def compile_shader_VS( filename_input, filename_output, entrypoint = 'EntryPoint
             else:
                 cmdLine = cmdLine + " /O1"
                 
-            os.system( cmdLine )
+            subprocess.run( cmdLine )
             
         if compileSPIRV:
             # GLSLang args are '-' delimited
@@ -126,14 +128,14 @@ def compile_shader_VS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S vert -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvv -D ./tmp/" + filename_output + ".unroll"  )    
+            subprocess.run( glslang_exe + " -S vert -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvv -D ./tmp/" + filename_output + ".unroll"  )    
             
             if flip_y:
-                os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --flip-vert-y --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
+                subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --flip-vert-y --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
             else:
-                os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
+                subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
           
-            os.system( glslang_exe + " -S vert -G -o " + compiled_shader_folder + filename_output + ".gl.spvv ./tmp/" + filename_output + ".vert.glsl"  )    
+            subprocess.run( glslang_exe + " -S vert -G -o " + compiled_shader_folder + filename_output + ".gl.spvv ./tmp/" + filename_output + ".vert.glsl"  )    
 
 def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPointPS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".pso" ):
@@ -146,7 +148,7 @@ def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPoint
                 cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
             else:
                 cmdLine = cmdLine + " /O1"     
-            os.system( cmdLine )
+            subprocess.run( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
             flag_list_glsl = build_flag_list_GLSL( flags )
@@ -159,9 +161,9 @@ def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S frag -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvp -D ./tmp/" + filename_output + ".unroll"  )    
-            os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvp --output ./tmp/" + filename_output + ".frag.glsl" )
-            os.system( glslang_exe + " -S frag -G -o " + compiled_shader_folder + filename_output + ".gl.spvp ./tmp/" + filename_output + ".frag.glsl"  )    
+            subprocess.run( glslang_exe + " -S frag -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvp -D ./tmp/" + filename_output + ".unroll"  )    
+            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvp --output ./tmp/" + filename_output + ".frag.glsl" )
+            subprocess.run( glslang_exe + " -S frag -G -o " + compiled_shader_folder + filename_output + ".gl.spvp ./tmp/" + filename_output + ".frag.glsl"  )    
 
 def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPointCS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".cso" ):
@@ -174,7 +176,7 @@ def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPoint
                 cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
             else:
                 cmdLine = cmdLine + " /O1"
-            os.system( cmdLine )
+            subprocess.run( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
             flag_list_glsl = build_flag_list_GLSL( flags )
@@ -187,9 +189,9 @@ def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S comp -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvc -D ./tmp/" + filename_output + ".unroll"  )    
-            os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvc --output ./tmp/" + filename_output + ".comp.glsl" )
-            os.system( glslang_exe + " -S comp -G -o " + compiled_shader_folder + filename_output + ".gl.spvc ./tmp/" + filename_output + ".comp.glsl"  )    
+            subprocess.run( glslang_exe + " -S comp -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvc -D ./tmp/" + filename_output + ".unroll"  )    
+            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvc --output ./tmp/" + filename_output + ".comp.glsl" )
+            subprocess.run( glslang_exe + " -S comp -G -o " + compiled_shader_folder + filename_output + ".gl.spvc ./tmp/" + filename_output + ".comp.glsl"  )    
  
 def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPointHS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".hso" ):
@@ -202,7 +204,7 @@ def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPoint
                 cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
             else:
                 cmdLine = cmdLine + " /O1"          
-            os.system( cmdLine )
+            subprocess.run( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
             flag_list_glsl = build_flag_list_GLSL( flags )
@@ -215,9 +217,9 @@ def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S tesc -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvh -D ./tmp/" + filename_output + ".unroll"  )    
-            os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvh --output ./tmp/" + filename_output + ".hull.glsl" )
-            os.system( glslang_exe + " -S tesc -G -o " + compiled_shader_folder + filename_output + ".gl.spvh ./tmp/" + filename_output + ".hull.glsl"  )    
+            subprocess.run( glslang_exe + " -S tesc -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvh -D ./tmp/" + filename_output + ".unroll"  )    
+            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvh --output ./tmp/" + filename_output + ".hull.glsl" )
+            subprocess.run( glslang_exe + " -S tesc -G -o " + compiled_shader_folder + filename_output + ".gl.spvh ./tmp/" + filename_output + ".hull.glsl"  )    
     
 def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPointDS', flags = {} ):
     if need_to_recompile( filename_input, filename_output, ".dso" ):
@@ -230,7 +232,7 @@ def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPoint
                 cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
             else:
                 cmdLine = cmdLine + " /O1"
-            os.system( cmdLine )
+            subprocess.run( cmdLine )
         if compileSPIRV:
             # GLSLang args are '-' delimited
             flag_list_glsl = build_flag_list_GLSL( flags )
@@ -243,9 +245,9 @@ def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPoint
             # HLSL > SPIRV (VK)
             # SPIRV (VK) > GLSL
             # GLSL > SPIRV (GLSL)
-            os.system( glslang_exe + " -S tese -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvd -D ./tmp/" + filename_output + ".unroll"  )    
-            os.system( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvd --output ./tmp/" + filename_output + ".domain.glsl" )
-            os.system( glslang_exe + " -S tese -G -o " + compiled_shader_folder + filename_output + ".gl.spvd ./tmp/" + filename_output + ".domain.glsl"  )    
+            subprocess.run( glslang_exe + " -S tese -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvd -D ./tmp/" + filename_output + ".unroll"  )    
+            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvd --output ./tmp/" + filename_output + ".domain.glsl" )
+            subprocess.run( glslang_exe + " -S tese -G -o " + compiled_shader_folder + filename_output + ".gl.spvd ./tmp/" + filename_output + ".domain.glsl"  )    
             
 # Parse script args
 parser = argparse.ArgumentParser(description='Flan Game Engine. Compile shaders permutations for Graphics backends.')
@@ -310,8 +312,11 @@ compile_shader_VS( "Common/FullscreenQuad.hlsl", "FullscreenQuad", "EntryPointVS
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTrianglePresent", "EntryPointVS", {}, True )
 compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTriangle", "EntryPointVS", {}, False )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWrite" )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteInstanced", "EntryPointVS", { "PH_INSTANCED" : "1" } )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
 compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmap", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
+compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmapInstanced", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
 compile_shader_PS( "Common/CopyTexture.hlsl", "CopyTexture" )
 
 compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve1", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1", "PH_USE_TAA": "0" } )
@@ -343,21 +348,35 @@ compile_shader_PS( "ImageEffects/GaussianBlur.hlsl", "GaussianBlur" )
 compile_shader_CS( "ImageEffects/MergeHistogram.hlsl", "MergeHistogram" )
 compile_shader_CS( "ImageEffects/TileHistogramCompute.hlsl", "TileHistogramCompute" )
 compile_shader_PS( "ImageEffects/FXAA.hlsl", "FXAA" )
+compile_shader_PS( "ImageEffects/BrightPass.hlsl", "BrightPass" )
 compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur1", "EntryPointPS", { "PH_FIRST_PASS": "1" } )
 compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur2" )
 
 # Lighting
+compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
+compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGenerationLODDebugColor", "EntryPointCS", { "PA_GRASS_LOD_DEBUG_COLOR": "1" } )
+compile_shader_CS( "Lighting/GrassIndirectDrawSetup.hlsl", "GrassIndirectDrawSetup" )
+
+compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
+compile_shader_PS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
+
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
 compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
 
 compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointHeightfieldVS", { "PH_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "Surface" )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceInstanced", "EntryPointVS", { "PH_INSTANCED": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUV", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUVInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
 compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
+compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVInstanced", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
 
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointDS", { "PH_HEIGHTFIELD": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )
+compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldLQ", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_LQ_RENDERING": "1" } )
+compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldLQ", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_LQ_RENDERING": "1" } )
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
 compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
 compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWriteMaxTess", "EntryPointDS", { "PH_DEPTH_WRITE": "1", "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
@@ -370,9 +389,11 @@ compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS
 compile_shader_PS( "Lighting/UberSurface.hlsl", "Surface", "EntryPointPS", { "PA_EDITOR": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_TERRAIN": "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDepth", "EntryPointDepthPS", { "PA_EDITOR": "1" } )
+compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainTopDownCapture", "EntryPointTopDownPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1" } )
 
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandardProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissiveProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_EDITOR": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_PROBE_CAPTURE" : "1" } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_PROBE_CAPTURE" : "1"  } )
 compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
+

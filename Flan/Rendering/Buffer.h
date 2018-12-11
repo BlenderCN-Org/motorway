@@ -45,6 +45,9 @@ struct BufferDesc
         UNORDERED_ACCESS_VIEW_TEXTURE_3D,
 
         STRUCTURED_BUFFER,
+        APPEND_STRUCTURED_BUFFER,
+
+        INDIRECT_DRAW_ARGUMENTS
     } Type;
 
     eImageFormat    ViewFormat; // Required by UAV only
@@ -95,6 +98,8 @@ public:
     void        update( RenderDevice* renderDevice, const void* dataToUpload, const std::size_t dataToUploadSize );
     void        updateAsynchronous( CommandList* cmdList, const void* dataToUpload, const std::size_t dataToUploadSize );
     void        updateRange( RenderDevice* renderDevice, const void* dataToUpload, const std::size_t dataToUploadSize, const int32_t bufferOffset = 0, const bool flushBuffer = true );
+
+    void        copyStructureCount( CommandList* cmdList, Buffer* source, const uint32_t byteOffset = 0 );
 
     const BufferDesc&   getDescription() const;
     NativeBufferObject* getNativeBufferObject() const;

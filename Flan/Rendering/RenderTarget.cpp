@@ -135,3 +135,8 @@ void RenderTarget::retrieveTexelsHDR( RenderDevice* renderDevice, std::vector<fl
 {
     flan::rendering::RetrieveTextureTexelsHDRImpl( renderDevice->getNativeRenderContext(), nativeTextureObject.get(), textureDescription, texels );
 }
+
+void RenderTarget::copyTo( CommandList* cmdList, RenderTarget* destination )
+{
+    flan::rendering::CopyRenderTargetImpl( cmdList->getNativeCommandList(), nativeTextureObject.get(), destination->getNativeTextureObject() );
+}

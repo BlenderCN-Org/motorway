@@ -25,7 +25,7 @@
 #include <Core/FileLogger.h>
 #include <FileSystem/VirtualFileSystem.h>
 #include <FileSystem/FileSystemNative.h>
-#include<FileSystem/FileSystemObject.h>
+#include <FileSystem/FileSystemObject.h>
 #include <Core/TaskManager.h>
 #include <Display/DisplaySurface.h>
 
@@ -102,10 +102,14 @@
 #include <Framework/TransactionHandler/SceneNodeCopyCommand.h>
 #include <Framework/TransactionHandler/SceneNodeDeleteCommand.h>
 
+#include <Framework/TransactionHandler/HeightEditionCommand.h>
+
 #include <Framework/SceneNodes/EmptySceneNode.h>
 #include <Framework/Scene.h>
+
 #include "EditorInterface.h"
 
+#include <Framework/TerrainEditor.h>
 #include <Core/Allocators/AllocationHelpers.h>
 #include <Core/Allocators/GrowingStackAllocator.h>
 #include <Core/Allocators/LinearAllocator.h>
@@ -124,6 +128,7 @@ FLAN_ENV_VAR( WindowMode, "Defines application window mode [Windowed/Fullscreen/
 FLAN_DEV_VAR( EnableCPUProfilerPrint, "Enables CPU Profiling Print on Screen [false/true]", false, bool )
 FLAN_DEV_VAR( EnableCPUFPSPrint, "Enables CPU FPS Print on Screen [false/true]", true, bool )
 FLAN_DEV_VAR( EnableDebugPhysicsColliders, "Enables Bullet's Debug Physics World Draw [false/true]", false, bool )
+FLAN_DEV_VAR( PrintMemoryDebugInfos, "Print Memory related debug infos [false/true]", true, bool )
 
 FLAN_ENV_VAR( CameraFOV, "Camera FieldOfView (in degrees)", 80.0f, float )
 FLAN_ENV_VAR( MSAASamplerCount, "Defines MSAA sampler count [0/2/4/8]", 0, int32_t )
@@ -142,7 +147,9 @@ char                    g_BaseStringBuffer[256];
 Timer                   g_EditorAutoSaveTimer;
 void*                   g_AllocatedTable;
 void*                   g_AllocatedStringTable;
-bool                    g_IsEditingTerrain = false;
+
+bool                    g_IsEditingTerrain          = false;
+TerrainSceneNode*       g_EditedTerrainSceneEditor  = nullptr;
 
 void CreateSubsystems()
 {
@@ -151,10 +158,6 @@ void CreateSubsystems()
 
     g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
     g_StringAllocator = new ( g_BaseStringBuffer ) GrowingStackAllocator( 128 * 1024 * 1024, g_AllocatedStringTable );
-
-    flan::string test( g_StringAllocator );
-    test.reserve( 32 );
-    test += 't';
 
     // Create global instances whenever the Application ctor is called
     g_FileLogger = flan::core::allocate<FileLogger>( g_GlobalAllocator, PROJECT_NAME );
@@ -176,7 +179,7 @@ void CreateSubsystems()
 
 #if FLAN_DEVBUILD
     g_FileSystemWatchdog = flan::core::allocate<FileSystemWatchdog>( g_GlobalAllocator );
-    g_TransactionHandler = flan::core::allocate<TransactionHandler>( g_GlobalAllocator );
+    g_TransactionHandler = flan::core::allocate<TransactionHandler>( g_GlobalAllocator, g_StringAllocator );
     g_PhysicsDebugDraw = flan::core::allocate<PhysicsDebugDraw>( g_GlobalAllocator );
 #endif
 }
@@ -210,7 +213,7 @@ void Shutdown()
     flan::core::free( g_GlobalAllocator, g_TransactionHandler );
     flan::core::free( g_GlobalAllocator, g_FileSystemWatchdog );
 #endif
-
+    
     flan::core::free( g_GlobalAllocator, g_CurrentScene );
     flan::core::free( g_GlobalAllocator, g_DynamicsWorld );
     flan::core::free( g_GlobalAllocator, g_AudioDevice );
@@ -466,7 +469,7 @@ int InitializeSubsystems()
     g_RenderDevice->setVSyncState( *EnableVSync );
 
     g_WorldRenderer->create( g_RenderDevice );
-    g_WorldRenderer->loadCachedResources( g_ShaderStageManager, g_GraphicsAssetManager );
+    g_WorldRenderer->loadCachedResources(g_GlobalAllocator, g_ShaderStageManager, g_GraphicsAssetManager );
 
     g_DrawCommandBuilder->create( g_TaskManager, g_RenderableEntityManager, g_GraphicsAssetManager, g_WorldRenderer );
     g_RenderableEntityManager->create( g_RenderDevice );
@@ -525,9 +528,20 @@ int InitializeSubsystems()
         if ( input.Actions.find( FLAN_STRING_HASH( "OpenDevMenu" ) ) != input.Actions.end() ) {
             IsDevMenuVisible = !IsDevMenuVisible;
 
+            FLAN_IMPORT_VAR_PTR( panelId, int )
+
             if ( IsDevMenuVisible ) {
                 g_InputMapper->pushContext( FLAN_STRING_HASH( "DebugUI" ) );
+
+                // Restore current editor input context
+                if ( *panelId == 2 ) {
+                    g_InputMapper->pushContext( FLAN_STRING_HASH( "TerrainEditor" ) );
+                }
             } else {
+                if ( *panelId == 2 ) {
+                    g_InputMapper->popContext();
+                }
+
                 g_InputMapper->popContext();
             }
         }
@@ -545,31 +559,61 @@ int InitializeSubsystems()
         ImGuiIO& io = ImGui::GetIO();
         if ( !io.WantCaptureMouse ) {
             if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
-                TerrainSceneNode* terrainSceneNode = ( TerrainSceneNode* )PickedNode;
-                if ( terrainSceneNode != nullptr
-                    && terrainSceneNode->instance.terrainAsset != nullptr ) {
+                if ( PickedNode != nullptr ) {
+                    g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
+                    g_IsEditingTerrain = true;
+
                     const auto& cameraData = mainCamera->GetData();
                     Ray rayObj = GenerateMousePickingRay( io, cameraData );
 
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
                     cmdList->beginCommandList( g_RenderDevice );
-                    EditTerrain( rayObj, terrainSceneNode->instance.terrainAsset, cmdList );
-                    cmdList->endCommandList( g_RenderDevice );
+                        flan::framework::EditTerrain( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
+                    cmdList->endCommandList( g_RenderDevice );                 
                     cmdList->playbackCommandList( g_RenderDevice );
-
-                    g_IsEditingTerrain = true;
                 }
-            } else if ( g_IsEditingTerrain && PickedNode != nullptr ) {
-                // Recompute visibility
-                auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-                cmdList->beginCommandList( g_RenderDevice );
-                auto terrainSceneNode = ( TerrainSceneNode* )PickedNode;
-                terrainSceneNode->instance.terrainAsset->computePatchsBounds();
-                terrainSceneNode->instance.terrainAsset->uploadPatchBounds( cmdList );
-                cmdList->endCommandList( g_RenderDevice );
-                cmdList->playbackCommandList( g_RenderDevice );
+            } else if ( g_EditedTerrainSceneEditor != nullptr ) {
+                Terrain* editedTerrain = g_EditedTerrainSceneEditor->instance.terrainAsset;
 
-                g_IsEditingTerrain = false;
+                const auto& cameraData = mainCamera->GetData();
+                Ray rayObj = GenerateMousePickingRay( io, cameraData );
+                flan::framework::UpdateHeightfieldMouseCircle( rayObj, editedTerrain );
+
+                if ( g_IsEditingTerrain ) {
+                    // Compute and upload updated tile visibility
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+                    cmdList->beginCommandList( g_RenderDevice );
+                    editedTerrain->computePatchsBounds();
+                    editedTerrain->uploadPatchBounds( cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+
+                    cmdList->playbackCommandList( g_RenderDevice );
+            
+                    FLAN_IMPORT_VAR_PTR( TerrainEditionHeightDelta, float );
+                    FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int );
+                    FLAN_IMPORT_VAR_PTR( g_RayMarch, glm::vec3 );
+
+                    g_TransactionHandler->commit< HeightEditionCommand >(
+                        editedTerrain,
+                        *g_RayMarch,
+                        *g_TerrainEditorEditionRadius,
+                        *TerrainEditionHeightDelta
+                    );
+
+                    *TerrainEditionHeightDelta = 0.0f;
+                    g_IsEditingTerrain = false;
+                }
+
+                // Update GPU data in case of undo/redo
+                if ( editedTerrain->needReupload() ) {
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+
+                    cmdList->beginCommandList( g_RenderDevice );
+                    editedTerrain->uploadHeightmap( cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+
+                    cmdList->playbackCommandList( g_RenderDevice );
+                }
             }
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
@@ -645,7 +689,7 @@ int InitializeSubsystems()
 
             if ( input.Actions.find( FLAN_STRING_HASH( "PasteNode" ) ) != input.Actions.end() ) {
                 if ( CopiedNode != nullptr ) {
-                    g_TransactionHandler->commit( new SceneNodeCopyCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                    g_TransactionHandler->commit<SceneNodeCopyCommand>( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                 }
             }
 
@@ -660,7 +704,7 @@ int InitializeSubsystems()
 
         if ( input.Actions.find( FLAN_STRING_HASH( "DeleteNode" ) ) != input.Actions.end() ) {
             if ( PickedNode != nullptr ) {
-                g_TransactionHandler->commit( new SceneNodeDeleteCommand( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld ) );
+                g_TransactionHandler->commit<SceneNodeDeleteCommand>( PickedNode, g_CurrentScene, g_RenderableEntityManager, g_DynamicsWorld );
                 PickedNode = nullptr;
             }
         }
@@ -683,22 +727,25 @@ void RebuildCameraPipeline( Camera* mainCamera )
 {
     mainCamera->clearRenderPasses();
     mainCamera->addRenderPass( FLAN_STRING_HASH( "CascadedShadowMapCapture" ) );
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "TopDownWorldCaptureRequest" ) ); // Fullfiled if there is any frametime left
+    mainCamera->addRenderPass( FLAN_STRING_HASH( "GrassSetupPass" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AtmosphereRenderPass" ) );
 
     if ( MSAASamplerCount <= 1 ) {
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DepthPrePass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "GrassRenderingPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) ); 
     } else {
         mainCamera->addRenderPass( FLAN_STRING_HASH( "CopyTextureToMSAAPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldDepthMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "DepthPreMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LightCullingMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "WorldLightMSAAPass" ) );
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "GrassRenderingMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "DebugWorldMSAAPass" ) );
-        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringMSAAPass" ) );
         mainCamera->addRenderPass( FLAN_STRING_HASH( "LineRenderPass" ) );
 
         mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "MSAADepthResolvePass" + std::to_string( MSAASamplerCount ) ).c_str() ) );
@@ -708,12 +755,14 @@ void RebuildCameraPipeline( Camera* mainCamera )
         } else {
             mainCamera->addRenderPass( FLAN_STRING_HASH( std::string( "AntiAliasingPassMSAA" + std::to_string( MSAASamplerCount ) ).c_str() ) );
         }
-    }
 
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SubsurfaceScatteringPassMSAA" ) );
+    }
+    
     FLAN_IMPORT_VAR_PTR( SSAAMultiplicator, float )
-        if ( *SSAAMultiplicator > 1.0f ) {
-            mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
-        }
+    if ( *SSAAMultiplicator > 1.0f ) {
+        mainCamera->addRenderPass( FLAN_STRING_HASH( "SSAAResolvePass" ) );
+    }
 
     mainCamera->addRenderPass( FLAN_STRING_HASH( "AutoExposurePass" ) );
     mainCamera->addRenderPass( FLAN_STRING_HASH( "BloomPass" ) );
@@ -752,6 +801,9 @@ int motorway::game::Start()
         }
 
         frameTime = static_cast<float>( updateTimer.getDeltaAsSeconds() );
+        if ( frameTime > 1.0f / 10.0f ) {
+            frameTime = flan::framework::LOGIC_DELTA;
+        }
 
         logicCounter.onFrame( frameTime );
         g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 0.30f, 0.1f );
@@ -813,18 +865,26 @@ int motorway::game::Start()
         FLAN_PROFILE_SECTION( g_WorldRenderer->onFrame( interpolatedFrametime, g_TaskManager ) );
 
 #if FLAN_DEVBUILD
-        // Print debug memory usage
-        float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
-        std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
-        g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
+        if ( PrintMemoryDebugInfos ) {
+            // Print debug memory usage
+            float globalHeapMib = ( float )g_GlobalHeapUsage / ( 1024.0f * 1024.0f );
+            std::string globalHeapUsage = "Global Heap Usage: " + std::to_string( globalHeapMib ).substr( 0, 6 ) + "MiB";
+            g_WorldRenderer->drawDebugText( globalHeapUsage, 0.3f, 0.0f, 0.0f );
+            
+            const float heapSizeMib = ( float )g_GlobalAllocator->getSize() / ( 1024.0f * 1024.0f );
+            float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
+            std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/" + std::to_string( heapSizeMib ).substr( 0, 6 ) +  "MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
 
-        float heapMib = ( float )g_GlobalAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
-        std::string heapUsage = "Application Heap Usage: " + std::to_string( heapMib ).substr( 0, 6 ) + "/1024.0MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
+            const float pageSizeMib = ( float )g_StringAllocator->getSize() / ( 1024.0f * 1024.0f );
+            float pageMib = ( float )g_StringAllocator->getMemoryUsage() / ( 1024.0f * 1024.0f );
+            std::string pageUsage = "Commited Page Usage: " + std::to_string( pageMib ).substr( 0, 6 ) + "/" + std::to_string( pageSizeMib ).substr( 0, 6 ) + "MiB (" + std::to_string( g_GlobalAllocator->getAllocationCount() ) + " allocations)";
 
-        g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+            g_WorldRenderer->drawDebugText( heapUsage, 0.3f, 0.0f, 0.07f );
+            g_WorldRenderer->drawDebugText( pageUsage, 0.3f, 0.0f, 0.14f );
+        }
 
         CommandList* cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-        DrawEditorInterface( interpolatedFrametime, cmdList );
+        flan::framework::DrawEditorInterface( interpolatedFrametime, cmdList );
 #endif
 
         g_RenderDevice->present();

@@ -54,10 +54,9 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 {
     struct InstanceBuffer
     {
-        glm::mat4x4 modelMatrix;
+        glm::mat4x4 modelMatrix[512];
         float lodDitheringAlpha;
-        uint32_t enableAlphaStippling;
-        uint32_t __PADDING__[2];
+        uint32_t __PADDING__[3];
     };
 
     struct PassBuffer
@@ -212,9 +211,9 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             passData.samplers[2] = renderPipelineBuilder->allocateSampler( bilinearSamplerDesc );
 
             SamplerDesc matDisplacementSamplerDesc;
-            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            matDisplacementSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            matDisplacementSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             matDisplacementSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.samplers[3] = renderPipelineBuilder->allocateSampler( matDisplacementSamplerDesc );
@@ -261,11 +260,15 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
             PassBuffer passBuffer;
             passBuffer.backbufferDimension.x = pipelineDimensions.Width;
             passBuffer.backbufferDimension.y = pipelineDimensions.Height;
-            passBuffer.brushRadius = 8.0f;
-            passBuffer.toggleBrush = 1u;
 
             FLAN_IMPORT_VAR_PTR( dev_TerrainMousePosition, glm::vec3 )
+            FLAN_IMPORT_VAR_PTR( g_TerrainEditorEditionRadius, int )
+            FLAN_IMPORT_VAR_PTR( panelId, int )
+            FLAN_IMPORT_VAR_PTR( IsDevMenuVisible, bool )
+                
             passBuffer.mouseCoordinates = *dev_TerrainMousePosition;
+            passBuffer.brushRadius = static_cast<float>( *g_TerrainEditorEditionRadius );
+            passBuffer.toggleBrush = ( *panelId == 2 && *IsDevMenuVisible ) ? 1 : 0;
 
             auto rtBufferData = renderPipelineResources->getBuffer( passData.buffers[2] );
             rtBufferData->updateAsynchronous( cmdList, &passBuffer, sizeof( PassBuffer ) );
@@ -277,7 +280,7 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
 
             // Bind Camera Buffer
             auto cameraCbuffer = renderPipelineResources->getBuffer( passData.buffers[3] );
-            auto passCamera = renderPipelineResources->getActiveCamera();
+            auto& passCamera = renderPipelineResources->getActiveCamera();
             cameraCbuffer->updateAsynchronous( cmdList, &passCamera, sizeof( Camera::Data ) );
             cameraCbuffer->bind( cmdList, 0 );
 
@@ -326,22 +329,34 @@ static fnPipelineMutableResHandle_t AddOpaqueLightPass( RenderPipeline* renderPi
                 const auto& drawCmd = opaqueBucketList[i];
                 drawCmd.vao->bind( cmdList );
 
-                //if ( drawCmd.modelMatrix != previousModelMatrix ) {
-                    instance.modelMatrix = *drawCmd.modelMatrix;
-                    instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
-                    instance.enableAlphaStippling = drawCmd.enableAlphaStippling;
+                if ( drawCmd.instanceCount > 1 ) {
+                    memcpy( instance.modelMatrix, drawCmd.modelMatrix, drawCmd.instanceCount * sizeof( glm::mat4x4 ) );
+                    previousModelMatrix = nullptr;
+                } else {
+                    if ( drawCmd.modelMatrix != previousModelMatrix ) {
+                        instance.modelMatrix[0] = *drawCmd.modelMatrix;
+                        previousModelMatrix = drawCmd.modelMatrix;
+                    }
+                }
+                    
+                instance.lodDitheringAlpha = drawCmd.alphaDitheringValue;
+                modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
+                  
+                if ( drawCmd.instanceCount > 1 ) {
+                    if ( !isRenderingProbe )
+                        drawCmd.material->bindInstanced( cmdList );
+                    else
+                        drawCmd.material->bindInstancedForProbeRendering( cmdList );
 
-                    modelMatrixBuffer->updateAsynchronous( cmdList, &instance, sizeof( InstanceBuffer ) );
-                   
-                //    previousModelMatrix = drawCmd.modelMatrix;
-                //}
+                    cmdList->drawInstancedIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset, drawCmd.instanceCount );
+                } else {
+                    if ( !isRenderingProbe )
+                        drawCmd.material->bind( cmdList );
+                    else
+                        drawCmd.material->bindForProbeRendering( cmdList );
 
-                if ( !isRenderingProbe )
-                    drawCmd.material->bind( cmdList );
-                else
-                    drawCmd.material->bindForProbeRendering( cmdList );
-
-                cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                    cmdList->drawIndexedCmd( drawCmd.indiceBufferCount, drawCmd.indiceBufferOffset );
+                }
             }
 
             cmdList->bindBackbufferCmd();

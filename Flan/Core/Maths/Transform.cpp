@@ -86,108 +86,111 @@ void Transform::deserialize( FileSystemObject* stream )
 #if FLAN_DEVBUILD
 #include <imgui/imgui.h>
 #include <ImGuizmo/ImGuizmo.h>
+
+#include <Framework/TransactionHandler/ImGuiEditCommand.h>
+
 void Transform::drawInEditor( const float frameTime, TransactionHandler* transactionHandler )
 {
-    ImGui::LabelText( "##TransformName", "Transform" );
-    ImGui::SameLine();
-    FLAN_IMPORT_VAR_PTR( dev_GuizmoViewMatrix, float* )
-    FLAN_IMPORT_VAR_PTR( dev_GuizmoProjMatrix, float* )
+    if ( ImGui::TreeNode( "Transform" ) ) {
+        FLAN_IMPORT_VAR_PTR( dev_GuizmoViewMatrix, float* )
+        FLAN_IMPORT_VAR_PTR( dev_GuizmoProjMatrix, float* )
 
-    static ImGuizmo::OPERATION mCurrentGizmoOperation( ImGuizmo::ROTATE );
-    static int activeManipulationMode = 0;
-    static bool useSnap = false;
-    static float snap[3] = { 1.f, 1.f, 1.f };
-    static ImGuizmo::MODE mCurrentGizmoMode( ImGuizmo::LOCAL );
+        static ImGuizmo::OPERATION mCurrentGizmoOperation( ImGuizmo::ROTATE );
+        static int activeManipulationMode = 0;
+        static bool useSnap = false;
+        static float snap[3] = { 1.f, 1.f, 1.f };
+        static ImGuizmo::MODE mCurrentGizmoMode( ImGuizmo::LOCAL );
 
-    glm::mat4x4* modelMatrix = ( mCurrentGizmoMode == ImGuizmo::LOCAL ) ? &localModelMatrix : &worldModelMatrix;
+        glm::mat4x4* modelMatrix = ( mCurrentGizmoMode == ImGuizmo::LOCAL ) ? &localModelMatrix : &worldModelMatrix;
 
-    if ( mCurrentGizmoOperation != ImGuizmo::SCALE ) {
-        if ( ImGui::RadioButton( "Local", mCurrentGizmoMode == ImGuizmo::LOCAL ) ) {
-            mCurrentGizmoMode = ImGuizmo::LOCAL;
-            modelMatrix = &localModelMatrix;
+        if ( mCurrentGizmoOperation != ImGuizmo::SCALE ) {
+            if ( ImGui::RadioButton( "Local", mCurrentGizmoMode == ImGuizmo::LOCAL ) ) {
+                mCurrentGizmoMode = ImGuizmo::LOCAL;
+                modelMatrix = &localModelMatrix;
+            }
+
+            ImGui::SameLine();
+
+            if ( ImGui::RadioButton( "World", mCurrentGizmoMode == ImGuizmo::WORLD ) ) {
+                mCurrentGizmoMode = ImGuizmo::WORLD;
+                modelMatrix = &worldModelMatrix;
+            }
         }
 
+        ImGui::Checkbox( "", &useSnap );
         ImGui::SameLine();
 
-        if ( ImGui::RadioButton( "World", mCurrentGizmoMode == ImGuizmo::WORLD ) ) {
-            mCurrentGizmoMode = ImGuizmo::WORLD;
-            modelMatrix = &worldModelMatrix;
+        switch ( mCurrentGizmoOperation ) {
+        case ImGuizmo::TRANSLATE:
+            ImGui::InputFloat3( "Snap", snap );
+            break;
+        case ImGuizmo::ROTATE:
+            ImGui::InputFloat( "Angle Snap", snap );
+            break;
+        case ImGuizmo::SCALE:
+            ImGui::InputFloat( "Scale Snap", snap );
+            break;
         }
-    }
 
-    ImGui::Checkbox( "", &useSnap );
-    ImGui::SameLine();
+        ImGui::RadioButton( "Translate", &activeManipulationMode, 0 );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Rotate", &activeManipulationMode, 1 );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Scale", &activeManipulationMode, 2 );
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
+        ImGuizmo::Manipulate( *dev_GuizmoViewMatrix, *dev_GuizmoProjMatrix, static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, ( float* )modelMatrix, NULL, useSnap ? &snap[activeManipulationMode] : NULL );
+
+        glm::vec3 Scale;
+        glm::quat rotationDecomposed;
+        glm::vec3 skewDecomposed;
+        glm::vec3 Translation;
+        glm::vec4 perspectiveDecomposed;
+        glm::decompose( *modelMatrix, Scale, rotationDecomposed, Translation, skewDecomposed, perspectiveDecomposed );
+
+        FLAN_IMGUI_INPUT_FLOAT3( transactionHandler, Translation )
+
+        auto Rotation = glm::eulerAngles( rotationDecomposed );
+
+        glm::quat nextRotation = localRotation;
+
+        // TODO FIXME Why the fuck rotation sperg out when it's enabled (loss of precision when converting euler angles to quaternion?)
+        if ( ImGui::InputFloat3( "Rotation", ( float* )&Rotation, 3 ) ) {
+            nextRotation = glm::toQuat( glm::eulerAngleXYZ( Rotation.x, Rotation.y, Rotation.z ) );
+        } else {
+            nextRotation = rotationDecomposed;
+        }
+
+        FLAN_IMGUI_INPUT_FLOAT3( transactionHandler, Scale )
+
+        isManipulating = ImGuizmo::IsUsing();
+
+        if ( !isManipulating ) {
+            if ( Translation != localTranslation ) {
+                if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                    transactionHandler->commit<LocalTranslateCommand>( this, Translation );
+                else
+                    transactionHandler->commit<WorldTranslateCommand>( this, Translation );
+            }
+
+            if ( Scale != localScale ) {
+                if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                    transactionHandler->commit<LocalScaleCommand>( this, Scale );
+                else
+                    transactionHandler->commit<WorldScaleCommand>( this, Scale );
+            }
+
+            if ( nextRotation != localRotation ) {
+                if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                    transactionHandler->commit<LocalRotateCommand>( this, nextRotation );
+                else
+                    transactionHandler->commit<WorldRotateCommand>( this, nextRotation );
+            }
+        }
     
-    switch ( mCurrentGizmoOperation ) {
-    case ImGuizmo::TRANSLATE:
-        ImGui::InputFloat3( "Snap", snap );
-        break;
-    case ImGuizmo::ROTATE:
-        ImGui::InputFloat( "Angle Snap", snap );
-        break;
-    case ImGuizmo::SCALE:
-        ImGui::InputFloat( "Scale Snap", snap );
-        break;
+        ImGui::TreePop();
     }
-
-    ImGui::RadioButton( "Translate", &activeManipulationMode, 0 );
-    ImGui::SameLine();
-    ImGui::RadioButton( "Rotate", &activeManipulationMode, 1 );
-    ImGui::SameLine();
-    ImGui::RadioButton( "Scale", &activeManipulationMode, 2 );
-
-    ImGuiIO& io = ImGui::GetIO();
-    ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
-    ImGuizmo::Manipulate( *dev_GuizmoViewMatrix, *dev_GuizmoProjMatrix, static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, ( float* )modelMatrix, NULL, useSnap ? &snap[activeManipulationMode] : NULL );
-
-    glm::vec3 scaleDecomposed;
-    glm::quat rotationDecomposed;
-    glm::vec3 skewDecomposed;
-    glm::vec3 translationDecomposed;
-    glm::vec4 perspectiveDecomposed;
-    glm::decompose( *modelMatrix, scaleDecomposed, rotationDecomposed, translationDecomposed, skewDecomposed, perspectiveDecomposed );
-
-    ImGui::InputFloat3( "Translation", (float*)&translationDecomposed, 3 );
-
-    auto euler = glm::eulerAngles( rotationDecomposed );
-
-    glm::quat nextRotation = localRotation;
-
-    // TODO FIXME Why the fuck rotation sperg out when it's enabled (loss of precision when converting euler angles to quaternion?)
-    if ( ImGui::InputFloat3( "Rotation", ( float* )&euler, 3 ) ) {
-        nextRotation = glm::toQuat( glm::eulerAngleXYZ( euler.x, euler.y, euler.z ) );
-    } else {
-        nextRotation = rotationDecomposed;
-    }
-
-    ImGui::InputFloat3( "Scale", (float*)&scaleDecomposed, 3 );
-
-    isManipulating = ImGuizmo::IsUsing();
-
-    if ( !isManipulating ) {
-        if ( translationDecomposed != localTranslation ) {
-            if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                transactionHandler->commit( new LocalTranslateCommand( this, translationDecomposed ) );
-            else
-                transactionHandler->commit( new WorldTranslateCommand( this, translationDecomposed ) );
-        }
-
-        if ( scaleDecomposed != localScale ) {
-            if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                transactionHandler->commit( new LocalScaleCommand( this, scaleDecomposed ) );
-            else
-                transactionHandler->commit( new WorldScaleCommand( this, scaleDecomposed ) );
-        }
-
-        if ( nextRotation != localRotation ) {
-            if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                transactionHandler->commit( new LocalRotateCommand( this, nextRotation ) );
-            else
-                transactionHandler->commit( new WorldRotateCommand( this, nextRotation ) );
-        }
-    }
-
-    ImGui::Separator();
 }
 #endif
 

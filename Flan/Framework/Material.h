@@ -52,13 +52,19 @@ public:
     void                        serialize( FileSystemObject* file ) const;
 
     void                        bind( CommandList* cmdList ) const;
+    void                        bindInstanced( CommandList* cmdList ) const;
+
+    void                        bindTopDown( CommandList* cmdList ) const;
 
     // Conditional bindings
     bool                        bindReversedDepthOnly( CommandList* cmdList ) const; // Reversed Z rendering (e.g. depth prepass)
+    bool                        bindInstancedReversedDepthOnly( CommandList* cmdList ) const; // Reversed Z rendering (e.g. depth prepass)
   
     // Regular Z rendering (e.g. shadow rendering, hi-z pyramid compute, etc.)
     void                        bindDepthOnly( CommandList* cmdList ) const;
+    void                        bindInstancedDepthOnly( CommandList* cmdList ) const;
     void                        bindForProbeRendering( CommandList* cmdList ) const;
+    void                        bindInstancedForProbeRendering( CommandList* cmdList ) const;
 
     const uint32_t              getMaterialSortKey() const;
     const bool                  isOpaque() const;
@@ -70,7 +76,7 @@ public:
 #endif
 
     float getHeightmapScaleTEST() const { return editableMaterialData.layers[0].HeightmapWorldHeight; }
-    void setHeightmapTEST( Texture* tex, Texture* splatmap ) { 
+    void setHeightmapTEST( Texture* tex, Texture* splatmap, Texture* grassmap ) {
         vertexTextureSet[0] = tex; 
         editableMaterialData.layers[0].Heightmap.InputType = MaterialEditionInput::TEXTURE;  
         editableMaterialData.layers[0].Heightmap.InputTexture = tex;
@@ -78,6 +84,10 @@ public:
         pixelTextureSet[17] = splatmap;
         editableMaterialData.layers[0].TerrainSplatMap.InputType = MaterialEditionInput::TEXTURE;
         editableMaterialData.layers[0].TerrainSplatMap.InputTexture = splatmap;
+
+        pixelTextureSet[18] = grassmap;
+        editableMaterialData.layers[0].TerrainGrassMap.InputType = MaterialEditionInput::TEXTURE;
+        editableMaterialData.layers[0].TerrainGrassMap.InputTexture = grassmap;
     }
 
 private:
@@ -113,10 +123,15 @@ private:
     fnTextureSet_t   vertexTextureSet;
 
     std::unique_ptr<PipelineState>          pipelineState;
+    std::unique_ptr<PipelineState>          topDownPipelineState;
     std::unique_ptr<PipelineState>          depthPipelineState;
     std::unique_ptr<PipelineState>          reversedDepthPipelineState;
     std::unique_ptr<PipelineState>          pipelineStateProbe;
-    std::unique_ptr<PipelineState>          pipelineStateVirtualFeedback;
+
+    std::unique_ptr<PipelineState>          instancedPipelineState;
+    std::unique_ptr<PipelineState>          instancedDepthPipelineState;
+    std::unique_ptr<PipelineState>          instancedReversedDepthPipelineState;
+    std::unique_ptr<PipelineState>          instancedPipelineStateProbe;
 
     // TODO Editor specific stuff; move to editor project
     struct {

@@ -96,9 +96,15 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         editableMaterialBuffer->create( renderDevice, bufferDesc );
 
         pipelineState.reset( new PipelineState() );
+        topDownPipelineState.reset( new PipelineState() );
         pipelineStateProbe.reset( new PipelineState() );
         depthPipelineState.reset( new PipelineState() );
         reversedDepthPipelineState.reset( new PipelineState() );
+
+        instancedPipelineState.reset( new PipelineState() );
+        instancedDepthPipelineState.reset( new PipelineState() );
+        instancedReversedDepthPipelineState.reset( new PipelineState() );
+        instancedPipelineStateProbe.reset( new PipelineState() );
 
         // Enum helper to figure out which vertex stage should be used
         enum class MaterialType
@@ -110,6 +116,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         MaterialType materialType = MaterialType::SURFACE;
         fnString_t compiledPixelStage = FLAN_STRING( "Surface" ),
+                   compiledTopDownPixelStage = FLAN_STRING( "SurfaceTopDownCapture" ),
                    compiledProbePixelStage = FLAN_STRING( "SurfaceProbeCapture" );
 
         switch ( shadingModel ) {
@@ -131,6 +138,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
         case flan::graphics::eShadingModel::SHADING_MODEL_TERRAIN_STANDARD:
             compiledPixelStage = FLAN_STRING( "SurfaceTerrain" );
             compiledProbePixelStage = FLAN_STRING( "SurfaceTerrainProbeCapture" );
+            compiledTopDownPixelStage = FLAN_STRING( "SurfaceTerrainTopDownCapture" );
 
             materialType = MaterialType::TERRAIN;
             break;
@@ -148,9 +156,10 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         const bool isWorldMaterial = ( materialType != MaterialType::HUD );
 
+        fnString_t instancedVertexStage;
+        fnString_t vertexStage = FLAN_STRING( "Surface" );
         PipelineStateDesc descriptor;
         if ( materialType == MaterialType::SURFACE ) {
-            fnString_t vertexStage = FLAN_STRING( "Surface" );
             if ( snapToHeightmap ) {
                 vertexStage += FLAN_STRING( "SnapToHeightfield" );
             }
@@ -159,12 +168,20 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
                 vertexStage += FLAN_STRING( "ScaledUV" );
             }
 
+            instancedVertexStage = vertexStage + FLAN_STRING( "Instanced" );
+
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
         } else if ( materialType == MaterialType::TERRAIN ) {
+            instancedVertexStage = FLAN_STRING( "Heightfield" );
+            vertexStage = FLAN_STRING( "Heightfield" );
+
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_VERTEX );
+
             descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_TESSELATION_CONTROL );
             descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Heightfield" ), SHADER_STAGE_TESSELATION_EVALUATION );
         } else if ( materialType == MaterialType::HUD ) {
+            vertexStage = FLAN_STRING( "Primitive2D" );
+
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "Primitive2D" ), SHADER_STAGE_VERTEX );
         }
 
@@ -213,7 +230,8 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             };
         }
 
-        if ( editableMaterialData.EnableAlphaBlend == 1 ) {
+        if ( editableMaterialData.EnableAlphaBlend == 1 
+            || editableMaterialData.AlphaToCoverage == 1 ) {
             descriptor.blendState = new BlendState();
 
             BlendStateDesc blendStateDesc;
@@ -225,7 +243,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             blendStateDesc.blendConfAlpha.source = flan::rendering::eBlendSource::BLEND_SOURCE_INV_DEST_ALPHA;
             blendStateDesc.blendConfAlpha.dest = flan::rendering::eBlendSource::BLEND_SOURCE_ONE;
 
-            blendStateDesc.enableBlend = true;
+            blendStateDesc.enableBlend = ( editableMaterialData.EnableAlphaBlend == 1 );
             blendStateDesc.sampleMask = ~0;
             blendStateDesc.enableAlphaToCoverage = ( editableMaterialData.AlphaToCoverage == 1 );
 
@@ -242,26 +260,66 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             g_TileHeatDebugPSO = new PipelineState();
             g_TileHeatDebugPSO->create( renderDevice, descriptor );
         }
-#endif
+#endif  
+
+        descriptor.vertexStage = shaderStageManager->getOrUploadStage( instancedVertexStage, SHADER_STAGE_VERTEX );
+        instancedPipelineState->create( renderDevice, descriptor );
+
+        // TopDown
+        if ( materialType == MaterialType::TERRAIN ) {
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
+
+            descriptor.tesselationControlStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldLQ" ), SHADER_STAGE_TESSELATION_CONTROL );
+            descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldLQ" ), SHADER_STAGE_TESSELATION_EVALUATION );
+            descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledTopDownPixelStage, SHADER_STAGE_PIXEL );
+
+            rasterDesc.cullMode = flan::rendering::eCullMode::CULL_MODE_NONE;
+            rasterDesc.useTriangleCCW = false;
+
+            depthStencilDesc.enableDepthWrite = false;
+            depthStencilDesc.enableStencilTest = false;
+            depthStencilDesc.enableDepthTest = false;
+            depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_ALWAYS;
+           
+            descriptor.rasterizerState = new RasterizerState();
+            descriptor.rasterizerState->create( renderDevice, rasterDesc );
+
+            descriptor.depthStencilState = new DepthStencilState();
+            descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
+
+            topDownPipelineState->create( renderDevice, descriptor );
+
+            descriptor.tesselationControlStage = nullptr;
+            descriptor.tesselationEvalStage = nullptr;
+        }
 
         // Probe Pipeline State
         if ( isWorldMaterial ) {
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
             descriptor.pixelStage = shaderStageManager->getOrUploadStage( compiledProbePixelStage.c_str(), SHADER_STAGE_PIXEL );
             pipelineStateProbe->create( renderDevice, descriptor );
+
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( instancedVertexStage, SHADER_STAGE_VERTEX );
+            instancedPipelineStateProbe->create( renderDevice, descriptor );
         }
 
         // Depth Only Pipeline State
+        fnString_t depthVertexStage = FLAN_STRING( "DepthWrite" );
+        fnString_t depthVertexStageInstanced;
         if ( materialType == MaterialType::SURFACE ) {
-            fnString_t vertexStage = FLAN_STRING( "DepthWrite" );
             if ( snapToHeightmap ) {
-                vertexStage += FLAN_STRING( "SnapToHeightfield" );
+                depthVertexStage += FLAN_STRING( "SnapToHeightfield" );
             }
-            descriptor.vertexStage = shaderStageManager->getOrUploadStage( vertexStage, SHADER_STAGE_VERTEX );
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( depthVertexStage, SHADER_STAGE_VERTEX );
+
+            depthVertexStageInstanced = depthVertexStage + FLAN_STRING( "Instanced" );
 
             descriptor.tesselationControlStage = nullptr;
             descriptor.tesselationEvalStage = nullptr;
         } else if ( materialType == MaterialType::TERRAIN ) {
+            depthVertexStage = FLAN_STRING( "DepthWriteHeightmap" );
             descriptor.vertexStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "DepthWriteHeightmap" ), SHADER_STAGE_VERTEX );
+            depthVertexStageInstanced = FLAN_STRING( "DepthWriteHeightmap" );
 
             // Use constant tessellated based heightfield instead of the distance based one (since this pso permutation should be used 
             // for shadow mapping anyway)
@@ -295,6 +353,9 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
 
         depthPipelineState->create( renderDevice, descriptor );
 
+        descriptor.vertexStage = shaderStageManager->getOrUploadStage( depthVertexStageInstanced, SHADER_STAGE_VERTEX );
+        instancedDepthPipelineState->create( renderDevice, descriptor );
+
         // Reversed Depth Only
         if ( !editableMaterialData.EnableAlphaBlend ) {
             if ( materialType == MaterialType::TERRAIN ) {
@@ -302,6 +363,7 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
                 descriptor.tesselationEvalStage = shaderStageManager->getOrUploadStage( FLAN_STRING( "HeightfieldDepthWrite" ), SHADER_STAGE_TESSELATION_EVALUATION );
             }
 
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( depthVertexStage, SHADER_STAGE_VERTEX );
             depthStencilDesc.depthComparisonFunc = flan::rendering::eComparisonFunction::COMPARISON_FUNCTION_GREATER;
             descriptor.depthStencilState = new DepthStencilState();
             descriptor.depthStencilState->create( renderDevice, depthStencilDesc );
@@ -318,8 +380,12 @@ void Material::create( RenderDevice* renderDevice, ShaderStageManager* shaderSta
             descriptor.rasterizerState->create( renderDevice, rasterDesc );
 
             reversedDepthPipelineState->create( renderDevice, descriptor );
+
+            descriptor.vertexStage = shaderStageManager->getOrUploadStage( depthVertexStageInstanced, SHADER_STAGE_VERTEX );
+            instancedReversedDepthPipelineState->create( renderDevice, descriptor );
         } else {
             reversedDepthPipelineState.reset( nullptr );
+            instancedReversedDepthPipelineState.reset( nullptr );
         }
     } else {
         isEditable = false;
@@ -484,6 +550,8 @@ void Material::deserialize( FileSystemObject* file, GraphicsAssetManager* graphi
                 FLAN_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
 
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, TerrainSplatMap )
+                FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 1 ), TerrainGrassMap )
+                    
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, slotBaseIndex, BaseColor )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 2 ), Reflectance )
                 FLAN_CASE_READ_LAYER_PIXEL_INPUT( dictionaryValue, currentLayerIndex, ( slotBaseIndex + 3 ), Roughness )
@@ -587,6 +655,8 @@ void Material::serialize( FileSystemObject* file ) const
         FLAN_WRITE_INPUT_VERTEX( Heightmap, 0 );
         
         FLAN_WRITE_INPUT_PIXEL( TerrainSplatMap, slotBaseIndex )
+        FLAN_WRITE_INPUT_PIXEL( TerrainGrassMap, ( slotBaseIndex + 1 ) )
+
         FLAN_WRITE_INPUT_PIXEL( BaseColor, slotBaseIndex )
         FLAN_WRITE_INPUT_PIXEL( Reflectance, ( slotBaseIndex + 2 ) )
         FLAN_WRITE_INPUT_PIXEL( Roughness, ( slotBaseIndex + 3 ) )
@@ -649,6 +719,49 @@ void Material::bind( CommandList* cmdList ) const
     }
 }
 
+void Material::bindInstanced( CommandList* cmdList ) const
+{
+#if FLAN_DEVBUILD
+    if ( DisplayTileHeat ) {
+        cmdList->bindPipelineStateCmd( g_TileHeatDebugPSO );
+        return;
+    }
+#endif
+
+    cmdList->bindPipelineStateCmd( instancedPipelineState.get() );
+
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
+    }
+
+    if ( isEditable ) {
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_ALL );
+        editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
+    }
+}
+
+void Material::bindTopDown( CommandList* cmdList ) const
+{
+    cmdList->bindPipelineStateCmd( topDownPipelineState.get() );
+
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
+    }
+
+    if ( isEditable ) {
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_ALL );
+        editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
+    }
+}
+
 bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
 {
     // Alpha blended surfaces (e.g. glass) should skip z prepass
@@ -657,6 +770,31 @@ bool Material::bindReversedDepthOnly( CommandList* cmdList ) const
     }
 
     cmdList->bindPipelineStateCmd( reversedDepthPipelineState.get() );
+
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
+    }
+
+    if ( isEditable ) {
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
+    }
+
+    return true;
+}
+
+bool Material::bindInstancedReversedDepthOnly( CommandList* cmdList ) const
+{
+    // Alpha blended surfaces (e.g. glass) should skip z prepass
+    if ( instancedReversedDepthPipelineState == nullptr ) {
+        return false;
+    }
+
+    cmdList->bindPipelineStateCmd( instancedReversedDepthPipelineState.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
@@ -692,9 +830,45 @@ void Material::bindDepthOnly( CommandList* cmdList ) const
     }
 }
 
+void Material::bindInstancedDepthOnly( CommandList* cmdList ) const
+{
+    cmdList->bindPipelineStateCmd( instancedDepthPipelineState.get() );
+
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
+    }
+
+    if ( isEditable ) {
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
+    }
+}
+
 void Material::bindForProbeRendering( CommandList* cmdList ) const
 {
     cmdList->bindPipelineStateCmd( pipelineStateProbe.get() );
+
+    for ( auto& textureSlot : vertexTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
+    }
+
+    for ( auto& textureSlot : pixelTextureSet ) {
+        textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_PIXEL );
+    }
+
+    if ( isEditable ) {
+        editableMaterialBuffer->bind( cmdList, CBUFFER_INDEX_MATERIAL_EDITOR, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL | SHADER_STAGE_PIXEL );
+        editableMaterialBuffer->updateAsynchronous( cmdList, &editableMaterialData, sizeof( editableMaterialData ) );
+    }
+}
+
+void Material::bindInstancedForProbeRendering( CommandList* cmdList ) const
+{
+    cmdList->bindPipelineStateCmd( instancedPipelineStateProbe.get() );
 
     for ( auto& textureSlot : vertexTextureSet ) {
         textureSlot.second->bind( cmdList, textureSlot.first, SHADER_STAGE_VERTEX | SHADER_STAGE_TESSELATION_EVALUATION | SHADER_STAGE_TESSELATION_CONTROL );
@@ -1015,6 +1189,8 @@ void Material::drawInEditor( RenderDevice* renderDevice, ShaderStageManager* sha
                     ImGui::SliderFloat( "Heightmap Height", &layer.HeightmapWorldHeight, 0.0f, 128.0f );
 
                     displayInputConfiguration( graphicsAssetManager, "Heightmap", layer.Heightmap, 0, vertexTextureSet, false );
+                    
+                    displayInputConfiguration( graphicsAssetManager, "GrassMap", layer.TerrainGrassMap, ( slotBaseIndex + 1 ), pixelTextureSet );
                     displayInputConfiguration( graphicsAssetManager, "SplatMap", layer.TerrainSplatMap, slotBaseIndex, pixelTextureSet );
                 } else {
                     if ( ImGui::Button( "Precompute Anti-Aliased Roughness Map" )

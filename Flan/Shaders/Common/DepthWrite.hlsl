@@ -7,6 +7,7 @@ struct VertexStageData
 
 #include <CameraData.hlsli>
 #include <Tessellation.hlsli>
+
 #if PH_USE_HEIGHTFIELD
 #include <MaterialsShared.h>
 cbuffer MaterialEdition : register( b8 )
@@ -49,17 +50,25 @@ struct PixelDepthShaderData
 #endif
 };
 
+#define PH_MAX_INSTANCE_COUNT 512
+
 cbuffer MatricesBuffer : register( b3 )
 {
-    float4x4	ModelMatrix;
+    float4x4	ModelMatrices[PH_MAX_INSTANCE_COUNT];
     float4x4	g_DepthViewProjectionMatrix;
     float       g_LodBlendAlpha;
 };
 
-PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer )
+PixelDepthShaderData EntryPointVS( VertexStageData VertexBuffer, uint InstanceId : SV_InstanceID )
 {
     PixelDepthShaderData output = ( PixelDepthShaderData )0;
 
+#if PH_INSTANCED
+    float4x4 ModelMatrix = ModelMatrices[InstanceId];
+#else  
+    float4x4 ModelMatrix = ModelMatrices[0];
+#endif
+    
 #if PH_HEIGHTFIELD
     const float2 sampleCoordinates = float2( VertexBuffer.Position.x, VertexBuffer.Position.z );
     

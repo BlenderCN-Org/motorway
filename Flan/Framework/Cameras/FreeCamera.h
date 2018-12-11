@@ -25,7 +25,7 @@
 class FreeCamera : public Camera
 {
 public:
-					FreeCamera( const float camSpeed = 15.0f );
+					FreeCamera( const float camSpeed = 50.0f );
 					FreeCamera( FreeCamera& camera ) = default;
 					~FreeCamera() = default;
 

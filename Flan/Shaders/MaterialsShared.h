@@ -110,6 +110,7 @@ struct MaterialLayer
     MaterialEditionInput   BlendMask;
     MaterialEditionInput   Heightmap;
     MaterialEditionInput   TerrainSplatMap;
+    MaterialEditionInput   TerrainGrassMap;
 
     float                  Refraction;
     float                  RefractionIor;

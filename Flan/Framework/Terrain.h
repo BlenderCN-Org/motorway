@@ -29,6 +29,7 @@ class Buffer;
 class Mesh;
 
 #include <Core/Maths/AABB.h>
+#include <Core/Maths/Transform.h>
 #include <vector>
 
 class Terrain
@@ -39,7 +40,7 @@ public:
                                         Terrain& operator = ( Terrain& Terrain ) = default;
                                         ~Terrain();
 
-    void                                create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, Material* grassTest, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
+    void                                create( RenderDevice* renderDevice, BaseAllocator* allocator, Material* terrainMaterial, const uint16_t* grassmapTexels, const uint16_t* splatmapTexels, const uint16_t* heightmapTexels, const uint32_t heightmapWidth, const uint32_t heightmapHeight );
 
     const VertexArrayObject*            getVertexArrayObject() const;
     Material*                           getMaterial();
@@ -54,13 +55,17 @@ public:
     // TODO Crap API for quick prototyping
     void                                setVertexHeight( const uint32_t vertexIndex, const float updatedHeight );
     void                                setVertexMaterial( const uint32_t vertexIndex, const int materialIndexBaseLayer, const int materialIndexOverlayLayer, const float overlayLayerStrength );
-    void                                setGrassWeight( const uint32_t vertexIndex, const float weight );
+    void                                setGrassHeight( const uint32_t vertexIndex, const glm::vec3& grassColor, const float updatedGrassHeight );
 
     void uploadSplatmap( CommandList* cmdList );
+    void uploadGrassmap( CommandList* cmdList );
     void uploadHeightmap( CommandList* cmdList );
     void uploadPatchBounds( CommandList* cmdList );
     void computePatchsBounds();
-    Mesh* GRASS_TEST;
+
+    Texture* getGrassMap() const { return grassmapTexture; }
+    float* getGrassMapValues() const { return grassmap; }
+    const bool needReupload() const { return isEditionInProgress; }
 
 private:
     struct VertexLayout {
@@ -79,7 +84,6 @@ private:
     uint32_t                            scalePatchY;
     uint32_t                            heightmapDimension;
 
-    bool                                isEditionInProgress;
     float                               heightmapHighestVertex;
     float                               heightmapLowestVertex;
 
@@ -91,13 +95,16 @@ private:
     uint16_t*                           splatmap;
     Texture*                            splatmapTexture;
 
+    float*                              grassmap;
+    Texture*                            grassmapTexture;
+    bool                                isEditionInProgress;
+
     std::vector<uint32_t>               indices;
     std::vector<VertexLayout>           vertices;
 
-    int                                 currentVboIndex;
-    std::unique_ptr<Buffer>             vertexBuffer[2];
+    std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
-    std::unique_ptr<VertexArrayObject>  vertexArrayObject[2];
+    std::unique_ptr<VertexArrayObject>  vertexArrayObject;
 
 private:
     void CalcYBounds( const glm::vec3& FLAN_RESTRICT bottomLeft, const glm::vec3& FLAN_RESTRICT topRight, glm::vec3& FLAN_RESTRICT output );
