@@ -64,6 +64,7 @@ public:
     void computePatchsBounds();
 
     Texture* getGrassMap() const { return grassmapTexture; }
+    float* getGrassMapValues() const { return grassmap; }
     const bool needReupload() const { return isEditionInProgress; }
 
 private:
@@ -83,7 +84,6 @@ private:
     uint32_t                            scalePatchY;
     uint32_t                            heightmapDimension;
 
-    bool                                isEditionInProgress;
     float                               heightmapHighestVertex;
     float                               heightmapLowestVertex;
 
@@ -97,14 +97,14 @@ private:
 
     float*                              grassmap;
     Texture*                            grassmapTexture;
+    bool                                isEditionInProgress;
 
     std::vector<uint32_t>               indices;
     std::vector<VertexLayout>           vertices;
 
-    int                                 currentVboIndex;
-    std::unique_ptr<Buffer>             vertexBuffer[2];
+    std::unique_ptr<Buffer>             vertexBuffer;
     std::unique_ptr<Buffer>             indiceBuffer;
-    std::unique_ptr<VertexArrayObject>  vertexArrayObject[2];
+    std::unique_ptr<VertexArrayObject>  vertexArrayObject;
 
 private:
     void CalcYBounds( const glm::vec3& FLAN_RESTRICT bottomLeft, const glm::vec3& FLAN_RESTRICT topRight, glm::vec3& FLAN_RESTRICT output );

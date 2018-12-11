@@ -43,11 +43,9 @@ Terrain::Terrain( const fnString_t& TerrainName )
     , heightmapTexture( nullptr )
     , grassmap( nullptr )
     , grassmapTexture( nullptr )
-    , isEditionInProgress( false )
-    , vertexBuffer{ nullptr, nullptr }
+    , vertexBuffer( nullptr )
     , indiceBuffer( nullptr )
-    , currentVboIndex( 0 )
-    , vertexArrayObject{ nullptr, nullptr }
+    , vertexArrayObject( nullptr )
 {
 
 }
@@ -180,11 +178,9 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
     vboDesc.Size = vertexCount * sizeof( float );
     vboDesc.Stride = 8 * sizeof( float );
 
-    for ( int i = 0; i < 2; i++ ) {
-        vertexBuffer[i].reset( new Buffer() );
-        vertexBuffer[i]->create( renderDevice, vboDesc, vertices.data() );
-    }
-
+    vertexBuffer.reset( new Buffer() );
+    vertexBuffer->create( renderDevice, vboDesc, vertices.data() );
+   
     BufferDesc iboDesc;
     iboDesc.Type = BufferDesc::INDICE_BUFFER;
     iboDesc.Size = meshIndiceCount * sizeof( uint32_t );
@@ -193,18 +189,16 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
     indiceBuffer.reset( new Buffer() );
     indiceBuffer->create( renderDevice, iboDesc, indices.data() );
 
-    for ( int i = 0; i < 2; i++ ) {
-        vertexArrayObject[i].reset( new VertexArrayObject() );
-        vertexArrayObject[i]->create( renderDevice, vertexBuffer[i].get(), indiceBuffer.get() );
+    vertexArrayObject.reset( new VertexArrayObject() );
+    vertexArrayObject->create( renderDevice, vertexBuffer.get(), indiceBuffer.get() );
 
-        VertexLayout_t defaultTerrainLayout = {
-            { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
-            { 1, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // POSITION
-            { 2, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 6 * sizeof( float ) }, // UVMAP0
-        };
+    VertexLayout_t defaultTerrainLayout = {
+        { 0, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 0 }, // POSITION
+        { 1, VertexLayoutEntry::DIMENSION_XYZ, VertexLayoutEntry::FORMAT_FLOAT, 3 * sizeof( float ) }, // POSITION
+        { 2, VertexLayoutEntry::DIMENSION_XY, VertexLayoutEntry::FORMAT_FLOAT, 6 * sizeof( float ) }, // UVMAP0
+    };
 
-        vertexArrayObject[i]->setVertexLayout( renderDevice, defaultTerrainLayout );
-    }
+    vertexArrayObject->setVertexLayout( renderDevice, defaultTerrainLayout );
 
     material = terrainMaterial;
     material->setHeightmapTEST( heightmapTexture, splatmapTexture, grassmapTexture );
@@ -212,7 +206,7 @@ void Terrain::create( RenderDevice* renderDevice, BaseAllocator* allocator, Mate
 
 const VertexArrayObject* Terrain::getVertexArrayObject() const
 {
-    return vertexArrayObject[currentVboIndex].get();
+    return vertexArrayObject.get();
 }
 
 Material* Terrain::getMaterial()
@@ -253,7 +247,6 @@ float Terrain::getHeightmapHighestVertex() const
 void Terrain::setVertexHeight( const uint32_t vertexIndex, const float updatedHeight )
 {
     editorHeightmap[vertexIndex] = updatedHeight;
-
     isEditionInProgress = true;
 }
 
@@ -312,8 +305,7 @@ void Terrain::uploadHeightmap( CommandList* cmdList )
 
 void Terrain::uploadPatchBounds( CommandList* cmdList )
 {
-    vertexBuffer[currentVboIndex]->updateAsynchronous( cmdList, vertices.data(), vertices.size() * sizeof( VertexLayout ) );
-    currentVboIndex = ( currentVboIndex == 0 ) ? 1 : 0;
+    vertexBuffer->updateAsynchronous( cmdList, vertices.data(), vertices.size() * sizeof( VertexLayout ) );
 }
 
 void Terrain::computePatchsBounds()

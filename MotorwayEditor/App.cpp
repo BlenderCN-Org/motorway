@@ -573,17 +573,18 @@ int InitializeSubsystems()
                     cmdList->playbackCommandList( g_RenderDevice );
                 }
             } else if ( g_EditedTerrainSceneEditor != nullptr ) {
+                Terrain* editedTerrain = g_EditedTerrainSceneEditor->instance.terrainAsset;
+
                 const auto& cameraData = mainCamera->GetData();
                 Ray rayObj = GenerateMousePickingRay( io, cameraData );
-                flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
+                flan::framework::UpdateHeightfieldMouseCircle( rayObj, editedTerrain );
 
                 if ( g_IsEditingTerrain ) {
                     // Compute and upload updated tile visibility
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
-
                     cmdList->beginCommandList( g_RenderDevice );
-                        g_EditedTerrainSceneEditor->instance.terrainAsset->computePatchsBounds();
-                        g_EditedTerrainSceneEditor->instance.terrainAsset->uploadPatchBounds( cmdList );
+                    editedTerrain->computePatchsBounds();
+                    editedTerrain->uploadPatchBounds( cmdList );
                     cmdList->endCommandList( g_RenderDevice );
 
                     cmdList->playbackCommandList( g_RenderDevice );
@@ -593,7 +594,7 @@ int InitializeSubsystems()
                     FLAN_IMPORT_VAR_PTR( g_RayMarch, glm::vec3 );
 
                     g_TransactionHandler->commit< HeightEditionCommand >(
-                        g_EditedTerrainSceneEditor->instance.terrainAsset,
+                        editedTerrain,
                         *g_RayMarch,
                         *g_TerrainEditorEditionRadius,
                         *TerrainEditionHeightDelta
@@ -604,11 +605,11 @@ int InitializeSubsystems()
                 }
 
                 // Update GPU data in case of undo/redo
-                if ( g_EditedTerrainSceneEditor->instance.terrainAsset->needReupload() ) {
+                if ( editedTerrain->needReupload() ) {
                     auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
 
                     cmdList->beginCommandList( g_RenderDevice );
-                    g_EditedTerrainSceneEditor->instance.terrainAsset->uploadHeightmap( cmdList );
+                    editedTerrain->uploadHeightmap( cmdList );
                     cmdList->endCommandList( g_RenderDevice );
 
                     cmdList->playbackCommandList( g_RenderDevice );
