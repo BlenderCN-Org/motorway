@@ -161,4 +161,13 @@ void flan::rendering::CopyResouceAsynchronousImpl( NativeCommandList* nativeComm
 
 }
 
+void flan::rendering::UpdateSubresourceImpl( NativeCommandList* nativeCommandList, NativeTextureObject* textureObject, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData )
+{
+
+}
+
+void flan::rendering::CopyRenderTargetImpl( NativeCommandList* nativeCmdList, NativeTextureObject* source, NativeTextureObject* dest )
+{
+    //vkCmdCopyImage( nativeCmdList->cmdBuffer, source->)
+}
 #endif

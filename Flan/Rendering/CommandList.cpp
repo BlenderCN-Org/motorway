@@ -159,6 +159,11 @@ void CommandList::setClearDepthValueCmd( const float depthValue )
     flan::rendering::SetDepthClearValue( nativeCommandList.get(), depthValue );
 }
 
+void CommandList::resolveSubresource( RenderTarget* resourceToResolve, RenderTarget* resolvedResource )
+{
+    flan::rendering::ResolveSubresourceImpl( nativeCommandList.get(), resourceToResolve->getNativeTextureObject(), resolvedResource->getNativeTextureObject() );
+}
+
 void CommandList::unbindVertexArrayCmd()
 {
     flan::rendering::UnbindVertexArrayImpl( nativeCommandList.get() );

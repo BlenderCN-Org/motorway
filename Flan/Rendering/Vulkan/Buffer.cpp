@@ -133,4 +133,14 @@ void flan::rendering::BindBufferReadOnlyCmdImpl( NativeCommandList* nativeCmdLis
 void flan::rendering::UnbindBufferCmdImpl( NativeCommandList* nativeCmdList, NativeBufferObject* bufferObject, const uint32_t shaderStagesToBindTo, const uint32_t bindingIndex, const Buffer::BindMode bindMode )
 {
 }
+
+void flan::rendering::CopyStructureCountImpl( NativeCommandList* nativeCmdList, NativeBufferObject* sourceBufferObject, NativeBufferObject* destinationBufferObject, const uint32_t byteOffset )
+{
+    VkBufferCopy regionCpy;
+    regionCpy.srcOffset = byteOffset;
+    regionCpy.dstOffset = 0;
+    regionCpy.size = sizeof( uint32_t );
+
+    vkCmdCopyBuffer( nativeCmdList->cmdBuffer, sourceBufferObject->bufferObject, destinationBufferObject->bufferObject, 1, &regionCpy );
+}
 #endif

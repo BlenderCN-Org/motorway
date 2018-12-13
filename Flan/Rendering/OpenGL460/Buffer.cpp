@@ -233,4 +233,9 @@ void flan::rendering::UnbindBufferCmdImpl( NativeCommandList* nativeCmdList, Nat
         break;
     }
 }
+
+void flan::rendering::CopyStructureCountImpl( NativeCommandList* nativeCmdList, NativeBufferObject* sourceBufferObject, NativeBufferObject* destinationBufferObject, const uint32_t byteOffset )
+{
+
+}
 #endif

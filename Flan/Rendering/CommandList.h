@@ -70,6 +70,8 @@ public:
 
     void                    setClearDepthValueCmd( const float depthValue = 0.0f );
 
+    void                    resolveSubresource( RenderTarget* resourceToResolve, RenderTarget* resolvedResource );
+
     void                    unbindVertexArrayCmd();
 
 private:

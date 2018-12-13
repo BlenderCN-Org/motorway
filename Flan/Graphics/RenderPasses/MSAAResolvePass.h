@@ -27,9 +27,6 @@
 #include <Graphics/CBufferIndexes.h>
 #include <Shared.h>
 
-#include <Rendering/Direct3D11/CommandList.h>
-#include <Rendering/Direct3D11/Texture.h>
-
 static fnPipelineMutableResHandle_t AddFastMSAAResolvePass( RenderPipeline* renderPipeline, fnPipelineMutableResHandle_t textureToResolve )
 {
     auto RenderPass = renderPipeline->addRenderPass(
@@ -50,7 +47,7 @@ static fnPipelineMutableResHandle_t AddFastMSAAResolvePass( RenderPipeline* rend
             auto inputRenderTarget = renderPipelineResources->getRenderTarget( passData.input[0] );
             auto outputRenderTarget = renderPipelineResources->getRenderTarget( passData.output[0] );
 
-            cmdList->getNativeCommandList()->deferredContext->ResolveSubresource( outputRenderTarget->getNativeTextureObject()->texture2D, 0, inputRenderTarget->getNativeTextureObject()->texture2D, 0, DXGI_FORMAT_R16G16B16A16_FLOAT );
+            cmdList->resolveSubresource( outputRenderTarget, inputRenderTarget );
         }
     );
 

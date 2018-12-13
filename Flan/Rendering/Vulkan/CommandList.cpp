@@ -23,8 +23,10 @@
 #include "CommandList.h"
 #include "RenderContext.h"
 
+#include "Buffer.h"
 #include "PipelineState.h"
 #include "RenderTarget.h"
+#include "Texture.h"
 
 void flan::rendering::BeginCommandListImpl( NativeRenderContext* renderContext, NativeCommandList* cmdList )
 {
@@ -86,6 +88,11 @@ void flan::rendering::DrawInstancedIndexedImpl( NativeCommandList* cmdList, cons
     vkCmdDrawIndexed( cmdList->cmdBuffer, indiceCount, instanceCount, indexOffset, vertexOffset, instanceOffset );
 }
 
+void flan::rendering::DrawInstancedIndirectImpl( NativeCommandList* cmdList, const NativeBufferObject* drawArgsBuffer, const unsigned int bufferDataOffset )
+{
+    vkCmdDrawIndirect( cmdList->cmdBuffer, drawArgsBuffer->bufferObject, bufferDataOffset, 1, 4 * sizeof( uint32_t ) );
+}
+
 void flan::rendering::DispatchComputeImpl( NativeCommandList* cmdList, const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )
 {
     vkCmdDispatch( cmdList->cmdBuffer, threadCountX, threadCountY, threadCountZ );
@@ -134,5 +141,10 @@ void flan::rendering::UnbindVertexArrayImpl( NativeCommandList* cmdList )
 void flan::rendering::BindPipelineStateImpl( NativeCommandList* cmdList, PipelineState* pipelineState )
 {
 
+}
+
+void flan::rendering::ResolveSubresourceImpl( NativeCommandList* cmdList, NativeTextureObject* resourceToResolve, NativeTextureObject* resolvedResource )
+{
+    // vkCmdResolveImage( cmdList->cmdBuffer, resourceToResolve )
 }
 #endif

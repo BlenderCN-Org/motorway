@@ -345,4 +345,9 @@ void flan::rendering::UnbindVertexArrayImpl( NativeCommandList* cmdList )
 {
     glBindVertexArray( cmdList->DummyVAO );
 }
+
+void flan::rendering::ResolveSubresourceImpl( NativeCommandList* cmdList, NativeTextureObject* resourceToResolve, NativeTextureObject* resolvedResource )
+{
+
+}
 #endif

@@ -27,7 +27,9 @@ class RenderTarget;
 class BlendState;
 class PipelineState;
 class Texture;
+
 struct NativeRenderContext;
+struct NativeTextureObject;
 
 #include "Extensions.h"
 
@@ -76,6 +78,7 @@ namespace flan
 
         void                    UnbindVertexArrayImpl( NativeCommandList* cmdList );
         void                    BindPipelineStateImpl( NativeCommandList* cmdList, PipelineState* pipelineState );
+        void                    ResolveSubresourceImpl( NativeCommandList* cmdList, NativeTextureObject* resourceToResolve, NativeTextureObject* resolvedResource );
     }
 }
 #endif
