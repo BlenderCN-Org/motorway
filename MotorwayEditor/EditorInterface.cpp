@@ -132,22 +132,33 @@ void MaterialEd()
 
 void flan::framework::DrawEditorInterface( const float frameTime, CommandList* cmdList )
 {
-    const auto& nativeContext = g_RenderDevice->getNativeRenderContext();
-    const auto nativeCmdList = cmdList->getNativeCommandList();
     cmdList->beginCommandList( g_RenderDevice );
+
+    // In case the cmdList context is dirty
     cmdList->bindBackbufferCmd();
-    
+
+#if FLAN_WIN
     ImGui_ImplWin32_NewFrame();
+#endif
 
 #if FLAN_D3D11
+    // Since a context is bound to its cmdList, we need to re-init imgui resources
+    // every time the context change
+    const auto& nativeContext = g_RenderDevice->getNativeRenderContext();
+    const auto nativeCmdList = cmdList->getNativeCommandList();
+
     ImGui_ImplDX11_Init( nativeContext->nativeDevice, nativeCmdList->deferredContext );
     ImGui_ImplDX11_NewFrame();
 #elif FLAN_GL460
+    return;
     ImGui_ImplOpenGL3_Init();
     ImGui_ImplOpenGL3_NewFrame();
 #elif FLAN_VULKAN
-    //ImGui_ImplVulkan_Init( nativeContext->nativeDevice, nativeCmdList->deferredContext );
-    ImGui_ImplVulkan_NewFrame();
+    return;
+    //ImGui_ImplVulkan_InitInfo initInfos;
+    //initInfos.
+    //ImGui_ImplVulkan_Init( nativeContext, nativeCmdList->deferredContext );
+    //ImGui_ImplVulkan_NewFrame();
 #endif
 
     ImGui::NewFrame();

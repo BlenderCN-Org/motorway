@@ -22,7 +22,7 @@
 #if FLAN_GL460
 #include "RenderContext.h"
 
-#include <Core/Display/DisplaySurface.h>
+#include <Display/DisplaySurface.h>
 
 #include <Rendering/RenderTarget.h>
 #include <Rendering/PrimitiveTopologies.h>
@@ -33,7 +33,7 @@
 
 // GLX/WGL Implementations
 #if FLAN_UNIX
-#include <Core/Display/DisplaySurfaceXcb.h>
+#include <Display/DisplaySurfaceXcb.h>
 
 NativeRenderContext* CreateRenderContextSysImpl( DisplaySurface* surface )
 {
@@ -178,7 +178,7 @@ void flan::rendering::SetVSyncStateImpl( NativeRenderContext* nativeRenderContex
     glXSwapIntervalEXT( nativeRenderContext->X11Display, nativeRenderContext->DrawContext, ( enabled ) ? 1 : 0 );
 }
 #elif FLAN_WIN
-#include <Core/Display/DisplaySurfaceWin32.h>
+#include <Display/DisplaySurfaceWin32.h>
 
 LRESULT CALLBACK FakeWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {

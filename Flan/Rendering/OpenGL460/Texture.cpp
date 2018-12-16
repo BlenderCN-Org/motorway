@@ -188,6 +188,16 @@ GLint GetMipLevelCount( const unsigned int width, const unsigned int height )
     return mipLevelCount;
 }
 
+void flan::rendering::CopyResouceImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+
+}
+
+void flan::rendering::CopyResouceAsynchronousImpl( NativeCommandList* nativeCommandList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject )
+{
+
+}
+
 NativeTextureObject* flan::rendering::CreateTexture3DImpl( NativeRenderContext* nativeRenderContext, const TextureDescription& description, void* initialData, const std::size_t initialDataSize )
 {
     const bool isArray = ( description.arraySize > 1 );
@@ -350,5 +360,25 @@ void flan::rendering::RetrieveTextureTexelsHDRImpl( NativeRenderContext* nativeR
             }
         }
     }
+}
+
+void flan::rendering::CopySubresouceRegionImpl( NativeRenderContext* nativeRenderContext, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+
+}
+
+void flan::rendering::CopySubresouceRegionAsynchronousImpl( NativeCommandList* nativeCmdList, const NativeTextureObject* srcTextureObject, const NativeTextureObject* dstTextureObject, const uint32_t mipSrc, const uint32_t arrayIdxSrc, const uint32_t mipDst, const uint32_t arrayIdxDst )
+{
+
+}
+
+void flan::rendering::UpdateSubresourceImpl( NativeCommandList* nativeCommandList, NativeTextureObject* textureObject, const TextureCopyBox& copyBox, const uint32_t regionWidth, const uint32_t regionHeight, const uint32_t regionComposition, const void* regionData )
+{
+
+}
+
+void flan::rendering::CopyRenderTargetImpl( NativeCommandList* nativeCmdList, NativeTextureObject* source, NativeTextureObject* dest )
+{
+
 }
 #endif

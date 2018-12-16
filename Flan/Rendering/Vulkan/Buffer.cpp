@@ -25,12 +25,16 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
         bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     } else if ( description.Type == BufferDesc::INDICE_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    } else if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER ) {
+    } else if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER
+             || description.Type == BufferDesc::STRUCTURED_BUFFER
+             || description.Type == BufferDesc::APPEND_STRUCTURED_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     } else if ( description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_1D 
         || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D
         || description.Type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    } else if ( description.Type == BufferDesc::INDIRECT_DRAW_ARGUMENTS ) {
+        bufferInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
     }
 
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -45,9 +49,23 @@ NativeBufferObject* flan::rendering::CreateBufferImpl( NativeRenderContext* nati
     uboLayoutBinding.binding = 0;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS; // TODO Implement proper stage bind hint?
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    auto descriptorSetLayoutCreation = vkCreateDescriptorSetLayout( nativeRenderContext->device, &layoutInfo, nullptr, &descriptorSetLayout );
+    if ( descriptorSetLayoutCreation != VK_SUCCESS ) {
+        FLAN_CERR << "Failed to create buffer descriptor set layout! (error code: " << bufferCreationResult << ")" << std::endl;
+        return nullptr;
+    }
 
     NativeBufferObject* nativeBufferObject = new NativeBufferObject();
     nativeBufferObject->bufferObject = nativeBuffer;
+    nativeBufferObject->descriptorSetLayout = descriptorSetLayout;
     nativeBufferObject->bufferType = description.Type;
     nativeBufferObject->stride = description.Stride;
 

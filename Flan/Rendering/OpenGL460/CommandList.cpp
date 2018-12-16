@@ -26,6 +26,7 @@
 #include "PipelineState.h"
 #include "Texture.h"
 #include "RenderTarget.h"
+#include "Buffer.h"
 
 static constexpr GLenum GL_PRIMITIVE_TOPOLOGY[flan::rendering::ePrimitiveTopology::PrimitiveTopology_COUNT] = {
     GL_TRIANGLES,
@@ -133,6 +134,11 @@ void flan::rendering::DrawIndexedImpl( NativeCommandList* cmdList, const uint32_
 }
 
 void flan::rendering::DrawInstancedIndexedImpl( NativeCommandList* cmdList, const unsigned int indiceCount, const unsigned int instanceCount, const unsigned int indexOffset, const unsigned int vertexOffset, const unsigned int instanceOffset )
+{
+
+}
+
+void flan::rendering::DrawInstancedIndirectImpl( NativeCommandList* cmdList, const NativeBufferObject* drawArgsBuffer, const unsigned int bufferDataOffset )
 {
 
 }

@@ -26,6 +26,7 @@
 #include "PipelineState.h"
 #include "RenderTarget.h"
 #include "Buffer.h"
+#include "Texture.h"
 
 #include <d3d11.h>
 
@@ -225,5 +226,14 @@ void flan::rendering::BindPipelineStateImpl( NativeCommandList* cmdList, Pipelin
     nativeDeviceContext->DSSetShader( pso->tesselationEvalStage, nullptr, 0 );
     nativeDeviceContext->PSSetShader( pso->pixelStage, nullptr, 0 );
     nativeDeviceContext->CSSetShader( pso->computeStage, nullptr, 0 );
+}
+
+void flan::rendering::ResolveSubresourceImpl( NativeCommandList* cmdList, NativeTextureObject* resourceToResolve, NativeTextureObject* resolvedResource )
+{
+    // TODO Handle if the resource is not a 2D texture
+    D3D11_TEXTURE2D_DESC texDesc;
+    resourceToResolve->texture2D->GetDesc( &texDesc );
+
+    cmdList->deferredContext->ResolveSubresource( resolvedResource->textureResource, 0, resourceToResolve->textureResource, 0, texDesc.Format );
 }
 #endif

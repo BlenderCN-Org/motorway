@@ -30,9 +30,10 @@ struct NativeCommandList;
 
 struct NativeBufferObject
 {
-    VkBuffer                bufferObject;
-    BufferDesc::BufferType  bufferType;
-    std::size_t             stride;
+    VkBuffer                        bufferObject; 
+    VkDescriptorSetLayout           descriptorSetLayout;
+    BufferDesc::BufferType          bufferType;
+    std::size_t                     stride;
 };
 
 namespace flan

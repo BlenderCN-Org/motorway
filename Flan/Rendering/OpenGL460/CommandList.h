@@ -30,6 +30,7 @@ class Texture;
 
 struct NativeRenderContext;
 struct NativeTextureObject;
+struct NativeBufferObject;
 
 #include "Extensions.h"
 
@@ -66,6 +67,7 @@ namespace flan
         void                    DrawImpl( NativeCommandList* cmdList, const unsigned int vertexCount, const unsigned int vertexOffset = 0 );
         void                    DrawIndexedImpl( NativeCommandList* cmdList, const uint32_t indiceCount, const uint32_t indiceOffset = 0, const std::size_t indiceType = sizeof( uint32_t ), const uint32_t vertexOffset = 0 );
         void                    DrawInstancedIndexedImpl( NativeCommandList* cmdList, const unsigned int indiceCount, const unsigned int instanceCount, const unsigned int indexOffset, const unsigned int vertexOffset = 0, const unsigned int instanceOffset = 0 );
+        void                    DrawInstancedIndirectImpl( NativeCommandList* cmdList, const NativeBufferObject* drawArgsBuffer, const unsigned int bufferDataOffset );
 
         void                    DispatchComputeImpl( NativeCommandList* cmdList, const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ );
 
