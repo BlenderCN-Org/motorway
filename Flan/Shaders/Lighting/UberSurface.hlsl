@@ -128,8 +128,6 @@ FLAN_BAKED_TEXTURE_SLOTS
 #include "ShadingModels/ClearCoat.hlsl"
 #elif PA_SHADING_MODEL_SHADING_EMISSIVE
 #include "ShadingModels/Emissive.hlsl"
-#elif PA_SHADING_MODEL_SHADING_TILE_HEAT
-#include "ShadingModels/TileHeat.hlsl"
 #else
 #include "ShadingModels/Debug.hlsl"
 #endif

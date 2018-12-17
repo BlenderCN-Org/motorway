@@ -19,13 +19,13 @@
 */
 #include <Shared.hlsli>
 
-SamplerState LinearSampler { Filter = MIN_MAG_LINEAR_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
-
 #include <Colormetry.hlsli>
 #include "SharedAutoExposure.hlsli"
 
 Texture2D mainRenderTarget : register( t2 );
 Texture2D bloomRenderTarget : register( t3 );
+
+SamplerState LinearSampler : register( s3 );
 
 cbuffer PerPass : register( b2 )
 {

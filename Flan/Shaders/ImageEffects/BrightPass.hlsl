@@ -20,7 +20,7 @@
 #include <Shared.hlsli>
 #include <Colormetry.hlsli>
 
-SamplerState LinearSampler { Filter = MIN_MAG_LINEAR_MIP_POINT; AddressU = Clamp; AddressV = Clamp; };
+SamplerState LinearSampler : register( s3 );
 Texture2D g_TexMainRenderTarget : register( t0 );
 
 float4 EntryPointPS( psDataScreenQuad_t p ) : SV_TARGET
