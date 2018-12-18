@@ -25,26 +25,25 @@
 #include "AudioContext.h"
 #include "AudioBuffer.h"
 
+void UpdateSoundSpatialization( NativeAudioContext* audioContext, NativeAudioSource* audioSource )
+{
+    X3DAudioCalculate( audioContext->x3dAudioHandle, &audioContext->defaultListener, &audioSource->emitter,
+        X3DAUDIO_CALCULATE_MATRIX | X3DAUDIO_CALCULATE_DOPPLER | X3DAUDIO_CALCULATE_LPF_DIRECT | X3DAUDIO_CALCULATE_REVERB,
+        &audioContext->dspSettings );
+
+    audioSource->sourceVoice->SetOutputMatrix( audioContext->masteringVoice, 1, audioContext->details.InputChannels, audioContext->dspSettings.pMatrixCoefficients );
+
+    flan::audio::SetSourcePitchImpl( audioContext, audioSource, audioContext->dspSettings.DopplerFactor );
+
+    XAUDIO2_FILTER_PARAMETERS FilterParameters = { LowPassFilter, 2.0f * sinf( X3DAUDIO_PI / 6.0f * audioContext->dspSettings.LPFDirectCoefficient ), 1.0f };
+    audioSource->sourceVoice->SetFilterParameters( &FilterParameters );
+}
+
 NativeAudioSource* flan::audio::CreateAudioSourceImpl( NativeAudioContext* audioContext, BaseAllocator* allocator )
 {
-    auto hr = S_OK;
-
-    WAVEFORMATEX wfx = { 0 };
-    wfx.wFormatTag = WAVE_FORMAT_PCM;
-    wfx.nChannels = 2;
-    wfx.nSamplesPerSec = 11025;
-    wfx.wBitsPerSample = 16;
-    wfx.nBlockAlign = wfx.wBitsPerSample * wfx.nChannels;
-    wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-
-    IXAudio2SourceVoice* pSourceVoice = nullptr;
-    if ( FAILED( hr = audioContext->engineInstance->CreateSourceVoice( &pSourceVoice, &wfx ) ) ) {
-        FLAN_CERR << "Failed to create audio source (error code: " << hr << ")" << std::endl;
-        return nullptr;
-    }
-
+    // NOTE Do not allocate until buffer submit (source relies on buffer infos)
     NativeAudioSource* audioSource = flan::core::allocate<NativeAudioSource>( allocator );
-    audioSource->sourceVoice = pSourceVoice;
+    audioSource->sourceVoice = nullptr;
     audioSource->emitter = { 0 };
     audioSource->emitter.ChannelCount = 1;
     audioSource->emitter.CurveDistanceScaler = std::numeric_limits<float>::max();
@@ -72,42 +71,40 @@ void flan::audio::SetSourcePositionImpl( NativeAudioContext* audioContext, Nativ
 {
     audioSource->emitter.Position = X3DAUDIO_VECTOR( position.x, position.y, position.z );
 
-    X3DAudioCalculate( audioContext->x3dAudioHandle, &audioContext->defaultListener, &audioSource->emitter,
-        X3DAUDIO_CALCULATE_MATRIX | X3DAUDIO_CALCULATE_DOPPLER | X3DAUDIO_CALCULATE_LPF_DIRECT | X3DAUDIO_CALCULATE_REVERB,
-        &audioContext->dspSettings );
-
-    audioSource->sourceVoice->SetOutputMatrix( audioContext->masteringVoice, 1, audioContext->details.InputChannels, audioContext->dspSettings.pMatrixCoefficients );
-
-    SetSourcePitchImpl( audioContext, audioSource, audioContext->dspSettings.DopplerFactor );
-
-    XAUDIO2_FILTER_PARAMETERS FilterParameters = { LowPassFilter, 2.0f * sinf( X3DAUDIO_PI / 6.0f * audioContext->dspSettings.LPFDirectCoefficient ), 1.0f };
-    audioSource->sourceVoice->SetFilterParameters( &FilterParameters );
+    UpdateSoundSpatialization( audioContext, audioSource );
 }
 
 void flan::audio::SetSourceVelocityImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const glm::vec3& velocity )
 {
     audioSource->emitter.Velocity = X3DAUDIO_VECTOR( velocity.x, velocity.y, velocity.z );
 
-    X3DAudioCalculate( audioContext->x3dAudioHandle, &audioContext->defaultListener, &audioSource->emitter,
-        X3DAUDIO_CALCULATE_MATRIX | X3DAUDIO_CALCULATE_DOPPLER | X3DAUDIO_CALCULATE_LPF_DIRECT | X3DAUDIO_CALCULATE_REVERB,
-        &audioContext->dspSettings );
-
-    audioSource->sourceVoice->SetOutputMatrix( audioContext->masteringVoice, 1, audioContext->details.InputChannels, audioContext->dspSettings.pMatrixCoefficients );
-   
-    SetSourcePitchImpl( audioContext, audioSource, audioContext->dspSettings.DopplerFactor );
-
-    XAUDIO2_FILTER_PARAMETERS FilterParameters = { LowPassFilter, 2.0f * sinf( X3DAUDIO_PI / 6.0f * audioContext->dspSettings.LPFDirectCoefficient ), 1.0f };
-    audioSource->sourceVoice->SetFilterParameters( &FilterParameters );
+    UpdateSoundSpatialization( audioContext, audioSource );
 }
 
 void flan::audio::SetSourceLoopingImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const bool isLooping )
 {
-    
+    // TODO Looping is defined on the buffer side...
 }
 
 void flan::audio::BindBufferToSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, NativeAudioBuffer* audioBuffer )
 {    
     auto hr = S_OK;
+
+    WAVEFORMATEXTENSIBLE wfx = { 0 };
+    wfx.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+    wfx.Format.cbSize = 22;
+    wfx.Format.nChannels = 2;
+    wfx.Format.nSamplesPerSec = 32000;
+    wfx.Format.nAvgBytesPerSec = 32000 * 4;
+    wfx.Format.nBlockAlign = 4;
+    wfx.Format.wBitsPerSample = 16;
+    wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+    wfx.Samples.wValidBitsPerSample = 16;
+    wfx.dwChannelMask = ( SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT );
+
+    if ( FAILED( hr = audioContext->engineInstance->CreateSourceVoice( &audioSource->sourceVoice, reinterpret_cast< WAVEFORMATEX* >( &wfx ) ) ) ) {
+        FLAN_CERR << "Failed to create audio source (error code: " << hr << ")" << std::endl;
+    }
 
     if ( FAILED( hr = audioSource->sourceVoice->SubmitSourceBuffer( &audioBuffer->nativeBuffer ) ) ) {
         FLAN_CERR << "Failed to submit audio buffer (error code: " << hr << ")" << std::endl;
