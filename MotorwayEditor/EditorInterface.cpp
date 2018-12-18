@@ -61,6 +61,11 @@
 #include <Core/Allocators/LinearAllocator.h>
 #include <Core/BlueNoise.h>
 
+#include <FileSystem/VirtualFileSystem.h>
+#include <Io/Wave.h>
+#include <Audio/AudioBuffer.h>
+#include <Audio/AudioSource.h>
+
 FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
@@ -216,6 +221,29 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
 
             case 3:
                 ImGui::Text( "Debug/Sandbox/Quick and dirty tests" );
+
+                if ( ImGui::Button( "Sound stereo test" ) ) {
+                    auto waveFile = g_VirtualFileSystem->openFile( FLAN_STRING( "GameData/Sounds/test_stereo.wav" ), flan::core::eFileOpenMode::FILE_OPEN_MODE_BINARY | flan::core::eFileOpenMode::FILE_OPEN_MODE_READ );
+
+                    Wave waveContent;
+                    flan::core::LoadWaveFile( waveFile, waveContent );
+
+                    std::unique_ptr<AudioBuffer> audioBuffer( new AudioBuffer() );
+                    audioBuffer->create( g_AudioDevice, g_GlobalAllocator );
+                    audioBuffer->update( g_AudioDevice, waveContent.data.data(), waveContent.data.size(), waveContent.audioFormat, waveContent.sampleRate );
+
+                    std::unique_ptr<AudioSource> audioSource( new AudioSource() );
+                    audioSource->create( g_AudioDevice, g_GlobalAllocator );
+                    audioSource->bindBuffer( g_AudioDevice, audioBuffer.get() );
+                    audioSource->setPosition( g_AudioDevice, glm::vec3( 0, 0, 0 ) );
+                    audioSource->setGain( g_AudioDevice, 1.0f );
+                    audioSource->setPitch( g_AudioDevice, 1.0f );
+                    audioSource->setLooping( g_AudioDevice, false );
+                    audioSource->play( g_AudioDevice );
+
+                    audioSource->destroy( g_AudioDevice );
+                    audioBuffer->destroy( g_AudioDevice );
+                }
 
                 if ( ImGui::Button( "Blue Noise generation test" ) ) {
                     std::vector<float> texels;
