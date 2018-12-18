@@ -34,16 +34,18 @@ struct NativeAudioContext
 
     IXAudio2* engineInstance;
     IXAudio2MasteringVoice* masteringVoice;
+    XAUDIO2_VOICE_DETAILS details;
 
     X3DAUDIO_HANDLE x3dAudioHandle;
     X3DAUDIO_LISTENER defaultListener;
+    X3DAUDIO_DSP_SETTINGS dspSettings;
 };
 
 namespace flan
 {
     namespace audio
     {
-        NativeAudioContext*     CreateAudioContextImpl();
+        NativeAudioContext*     CreateAudioContextImpl( BaseAllocator* allocator );
         void                    DestroyAudioContextImpl( NativeAudioContext* audioContext );
         void                    SetDefaultListenerPositionImpl( NativeAudioContext* audioContext, const glm::vec3& position );
         void                    SetDefaultListenerVelocityImpl( NativeAudioContext* audioContext, const glm::vec3& velocity );

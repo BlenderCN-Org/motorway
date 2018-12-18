@@ -25,9 +25,9 @@
 
 #include <Audio/AudioFormats.h>
 
-NativeAudioBuffer* flan::audio::CreateAudioBufferImpl( NativeAudioContext* audioContext )
+NativeAudioBuffer* flan::audio::CreateAudioBufferImpl( NativeAudioContext* audioContext, BaseAllocator* allocator )
 {
-    NativeAudioBuffer* audioBuffer = new NativeAudioBuffer();
+    NativeAudioBuffer* audioBuffer = flan::core::allocate<NativeAudioBuffer>( allocator );
     audioBuffer->nativeBuffer = { 0 };
     return audioBuffer;
 }
@@ -42,5 +42,10 @@ void flan::audio::UpdateAudioBufferImpl( NativeAudioContext* audioContext, Nativ
     audioBuffer->nativeBuffer.AudioBytes = dataToUploadSize;  //buffer containing audio data
     audioBuffer->nativeBuffer.pAudioData = static_cast<const BYTE*>( dataToUpload );  //size of the audio buffer in bytes
     audioBuffer->nativeBuffer.Flags = XAUDIO2_END_OF_STREAM; // tell the source voice not to expect any data after this buffer
+    audioBuffer->nativeBuffer.PlayBegin = 0;
+    audioBuffer->nativeBuffer.PlayLength = 0;
+    audioBuffer->nativeBuffer.LoopBegin = 0;
+    audioBuffer->nativeBuffer.LoopCount = 0;
+    audioBuffer->nativeBuffer.LoopLength = 0;
 }
 #endif

@@ -22,7 +22,7 @@
 #if FLAN_XAUDIO2
 #include "AudioContext.h"
 
-NativeAudioContext* flan::audio::CreateAudioContextImpl()
+NativeAudioContext* flan::audio::CreateAudioContextImpl( BaseAllocator* allocator )
 {
     FLAN_CLOG << "Creating render context (XAudio2)" << std::endl;
 
@@ -40,12 +40,6 @@ NativeAudioContext* flan::audio::CreateAudioContextImpl()
         return nullptr;
     }
 
-    XAUDIO2_VOICE_DETAILS details;
-    pMasterVoice->GetVoiceDetails( &details );
-
-    FLAN_CLOG << "-Input Channels Count: " << details.InputChannels << std::endl;
-    FLAN_CLOG << "-Input Sample Rate: " << details.InputSampleRate << std::endl;
-
     DWORD dwChannelMask;
     pMasterVoice->GetChannelMask( &dwChannelMask );
 
@@ -53,8 +47,18 @@ NativeAudioContext* flan::audio::CreateAudioContextImpl()
     audioContext->engineInstance = pXAudio2;
     audioContext->masteringVoice = pMasterVoice;
 
+    pMasterVoice->GetVoiceDetails( &audioContext->details );
+
+    FLAN_CLOG << "-Input Channels Count: " << audioContext->details.InputChannels << std::endl;
+    FLAN_CLOG << "-Input Sample Rate: " << audioContext->details.InputSampleRate << std::endl;
+
     X3DAudioInitialize( dwChannelMask, X3DAUDIO_SPEED_OF_SOUND, audioContext->x3dAudioHandle );
     audioContext->defaultListener = {};
+
+    audioContext->dspSettings = { 0 };
+    audioContext->dspSettings.SrcChannelCount = 1;
+    audioContext->dspSettings.DstChannelCount = audioContext->details.InputChannels;
+    audioContext->dspSettings.pMatrixCoefficients = flan::core::allocateArray<FLOAT32>( allocator, audioContext->details.InputChannels );
 
     return audioContext;
 }

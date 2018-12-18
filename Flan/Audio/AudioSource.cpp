@@ -91,3 +91,8 @@ void AudioSource::play( AudioDevice* audioDevice )
 {
     flan::audio::PlaySourceImpl( audioDevice->getNativeAudioContext(), audioSource );
 }
+
+void AudioSource::stop( AudioDevice* audioDevice )
+{
+    flan::audio::StopSourceImpl( audioDevice->getNativeAudioContext(), audioSource );
+}

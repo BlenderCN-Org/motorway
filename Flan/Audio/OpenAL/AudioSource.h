@@ -52,6 +52,7 @@ namespace flan
 
         void                    BindBufferToSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, NativeAudioBuffer* audioBuffer );
         void                    PlaySourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
+        void                    StopSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
     }
 }
 #endif

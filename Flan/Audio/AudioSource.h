@@ -42,6 +42,7 @@ public:
 
     void    bindBuffer( AudioDevice* audioDevice, AudioBuffer* audioBuffer );
     void    play( AudioDevice* audioDevice );
+    void    stop( AudioDevice* audioDevice );
 
 private:
     NativeAudioSource*  audioSource;

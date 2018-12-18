@@ -83,4 +83,9 @@ void flan::audio::PlaySourceImpl( NativeAudioContext* audioContext, NativeAudioS
 {
     alSourcePlay( audioSource->sourceHandle );
 }
+
+void flan::audio::StopSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource )
+{
+    alSourceStop( audioSource->sourceHandle );
+}
 #endif

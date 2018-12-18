@@ -20,20 +20,23 @@
 #pragma once
 
 #if FLAN_XAUDIO2
+#include <xaudio2.h>
+#include <x3daudio.h>
 
 struct NativeAudioContext;
 struct NativeAudioBuffer;
 
 struct NativeAudioSource
 {
-
+    IXAudio2SourceVoice*    sourceVoice; 
+    X3DAUDIO_EMITTER        emitter;
 };
 
 namespace flan
 {
     namespace audio
     {
-        NativeAudioSource*      CreateAudioSourceImpl( NativeAudioContext* audioContext );
+        NativeAudioSource*      CreateAudioSourceImpl( NativeAudioContext* audioContext, BaseAllocator* allocator );
         void                    DestroyAudioSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
         void                    SetSourcePitchImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const float pitch );
         void                    SetSourceGainImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, const float gain );
@@ -43,6 +46,7 @@ namespace flan
 
         void                    BindBufferToSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource, NativeAudioBuffer* audioBuffer );
         void                    PlaySourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
+        void                    StopSourceImpl( NativeAudioContext* audioContext, NativeAudioSource* audioSource );
     }
 }
 #endif
