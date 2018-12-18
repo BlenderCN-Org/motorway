@@ -45,17 +45,19 @@ set( FLAN_DEVBUILD TRUE CACHE BOOL "Build with developper features" )
 # Apply Parameters
 add_definitions( -D${FLAN_GFX_API} )
 
-add_definitions( -DFLAN_OPENAL )
-
 # Windows specifics
 if ( WIN32 )
     add_definitions( -DFLAN_WIN )
     add_definitions( -D_CRT_SECURE_NO_WARNINGS ) 
     add_definitions( -DUNICODE -D_UNICODE ) 
     add_definitions( -DFLAN_UNICODE )
+	
+	add_definitions( -DFLAN_XAUDIO2 )
 elseif( UNIX )
     add_definitions( -DFLAN_UNIX )
     add_definitions( -D_REENTRANT -D__STRICT_ANSI__ )
+
+	add_definitions( -DFLAN_OPENAL )
 
     find_package( Threads REQUIRED )
     find_package( X11 REQUIRED )
