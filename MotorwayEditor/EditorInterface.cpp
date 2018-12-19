@@ -52,6 +52,7 @@
 #include <Framework/NodeEditor.h>
 #include <Framework/EditorMenuBar.h>
 #include <Framework/TerrainEditor.h>
+#include <Framework/RoadEditor.h>
 
 #include <Framework/Scene.h>
 #include <Framework/Material.h>
@@ -61,10 +62,19 @@
 #include <Core/Allocators/LinearAllocator.h>
 #include <Core/BlueNoise.h>
 
+enum class eEditorTab
+{
+    SANDBOX = 3,
+    TERRAIN_ED = 2,
+    NODE_ED = 0,
+    MATERIAL_ED = 1,
+    ROAD_ED = 4
+};
+
 FLAN_DEV_VAR( dev_GuizmoViewMatrix, "Transform Guizmo ViewMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_GuizmoProjMatrix, "Transform Guizmo ProjectionMatrix", nullptr, float* )
 FLAN_DEV_VAR( dev_EditorPickedMaterial, "Material Picked in the Material Editor", nullptr, Material* )
-FLAN_DEV_VAR( panelId, "Current Editor Mode", 0, int )
+FLAN_DEV_VAR( panelId, "Current Editor Mode", eEditorTab::NODE_ED, eEditorTab )
 
 static void PrintNode( SceneNode* node )
 {
@@ -99,7 +109,7 @@ static void PrintNode( SceneNode* node )
     }
 }
 
-static bool PrintTab( const char* tabName, const int tabIndex )
+static bool PrintTab( const char* tabName, const eEditorTab tabIndex )
 {
     bool hasChanged = false;
     if ( panelId == tabIndex ) {
@@ -173,23 +183,26 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
         ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0, 0, 0, 0 ) );
         if ( ImGui::Begin( "TabManager", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ) ) {
             ImGui::SetWindowPos( ImVec2( 16, 48 ) );
-            ImGui::SetWindowSize( ImVec2( 800, 40 ) );
+            ImGui::SetWindowSize( ImVec2( 1600, 160 ) );
 
             auto previousTabIndex = panelId;
 
-            PrintTab( "Sandbox/Debug", 3 );
+            PrintTab( "Sandbox/Debug", eEditorTab::SANDBOX );
             ImGui::SameLine( 0, 2 );
-            PrintTab( "NodeEd", 0 );
+            PrintTab( "NodeEd", eEditorTab::NODE_ED );
             ImGui::SameLine( 0, 2 );
-            PrintTab( "MaterialEd", 1 );
+            PrintTab( "MaterialEd", eEditorTab::MATERIAL_ED );
             ImGui::SameLine( 0, 2 );
 
             // Trash code, but it just works
-            if ( PrintTab( "TerrainEd", 2 ) ) {
+            if ( PrintTab( "TerrainEd", eEditorTab::TERRAIN_ED ) ) {
                 g_InputMapper->pushContext( FLAN_STRING_HASH( "TerrainEditor" ) );
-            } else if ( previousTabIndex == 2 && previousTabIndex != panelId ) {
+            } else if ( previousTabIndex == eEditorTab::TERRAIN_ED && previousTabIndex != panelId ) {
                 g_InputMapper->popContext();
             }
+
+            ImGui::SameLine( 0, 2 );
+            PrintTab( "RoadEd", eEditorTab::ROAD_ED );
 
             ImGui::End();
         }
@@ -202,19 +215,19 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
             ImGui::SetWindowPos( ImVec2( 16, 75 ) );
             ImGui::SetWindowSize( ImVec2( 800, 390 ) );
             switch ( panelId ) {
-            case 0:
+            case eEditorTab::NODE_ED:
                 flan::framework::DisplayNodeEditor( frameTime );
                 break;
 
-            case 1:
+            case eEditorTab::MATERIAL_ED:
                 MaterialEd();
                 break;
 
-            case 2:
+            case eEditorTab::TERRAIN_ED:
                 flan::framework::DisplayTerrainEditor();
                 break;
 
-            case 3:
+            case eEditorTab::SANDBOX:
                 ImGui::Text( "Debug/Sandbox/Quick and dirty tests" );
 
                 if ( ImGui::Button( "Blue Noise generation test" ) ) {
@@ -234,6 +247,10 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
                     Texture* noiseTex = flan::core::allocate<Texture>( g_GlobalAllocator );
                     noiseTex->createAsTexture2D( g_RenderDevice, noiseTest, texels.data(), texels.size() );
                 }
+                break;
+
+            case eEditorTab::ROAD_ED:
+                flan::framework::DisplayRoadEditor();
                 break;
             }
         }
