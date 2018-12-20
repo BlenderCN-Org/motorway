@@ -29,5 +29,6 @@ namespace flan
     namespace framework
     {
         void DisplayRoadEditor();
+        void AddPointToRoad( const Ray& mousePickingRay, Terrain* terrain, CommandList* cmdList );
     }
 }

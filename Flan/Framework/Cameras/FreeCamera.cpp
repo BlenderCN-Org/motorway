@@ -247,3 +247,11 @@ void FreeCamera::LowerAltitude( const float dt )
 {
     speedAltitude -= ( dt * moveSpeed );
 }
+
+
+void FreeCamera::setOrientation( const float yaw, const float pitch, const float roll )
+{
+    this->yaw = yaw;
+    this->pitch = pitch;
+    this->roll = roll;
+}

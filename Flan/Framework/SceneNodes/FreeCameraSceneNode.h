@@ -53,7 +53,8 @@ struct FreeCameraSceneNode : public SceneNode
 
     virtual void update( const float frameTime ) override
     {
-        camera->Update( frameTime );
+        if ( enabled )
+            camera->Update( frameTime );
     }
 
     virtual void collectRenderKeys( DrawCommandBuilder* drawCommandBuilder ) override

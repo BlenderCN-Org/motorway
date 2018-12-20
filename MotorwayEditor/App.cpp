@@ -110,6 +110,8 @@
 #include "EditorInterface.h"
 
 #include <Framework/TerrainEditor.h>
+#include <Framework/RoadEditor.h>
+
 #include <Core/Allocators/AllocationHelpers.h>
 #include <Core/Allocators/GrowingStackAllocator.h>
 #include <Core/Allocators/LinearAllocator.h>
@@ -536,9 +538,11 @@ int InitializeSubsystems()
                 // Restore current editor input context
                 if ( *panelId == 2 ) {
                     g_InputMapper->pushContext( FLAN_STRING_HASH( "TerrainEditor" ) );
+                } else if ( *panelId == 3 ) {
+                    g_InputMapper->pushContext( FLAN_STRING_HASH( "RoadEditor" ) );
                 }
             } else {
-                if ( *panelId == 2 ) {
+                if ( *panelId == 2 || *panelId == 3 ) {
                     g_InputMapper->popContext();
                 }
 
@@ -558,7 +562,22 @@ int InitializeSubsystems()
 
         ImGuiIO& io = ImGui::GetIO();
         if ( !io.WantCaptureMouse ) {
-            if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
+            if ( input.Actions.find( FLAN_STRING_HASH( "AddPointToRoad" ) ) != input.Actions.end() ) {
+                if ( PickedNode != nullptr ) {
+                    g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
+
+                    const auto& cameraData = mainCamera->GetData();
+                    Ray rayObj = GenerateMousePickingRay( io, cameraData );
+
+                    flan::framework::UpdateHeightfieldMouseCircle( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset );
+
+                    auto cmdList = g_EditorCmdListPool->allocateCmdList( g_RenderDevice );
+                    cmdList->beginCommandList( g_RenderDevice );
+                    flan::framework::AddPointToRoad( rayObj, g_EditedTerrainSceneEditor->instance.terrainAsset, cmdList );
+                    cmdList->endCommandList( g_RenderDevice );
+                    cmdList->playbackCommandList( g_RenderDevice );
+                }
+            } else if ( input.States.find( FLAN_STRING_HASH( "EditTerrainHeight" ) ) != input.States.end() ) {
                 if ( PickedNode != nullptr ) {
                     g_EditedTerrainSceneEditor = ( TerrainSceneNode* )PickedNode;
                     g_IsEditingTerrain = true;

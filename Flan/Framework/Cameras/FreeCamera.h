@@ -46,6 +46,9 @@ public:
     void            TakeAltitude( const float dt );
     void            LowerAltitude( const float dt );
 
+    // NOTE Override current camera state
+    void            setOrientation( const float yaw, const float pitch, const float roll );
+
 private:
 	glm::vec3		rightVector;
 	glm::vec3		eyeDirection;

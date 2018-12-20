@@ -202,7 +202,24 @@ void flan::framework::DrawEditorInterface( const float frameTime, CommandList* c
             }
 
             ImGui::SameLine( 0, 2 );
-            PrintTab( "RoadEd", eEditorTab::ROAD_ED );
+
+            if ( PrintTab( "RoadEd", eEditorTab::ROAD_ED ) ) {
+                if ( previousTabIndex == eEditorTab::TERRAIN_ED && previousTabIndex != panelId ) {
+                    g_InputMapper->popContext();
+                }
+
+                g_InputMapper->pushContext( FLAN_STRING_HASH( "RoadEditor" ) );
+
+                FLAN_IMPORT_VAR_PTR( PickedNode, SceneNode* )
+                
+                auto worldTranslation = ( *PickedNode )->transform.getWorldTranslation();
+                worldTranslation.y = 64.0f * 5.0f;
+
+                cameraNode->camera->GetDataRW().worldPosition = worldTranslation; 
+                cameraNode->camera->setOrientation( 0, -1.57f, 0 );
+            } else if ( previousTabIndex == eEditorTab::ROAD_ED && previousTabIndex != panelId ) {
+                g_InputMapper->popContext();
+            }
 
             ImGui::End();
         }
