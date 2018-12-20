@@ -40,6 +40,14 @@ NativeAudioContext* flan::audio::CreateAudioContextImpl( BaseAllocator* allocato
         return nullptr;
     }
 
+#if FLAN_DEVBUILD
+    XAUDIO2_DEBUG_CONFIGURATION debugConfiguration = {};
+    debugConfiguration.TraceMask = ~0;
+    debugConfiguration.BreakMask = ~0;
+
+    pXAudio2->SetDebugConfiguration( &debugConfiguration );
+#endif
+
     DWORD dwChannelMask;
     pMasterVoice->GetChannelMask( &dwChannelMask );
 

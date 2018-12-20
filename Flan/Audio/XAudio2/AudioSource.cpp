@@ -95,8 +95,8 @@ void flan::audio::BindBufferToSourceImpl( NativeAudioContext* audioContext, Nati
     wfx.Format.cbSize = 22;
     wfx.Format.nChannels = 2;
     wfx.Format.nSamplesPerSec = 32000;
-    wfx.Format.nAvgBytesPerSec = 32000 * 4;
     wfx.Format.nBlockAlign = 4;
+    wfx.Format.nAvgBytesPerSec = wfx.Format.nSamplesPerSec * wfx.Format.nBlockAlign;
     wfx.Format.wBitsPerSample = 16;
     wfx.SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
     wfx.Samples.wValidBitsPerSample = 16;
