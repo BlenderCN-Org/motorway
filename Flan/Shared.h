@@ -29,6 +29,8 @@
 #endif
 
 #include "Core/Logging.h"
+#include "Core/Assert.h"
+#include "Core/DebugHelpers.h"
 
 // NOTE Hashing function should not be changed between version
 // (otherwise a lot of modules/assets might break)

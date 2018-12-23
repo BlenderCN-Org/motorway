@@ -357,7 +357,7 @@ void InitializeImGui()
     ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, ImVec4( 0.24f, 0.24f, 0.24f, 1.0f ) );
 }
 
-int InitializeSubsystems()
+void InitializeSubsystems()
 {
     const ScopedTimer AppInitializationTimer( FLAN_STRING( "AppInitializationTimer" ) );
 
@@ -370,11 +370,7 @@ int InitializeSubsystems()
         FLAN_CWARN << "Failed to retrieve 'Saved Games' folder (this is expected behavior on Unix)" << std::endl;
         flan::core::RetrieveHomeDirectory( cfgFilesDir );
 
-        if ( cfgFilesDir.empty() ) {
-            FLAN_CERR << "Failed to retrieve a suitable directory for savegame storage on your system..." << std::endl;
-            FLAN_CERR << "The Application will now close" << std::endl;
-            return 1;
-        }
+        FLAN_ASSERT( !cfgFilesDir.empty(), "Failed to retrieve a suitable directory for savegame storage on your system..." );
     }
 
     // Prepare files/folders stored on the system fs
@@ -421,6 +417,8 @@ int InitializeSubsystems()
     // Log generic stuff that could be useful
     FLAN_COUT << PROJECT_NAME << " " << FLAN_BUILD << std::endl
         << FLAN_BUILD_DATE << "\n" << std::endl;
+    
+    DumpStackBacktrace();
 
     g_TaskManager->create( g_GlobalAllocator );
 
@@ -719,8 +717,6 @@ int InitializeSubsystems()
     g_Profiler.drawOnScreen( EnableCPUProfilerPrint, 1.0f, 0.1f );
 
     g_FileSystemWatchdog->Create();
-
-    return 0;
 }
 
 void RebuildCameraPipeline( Camera* mainCamera )
@@ -780,12 +776,7 @@ void RebuildCameraPipeline( Camera* mainCamera )
 int motorway::game::Start()
 {
     CreateSubsystems();
-
-    const int initializationResult = InitializeSubsystems();
-    if ( initializationResult != 0 ) {
-        FLAN_CERR << "Motorway initialization failed! (error code: " << initializationResult << ")" << std::endl;
-        return 1;
-    }
+    InitializeSubsystems();
 
     // Application main loop
     Timer updateTimer = {};

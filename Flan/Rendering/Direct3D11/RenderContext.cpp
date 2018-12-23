@@ -40,9 +40,11 @@ void flan::rendering::PresentImpl( NativeRenderContext* nativeRenderContext )
     HRESULT swapBufferResult = S_OK;
     if ( FAILED( swapBufferResult = nativeRenderContext->swapChain->Present( ( nativeRenderContext->enableVsync ) ? 1 : 0, 0 ) ) ) {
         FLAN_CERR << "Failed to swap buffers! (error code 0x" << std::hex << swapBufferResult << std::dec << ")" << std::endl;
+        
+        FLAN_TRIGGER_BREAKPOINT
 
         if ( swapBufferResult == DXGI_ERROR_DEVICE_REMOVED ) {
-            FLAN_CERR << "Reason: 0x" << std::hex << nativeRenderContext->nativeDevice->GetDeviceRemovedReason() << std::dec << std::endl;
+            FLAN_CERR << "Reason: " << FLAN_PRINT_HEX( nativeRenderContext->nativeDevice->GetDeviceRemovedReason() ) << std::endl;
         }
     }
 }
@@ -89,12 +91,8 @@ NativeRenderContext* flan::rendering::CreateRenderContextImpl( DisplaySurface* s
             << " VRAM: " << adapterVRAM << "MB"
             << " (" << outputCount << " output(s) found)" << std::endl;
     }
-
-    // TODO Throw an exception, display scary stuff on screen, ...
-    if ( bestAdapterIndex == UINT32_MAX ) {
-        FLAN_CERR << "No adapters found!" << std::endl;
-        return nullptr;
-    }
+    
+    FLAN_ASSERT( ( bestAdapterIndex != UINT32_MAX ), "%s:%i >> D3D11: No adapters found!", FLAN_FILENAME, __LINE__ );
 
     factory->EnumAdapters1( bestAdapterIndex, &adapter );
     adapter->EnumOutputs( 0, &output );
@@ -191,18 +189,13 @@ NativeRenderContext* flan::rendering::CreateRenderContextImpl( DisplaySurface* s
         &nativeDeviceContext
     );
 
-    FLAN_CLOG << "D3D11CreateDeviceAndSwapChain >> Operation result: " << std::hex << "0x" << nativeDeviceCreationResult << std::dec << std::endl;
+    FLAN_CLOG << "D3D11CreateDeviceAndSwapChain >> Operation result: " << FLAN_PRINT_HEX( nativeDeviceCreationResult ) << std::endl;
 
     D3D11_FEATURE_DATA_THREADING threadingInfos = { 0 };
-    if ( FAILED( nativeDevice->CheckFeatureSupport( D3D11_FEATURE_THREADING, &threadingInfos, sizeof( D3D11_FEATURE_DATA_THREADING ) ) ) ) {
-        FLAN_CERR << "Failed to retrieve device feature! Stopping here" << std::endl;
-        return nullptr;
-    }
-
-    if ( !threadingInfos.DriverCommandLists ) {
-        FLAN_CERR << "Device does not support multithreading! Stopping here" << std::endl;
-        return nullptr;
-    }
+ 
+    FLAN_ASSERT( SUCCEEDED( nativeDevice->CheckFeatureSupport( D3D11_FEATURE_THREADING, &threadingInfos, sizeof( D3D11_FEATURE_DATA_THREADING ) ) ), 
+                "%s:%i >> D3D11: Failed to retrieve device features!", FLAN_FILENAME, __LINE__ );
+    FLAN_ASSERT( threadingInfos.DriverCommandLists, "%s:%i >> D3D11: Device does not support multithreading!", FLAN_FILENAME, __LINE__ );
 
     // It should be safe to release the adapter info after the device creation
     adapter->Release();
