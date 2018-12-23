@@ -28,3 +28,4 @@
 #define FLAN_CLOG FLAN_COUT_STREAM << "[LOG] " << FLAN_FILENAME << ":" << __LINE__ << " >> "
 
 #define FLAN_CLOG_NO_TRACE FLAN_COUT_STREAM << "[LOG] "
+#define FLAN_PRINT_HEX( var ) std::hex << "0x" << var << std::dec
