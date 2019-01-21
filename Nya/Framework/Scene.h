@@ -1,0 +1,111 @@
+/*
+    Project Motorway Source Code
+    Copyright (C) 2018 Prévost Baptiste
+
+    This file is part of Project Motorway source code.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#pragma once
+
+class DrawCommandBuilder;
+class Transform;
+class Mesh;
+class FreeCamera;
+
+struct RenderableMesh
+{
+    Mesh*   meshResource;
+
+    union {
+        struct {
+            uint8_t isVisible : 1;
+            uint8_t renderDepth : 1;
+            uint8_t useBatching : 1;
+            uint8_t : 0;
+        };
+
+        uint32_t    flags;
+    };
+
+    RenderableMesh()
+    {
+        isVisible = 1;
+    }
+};
+
+class Scene
+{
+public:
+    using nyaComponentHandle_t = uint32_t;
+
+private:
+    template<typename T>
+    struct ComponentDatabase
+    {
+        T*                      components;
+        size_t                  capacity;
+        nyaComponentHandle_t    usageIndex;
+
+        ComponentDatabase()
+            : components( nullptr )
+            , capacity( 0ull )
+            , usageIndex( 0u )
+        {
+
+        }
+
+        nyaComponentHandle_t allocate()
+        {
+            return ( usageIndex++ % capacity );
+        }
+
+        T& operator [] ( const nyaComponentHandle_t handle )
+        {
+            return components[handle];
+        }
+    };
+
+public:
+    struct StaticGeometry {
+        nyaComponentHandle_t    transform;
+        nyaComponentHandle_t    mesh;
+    };
+
+    ComponentDatabase<Transform>        TransformDatabase;
+    ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
+    ComponentDatabase<FreeCamera>       FreeCameraDatabase;
+
+public:
+                            Scene( BaseAllocator* allocator, const std::string& sceneName = "Default Scene" );
+                            Scene( Scene& scene ) = default;
+                            Scene& operator = ( Scene& scene ) = default;
+                            ~Scene();
+
+    void                    setSceneName( const std::string& sceneName );
+    const std::string&      getSceneName() const;
+
+    void                    updateLogic( const float deltaTime );
+    void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
+
+    StaticGeometry&         allocateStaticGeometry();
+
+private:
+    std::string             name;
+    BaseAllocator*          memoryAllocator;
+
+    StaticGeometry          staticGeometry[4096];
+    uint32_t                staticGeometryCount;
+};

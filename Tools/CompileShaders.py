@@ -25,8 +25,8 @@ import subprocess
 
 # Script args (see description below)
 isProd = False
-shader_folder = "../Flan/Shaders/"
-compiled_shader_folder = "../bin/data/CompiledShaders/"
+shader_folder = "../Nya/Shaders/"
+compiled_shader_folder = "../bin/data/shaders/"
 compileD3D11 = False
 compileSPIRV = False
 
@@ -285,115 +285,18 @@ if not os.path.exists( "./cache" ):
     os.makedirs( "./cache" )
     
 # Atmosphere
-compile_shader_VS( "Atmosphere/SkyRendering.hlsl", "SkyRendering", "EntryPointVS", {}, False )
-compile_shader_PS( "Atmosphere/SkyRendering.hlsl", "SkyRendering", "EntryPointPS", { "PA_RENDER_SUN_DISC" : "1" } )
-compile_shader_PS( "Atmosphere/SkyRendering.hlsl", "SkyRenderingNoSunDisc" )
+compile_shader_VS( "Atmosphere/HosekSky.hlsl", "HosekSky" )
+compile_shader_PS( "Atmosphere/HosekSky.hlsl", "HosekSky" )
 
-# Editor
-compile_shader_CS( "Editor/DFGLUTGeneration.hlsl", "DFGLUTGeneration" )
-compile_shader_VS( "Editor/IBLConvolution.hlsl", "IBLConvolution", "EntryPointVS", {}, True )
-compile_shader_PS( "Editor/IBLConvolution.hlsl", "IBLConvolution" )
-compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolver" )
-compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolverTextureMapInput", "EntryPointCS", { "FLAN_TEX_INPUT" : "1" } )
-compile_shader_CS( "Editor/VMFSolver.hlsl", "VMFSolverTightTextureMapInput", "EntryPointCS", { "FLAN_TEX_INPUT" : "1", "FLAN_TIGHT_TEXTURE_PACK": "1" } )
+# Atmosphere
+compile_shader_VS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSky", "EntryPointVS", {}, False )
+compile_shader_PS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSky", "EntryPointPS", { "NYA_RENDER_SUN_DISC" : "1" } )
+compile_shader_PS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSkyNoSunDisc" )
 
-# Debug
-compile_shader_PS( "Debug/Wireframe.hlsl", "Wireframe" )
-compile_shader_VS( "Debug/Primitive.hlsl", "Primitive" )
-compile_shader_VS( "Debug/Line.hlsl", "Line" )
-compile_shader_PS( "Debug/Line.hlsl", "Line" )
-
-# Common
-compile_shader_PS( "Common/DownsampleFast.hlsl", "DownsampleFast" )
-compile_shader_PS( "Common/UpsampleWeighted.hlsl", "UpsampleWeighted" )
-compile_shader_PS( "Common/DownsampleWeighted.hlsl", "DownsampleWeighted" )
-compile_shader_PS( "Common/DownsampleWeighted.hlsl", "DownsampleWeightedStabilized", "EntryPointPS_Karis" )
-compile_shader_VS( "Common/FullscreenQuad.hlsl", "FullscreenQuad", "EntryPointVS", {}, False )
-compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTrianglePresent", "EntryPointVS", {}, True )
-compile_shader_VS( "Common/FullscreenTriangle.hlsl", "FullscreenTriangle", "EntryPointVS", {}, False )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWrite" )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteInstanced", "EntryPointVS", { "PH_INSTANCED" : "1" } )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmap", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1" } )
-compile_shader_VS( "Common/DepthWrite.hlsl", "DepthWriteHeightmapInstanced", "EntryPointVS", { "PH_HEIGHTFIELD" : "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED" : "1" } )
-compile_shader_PS( "Common/CopyTexture.hlsl", "CopyTexture" )
-
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve1", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1", "PH_USE_TAA": "0" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve2", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "2", "PH_USE_TAA": "0" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve4", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "4", "PH_USE_TAA": "0" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve8", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "8", "PH_USE_TAA": "0" } )
-
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve1TAA", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1", "PH_USE_TAA": "1" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve2TAA", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "2", "PH_USE_TAA": "1" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve4TAA", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "4", "PH_USE_TAA": "1" } )
-compile_shader_PS( "Common/MSAAResolve.hlsl", "MSAAResolve8TAA", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "8", "PH_USE_TAA": "1" } )
-
-compile_shader_PS( "Common/MSAADepthResolve.hlsl", "MSAADepthResolve1", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "1" } )
-compile_shader_PS( "Common/MSAADepthResolve.hlsl", "MSAADepthResolve2", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "2" } )
-compile_shader_PS( "Common/MSAADepthResolve.hlsl", "MSAADepthResolve4", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "4" } )
-compile_shader_PS( "Common/MSAADepthResolve.hlsl", "MSAADepthResolve8", "EntryPointPS", { "PH_MSAA_SAMPLE_COUNT" : "8" } )
+# Shared
+compile_shader_VS( "FullscreenTriangle.hlsl", "FullscreenTriangle" )
+compile_shader_PS( "CopyTexture.hlsl", "CopyTexture" )
 
 # UI
-compile_shader_VS( "UI/Primitive2D.hlsl", "Primitive2D" )
-compile_shader_PS( "UI/Primitive2D.hlsl", "Primitive2D", "EntryPointPS", { "PA_EDITOR": "1" } )
 compile_shader_PS( "UI/SDFTextRendering.hlsl", "SDFTextRendering" )
 compile_shader_VS( "UI/SDFTextRendering.hlsl", "SDFTextRendering" )
-compile_shader_VS( "UI/UIGeometry.hlsl", "UIGeometry", "EntryPointVS", {}, False )
-
-# ImageEffects
-compile_shader_CS( "ImageEffects/AutoExposureCompute.hlsl", "AutoExposureCompute" )
-compile_shader_PS( "ImageEffects/Compositing.hlsl", "FrameComposition" )
-compile_shader_PS( "ImageEffects/GaussianBlur.hlsl", "GaussianBlur" )
-compile_shader_CS( "ImageEffects/MergeHistogram.hlsl", "MergeHistogram" )
-compile_shader_CS( "ImageEffects/TileHistogramCompute.hlsl", "TileHistogramCompute" )
-compile_shader_PS( "ImageEffects/FXAA.hlsl", "FXAA" )
-compile_shader_PS( "ImageEffects/BrightPass.hlsl", "BrightPass" )
-compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur1", "EntryPointPS", { "PH_FIRST_PASS": "1" } )
-compile_shader_PS( "ImageEffects/SubsurfaceScattering.hlsl", "SubsurfaceScatteringBlur2" )
-
-# Lighting
-compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGeneration" )
-compile_shader_CS( "Lighting/GrassGeneration.hlsl", "GrassGenerationLODDebugColor", "EntryPointCS", { "PA_GRASS_LOD_DEBUG_COLOR": "1" } )
-compile_shader_CS( "Lighting/GrassIndirectDrawSetup.hlsl", "GrassIndirectDrawSetup" )
-
-compile_shader_VS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
-compile_shader_PS( "Lighting/FoliageIndirect.hlsl", "FoliageIndirect" )
-
-compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCulling" )
-compile_shader_CS( "Lighting/LightCulling.hlsl", "LightCullingMSAA", "EntryPointCS", { "PH_USE_MSAA": "1" } )
-
-compile_shader_VS( "Lighting/Surface.hlsl", "Heightfield", "EntryPointHeightfieldVS", { "PH_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "Surface" )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceInstanced", "EntryPointVS", { "PH_INSTANCED": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfield", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUV", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_INSTANCED": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceSnapToHeightfieldScaledUVInstanced", "EntryPointVS", { "PH_SNAP_TO_HEIGHTFIELD": "1", "PH_USE_HEIGHTFIELD": "1", "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUV", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1" } )
-compile_shader_VS( "Lighting/Surface.hlsl", "SurfaceScaledUVInstanced", "EntryPointVS", { "PH_SCALE_UV_BY_MODEL_SCALE": "1", "PH_INSTANCED": "1" } )
-
-compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointDS", { "PH_HEIGHTFIELD": "1" } )
-compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "Heightfield", "EntryPointHS", { "PH_HEIGHTFIELD": "1" } )
-compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldLQ", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_LQ_RENDERING": "1" } )
-compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldLQ", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_LQ_RENDERING": "1" } )
-compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointDS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
-compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWrite", "EntryPointHS", { "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
-compile_shader_DS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWriteMaxTess", "EntryPointDS", { "PH_DEPTH_WRITE": "1", "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
-compile_shader_HS( "Lighting/SurfaceTessellation.hlsl", "HeightfieldDepthWriteMaxTess", "EntryPointHS", { "PH_DEPTH_WRITE": "1", "PH_HEIGHTFIELD": "1", "PH_DEPTH_ONLY": "1" } )
-
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDebugTileHeat", "EntryPointPS", { "PA_EDITOR": "1", "FLAN_DEBUG_TILE_HEAT": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandard", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoat", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissive", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "Surface", "EntryPointPS", { "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrain", "EntryPointPS", { "PA_EDITOR": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_TERRAIN": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceDepth", "EntryPointDepthPS", { "PA_EDITOR": "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainTopDownCapture", "EntryPointTopDownPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1" } )
-
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceStandardProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceClearCoatProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_MODEL_CLEAR_COAT": "1", "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceEmissiveProbeCapture", "EntryPointPS", { "PA_SHADING_MODEL_SHADING_EMISSIVE": "1", "PA_EDITOR": "1", "PA_DONT_RECEIVE_SHADOWS": "1", "PA_PROBE_CAPTURE" : "1" } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceTerrainProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_TERRAIN": "1", "PA_SHADING_MODEL_SHADING_MODEL_STANDARD": "1", "PA_PROBE_CAPTURE" : "1"  } )
-compile_shader_PS( "Lighting/UberSurface.hlsl", "SurfaceProbeCapture", "EntryPointPS", { "PA_EDITOR": "1", "PA_PROBE_CAPTURE" : "1" } )
-

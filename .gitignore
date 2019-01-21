@@ -318,14 +318,4 @@ lib/*
 
 bin/*.dll
 bin/*.exe
-bin/data/CompiledShaders/*
-
-ThirdParty/bullet3/*
-ThirdParty/enet/*
-ThirdParty/glm/*
-ThirdParty/imgui/*
-ThirdParty/ImGuizmo/*
-ThirdParty/OpenAL/*
-ThirdParty/DirectXTex/*
-
-Tools/tmp/*
+bin/data/shaders/*

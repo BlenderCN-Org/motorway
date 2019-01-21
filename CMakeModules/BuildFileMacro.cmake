@@ -1,6 +1,6 @@
 MACRO(BUILD_FILE_MACROS SOURCES)
     foreach(f IN LISTS SOURCES)
         get_filename_component(b ${f} NAME)
-        set_source_files_properties(${f} PROPERTIES COMPILE_DEFINITIONS "FLAN_FILENAME=\"${b}\"")
+        set_source_files_properties(${f} PROPERTIES COMPILE_DEFINITIONS "NYA_FILENAME=\"${b}\"")
     endforeach()
 ENDMACRO(BUILD_FILE_MACROS)
