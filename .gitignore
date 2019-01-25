@@ -319,3 +319,6 @@ lib/*
 bin/*.dll
 bin/*.exe
 bin/data/shaders/*
+
+Tools/tmp/*
+Tools/cache/*
