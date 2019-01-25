@@ -65,7 +65,7 @@ namespace
     }
 }
 
-namespace flan
+namespace nya
 {
     namespace framework
     {
