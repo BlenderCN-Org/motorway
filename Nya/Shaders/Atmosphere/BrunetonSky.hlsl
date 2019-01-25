@@ -66,7 +66,7 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
     float3 viewDirection = normalize( VertexStage.viewRay.xyz );
 
     float3 transmittance;
-    float3 radiance = GetSkyRadiance( float3( WorldPosition.xz * 0.05f, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
+    float3 radiance = GetSkyRadiance( float3( g_WorldPosition.xz * 0.05f, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
 
     //autoExposure_t currentExposure = ReadAutoExposureParameters();
     float4 color = float4( 1.0 - exp( -radiance / 0.10f ), 1.0f );
