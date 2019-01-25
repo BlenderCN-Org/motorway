@@ -22,8 +22,6 @@
 
 #include <glm/glm/glm.hpp>
 
-class FileSystemObject;
-
 // Punctual Lights
 struct PointLightData
 {
@@ -117,48 +115,3 @@ struct EnvironmentProbeData
     //uint32_t        __PADDING_3__[3] = { ( unsigned int )~0, ( unsigned int )0, ( unsigned int )~0 };
     //uint32_t        ProbeIndex; // Array index 
 };
-
-template<typename Data>
-class Light
-{
-public:
-                            Light<Data>();
-                            Light<Data>( Data&& lightData );
-                            Light<Data>( FileSystemObject* stream );
-                            Light<Data>( Light& light );
-                            ~Light();
-
-    void                    restore( FileSystemObject* stream );
-    void                    save( FileSystemObject* stream );
-
-    void                    setRenderKey( const uint64_t newRenderKey );
-    const uint64_t          getRenderKey() const;
-
-    Data&                   getLightData();
-    const Data*             getLightData() const;
-
-private:
-    Data                    data;
-    bool                    isGPUDirty;
-    uint64_t                renderKey;
-};
-
-// Punctual Light
-using PointLight          = Light<PointLightData>;
-
-// Spot Light
-using SpotLight           = Light<SpotLightData>;
-
-// Area Lights
-using DiskLight           = Light<DiskLightData>;
-using SphereLight         = Light<PointLightData>;
-using RectangleLight      = Light<RectangleLightData>;
-using TubeLight           = Light<RectangleLightData>;
-
-// Dir Light (implicit sun)
-using DirectionalLight    = Light<DirectionalLightData>;
-
-// Environment Probe (IBL probe)
-using EnvironmentProbe    = Light<EnvironmentProbeData>;
-
-#include "Light.inl"

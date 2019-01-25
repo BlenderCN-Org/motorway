@@ -25,6 +25,11 @@ class Transform;
 class Mesh;
 class FreeCamera;
 
+struct PointLightData;
+struct SpotLightData;
+struct DirectionalLightData;
+struct EnvironmentProbeData;
+
 struct RenderableMesh
 {
     Mesh*   meshResource;
@@ -53,8 +58,7 @@ public:
 
 private:
     template<typename T>
-    struct ComponentDatabase
-    {
+    struct ComponentDatabase {
         T*                      components;
         size_t                  capacity;
         nyaComponentHandle_t    usageIndex;
@@ -62,23 +66,32 @@ private:
         ComponentDatabase()
             : components( nullptr )
             , capacity( 0ull )
-            , usageIndex( 0u )
-        {
+            , usageIndex( 0u ) {
 
         }
 
-        nyaComponentHandle_t allocate()
-        {
+        nyaComponentHandle_t allocate() {
             return ( usageIndex++ % capacity );
         }
 
-        T& operator [] ( const nyaComponentHandle_t handle )
-        {
+        T& operator [] ( const nyaComponentHandle_t handle ) {
             return components[handle];
         }
     };
 
 public:
+    struct Light {
+        nyaComponentHandle_t    transform;
+
+        // NOTE Light data should be managed by the Graphics subsystem
+        union {
+            PointLightData*         pointLight;
+            SpotLightData*          spotLight;
+            DirectionalLightData*   directionalLight;
+            EnvironmentProbeData*   environmentProbe;
+        };
+    };
+
     struct StaticGeometry {
         nyaComponentHandle_t    transform;
         nyaComponentHandle_t    mesh;
@@ -87,6 +100,7 @@ public:
     ComponentDatabase<Transform>        TransformDatabase;
     ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
     ComponentDatabase<FreeCamera>       FreeCameraDatabase;
+    ComponentDatabase<Light>            LightDatabase;
 
 public:
                             Scene( BaseAllocator* allocator, const std::string& sceneName = "Default Scene" );
@@ -102,10 +116,23 @@ public:
 
     StaticGeometry&         allocateStaticGeometry();
 
+    Light&                  allocatePointLight();
+    Light&                  allocateSpotLight();
+    Light&                  allocateDirectionalLight();
+
 private:
     std::string             name;
     BaseAllocator*          memoryAllocator;
 
     StaticGeometry          staticGeometry[4096];
     uint32_t                staticGeometryCount;
+
+    Light                   pointLight[64];
+    uint32_t                pointLightCount;
+
+    Light                   spotLight[64];
+    uint32_t                spotLightCount;
+
+    Light                   dirLight[1];
+    uint32_t                dirLightCount;
 };

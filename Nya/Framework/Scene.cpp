@@ -23,16 +23,21 @@
 #include <Graphics/DrawCommandBuilder.h>
 
 #include <Maths/Transform.h>
-#include <Framework/Cameras/FreeCamera.h>
+
+#include "Cameras/FreeCamera.h"
+#include "Light.h"
 
 Scene::Scene( BaseAllocator* allocator, const std::string& sceneName )
     : name( sceneName )
     , memoryAllocator( allocator )
     , staticGeometryCount( 0u )
+    , pointLightCount( 0u )
+    , spotLightCount( 0u )
+    , dirLightCount( 0u )
 {
     // TODO Test!!
-    TransformDatabase.components = nya::core::allocateArray<Transform>( allocator, 1024 );
-    TransformDatabase.capacity = 1024;
+    TransformDatabase.components = nya::core::allocateArray<Transform>( allocator, 8192 );
+    TransformDatabase.capacity = 8192;
 
     RenderableMeshDatabase.components = nya::core::allocateArray<RenderableMesh>( allocator, 1024 );
     RenderableMeshDatabase.capacity = 1024;
@@ -60,6 +65,31 @@ const std::string& Scene::getSceneName() const
 
 void Scene::updateLogic( const float deltaTime )
 {
+    // Propagate light transform prior to transform update
+    for ( uint32_t pointLightIdx = 0; pointLightIdx < pointLightCount; pointLightIdx++ ) {
+        auto& light = pointLight[pointLightIdx];
+
+        auto& transform = TransformDatabase[light.transform];
+
+        if ( transform.needRebuild() ) {
+            light.pointLight->worldPosition = transform.getWorldTranslation();
+        } else {
+            transform.setWorldTranslation( light.pointLight->worldPosition );
+        }
+    }
+
+    for ( uint32_t spotLightIdx = 0; spotLightIdx < spotLightCount; spotLightIdx++ ) {
+        auto& light = spotLight[spotLightIdx];
+
+        auto& transform = TransformDatabase[light.transform];
+
+        if ( transform.needRebuild() ) {
+            light.spotLight->worldPosition = transform.getWorldTranslation();
+        } else {
+            transform.setWorldTranslation( light.spotLight->worldPosition );
+        }
+    }
+
     // Update transforms
     for ( uint32_t transformIdx = 0; transformIdx < TransformDatabase.usageIndex; transformIdx++ ) {
         auto& transform = TransformDatabase[transformIdx];
@@ -99,4 +129,31 @@ Scene::StaticGeometry& Scene::allocateStaticGeometry()
     geom.mesh = RenderableMeshDatabase.allocate();
 
     return geom;
+}
+
+Scene::Light& Scene::allocatePointLight()
+{
+    auto& light = pointLight[pointLightCount++];
+    light.transform = TransformDatabase.allocate();
+    light.pointLight = nullptr;
+
+    return light;
+}
+
+Scene::Light& Scene::allocateSpotLight()
+{
+    auto& light = spotLight[spotLightCount++];
+    light.transform = TransformDatabase.allocate();
+    light.spotLight = nullptr;
+
+    return light;
+}
+
+Scene::Light& Scene::allocateDirectionalLight()
+{
+    auto& light = dirLight[dirLightCount++];
+    light.transform = TransformDatabase.allocate();
+    light.directionalLight = nullptr;
+
+    return light;
 }
