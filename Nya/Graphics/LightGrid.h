@@ -42,12 +42,8 @@ public:
 
     void                setSceneBounds( const glm::vec3& aabbMax, const glm::vec3& aabbMin );
 
-    DirectionalLight&   allocateDirectionalLight( const DirectionalLightData&& lightData );
-    PointLight&         allocatePointLight( const PointLightData&& lightData );
-    SpotLight&          allocateSpotLight( const SpotLightData&& lightData );
-
-    EnvironmentProbe&   allocateLocalEnvironmentProbe( const EnvironmentProbeData&& lightData );
-    EnvironmentProbe&   allocateGlobalEnvironmentProbe( const EnvironmentProbeData&& lightData );
+    DirectionalLightData*   allocateDirectionalLightData( const DirectionalLightData&& lightData );
+    PointLightData*         allocatePointLightData( const PointLightData&& lightData );
 
 private:
     BaseAllocator*      memoryAllocator;
@@ -76,7 +72,7 @@ private:
         DiskLightData           DiskLights[MAX_DISC_LIGHT_COUNT];
         RectangleLightData      RectangleLights[MAX_RECTANGLE_LIGHT_COUNT];
 
-        EnvironmentProbe        GlobalEnvironmentProbes[MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT];
-        EnvironmentProbe        LocalEnvironmentProbes[MAX_LOCAL_ENVIRONMENT_PROBE_COUNT];
+        EnvironmentProbeData    GlobalEnvironmentProbes[MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT];
+        EnvironmentProbeData    LocalEnvironmentProbes[MAX_LOCAL_ENVIRONMENT_PROBE_COUNT];
     } lights;
 };
