@@ -19,7 +19,13 @@
 */
 #pragma once
 
+#if NYA_DEVBUILD
+#define NYA_DEV_ASSERT( condition, format, ... ) NYA_ASSERT( condition, format, __VA_ARGS__ )
 #define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
+#else
+#define NYA_DEV_ASSERT( condition, format, ... ) 
+#define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
+#endif
 
 #if NYA_WIN
 [[noreturn]] static void Assert( const char* description, ... )
