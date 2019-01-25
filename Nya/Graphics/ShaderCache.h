@@ -38,7 +38,7 @@ public:
                             ShaderCache& operator = ( ShaderCache& ) = delete;
                             ~ShaderCache();
 	
-    Shader*                 getOrUploadStage( const nyaString_t& shaderFilename, const eShaderStage stageType, const bool forceReload = false );
+    Shader*                 getOrUploadStage( const std::string& shaderFilename, const eShaderStage stageType, const bool forceReload = false );
 
 private:
     VirtualFileSystem*                              virtualFileSystem;
