@@ -237,7 +237,10 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
     BIND_IF_AVAILABLE( computeShader )
 #undef BIND_IF_AVAILABLE
 
-    pipelineState->inputLayout = CreateInputLayout( renderContext->nativeDevice, description.inputLayout, description.vertexShader->bytecode, description.vertexShader->bytecodeSize );
+    if ( description.vertexShader != nullptr ) {
+        pipelineState->inputLayout = CreateInputLayout( renderContext->nativeDevice, description.inputLayout, description.vertexShader->bytecode, description.vertexShader->bytecodeSize );
+    }
+
     pipelineState->primitiveTopology = _D3D11_PRIMITIVE_TOPOLOGY[description.primitiveTopology];
 
     pipelineState->blendState = CreateBlendState( renderContext->nativeDevice, description.blendState );
