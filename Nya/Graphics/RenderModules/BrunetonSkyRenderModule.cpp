@@ -23,7 +23,7 @@
 
 #include <Graphics/RenderPipeline.h>
 #include <Graphics/ShaderCache.h>
-#include <Graphics/GraphicsAssetManager.h>
+#include <Graphics/GraphicsAssetCache.h>
 
 #include <Rendering/ImageFormat.h>
 #include <Rendering/RenderDevice.h>
@@ -165,11 +165,11 @@ void BrunetonSkyRenderModule::destroy( RenderDevice* renderDevice )
     renderDevice->destroyPipelineState( skyRenderPso );
 }
 
-void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager )
+void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     PipelineStateDesc psoDesc = {};
-    psoDesc.vertexShader = shaderCache->getOrUploadStage( NYA_STRING( "BrunetonSky" ), SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( NYA_STRING( "BrunetonSky" ), SHADER_STAGE_PIXEL );
+    psoDesc.vertexShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky", SHADER_STAGE_VERTEX );
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
     psoDesc.rasterizerState.cullMode = nya::rendering::eCullMode::CULL_MODE_NONE;
     psoDesc.depthStencilState.enableDepthTest = false;
@@ -180,9 +180,9 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     skyRenderPso = renderDevice->createPipelineState( psoDesc );
 
     // Load precomputed table and shaders
-    transmittanceTexture = graphicsAssetManager->getTexture( ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME );
-    scatteringTexture = graphicsAssetManager->getTexture( ATMOSPHERE_SCATTERING_TEXTURE_NAME );
-    irradianceTexture = graphicsAssetManager->getTexture( ATMOSPHERE_IRRADIANCE_TEXTURE_NAME );
+    transmittanceTexture = graphicsAssetCache->getTexture( ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME );
+    scatteringTexture = graphicsAssetCache->getTexture( ATMOSPHERE_SCATTERING_TEXTURE_NAME );
+    irradianceTexture = graphicsAssetCache->getTexture( ATMOSPHERE_IRRADIANCE_TEXTURE_NAME );
 
     // Set Default Parameters
     parameters.EarthCenter = glm::vec3( 0.0, 0.0, -kBottomRadius / kLengthUnitInMeters );

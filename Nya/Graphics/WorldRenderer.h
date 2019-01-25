@@ -29,7 +29,7 @@ class BrunetonSkyRenderModule;
 class TextRenderingModule;
 class ShaderCache;
 class RenderPipeline;
-class GraphicsAssetManager;
+class GraphicsAssetCache;
 
 struct CameraData;
 struct Viewport;
@@ -144,7 +144,7 @@ public:
     void                    drawWorld( RenderDevice* renderDevice, const float deltaTime );
     DrawCmd&                allocateDrawCmd();
 
-    void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager );
+    void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     RenderPipeline&         allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
 

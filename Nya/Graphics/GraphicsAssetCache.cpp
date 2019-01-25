@@ -19,7 +19,7 @@
 */
 
 #include "Shared.h"
-#include "GraphicsAssetManager.h"
+#include "GraphicsAssetCache.h"
 
 // Io
 #include <FileSystem/VirtualFileSystem.h>
@@ -48,7 +48,7 @@
 
 using namespace nya::core;
 
-GraphicsAssetManager::GraphicsAssetManager( BaseAllocator* allocator, RenderDevice* renderDevice, ShaderCache* shaderCache, VirtualFileSystem* virtualFileSystem )
+GraphicsAssetCache::GraphicsAssetCache( BaseAllocator* allocator, RenderDevice* renderDevice, ShaderCache* shaderCache, VirtualFileSystem* virtualFileSystem )
     : assetStreamingHeap( nya::core::allocate<FreeListAllocator>( allocator, 32 * 1024 * 1024, allocator->allocate( 32 * 1024 * 1024 ) ) )
     , renderDevice( renderDevice )
     , shaderCache( shaderCache )
@@ -57,13 +57,13 @@ GraphicsAssetManager::GraphicsAssetManager( BaseAllocator* allocator, RenderDevi
 
 }
 
-GraphicsAssetManager::~GraphicsAssetManager()
+GraphicsAssetCache::~GraphicsAssetCache()
 {
     fontMap.clear();
     textureMap.clear();
 }
 
-void GraphicsAssetManager::destroy()
+void GraphicsAssetCache::destroy()
 {
     for ( auto& meshes : meshMap ) {
         meshes.second->destroy( renderDevice );
@@ -93,7 +93,7 @@ void stbi_skipcallback( void *user, int n )
     f->skip( n );
 }
 
-Texture* GraphicsAssetManager::getTexture( const nyaChar_t* assetName, const bool forceReload )
+Texture* GraphicsAssetCache::getTexture( const nyaChar_t* assetName, const bool forceReload )
 {
     auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
     if ( file == nullptr ) {
@@ -239,7 +239,7 @@ Texture* GraphicsAssetManager::getTexture( const nyaChar_t* assetName, const boo
     return textureMap[assetHashcode];
 }
 
-FontDescriptor* GraphicsAssetManager::getFont( const nyaChar_t* assetName, const bool forceReload )
+FontDescriptor* GraphicsAssetCache::getFont( const nyaChar_t* assetName, const bool forceReload )
 {
     auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
     if ( file == nullptr ) {
@@ -267,7 +267,7 @@ FontDescriptor* GraphicsAssetManager::getFont( const nyaChar_t* assetName, const
     return fontMap[assetHashcode];
 }
 
-//Material* GraphicsAssetManager::getMaterialCopy( const nyaChar_t* assetName )
+//Material* GraphicsAssetCache::getMaterialCopy( const nyaChar_t* assetName )
 //{
 //    auto materialLoaded = getMaterial( assetName );
 //    
@@ -280,7 +280,7 @@ FontDescriptor* GraphicsAssetManager::getFont( const nyaChar_t* assetName, const
 //    return matCopy;
 //}
 //
-//Material* GraphicsAssetManager::getMaterial( const nyaChar_t* assetName, const bool forceReload )
+//Material* GraphicsAssetCache::getMaterial( const nyaChar_t* assetName, const bool forceReload )
 //{
 //    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
 //    if ( file == nullptr ) {
@@ -309,7 +309,7 @@ FontDescriptor* GraphicsAssetManager::getFont( const nyaChar_t* assetName, const
 //    return materialMap[assetHashcode];
 //}
 
-Mesh* GraphicsAssetManager::getMesh( const nyaChar_t* assetName, const bool forceReload )
+Mesh* GraphicsAssetCache::getMesh( const nyaChar_t* assetName, const bool forceReload )
 {
     auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
     if ( file == nullptr ) {
@@ -380,7 +380,7 @@ Mesh* GraphicsAssetManager::getMesh( const nyaChar_t* assetName, const bool forc
 }
 
 //
-//Model* GraphicsAssetManager::getModel( const nyaChar_t* assetName, const bool forceReload )
+//Model* GraphicsAssetCache::getModel( const nyaChar_t* assetName, const bool forceReload )
 //{
 //    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
 //    if ( file == nullptr ) {
@@ -436,7 +436,7 @@ Mesh* GraphicsAssetManager::getMesh( const nyaChar_t* assetName, const bool forc
 //    return modelInstance;
 //}
 //
-//void GraphicsAssetManager::getImageTexels( const nyaChar_t* assetName, GraphicsAssetManager::RawTexels& texels )
+//void GraphicsAssetCache::getImageTexels( const nyaChar_t* assetName, GraphicsAssetCache::RawTexels& texels )
 //{
 //    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY );
 //    if ( file == nullptr ) {

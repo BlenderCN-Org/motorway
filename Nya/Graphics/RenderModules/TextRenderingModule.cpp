@@ -24,7 +24,7 @@
 #include <Io/FontDescriptor.h>
 
 #include <Graphics/RenderPipeline.h>
-#include <Graphics/GraphicsAssetManager.h>
+#include <Graphics/GraphicsAssetCache.h>
 #include <Graphics/ShaderCache.h>
 
 #include <Rendering/RenderDevice.h>
@@ -163,17 +163,17 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
     return data.output;
 }
 
-void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager )
+void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     // Load Default Font
-    fontDescriptor = graphicsAssetManager->getFont( NYA_STRING( "GameData/fonts/SegoeUI.fnt" ) );
+    fontDescriptor = graphicsAssetCache->getFont( NYA_STRING( "GameData/fonts/SegoeUI.fnt" ) );
 
     if ( fontDescriptor == nullptr ) {
         NYA_CERR << "Could not load default font descriptor!" << std::endl;
         return;
     }
 
-    fontAtlas = graphicsAssetManager->getTexture( fontDescriptor->Name.c_str() );
+    fontAtlas = graphicsAssetCache->getTexture( fontDescriptor->Name.c_str() );
 
     // Create static indice buffer
     static constexpr int IndexStride = sizeof( uint32_t );
@@ -220,8 +220,8 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     }
 
     PipelineStateDesc pipelineState = {};
-    pipelineState.vertexShader = shaderCache->getOrUploadStage( NYA_STRING( "SDFTextRendering" ), eShaderStage::SHADER_STAGE_VERTEX );
-    pipelineState.pixelShader = shaderCache->getOrUploadStage( NYA_STRING( "SDFTextRendering" ), eShaderStage::SHADER_STAGE_PIXEL );
+    pipelineState.vertexShader = shaderCache->getOrUploadStage( "UI/SDFTextRendering", eShaderStage::SHADER_STAGE_VERTEX );
+    pipelineState.pixelShader = shaderCache->getOrUploadStage( "UI/SDFTextRendering", eShaderStage::SHADER_STAGE_PIXEL );
 
     pipelineState.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 

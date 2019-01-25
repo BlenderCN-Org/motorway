@@ -36,7 +36,7 @@ class FreeListAllocator;
 
 #include <map>
 
-class GraphicsAssetManager
+class GraphicsAssetCache
 {
 /*
 public:
@@ -52,9 +52,9 @@ public:
     };*/
 
 public:
-                    GraphicsAssetManager( BaseAllocator* allocator, RenderDevice* renderDevice, ShaderCache* shaderCache, VirtualFileSystem* virtualFileSystem );
-                    GraphicsAssetManager( GraphicsAssetManager& ) = delete;
-	                ~GraphicsAssetManager();
+                    GraphicsAssetCache( BaseAllocator* allocator, RenderDevice* renderDevice, ShaderCache* shaderCache, VirtualFileSystem* virtualFileSystem );
+                    GraphicsAssetCache( GraphicsAssetCache& ) = delete;
+	                ~GraphicsAssetCache();
 
     void            destroy();
 
@@ -66,7 +66,7 @@ public:
     //Model*          getModel( const nyaChar_t* assetName, const bool forceReload = false );
 
     // WARNING (for now) you are responsible of releasing the memory (which is a bad thing)
-    //void            getImageTexels( const nyaChar_t* assetName, GraphicsAssetManager::RawTexels& texels );
+    //void            getImageTexels( const nyaChar_t* assetName, GraphicsAssetCache::RawTexels& texels );
     
 private:
     FreeListAllocator*      assetStreamingHeap;

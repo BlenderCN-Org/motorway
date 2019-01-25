@@ -73,11 +73,11 @@ DrawCmd& WorldRenderer::allocateDrawCmd()
     return *nya::core::allocate<DrawCmd>( drawCmdAllocator );
 }
 
-void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager )
+void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     // Load render modules resources (cached pipeline states, LUTs, precomputed data tables, etc.)
-    skyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetManager );
-    textRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetManager );
+    skyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    textRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
 
     LoadCachedResourcesPP( renderDevice, shaderCache );
 }

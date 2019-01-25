@@ -29,7 +29,7 @@ struct Buffer;
 
 class RenderPipeline;
 class RenderDevice;
-class GraphicsAssetManager;
+class GraphicsAssetCache;
 class ShaderCache;
 
 using MutableResHandle_t = uint32_t;
@@ -48,7 +48,7 @@ public:
 
     void                         destroy( RenderDevice* renderDevice );
     MutableResHandle_t           renderText( RenderPipeline* renderPipeline, MutableResHandle_t output );
-    void                         loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager );
+    void                         loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     void                         addOutlinedText( const char* text, float size, float x, float y, const glm::vec4& textColor = glm::vec4( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
 

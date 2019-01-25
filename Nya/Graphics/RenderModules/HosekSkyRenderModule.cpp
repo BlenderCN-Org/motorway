@@ -178,8 +178,8 @@ MutableResHandle_t HosekSkyRenderModule::renderSky( RenderPipeline* renderPipeli
 void HosekSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
     PipelineStateDesc psoDesc = {};
-    psoDesc.vertexShader = shaderCache->getOrUploadStage( NYA_STRING( "HosekSky" ), SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( NYA_STRING( "HosekSky" ), SHADER_STAGE_PIXEL );
+    psoDesc.vertexShader = shaderCache->getOrUploadStage( "Atmosphere/HosekSky", SHADER_STAGE_VERTEX );
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/HosekSky", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
     psoDesc.rasterizerState.cullMode = nya::rendering::eCullMode::CULL_MODE_NONE;
     psoDesc.depthStencilState.enableDepthTest = false;

@@ -22,7 +22,7 @@
 
 class RenderPipeline;
 class ShaderCache;
-class GraphicsAssetManager;
+class GraphicsAssetCache;
 
 struct Texture;
 struct PipelineState;
@@ -41,7 +41,7 @@ public:
 
     MutableResHandle_t          renderSky( RenderPipeline* renderPipeline, bool renderSunDisk = true );
     void                        destroy( RenderDevice* renderDevice );
-    void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetManager* graphicsAssetManager );
+    void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
 private:
     PipelineState*              skyRenderPso;
