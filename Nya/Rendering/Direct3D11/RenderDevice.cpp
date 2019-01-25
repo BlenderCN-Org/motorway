@@ -299,6 +299,8 @@ CommandList& RenderDevice::allocateComputeCommandList() const
 
 void RenderDevice::submitCommandList( CommandList* commandList )
 {
+    NYA_DEV_ASSERT( commandList->NativeCommandList->commandList != nullptr, "%s:%i >> D3D11: Command list was nullptr!", NYA_FILENAME, __LINE__ );
+
     renderContext->nativeDeviceContext->ExecuteCommandList( commandList->NativeCommandList->commandList, FALSE );
 
     // Release CmdList (afaik you can't recycle them in d3d11)
