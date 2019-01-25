@@ -18,7 +18,7 @@
 #include <Graphics/RenderPipeline.h>
 #include <Graphics/ShaderCache.h>
 #include <Graphics/WorldRenderer.h>
-#include <Graphics/GraphicsAssetManager.h>
+#include <Graphics/GraphicsAssetCache.h>
 #include <Graphics/DrawCommandBuilder.h>
 
 #include <Framework/Cameras/FreeCamera.h>
@@ -38,6 +38,8 @@
 #include <Core/FramerateCounter.h>
 
 #include "DefaultInputConfig.h"
+
+#include <Graphics/LightGrid.h>
 
 #include <thread>
 #include <atomic>
@@ -60,8 +62,9 @@ FileSystemNative*       g_DataFileSystem;
 FileSystemNative*       g_DevFileSystem;
 ShaderCache*            g_ShaderCache;
 WorldRenderer*          g_WorldRenderer;
-GraphicsAssetManager*   g_GraphicsAssetManager;
+GraphicsAssetCache*     g_GraphicsAssetCache;
 DrawCommandBuilder*     g_DrawCommandBuilder;
+LightGrid*              g_LightGrid;
 
 Scene*                  g_SceneTest;
 FreeCamera*             g_FreeCamera;
@@ -138,7 +141,18 @@ void TestStuff()
     meshTransform.translate( glm::vec3( 32, 0, 0 ) );
 
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
-    geometry.meshResource = g_GraphicsAssetManager->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
+    geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
+
+    PointLightData pointLightData;
+    pointLightData.worldPosition = { 16, 0.5f, 0 };
+    pointLightData.radius = 2.0f;
+    pointLightData.lightPower = 2500.0f;
+    pointLightData.colorRGB = { 1, 1, 1 };
+
+    auto& pointLight = g_SceneTest->allocatePointLight();
+    pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+    auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
+    pointLightTransform.translate( pointLightData.worldPosition );
 }
 
 void Initialize()
@@ -252,14 +266,15 @@ void Initialize()
 
     g_ShaderCache = nya::core::allocate<ShaderCache>( g_GlobalAllocator, g_GlobalAllocator, g_RenderDevice, g_VirtualFileSystem );
     g_WorldRenderer = nya::core::allocate<WorldRenderer>( g_GlobalAllocator, g_GlobalAllocator );
-    g_GraphicsAssetManager = nya::core::allocate<GraphicsAssetManager>( g_GlobalAllocator, g_GlobalAllocator, g_RenderDevice, g_ShaderCache, g_VirtualFileSystem );
+    g_GraphicsAssetCache = nya::core::allocate<GraphicsAssetCache>( g_GlobalAllocator, g_GlobalAllocator, g_RenderDevice, g_ShaderCache, g_VirtualFileSystem );
     g_DrawCommandBuilder = nya::core::allocate<DrawCommandBuilder>( g_GlobalAllocator, g_GlobalAllocator );
-
+    g_LightGrid = nya::core::allocate<LightGrid>( g_GlobalAllocator, g_GlobalAllocator );
     g_SceneTest = nya::core::allocate<Scene>( g_GlobalAllocator, g_GlobalAllocator );
 
-    g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetManager );
+    g_LightGrid->create( g_RenderDevice );
+    g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
-    g_RenderDevice->enableVerticalSynchronisation( true );
+    // g_RenderDevice->enableVerticalSynchronisation( true );
 
     RegisterInputContexts();
 
@@ -298,10 +313,16 @@ void RenderLoop()
         g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, glm::vec4( 1, 1, 0, 1 ) );
 
         g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
-
         g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer );
 
-        g_WorldRenderer->drawWorld( g_RenderDevice, nya::editor::LOGIC_DELTA );
+        // Do pre-world render steps (update light grid, upload buffers, etc.)
+        CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();
+        cmdList.begin();
+            g_LightGrid->updateClusters( &cmdList );
+        cmdList.end();
+        g_RenderDevice->submitCommandList( &cmdList );
+
+        g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
 
         g_RenderDevice->present();
     }
@@ -375,10 +396,10 @@ void MainLoop()
 void Shutdown()
 {
     g_WorldRenderer->destroy( g_RenderDevice );
-    g_GraphicsAssetManager->destroy();
+    g_GraphicsAssetCache->destroy();
     
     nya::core::free( g_GlobalAllocator, g_SceneTest );
-    nya::core::free( g_GlobalAllocator, g_GraphicsAssetManager );
+    nya::core::free( g_GlobalAllocator, g_GraphicsAssetCache );
     nya::core::free( g_GlobalAllocator, g_WorldRenderer );
     nya::core::free( g_GlobalAllocator, g_ShaderCache );
     nya::core::free( g_GlobalAllocator, g_AudioDevice );

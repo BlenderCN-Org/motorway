@@ -24,7 +24,7 @@ namespace nya
     namespace editor
     {
         // As ticks
-        constexpr uint32_t LOGIC_TICKRATE   = 100;
+        constexpr uint32_t LOGIC_TICKRATE   = 300;
         constexpr uint32_t PHYSICS_TICKRATE = 100;
 
         // As milliseconds
