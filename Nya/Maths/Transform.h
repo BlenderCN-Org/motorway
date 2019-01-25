@@ -69,6 +69,8 @@ public:
     void                serialize( FileSystemObject* stream );
     void                deserialize( FileSystemObject* stream );
 
+    bool                needRebuild() const;
+
 private:
     bool                isDirty;
 

@@ -227,3 +227,8 @@ float Transform::getLocalBiggestScale() const
 
     return biggestScale;
 }
+
+bool Transform::needRebuild() const
+{
+    return isDirty;
+}
