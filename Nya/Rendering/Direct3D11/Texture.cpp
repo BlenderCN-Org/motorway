@@ -61,7 +61,7 @@ UINT GetBindFlags( const TextureDescription& description )
 
     if ( description.flags.isDepthResource ) {
         bindFlags |= D3D11_BIND_DEPTH_STENCIL;
-    } else if ( !IsUsingCompressedFormat( description.format ) ) {
+    } else if ( !IsUsingCompressedFormat( description.format ) && description.flags.allowCPUWrite == 0 ) {
         // Safety check in case the user try to use a compressed format as a rendertarget
         bindFlags |= D3D11_BIND_RENDER_TARGET;
 
