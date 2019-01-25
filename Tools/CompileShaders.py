@@ -18,10 +18,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #    
 
-import sys, string, os, argparse, platform, codecs
+import sys, string, os, argparse, platform, codecs, subprocess, itertools, MurmurHash
 from pathlib import Path
-import subprocess
-
 
 # Script args (see description below)
 isProd = False
@@ -41,16 +39,16 @@ if platform.system() == 'Windows':
 def build_flag_list( flags ):
     flagset = ""
     
-    for (id, text) in flags.items():
-        flagset = flagset + ( "/D " + id + "=" + text + " " )
+    for flag in flags:
+        flagset = flagset + ( "/D " + flag + "=1 " )
         
     return flagset
 
 def build_flag_list_GLSL( flags ):
     flagset = "-DFLAN_GLSL=1 "
     
-    for (id, text) in flags.items():
-        flagset = flagset + ( "-D" + id + "=" + text + " " )
+    for flag in flags:
+        flagset = flagset + ( "-D" + flag + "=1 " )
          
     return flagset
     
@@ -101,154 +99,121 @@ def need_to_recompile( filename_input, filename_output, ext ):
         stream.write( str( file_timestamp ) )
     
     return True
+   
+def generate_combination_list( flags ):
+    combs = [[[]]]
+    for i in range( 1, len( flags ) + 1 ):
+        els = [list( x ) for x in itertools.combinations( flags, i )]
+        combs.append( els )
+        
+    return combs
+   
+def get_permutation_hashcode( name, flags ):
+    filename = name
     
-def compile_shader_VS( filename_input, filename_output, entrypoint = 'EntryPointVS', flags = {}, flip_y = False ):
-    if need_to_recompile( filename_input, filename_output, ".vso" ):
-        if flags is not None:
-            flag_list = build_flag_list( flags )
-
-        if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T vs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".vso"
-            if isProd:
-                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
-            else:
-                cmdLine = cmdLine + " /O1"
-                
-            subprocess.run( cmdLine )
-            
-        if compileSPIRV:
-            # GLSLang args are '-' delimited
-            flag_list_glsl = build_flag_list_GLSL( flags )
-            
-            # Resolve includes directives (since glslang don't support this feature for hlsl)
-            resolved_file = resolve_includes( shader_folder + filename_input, shader_folder )
-            with open( "./tmp/" + filename_output + ".unroll", 'w') as outfile:
-                outfile.write( resolved_file )
-
-            # HLSL > SPIRV (VK)
-            # SPIRV (VK) > GLSL
-            # GLSL > SPIRV (GLSL)
-            subprocess.run( glslang_exe + " -S vert -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvv -D ./tmp/" + filename_output + ".unroll"  )    
-            
-            if flip_y:
-                subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --flip-vert-y --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
-            else:
-                subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvv --output ./tmp/" + filename_output + ".vert.glsl" )
-          
-            subprocess.run( glslang_exe + " -S vert -G -o " + compiled_shader_folder + filename_output + ".gl.spvv ./tmp/" + filename_output + ".vert.glsl"  )    
-
-def compile_shader_PS( filename_input, filename_output, entrypoint = 'EntryPointPS', flags = {} ):
-    if need_to_recompile( filename_input, filename_output, ".pso" ):
-        if flags is not None:
-            flag_list = build_flag_list( flags )
-            
-        if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T ps_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".pso"
-            if isProd:
-                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
-            else:
-                cmdLine = cmdLine + " /O1"     
-            subprocess.run( cmdLine )
-        if compileSPIRV:
-            # GLSLang args are '-' delimited
-            flag_list_glsl = build_flag_list_GLSL( flags )
-            
-            # Resolve includes directives (since glslang don't support this feature for hlsl)
-            resolved_file = resolve_includes( shader_folder + filename_input, shader_folder )
-            with open( "./tmp/" + filename_output + ".unroll", 'w') as outfile:
-                outfile.write( resolved_file )
-                
-            # HLSL > SPIRV (VK)
-            # SPIRV (VK) > GLSL
-            # GLSL > SPIRV (GLSL)
-            subprocess.run( glslang_exe + " -S frag -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvp -D ./tmp/" + filename_output + ".unroll"  )    
-            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvp --output ./tmp/" + filename_output + ".frag.glsl" )
-            subprocess.run( glslang_exe + " -S frag -G -o " + compiled_shader_folder + filename_output + ".gl.spvp ./tmp/" + filename_output + ".frag.glsl"  )    
-
-def compile_shader_CS( filename_input, filename_output, entrypoint = 'EntryPointCS', flags = {} ):
-    if need_to_recompile( filename_input, filename_output, ".cso" ):
-        if flags is not None:
-            flag_list = build_flag_list( flags )
-            
-        if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T cs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".cso"
-            if isProd:
-                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
-            else:
-                cmdLine = cmdLine + " /O1"
-            subprocess.run( cmdLine )
-        if compileSPIRV:
-            # GLSLang args are '-' delimited
-            flag_list_glsl = build_flag_list_GLSL( flags )
-            
-            # Resolve includes directives (since glslang don't support this feature for hlsl)
-            resolved_file = resolve_includes( shader_folder + filename_input, shader_folder )
-            with open( "./tmp/" + filename_output + ".unroll", 'w') as outfile:
-                outfile.write( resolved_file )
-                
-            # HLSL > SPIRV (VK)
-            # SPIRV (VK) > GLSL
-            # GLSL > SPIRV (GLSL)
-            subprocess.run( glslang_exe + " -S comp -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvc -D ./tmp/" + filename_output + ".unroll"  )    
-            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvc --output ./tmp/" + filename_output + ".comp.glsl" )
-            subprocess.run( glslang_exe + " -S comp -G -o " + compiled_shader_folder + filename_output + ".gl.spvc ./tmp/" + filename_output + ".comp.glsl"  )    
- 
-def compile_shader_HS( filename_input, filename_output, entrypoint = 'EntryPointHS', flags = {} ):
-    if need_to_recompile( filename_input, filename_output, ".hso" ):
-        if flags is not None:
-            flag_list = build_flag_list( flags )
-            
-        if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T hs_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".hso"
-            if isProd:
-                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
-            else:
-                cmdLine = cmdLine + " /O1"          
-            subprocess.run( cmdLine )
-        if compileSPIRV:
-            # GLSLang args are '-' delimited
-            flag_list_glsl = build_flag_list_GLSL( flags )
-            
-            # Resolve includes directives (since glslang don't support this feature for hlsl)
-            resolved_file = resolve_includes( shader_folder + filename_input, shader_folder )
-            with open( "./tmp/" + filename_output + ".unroll", 'w') as outfile:
-                outfile.write( resolved_file )
-                
-            # HLSL > SPIRV (VK)
-            # SPIRV (VK) > GLSL
-            # GLSL > SPIRV (GLSL)
-            subprocess.run( glslang_exe + " -S tesc -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvh -D ./tmp/" + filename_output + ".unroll"  )    
-            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvh --output ./tmp/" + filename_output + ".hull.glsl" )
-            subprocess.run( glslang_exe + " -S tesc -G -o " + compiled_shader_folder + filename_output + ".gl.spvh ./tmp/" + filename_output + ".hull.glsl"  )    
+    for flag in flags:
+        filename = filename + flag
+        
+    hash_object = MurmurHash.hash128( filename.encode( 'utf-8' ) ) #hashlib.md5( filename.encode( 'utf-8' ) )
     
-def compile_shader_DS( filename_input, filename_output, entrypoint = 'EntryPointDS', flags = {} ):
-    if need_to_recompile( filename_input, filename_output, ".dso" ):
-        if flags is not None:
-            flag_list = build_flag_list( flags )
-            
-        if compileD3D11:
-            cmdLine = "fxc.exe /nologo /E " + entrypoint + " " + flag_list + " /T ds_5_0 " + shader_folder + filename_input + " /I " + shader_folder + " /Fo " + compiled_shader_folder + filename_output + ".dso"
-            if isProd:
-                cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
-            else:
-                cmdLine = cmdLine + " /O1"
-            subprocess.run( cmdLine )
-        if compileSPIRV:
-            # GLSLang args are '-' delimited
-            flag_list_glsl = build_flag_list_GLSL( flags )
-            
-            # Resolve includes directives (since glslang don't support this feature for hlsl)
-            resolved_file = resolve_includes( shader_folder + filename_input, shader_folder )
-            with open( "./tmp/" + filename_output + ".unroll", 'w') as outfile:
-                outfile.write( resolved_file )
-                
-            # HLSL > SPIRV (VK)
-            # SPIRV (VK) > GLSL
-            # GLSL > SPIRV (GLSL)
-            subprocess.run( glslang_exe + " -S tese -e " + entrypoint + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename_output + ".vk.spvd -D ./tmp/" + filename_output + ".unroll"  )    
-            subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename_output + ".vk.spvd --output ./tmp/" + filename_output + ".domain.glsl" )
-            subprocess.run( glslang_exe + " -S tese -G -o " + compiled_shader_folder + filename_output + ".gl.spvd ./tmp/" + filename_output + ".domain.glsl"  )    
-            
+    return hex( hash_object )[2:] # remove '0x'
+    
+def get_entry_point( type ):
+    return {
+        'VS': 'EntryPointVS',
+        'DS': 'EntryPointDS',
+        'HS': 'EntryPointHS',
+        'PS': 'EntryPointPS',
+        'CS': 'EntryPointCS'
+    }.get( type, 'main' )
+    
+def get_extension( type ):
+    return {
+        'VS': '.vso',
+        'DS': '.dso',
+        'HS': '.hso',
+        'PS': '.pso',
+        'CS': '.cso'
+    }.get( type, '.unk' )
+    
+def get_d3d_sm( type ):
+    return {
+        'VS': 'vs_5_0',
+        'HS': 'hs_5_0',
+        'DS': 'ds_5_0',
+        'PS': 'ps_5_0',
+        'CS': 'cs_5_0'
+    }.get( type, 'vs_5_0' )
+    
+def get_sprv_sm( type ):
+    return {
+        'VS': 'vert',
+        'HS': 'tesc',
+        'DS': 'tese',
+        'PS': 'frag',
+        'CS': 'comp'
+    }.get( type, 'vs_5_0' )
+  
+def compile_permutation_d3d11( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):
+    cmd_args_list = build_flag_list( permutation )
+    
+    cmdLine = "fxc.exe /nologo /E " + entry_point + " " + cmd_args_list + " /T " + shading_model + " " + shader_folder + shader_name + ".hlsl /I " + shader_folder + " /Fo " + compiled_shader_folder + filename + extension
+    
+    if isProd:
+        cmdLine = cmdLine + " /O3 /Qstrip_debug /Qstrip_reflect /Qstrip_priv /Qstrip_rootsignature"
+    else:
+        cmdLine = cmdLine + " /O1"
+        
+    subprocess.run( cmdLine )
+     
+def compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):  
+    # GLSLang args are '-' delimited
+    flag_list_glsl = build_flag_list_GLSL( permutation )
+
+    # Resolve includes directives (since glslang don't support this feature for hlsl)
+    resolved_file = resolve_includes( shader_folder + shader_name + ".hlsl", shader_folder )
+    with open( "./tmp/" + filename + ".unroll", 'w') as outfile:
+        outfile.write( resolved_file )
+
+    # HLSL > SPIRV (VK)
+    # SPIRV (VK) > GLSL
+    # GLSL > SPIRV (GLSL)
+    subprocess.run( glslang_exe + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"  )    
+    # subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename + extension + ".vk --output ./tmp/" + filename + extension + ".glsl" )
+    # subprocess.run( glslang_exe + " -S " + shading_model + " -G -o " + compiled_shader_folder + filename + extension + ".gl ./tmp/" + filename + extension + ".glsl" )
+    
+def compile_shader( shader_name, type, flags = [] ):
+    flagset = generate_combination_list( flags )
+    
+    entry_point = get_entry_point( type )
+    extension = get_extension( type )
+    shading_model_d3d = get_d3d_sm( type )
+    shading_model_spirv = get_sprv_sm( type )
+    
+    for combination_group in flagset:
+        for combination in combination_group:
+            filename = get_permutation_hashcode( shader_name, combination )
+            if need_to_recompile( shader_name, filename, extension ):
+                if compileD3D11:
+                    compile_permutation_d3d11( shader_name, filename, entry_point, extension, shading_model_d3d, combination )
+                if compileSPIRV:
+                    compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model_spirv, combination )
+
+def compile_shader_VS( shader_name, flags = [] ):
+    compile_shader( shader_name, 'VS', flags )
+    
+def compile_shader_DS( shader_name, flags = [] ):
+    compile_shader( shader_name, 'DS', flags )
+    
+def compile_shader_HS( shader_name, flags = [] ):
+    compile_shader( shader_name, 'HS', flags )
+    
+def compile_shader_PS( shader_name, flags = [] ):
+    compile_shader( shader_name, 'PS', flags )
+    
+def compile_shader_CS( shader_name, flags = [] ):
+    compile_shader( shader_name, 'CS', flags )
+     
 # Parse script args
 parser = argparse.ArgumentParser(description='Flan Game Engine. Compile shaders permutations for Graphics backends.')
 parser.add_argument('--d3d11', dest='compileD3D11', action='store_const',
@@ -285,18 +250,24 @@ if not os.path.exists( "./cache" ):
     os.makedirs( "./cache" )
     
 # Atmosphere
-compile_shader_VS( "Atmosphere/HosekSky.hlsl", "HosekSky" )
-compile_shader_PS( "Atmosphere/HosekSky.hlsl", "HosekSky" )
+compile_shader_VS( "Atmosphere/HosekSky" )
+compile_shader_PS( "Atmosphere/HosekSky" )
 
 # Atmosphere
-compile_shader_VS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSky", "EntryPointVS", {}, False )
-compile_shader_PS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSky", "EntryPointPS", { "NYA_RENDER_SUN_DISC" : "1" } )
-compile_shader_PS( "Atmosphere/BrunetonSky.hlsl", "BrunetonSkyNoSunDisc" )
+compile_shader_VS( "Atmosphere/BrunetonSky" )
+compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC" ] )
+
+# PostFX
+compile_shader_PS( "PostFX/FinalPost" )
 
 # Shared
-compile_shader_VS( "FullscreenTriangle.hlsl", "FullscreenTriangle" )
-compile_shader_PS( "CopyTexture.hlsl", "CopyTexture" )
+compile_shader_VS( "FullscreenTriangle" )
+compile_shader_PS( "CopyTexture" )
 
 # UI
-compile_shader_PS( "UI/SDFTextRendering.hlsl", "SDFTextRendering" )
-compile_shader_VS( "UI/SDFTextRendering.hlsl", "SDFTextRendering" )
+compile_shader_VS( "UI/SDFTextRendering" )
+compile_shader_PS( "UI/SDFTextRendering" )
+
+# Lighting
+compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
+compile_shader_PS( "Lighting/Ubersurface", [ "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING" ] )
