@@ -22,16 +22,44 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #if NYA_MSVC
 #include "DebugHelpersMsvc.h"
 
+#include <dbghelp.h>
+
+typedef DWORD( _stdcall *SymSetOptionsProc )( DWORD ) ;
+typedef DWORD( _stdcall *SymInitializeProc )( HANDLE, PCSTR, BOOL );
+typedef DWORD( _stdcall *SymGetSymFromAddr64Proc )( HANDLE, DWORD64, PDWORD64, PIMAGEHLP_SYMBOL64 );
+
 void DumpStackBacktrace()
 {
-   void* callers[62];
+    HMODULE dbgHelp = LoadLibrary( NYA_STRING( "dbghelp.dll" ) );
 
-    WORD count = RtlCaptureStackBackTrace( 0, 62, callers, nullptr );
+    SymSetOptionsProc symSetOptions = ( SymSetOptionsProc )GetProcAddress( dbgHelp, "SymSetOptions" );
+    SymInitializeProc symInitialize = ( SymInitializeProc )GetProcAddress( dbgHelp, "SymInitialize" );
+    SymGetSymFromAddr64Proc symGetSymFromAddr64 = ( SymGetSymFromAddr64Proc )GetProcAddress( dbgHelp, "SymGetSymFromAddr64" );
 
-    NYA_COUT << "Stack backtrace" << std::endl;
+    HANDLE hProcess = GetCurrentProcess();
+    symSetOptions( SYMOPT_DEFERRED_LOADS );
+    symInitialize( hProcess, NULL, TRUE );
+
+    // NOTE Explicitly ignore the first frame ( = the function itself)
+    void* callers[62];
+    WORD count = RtlCaptureStackBackTrace( 1, 62, callers, nullptr );
+
+    unsigned char symbolBuffer[sizeof( IMAGEHLP_SYMBOL64 ) + 512];
+    PIMAGEHLP_SYMBOL64 pSymbol = reinterpret_cast< PIMAGEHLP_SYMBOL64 >( symbolBuffer );
+    memset( pSymbol, 0, sizeof( IMAGEHLP_SYMBOL64 ) + 512 );
+    pSymbol->SizeOfStruct = sizeof( IMAGEHLP_SYMBOL64 );
+    pSymbol->MaxNameLength = 512;
+
+    NYA_CLOG << "Dumping stack backtrace...\n==============================" << std::endl;
     for ( int i = 0; i < count; i++ ) {
-        NYA_COUT << "\tat " << i << " called " << NYA_PRINT_HEX( callers[i] ) << std::endl;
+        // Retrieve frame infos
+        if ( !symGetSymFromAddr64( hProcess, ( DWORD64 )callers[i], nullptr, pSymbol ) ) {
+            continue;
+        }
+
+        NYA_COUT << i << " : " << NYA_PRINT_HEX( pSymbol->Address ) << " | " << pSymbol->Name << std::endl;
     }
+    NYA_COUT << "==============================\nEnd" << std::endl;
 }
 #endif
 
