@@ -20,6 +20,10 @@
 #pragma once
 
 #if NYA_DEVBUILD
+void DumpStackBacktrace();
+#endif
+
+#if NYA_DEVBUILD
 #define NYA_DEV_ASSERT( condition, format, ... ) NYA_ASSERT( condition, format, __VA_ARGS__ )
 #define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
 #else
@@ -38,6 +42,11 @@
     va_end( argList );
 
     MessageBoxA( NULL, buffer, "Nya GameEngine: Assertion Failed!", MB_OK | MB_SYSTEMMODAL | MB_ICONERROR );
+
+#if NYA_DEVBUILD
+    DumpStackBacktrace();
+    MessageBoxA( NULL, "Stack Backtrace has been dumped to the log file", "Nya GameEngine: Assertion Failed!", MB_OK | MB_SYSTEMMODAL | MB_ICONASTERISK );
+#endif
 
     // TODO
     //  - Better modal window?
