@@ -47,107 +47,102 @@ ShaderCache::~ShaderCache()
     }
 }
 
-void GetHashDigest( void* hashcode, char *s, bool lowerAlpha )
+struct Hash128
 {
-    static constexpr char digitsLowerAlpha[513] =
-        "000102030405060708090a0b0c0d0e0f"
-        "101112131415161718191a1b1c1d1e1f"
-        "202122232425262728292a2b2c2d2e2f"
-        "303132333435363738393a3b3c3d3e3f"
-        "404142434445464748494a4b4c4d4e4f"
-        "505152535455565758595a5b5c5d5e5f"
-        "606162636465666768696a6b6c6d6e6f"
-        "707172737475767778797a7b7c7d7e7f"
-        "808182838485868788898a8b8c8d8e8f"
-        "909192939495969798999a9b9c9d9e9f"
-        "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
-        "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
-        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
-        "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
-        "e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
-        "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+    union
+    {
+        struct
+        {
+            uint64_t low;
+            uint64_t high;
+        };
 
-    uint32_t x = ( uint32_t )hashcode;
-    int i = 12;
-    while ( i >= 0 ) {
-        int pos = ( x & 0xFF ) * 2;
-        char ch = digitsLowerAlpha[pos];
-        s[i * 2] = ch;
+        uint64_t data[2];
+    };
+};
 
-        ch = digitsLowerAlpha[pos + 1];
-        s[i * 2 + 1] = ch;
-
-        x >>= 8;
-        i -= 1;
+nyaString_t GetHashcodeDigest64( const uint64_t hashcode64 )
+{
+    static constexpr size_t HASHCODE_SIZE = sizeof( uint64_t ) << 1;
+    static constexpr nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
+    
+    nyaString_t digest( HASHCODE_SIZE, NYA_STRING( '0' ) );
+    for ( size_t i = 0, j = ( HASHCODE_SIZE - 1 ) * 4; i < HASHCODE_SIZE; ++i, j -= 4 ) {
+        digest[i] = LUT[( hashcode64 >> j ) & 0x0f];
     }
+
+    return digest;
+}
+
+nyaString_t GetHashcodeDigest128( const Hash128& hashcode128 )
+{
+    static constexpr size_t HASHCODE_SIZE = sizeof( Hash128 ) << 1;
+    static constexpr size_t HALF_HASHCODE_SIZE = ( HASHCODE_SIZE / 2 );
+    static constexpr nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
+
+    nyaString_t digest( HASHCODE_SIZE, NYA_STRING( '0' ) );
+    for ( size_t i = 0, j = ( HASHCODE_SIZE - 1 ) * 4; i < HASHCODE_SIZE; ++i, j -= 4 ) {
+        digest[i] = LUT[( hashcode128.data[i / HALF_HASHCODE_SIZE] >> j ) & 0x0f];
+    }
+
+    return digest;
 }
 
 Shader* ShaderCache::getOrUploadStage( const std::string& shaderFilename, const eShaderStage stageType, const bool forceReload )
 {
-    auto filenameWithExtension = shaderFilename;
-
-    struct {
-        uint64_t low;
-        uint64_t high;
-    } permutationHashcode;
-
+    Hash128 permutationHashcode;
     MurmurHash3_x64_128( shaderFilename.c_str(), shaderFilename.size(), 19081996, &permutationHashcode );
 
-    // - Compute hash digest (permutationHash To string)
-    // - Append stage extension
-    // - Check if available
-    // - Do the regular shader loading
-    return nullptr;
+    nyaString_t filenameWithExtension = GetHashcodeDigest128( permutationHashcode );
 
-//
-//#if NYA_VULKAN
-//    switch ( stageType ) {
-//    case eShaderStage::SHADER_STAGE_VERTEX:
-//        filenameWithExtension.append( NYA_STRING( ".vso.vk" ) );
-//        break;
-//    case eShaderStage::SHADER_STAGE_PIXEL:
-//        filenameWithExtension.append( NYA_STRING( ".pso.vk" ) );
-//        break;
-//    case eShaderStage::SHADER_STAGE_COMPUTE:
-//        filenameWithExtension.append( NYA_STRING( ".cso.vk" ) );
-//        break;
-//    case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
-//        filenameWithExtension.append( NYA_STRING( ".hso.vk" ) );
-//        break;
-//    case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
-//        filenameWithExtension.append( NYA_STRING( ".dso.vk" ) );
-//        break;
-//    }
-//#elif NYA_D3D11
-//        switch ( stageType ) {
-//        case eShaderStage::SHADER_STAGE_VERTEX:
-//            filenameWithExtension.append( NYA_STRING( ".vso" ) );
-//            break;
-//        case eShaderStage::SHADER_STAGE_PIXEL:
-//            filenameWithExtension.append( NYA_STRING( ".pso" ) );
-//            break;
-//        case eShaderStage::SHADER_STAGE_COMPUTE:
-//            filenameWithExtension.append( NYA_STRING( ".cso" ) );
-//            break;
-//        case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
-//            filenameWithExtension.append( NYA_STRING( ".hso" ) );
-//            break;
-//        case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
-//            filenameWithExtension.append( NYA_STRING( ".dso" ) );
-//            break;
-//        }
-//#endif
-//
-//    FileSystemObject* file = virtualFileSystem->openFile( 
-//        NYA_STRING( "GameData/shaders/" ) + filenameWithExtension, 
-//        eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY 
-//    );
-//
-//    if ( file == nullptr ) {
-//        NYA_CERR << "'" << filenameWithExtension << "': file does not exist!" << std::endl;
-//        return nullptr;
-//    }
-//
+#if NYA_VULKAN
+    switch ( stageType ) {
+    case eShaderStage::SHADER_STAGE_VERTEX:
+        filenameWithExtension.append( NYA_STRING( ".vso.vk" ) );
+        break;
+    case eShaderStage::SHADER_STAGE_PIXEL:
+        filenameWithExtension.append( NYA_STRING( ".pso.vk" ) );
+        break;
+    case eShaderStage::SHADER_STAGE_COMPUTE:
+        filenameWithExtension.append( NYA_STRING( ".cso.vk" ) );
+        break;
+    case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
+        filenameWithExtension.append( NYA_STRING( ".hso.vk" ) );
+        break;
+    case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
+        filenameWithExtension.append( NYA_STRING( ".dso.vk" ) );
+        break;
+    }
+#elif NYA_D3D11
+        switch ( stageType ) {
+        case eShaderStage::SHADER_STAGE_VERTEX:
+            filenameWithExtension.append( NYA_STRING( ".vso" ) );
+            break;
+        case eShaderStage::SHADER_STAGE_PIXEL:
+            filenameWithExtension.append( NYA_STRING( ".pso" ) );
+            break;
+        case eShaderStage::SHADER_STAGE_COMPUTE:
+            filenameWithExtension.append( NYA_STRING( ".cso" ) );
+            break;
+        case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
+            filenameWithExtension.append( NYA_STRING( ".hso" ) );
+            break;
+        case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
+            filenameWithExtension.append( NYA_STRING( ".dso" ) );
+            break;
+        }
+#endif
+
+    FileSystemObject* file = virtualFileSystem->openFile( 
+        NYA_STRING( "GameData/shaders/" ) + filenameWithExtension, 
+        eFileOpenMode::FILE_OPEN_MODE_READ | eFileOpenMode::FILE_OPEN_MODE_BINARY 
+    );
+
+    if ( file == nullptr ) {
+        NYA_CERR << "'" << filenameWithExtension << "': file does not exist!" << std::endl;
+        return nullptr;
+    }
+
     const auto shaderHashcode = file->getHashcode();
 
     auto it = cachedStages.find( shaderHashcode );
