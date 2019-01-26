@@ -55,7 +55,7 @@ AudioDevice::~AudioDevice()
 
 void AudioDevice::create()
 {
-    NYA_CLOG << "Creating render context (XAudio2)" << std::endl;
+    NYA_CLOG << "Creating audio context (XAudio2)" << std::endl;
 
     IXAudio2* pXAudio2 = nullptr;
 
@@ -74,8 +74,9 @@ void AudioDevice::create()
     XAUDIO2_VOICE_DETAILS details;
     pMasterVoice->GetVoiceDetails( &details );
 
+    NYA_CLOG << "Master voice details:" << std::endl;
     NYA_CLOG << "-Input Channels Count: " << details.InputChannels << std::endl;
-    NYA_CLOG << "-Input Sample Rate: " << details.InputSampleRate << std::endl;
+    NYA_CLOG << "-Input Sample Rate: " << details.InputSampleRate << "Hz" << std::endl;
 
     DWORD dwChannelMask;
     pMasterVoice->GetChannelMask( &dwChannelMask );
