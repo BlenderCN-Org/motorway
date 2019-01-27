@@ -112,7 +112,7 @@ def get_permutation_hashcode( name, flags ):
     filename = name
     
     for flag in flags:
-        filename = filename + flag
+        filename = filename + "+" + flag
         
     hash_object = MurmurHash.hash128( filename.encode( 'utf-8' ) ) #hashlib.md5( filename.encode( 'utf-8' ) )
     
@@ -249,6 +249,11 @@ if not os.path.exists( "./cache" ):
     print( "./cache does not exist yet" )
     os.makedirs( "./cache" )
     
+# Error
+compile_shader_VS( "Error" )
+compile_shader_PS( "Error" )
+compile_shader_CS( "Error" )
+
 # Atmosphere
 compile_shader_VS( "Atmosphere/HosekSky" )
 compile_shader_PS( "Atmosphere/HosekSky" )
@@ -270,4 +275,4 @@ compile_shader_PS( "UI/SDFTextRendering" )
 
 # Lighting
 compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
-compile_shader_PS( "Lighting/Ubersurface", [ "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING" ] )
+compile_shader_PS( "Lighting/Ubersurface", [ "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW" ] )
