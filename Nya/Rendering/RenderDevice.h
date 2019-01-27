@@ -371,7 +371,7 @@ struct RenderPassDesc
         BindMode        bindMode;
         State           targetState;
         float           clearValue[4];
-    } attachements[8];
+    } attachements[8 + 16];
 };
 
 struct ResourceListDesc
