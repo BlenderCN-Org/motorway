@@ -27,9 +27,11 @@
 #include "RenderModules/TextRenderingModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 
+static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
+
 WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     : renderPipelineCount( 0u )
-    , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * 8192, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
+    , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
     , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
     , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
     , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8 ) )
@@ -55,8 +57,76 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
     FreeCachedResourcesPP( renderDevice );
 }
 
+void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
+{
+    static constexpr size_t RADIXSORT_BITS = 11;
+    static constexpr size_t RADIXSORT_HISTOGRAM_SIZE = ( 1 << RADIXSORT_BITS );
+    static constexpr size_t RADIXSORT_BIT_MASK = ( RADIXSORT_HISTOGRAM_SIZE - 1 );
+
+    DrawCmd* keys = _keys;
+    DrawCmd* tempKeys = _tempKeys;
+
+    uint32_t histogram[RADIXSORT_HISTOGRAM_SIZE];
+    uint16_t shift = 0;
+    uint32_t pass = 0;
+    for ( ; pass < 6; ++pass ) {
+        memset( histogram, 0, sizeof( uint32_t ) * RADIXSORT_HISTOGRAM_SIZE );
+
+        bool sorted = true;
+        {
+            uint64_t key = keys[0].key.value;
+            uint64_t prevKey = key;
+            for ( uint32_t ii = 0; ii < size; ++ii, prevKey = key ) {
+                key = keys[ii].key.value;
+
+                uint16_t index = ( ( key >> shift ) & RADIXSORT_BIT_MASK );
+                ++histogram[index];
+
+                sorted &= ( prevKey <= key );
+            }
+        }
+
+        if ( sorted ) {
+            goto done;
+        }
+
+        uint32_t offset = 0;
+        for ( uint32_t ii = 0; ii < RADIXSORT_HISTOGRAM_SIZE; ++ii ) {
+            uint32_t count = histogram[ii];
+            histogram[ii] = offset;
+
+            offset += count;
+        }
+
+        for ( uint32_t ii = 0; ii < size; ++ii ) {
+            uint64_t key = keys[ii].key.value;
+            uint16_t index = ( ( key >> shift ) & RADIXSORT_BIT_MASK );
+            uint32_t dest = histogram[index]++;
+
+            tempKeys[dest] = keys[ii];
+        }
+
+        DrawCmd* swapKeys = tempKeys;
+        tempKeys = keys;
+        keys = swapKeys;
+
+        shift += RADIXSORT_BITS;
+    }
+
+done:
+    if ( ( pass & 1 ) != 0 ) {
+        memcpy( _keys, _tempKeys, size * sizeof( DrawCmd ) );
+    }
+}
+
 void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime )
 {
+    DrawCmd* drawCmds = static_cast<DrawCmd*>( drawCmdAllocator->getBaseAddress() );
+    const size_t drawCmdCount = drawCmdAllocator->getAllocationCount();
+
+    DrawCmd tmpDrawCmds[MAX_DRAW_CMD_COUNT];
+    RadixSort( drawCmds, tmpDrawCmds, drawCmdCount );
+
     // Execute pipelines linearly
     // TODO Could it be parallelized?
     for ( uint32_t pipelineIdx = 0; pipelineIdx < renderPipelineCount; pipelineIdx++ ) {
