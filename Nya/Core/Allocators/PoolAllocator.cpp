@@ -68,4 +68,5 @@ void PoolAllocator::clear()
     }
 
     *p = nullptr;
+    allocationCount = 0;
 }
