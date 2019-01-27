@@ -23,11 +23,15 @@
 class RenderDevice;
 class ShaderCache;
 class CommandList;
+class FileSystemObject;
+class GraphicsAssetCache;
 
 struct PipelineState;
 struct ResourceList;
+struct RenderPassDesc;
 
 #include <Core/LazyEnum.h>
+#include <Shaders/MaterialShared.h>
 
 namespace nya
 {
@@ -56,6 +60,8 @@ public:
     void                        create( RenderDevice* renderDevice, ShaderCache* shaderCache );
     void                        destroy( RenderDevice* renderDevice );
 
+    void                        load( FileSystemObject* stream, GraphicsAssetCache* graphicsAssetCache );
+
     const uint32_t              getSortKey() const;
     const bool                  isOpaque() const;
 
@@ -64,12 +70,15 @@ public:
     void                        setName( const nyaString_t& meshName );
     const nyaString_t&          getName() const;
 
-    void                        bind( CommandList* cmdList ) const;
+    void                        bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
 
 private:
     nyaString_t                 name;
+    int32_t                     builderVersion;
 
     PipelineState*              defaultPipelineState;
+    Texture*                    defaultTextureSet[8];
+    int32_t                     defaultTextureSetCount;
 
     union {
         struct {
@@ -85,10 +94,26 @@ private:
             nya::graphics::eShadingModel    shadingModel : 2;
             bool                            useRefraction : 1;
             bool                            useTranslucidity : 1;
+            bool                            useLodAlphaBlending : 1;
 
             uint32_t : 0;
         } sortKeyInfos;
 
         uint32_t                sortKey;
     };
+
+    struct {
+        // Per Material Input
+        uint32_t WriteVelocity;
+        uint32_t EnableAlphaTest;
+        uint32_t EnableAlphaBlend;
+        uint32_t IsDoubleFace;
+
+        uint32_t CastShadow;
+        uint32_t ReceiveShadow;
+        uint32_t AlphaToCoverage;
+        uint32_t LayerCount;
+
+        MaterialLayer layers[MAX_LAYER_COUNT];
+    } editableMaterialData;
 };

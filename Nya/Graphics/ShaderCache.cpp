@@ -37,7 +37,9 @@ ShaderCache::ShaderCache( BaseAllocator* allocator, RenderDevice* activeRenderDe
     , renderDevice( activeRenderDevice )
     , memoryAllocator( allocator )
 {
-
+    defaultVertexStage = getOrUploadStage( "Error", eShaderStage::SHADER_STAGE_VERTEX );
+    defaultPixelStage = getOrUploadStage( "Error", eShaderStage::SHADER_STAGE_PIXEL );
+    defaultComputeStage = getOrUploadStage( "Error", eShaderStage::SHADER_STAGE_COMPUTE );
 }
 
 ShaderCache::~ShaderCache()
@@ -45,6 +47,15 @@ ShaderCache::~ShaderCache()
     for ( auto& shader : cachedStages ) {
         renderDevice->destroyShader( shader.second );
     }
+    cachedStages.clear();
+
+    defaultVertexStage = nullptr;
+    defaultPixelStage = nullptr;
+    defaultComputeStage = nullptr;
+
+    virtualFileSystem = nullptr;
+    renderDevice = nullptr;
+    memoryAllocator = nullptr;
 }
 
 struct Hash128
@@ -91,7 +102,7 @@ nyaString_t GetHashcodeDigest128( const Hash128& hashcode128 )
 Shader* ShaderCache::getOrUploadStage( const std::string& shaderFilename, const eShaderStage stageType, const bool forceReload )
 {
     Hash128 permutationHashcode;
-    MurmurHash3_x64_128( shaderFilename.c_str(), shaderFilename.size(), 19081996, &permutationHashcode );
+    MurmurHash3_x64_128( shaderFilename.c_str(), static_cast<int>( shaderFilename.size() ), 19081996, &permutationHashcode );
 
     nyaString_t filenameWithExtension = GetHashcodeDigest128( permutationHashcode );
 
@@ -140,7 +151,20 @@ Shader* ShaderCache::getOrUploadStage( const std::string& shaderFilename, const 
 
     if ( file == nullptr ) {
         NYA_CERR << "'" << filenameWithExtension << "': file does not exist!" << std::endl;
-        return nullptr;
+
+        // Returns shader fallback
+        switch ( stageType ) {
+        case eShaderStage::SHADER_STAGE_VERTEX:
+            return defaultVertexStage;
+        case eShaderStage::SHADER_STAGE_PIXEL:
+            return defaultPixelStage;
+        case eShaderStage::SHADER_STAGE_COMPUTE:
+            return defaultComputeStage;
+        case eShaderStage::SHADER_STAGE_TESSELATION_CONTROL:
+        case eShaderStage::SHADER_STAGE_TESSELATION_EVALUATION:
+        default:
+            return nullptr;
+        }
     }
 
     const auto shaderHashcode = file->getHashcode();

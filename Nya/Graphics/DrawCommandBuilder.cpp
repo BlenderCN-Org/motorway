@@ -23,16 +23,17 @@
 
 #include <Framework/Cameras/Camera.h>
 #include <Framework/Mesh.h>
+#include <Framework/Material.h>
 
 #include "WorldRenderer.h"
 #include "RenderPipeline.h"
 
 #include <Rendering/RenderDevice.h>
 
-#include <glm/glm/glm.hpp>
-
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderPasses/PresentRenderPass.h"
+
+#include <glm/glm/glm.hpp>
 
 class TextRenderingModule
 {
@@ -135,16 +136,15 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer )
                     DrawCmd& drawCmd = worldRenderer->allocateDrawCmd();
 
                     auto& key = drawCmd.key.bitfield;
-                    key.materialSortKey = 0;
+                    key.materialSortKey = subMesh.material->getSortKey();
                     key.depth = DepthToBits( distanceToCamera );
-                    key.sortOrder = DrawCommandKey::SORT_FRONT_TO_BACK; // TODO Should be "material.isOpaque ? front to back : back to front"
-                    key.isInstanciated = 0;
+                    key.sortOrder = ( subMesh.material->isOpaque() ) ? DrawCommandKey::SORT_FRONT_TO_BACK : DrawCommandKey::SORT_BACK_TO_FRONT;
                     key.layer = DrawCommandKey::LAYER_WORLD;
                     key.viewportLayer = DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT;
                     key.viewportId = static_cast< uint8_t >( cameraIdx );
 
                     DrawCommandInfos& infos = drawCmd.infos;
-                    infos.material = nullptr;
+                    infos.material = subMesh.material;
                     infos.vertexBuffer = vertexBuffer;
                     infos.indiceBuffer = indiceBuffer;
                     infos.indiceBufferOffset = subMesh.indiceBufferOffset;

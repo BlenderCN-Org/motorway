@@ -92,8 +92,7 @@ struct DrawCommandKey
 
             uint16_t depth; // half float depth for distance sorting
             SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
-            uint8_t isInstanciated : 1; // instanciated geometry should be treated last
-            uint8_t __PLACEHOLDER__ : 5;
+            uint8_t __PLACEHOLDER__ : 6;
 
             Layer layer : 3;
             uint8_t viewportLayer : 2;
@@ -148,8 +147,7 @@ public:
 
     RenderPipeline&         allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
 
-    TextRenderingModule*    textRenderModule;
-    // HosekSkyRenderModule*   skyRenderModule;
+    TextRenderingModule*     textRenderModule;
     BrunetonSkyRenderModule* skyRenderModule;
 
 private:

@@ -43,6 +43,7 @@
 #include <Rendering/ImageFormat.h>
 
 #include <Framework/Mesh.h>
+#include <Framework/Material.h>
 
 #include <Core/StringHelpers.h>
 
@@ -54,7 +55,7 @@ GraphicsAssetCache::GraphicsAssetCache( BaseAllocator* allocator, RenderDevice* 
     , shaderCache( shaderCache )
     , virtualFileSystem( virtualFileSystem )
 {
-
+    defaultMaterial = getMaterial( NYA_STRING( "GameData/materials/DefaultMaterial.mat" ) );
 }
 
 GraphicsAssetCache::~GraphicsAssetCache()
@@ -267,47 +268,44 @@ FontDescriptor* GraphicsAssetCache::getFont( const nyaChar_t* assetName, const b
     return fontMap[assetHashcode];
 }
 
-//Material* GraphicsAssetCache::getMaterialCopy( const nyaChar_t* assetName )
-//{
-//    auto materialLoaded = getMaterial( assetName );
-//    
-//    Material* matCopy = nullptr;
-//    if ( materialLoaded != nullptr ) {
-//        matCopy = nya::core::allocate<Material>( assetStreamingHeap, *materialLoaded );
-//        matCopy->create( renderDevice, shaderStageManager );
-//    }
-//
-//    return matCopy;
-//}
-//
-//Material* GraphicsAssetCache::getMaterial( const nyaChar_t* assetName, const bool forceReload )
-//{
-//    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
-//    if ( file == nullptr ) {
-//        NYA_CERR << "'" << assetName << "' does not exist!" << std::endl;
-//        return nullptr;
-//    }
-//
-//    auto assetHashcode = file->getHashcode();
-//    auto mapIterator = materialMap.find( assetHashcode );
-//    const bool alreadyExists = ( mapIterator != materialMap.end() );
-//
-//    if ( alreadyExists && !forceReload ) {
-//        return mapIterator->second;
-//    }
-//
-//    if ( !alreadyExists ) {
-//        materialMap[assetHashcode] = nya::core::allocate<Material>( assetStreamingHeap );
-//    }
-//
-//    auto materialInstance = materialMap[assetHashcode];
-//    materialInstance->deserialize( file, this );
-//    materialInstance->create( renderDevice, shaderStageManager );
-//
-//    file->close();
-//
-//    return materialMap[assetHashcode];
-//}
+Material* GraphicsAssetCache::getMaterialCopy( const nyaChar_t* assetName )
+{
+    Material* materialLoaded = getMaterial( assetName );
+
+    Material* matCopy = nya::core::allocate<Material>( assetStreamingHeap, *materialLoaded );
+    matCopy->create( renderDevice, shaderCache );
+
+    return matCopy;
+}
+
+Material* GraphicsAssetCache::getMaterial( const nyaChar_t* assetName, const bool forceReload )
+{
+    auto file = virtualFileSystem->openFile( assetName, eFileOpenMode::FILE_OPEN_MODE_READ );
+    if ( file == nullptr ) {
+        NYA_CERR << "'" << assetName << "' does not exist!" << std::endl;
+        return defaultMaterial;
+    }
+
+    auto assetHashcode = file->getHashcode();
+    auto mapIterator = materialMap.find( assetHashcode );
+    const bool alreadyExists = ( mapIterator != materialMap.end() );
+
+    if ( alreadyExists && !forceReload ) {
+        return mapIterator->second;
+    }
+
+    if ( !alreadyExists ) {
+        materialMap[assetHashcode] = nya::core::allocate<Material>( assetStreamingHeap );
+    }
+
+    auto materialInstance = materialMap[assetHashcode];
+    materialInstance->load( file, this );
+    materialInstance->create( renderDevice, shaderCache );
+
+    file->close();
+
+    return materialMap[assetHashcode];
+}
 
 Mesh* GraphicsAssetCache::getMesh( const nyaChar_t* assetName, const bool forceReload )
 {
@@ -368,7 +366,7 @@ Mesh* GraphicsAssetCache::getMesh( const nyaChar_t* assetName, const bool forceR
     // Build each LevelOfDetail
     for ( GeomLoadData::SubMesh& subMesh : loadData.subMesh ) {
         meshInstance->addSubMesh( subMesh.levelOfDetailIndex, {
-            nullptr, //getMaterialCopy( NYA_STRING( "GameData/Materials/DefaultMaterial.amat" ) ), 
+            defaultMaterial,
             subMesh.indiceBufferOffset, 
             subMesh.indiceCount, 
             subMesh.boundingSphere,

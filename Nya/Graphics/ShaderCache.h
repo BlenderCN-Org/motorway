@@ -46,4 +46,9 @@ private:
     BaseAllocator*                                  memoryAllocator;
 
 	std::map<nyaStringHash_t, Shader*>	            cachedStages;
+
+    // Fallbacks incase of missing shader
+    Shader*                                         defaultVertexStage;
+    Shader*                                         defaultPixelStage;
+    Shader*                                         defaultComputeStage;
 };

@@ -20,6 +20,8 @@
 #include <Shared.h>
 #include "RenderPipeline.h"
 
+#include "WorldRenderer.h"
+
 RenderPipelineBuilder::RenderPipelineBuilder()
     : passRenderTargetRefs{ {0} }
     , renderPassCount( -1 )
@@ -353,6 +355,11 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
 
     renderPassCount = 0;
     passGroupCount = 0;
+}
+
+void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds )
+{
+    
 }
 
 void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* camera )

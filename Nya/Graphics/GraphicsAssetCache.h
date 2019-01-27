@@ -60,8 +60,8 @@ public:
 
     Texture*        getTexture( const nyaChar_t* assetName, const bool forceReload = false );
     FontDescriptor* getFont( const nyaChar_t* assetName, const bool forceReload = false );
-    /*Material*       getMaterialCopy( const nyaChar_t* assetName );
-    Material*       getMaterial( const nyaChar_t* assetName, const bool forceReload = false );*/
+    Material*       getMaterialCopy( const nyaChar_t* assetName );
+    Material*       getMaterial( const nyaChar_t* assetName, const bool forceReload = false );
     Mesh*           getMesh( const nyaChar_t* assetName, const bool forceReload = false );
     //Model*          getModel( const nyaChar_t* assetName, const bool forceReload = false );
 
@@ -79,4 +79,6 @@ private:
     std::map<nyaStringHash_t, Model*>              modelMap;
     std::map<nyaStringHash_t, Texture*>            textureMap;
     std::map<nyaStringHash_t, FontDescriptor*>     fontMap;
+
+    Material*   defaultMaterial;
 };

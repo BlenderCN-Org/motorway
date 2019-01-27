@@ -36,6 +36,7 @@ struct BufferDesc;
 struct RenderTarget;
 struct TextureDescription;
 struct CameraData;
+struct DrawCmd;
 
 using ResHandle_t = uint32_t;
 using MutableResHandle_t = uint32_t;
@@ -161,6 +162,7 @@ public:
     void    beginPassGroup();
     void    execute( RenderDevice* renderDevice );
 
+    void    submitAndDispatchDrawCmds( DrawCmd* drawCmds );
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
 
     template<typename T>

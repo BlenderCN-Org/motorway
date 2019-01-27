@@ -20,6 +20,7 @@
 #pragma once
 
 #include <Core/StringHelpers.h>
+#include <glm/glm/glm.hpp>
 
 namespace nya
 {
@@ -72,60 +73,59 @@ namespace nya
         //    return typelessString;
         //}
 
-        //static bool StringToBoolean( const nyaString_t& string )
-        //{
-        //    nyaString_t lowerCaseString = string;
-        //    StringToLower( lowerCaseString );
-        //    auto hashcode = flan::core::CRC32( lowerCaseString.c_str() );
+        static bool StringToBoolean( const nyaString_t& string )
+        {
+            // TODO Profile this
+            nyaString_t lowerCaseString = string;
+            StringToLower( lowerCaseString );
+            return ( lowerCaseString == NYA_STRING( "1" ) || lowerCaseString == NYA_STRING( "true" ) );
+        }
 
-        //    return ( hashcode == FLAN_STRING_HASH( "1" ) || hashcode == FLAN_STRING_HASH( "true" ) );
-        //}
+        static glm::vec2 StringTo2DVector( const nyaString_t& str )
+        {
+            if ( str.front() != '{' || str.back() != '}' ) {
+                return glm::vec3();
+            }
 
-        //static glm::vec2 StringTo2DVector( const nyaString_t& str )
-        //{
-        //    if ( str.front() != '{' || str.back() != '}' ) {
-        //        return glm::vec3();
-        //    }
+            glm::vec2 vec = {};
 
-        //    glm::vec2 vec = {};
+            std::size_t offsetX = str.find_first_of( ',' ),
+                offsetY = str.find_last_of( ',' ),
 
-        //    std::size_t offsetX = str.find_first_of( ',' ),
-        //        offsetY = str.find_last_of( ',' ),
+                vecEnd = str.find_last_of( '}' );
 
-        //        vecEnd = str.find_last_of( '}' );
+            nyaString_t vecX = str.substr( 1, offsetX - 1 );
+            nyaString_t vecY = str.substr( offsetX + 1, vecEnd - offsetY - 1 );
 
-        //    nyaString_t vecX = str.substr( 1, offsetX - 1 );
-        //    nyaString_t vecY = str.substr( offsetX + 1, vecEnd - offsetY - 1 );
+            vec.x = std::stof( vecX );
+            vec.y = std::stof( vecY );
 
-        //    vec.x = std::stof( vecX );
-        //    vec.y = std::stof( vecY );
+            return vec;
+        }
 
-        //    return vec;
-        //}
+        static glm::vec3 StringTo3DVector( const nyaString_t& str )
+        {
+            if ( str.size() <= 2 || str.front() != '{' || str.back() != '}' ) {
+                return glm::vec3();
+            }
 
-        //static glm::vec3 StringTo3DVector( const nyaString_t& str )
-        //{
-        //    if ( str.size() <= 2 || str.front() != '{' || str.back() != '}' ) {
-        //        return glm::vec3();
-        //    }
+            glm::vec3 vec = {};
 
-        //    glm::vec3 vec = {};
+            std::size_t offsetX = str.find_first_of( ',' ),
+                offsetY = str.find_first_of( ',', offsetX + 1 ),
+                offsetZ = str.find_last_of( ',' ),
 
-        //    std::size_t offsetX = str.find_first_of( ',' ),
-        //        offsetY = str.find_first_of( ',', offsetX + 1 ),
-        //        offsetZ = str.find_last_of( ',' ),
+                vecEnd = str.find_last_of( '}' );
 
-        //        vecEnd = str.find_last_of( '}' );
+            nyaString_t vecX = str.substr( 1, offsetX - 1 );
+            nyaString_t vecY = str.substr( offsetX + 1, offsetY - offsetX - 1 );
+            nyaString_t vecZ = str.substr( offsetY + 1, vecEnd - offsetZ - 1 );
 
-        //    nyaString_t vecX = str.substr( 1, offsetX - 1 );
-        //    nyaString_t vecY = str.substr( offsetX + 1, offsetY - offsetX - 1 );
-        //    nyaString_t vecZ = str.substr( offsetY + 1, vecEnd - offsetZ - 1 );
+            vec.x = std::stof( vecX.c_str() );
+            vec.y = std::stof( vecY.c_str() );
+            vec.z = std::stof( vecZ.c_str() );
 
-        //    vec.x = std::stof( vecX.c_str() );
-        //    vec.y = std::stof( vecY.c_str() );
-        //    vec.z = std::stof( vecZ.c_str() );
-
-        //    return vec;
-        //}
+            return vec;
+        }
     }
 }
