@@ -40,7 +40,7 @@ public:
                         BaseAllocator( const std::size_t size, void* baseAddress );
     virtual             ~BaseAllocator();
 
-    const void*         getBaseAddress() const;
+    void*               getBaseAddress() const;
     const std::size_t   getSize() const;
     const std::size_t   getMemoryUsage() const;
     const std::size_t   getAllocationCount() const;

@@ -37,7 +37,7 @@ BaseAllocator::~BaseAllocator()
     allocationCount = 0;
 }
 
-const void* BaseAllocator::getBaseAddress() const
+void* BaseAllocator::getBaseAddress() const
 {
     return baseAddress;
 }
