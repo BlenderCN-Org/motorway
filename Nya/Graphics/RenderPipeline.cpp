@@ -37,9 +37,9 @@ RenderPipelineBuilder::~RenderPipelineBuilder()
 
 }
 
-void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineResources& resources )
+void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPassList, int& renderPassCount )
 {
-    resources.unacquireResources();
+    int tmpRenderPassCount = 0;
 
     for ( int32_t i = 0; i < renderPassCount; i++ ) {
         auto& passInfos = passRenderTargetRefs[i];
@@ -52,10 +52,17 @@ void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineR
             }
         }
 
-        if ( cullPass ) {
-
+        if ( !cullPass ) {
+            renderPassList[tmpRenderPassCount++] = renderPassList[i];
         }
     }
+
+    renderPassCount = tmpRenderPassCount;
+}
+
+void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineResources& resources )
+{
+    resources.unacquireResources();
 
     for ( uint32_t i = 0; i < renderTargetCount; i++ ) {
         auto& resToAlloc = renderTarget[i];
@@ -337,6 +344,7 @@ void RenderPipeline::beginPassGroup()
 void RenderPipeline::execute( RenderDevice* renderDevice )
 {
     // Cull & compile
+    renderPipelineBuilder.cullRenderPasses( renderPasses, renderPassCount );
     renderPipelineBuilder.compile( renderDevice, renderPipelineResources );
 
     // Execute render passes
@@ -357,9 +365,8 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
     passGroupCount = 0;
 }
 
-void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds )
+void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount )
 {
-    
 }
 
 void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* camera )

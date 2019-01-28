@@ -41,6 +41,21 @@ struct DrawCmd;
 using ResHandle_t = uint32_t;
 using MutableResHandle_t = uint32_t;
 
+template<typename T>
+using nyaPassSetup_t = std::function< void( RenderPipelineBuilder&, T& ) >;
+
+template<typename T>
+using nyaPassCallback_t = std::function< void( const T&, const RenderPipelineResources&, RenderDevice*, CommandList* ) >;
+
+using BindCallback = std::function< void( const RenderPipelineResources&, RenderDevice*, CommandList* ) >;
+
+struct RenderPipelineRenderPass
+{
+    char                data[1024];
+    BindCallback        execute;
+    std::string         name;
+};
+
 class RenderPipelineBuilder
 {
 public:
@@ -56,6 +71,7 @@ public:
                 ~RenderPipelineBuilder();
 
     void        compile( RenderDevice* renderDevice, RenderPipelineResources& resources );
+    void        cullRenderPasses( RenderPipelineRenderPass* renderPassList, int& renderPassCount );
 
     void        addRenderPass();
     void        setPipelineViewport( const Viewport& viewport );
@@ -142,27 +158,21 @@ private:
     Viewport        activeViewport;
 };
 
-template<typename T>
-using nyaPassSetup_t = std::function< void( RenderPipelineBuilder&, T& ) >;
-
-template<typename T>
-using nyaPassCallback_t = std::function< void( const T&, const RenderPipelineResources&, RenderDevice*, CommandList* ) >;
-
 class RenderPipeline
 {
 public:
-            RenderPipeline();
-            RenderPipeline( RenderPipeline& ) = default;
-            RenderPipeline& operator = ( RenderPipeline& ) = default;
-            ~RenderPipeline();
+    RenderPipeline();
+    RenderPipeline( RenderPipeline& ) = default;
+    RenderPipeline& operator = ( RenderPipeline& ) = default;
+    ~RenderPipeline();
 
     void    destroy( RenderDevice* renderDevice );
     void    enableProfiling( RenderDevice* renderDevice );
-    
+
     void    beginPassGroup();
     void    execute( RenderDevice* renderDevice );
 
-    void    submitAndDispatchDrawCmds( DrawCmd* drawCmds );
+    void    submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount );
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
 
     template<typename T>
@@ -191,21 +201,15 @@ public:
     }
 
 private:
-    using BindCallback = std::function< void( const RenderPipelineResources&, RenderDevice*, CommandList* ) >;
+    RenderPipelineRenderPass    renderPasses[48];
 
-    struct {
-        char                data[1024];
-        BindCallback        execute;
-        std::string         name;
-    } renderPasses[48];
+    int                         renderPassCount;
 
-    int         renderPassCount;
+    uint32_t                    passGroupStartIndexes[8];
+    int                         passGroupCount;
 
-    uint32_t    passGroupStartIndexes[8];
-    int         passGroupCount;
+    Viewport                    activeViewport;
 
-    Viewport    activeViewport;
-
-    RenderPipelineResources renderPipelineResources;
-    RenderPipelineBuilder   renderPipelineBuilder;
+    RenderPipelineResources     renderPipelineResources;
+    RenderPipelineBuilder       renderPipelineBuilder;
 };
