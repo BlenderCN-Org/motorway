@@ -83,6 +83,8 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
     PassData& data = renderPipeline->addRenderPass<PassData>(
         "Text Rendering Pass",
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
+            renderPipelineBuilder.setUncullablePass();
+
             BufferDesc passBuffer;
             passBuffer.type = BufferDesc::CONSTANT_BUFFER;
             passBuffer.size = sizeof( glm::uvec4 );

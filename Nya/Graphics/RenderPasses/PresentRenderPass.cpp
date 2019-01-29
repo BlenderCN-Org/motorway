@@ -39,6 +39,8 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
     PassData& passData = renderPipeline->addRenderPass<PassData>(
         "Present Pass",
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
+            renderPipelineBuilder.setUncullablePass();
+
             passData.input = renderPipelineBuilder.readRenderTarget( output );
 
             SamplerDesc bilinearSamplerDesc = {};
