@@ -112,19 +112,19 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     GetShaderStage( sortKeyInfos.shadingModel, compiledVertexStage, compiledPixelStage, compiledProbePixelStage );
 
     if ( sortKeyInfos.scaleUVByModelScale ) {
-        compiledVertexStage.append( "NYA_SCALE_UV_BY_MODEL_SCALE" );
+        compiledVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
     }
 
     if ( sortKeyInfos.useLodAlphaBlending ) {
-        compiledPixelStage.append( "NYA_USE_LOD_ALPHA_BLENDING" );
+        compiledPixelStage.append( "+NYA_USE_LOD_ALPHA_BLENDING" );
     }
 
     if ( sortKeyInfos.receiveShadow ) {
-        compiledPixelStage.append( "NYA_RECEIVE_SHADOW" );
+        compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
     }
 
     if ( sortKeyInfos.castShadow ) {
-        compiledPixelStage.append( "NYA_CAST_SHADOW" );
+        compiledPixelStage.append( "+NYA_CAST_SHADOW" );
     }
 
     PipelineStateDesc defaultPipelineStateDesc = {};
