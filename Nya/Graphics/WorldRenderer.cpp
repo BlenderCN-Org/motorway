@@ -34,7 +34,7 @@ WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
     , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
     , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
-    , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8 ) )
+    , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8, allocator ) )
 {
 
 }
@@ -130,6 +130,7 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
     // Execute pipelines linearly
     // TODO Could it be parallelized?
     for ( uint32_t pipelineIdx = 0; pipelineIdx < renderPipelineCount; pipelineIdx++ ) {
+        renderPipelines[pipelineIdx].submitAndDispatchDrawCmds( drawCmds, drawCmdCount );
         renderPipelines[pipelineIdx].execute( renderDevice );
     }
 

@@ -94,8 +94,8 @@ struct DrawCommandKey
             SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
             uint8_t __PLACEHOLDER__ : 6;
 
-            Layer layer : 3;
-            uint8_t viewportLayer : 2;
+            Layer layer : 2;
+            uint8_t viewportLayer : 3;
             uint8_t viewportId : 3; // viewport dispatch index (should be managed by the builder)
         } bitfield;
         uint64_t value;

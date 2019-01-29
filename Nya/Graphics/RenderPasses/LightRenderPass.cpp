@@ -7,6 +7,8 @@
 #include <Rendering/CommandList.h>
 #include <Rendering/ImageFormat.h>
 
+#include <Framework/Material.h>
+
 ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
 {
     struct PassData {
@@ -19,6 +21,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
         ResHandle_t cameraBuffer;
         ResHandle_t instanceBuffer;
         ResHandle_t clustersBuffer;
+        ResHandle_t vectorDataBuffer;
     };
 
     struct InstanceBuffer {
@@ -43,13 +46,17 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             velocityRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
             velocityRenderTargetDesc.format = eImageFormat::IMAGE_FORMAT_R16G16_FLOAT;
 
-            passData.velocityRenderTarget = renderPipelineBuilder.allocateRenderTarget( velocityRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS | RenderPipelineBuilder::USE_PIPELINE_SAMPLER_COUNT );
+            passData.velocityRenderTarget = renderPipelineBuilder.allocateRenderTarget( velocityRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS );
 
             TextureDescription thinGBufferRenderTargetDesc = {};
             thinGBufferRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
-            thinGBufferRenderTargetDesc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+            thinGBufferRenderTargetDesc.format = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
-            passData.thinGBuffer = renderPipelineBuilder.allocateRenderTarget( thinGBufferRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS | RenderPipelineBuilder::USE_PIPELINE_SAMPLER_COUNT );         
+            passData.thinGBuffer = renderPipelineBuilder.allocateRenderTarget( thinGBufferRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS );         
+            
+            // Fake refcounter increment
+            renderPipelineBuilder.readRenderTarget( passData.velocityRenderTarget );
+            renderPipelineBuilder.readRenderTarget( passData.thinGBuffer );
 
             // Buffers
             BufferDesc instanceBufferDesc;
@@ -69,6 +76,14 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             cameraBufferDesc.size = sizeof( CameraData );
 
             passData.cameraBuffer = renderPipelineBuilder.allocateBuffer( cameraBufferDesc, SHADER_STAGE_VERTEX );
+
+            BufferDesc vectorDataBufferDesc;
+            vectorDataBufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER;
+            vectorDataBufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32G32B32A32_FLOAT;
+            vectorDataBufferDesc.stride = sizeof( glm::vec4 );
+            vectorDataBufferDesc.size = sizeof( glm::vec4 ) * 1024;
+
+            passData.vectorDataBuffer = renderPipelineBuilder.allocateBuffer( vectorDataBufferDesc, SHADER_STAGE_VERTEX );
 
             // Misc Resources
             SamplerDesc bilinearSamplerDesc = {};
@@ -90,7 +105,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };        
-            resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, instanceBuffer };
+            resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
 
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
             cmdList->bindResourceList( &resourceList );
@@ -100,18 +115,27 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.velocityRenderTarget );
             RenderTarget* thinGBufferTarget = renderPipelineResources.getRenderTarget( passData.thinGBuffer );
 
-            //DrawCmd* drawCmdList = renderPipelineResources.getDrawCmdList();
-            //glm::vec4* vectorBuffer = renderPipelineResources.getVectorBufferData();
+            const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
 
             RenderPassDesc passDesc = {};
             passDesc.attachements[0] = { outputTarget, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
             passDesc.attachements[1] = { velocityTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
             passDesc.attachements[2] = { thinGBufferTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
 
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
+            for ( const auto& drawCmd : drawCmdBucket ) {
+                drawCmd.infos.material->bind( cmdList, passDesc );
 
-            renderDevice->destroyRenderPass( renderPass );
+                RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
+                cmdList->useRenderPass( renderPass );
+
+                cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+
+                cmdList->drawIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.indiceBufferOffset );
+
+                renderDevice->destroyRenderPass( renderPass );
+            }
         }
     );
 

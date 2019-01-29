@@ -26,6 +26,8 @@
 
 #include <Framework/Cameras/Camera.h>
 
+#include "WorldRenderer.h"
+
 class RenderPipelineBuilder;
 class RenderPipelineResources;
 class RenderDevice;
@@ -114,15 +116,52 @@ private:
 class RenderPipelineResources
 {
 public:
+    struct DrawCmdBucket {
+        DrawCmd* beginAddr;
+        DrawCmd* endAddr;
+
+        float    vectorPerInstance;
+        float    instanceDataStartOffset;
+
+        DrawCmd* begin()
+        {
+            return beginAddr;
+        }
+
+        const DrawCmd* begin() const
+        {
+            return beginAddr;
+        }
+
+        DrawCmd* end()
+        {
+            return endAddr;
+        }
+
+        const DrawCmd* end() const
+        {
+            return endAddr;
+        }
+    };
+
+public:
                         RenderPipelineResources();
                         RenderPipelineResources( RenderPipelineResources& ) = default;
                         RenderPipelineResources& operator = ( RenderPipelineResources& ) = default;
                         ~RenderPipelineResources();
 
+    void                create( BaseAllocator* allocator );
+    void                destroy( BaseAllocator* allocator );
+
     void                releaseResources( RenderDevice* renderDevice );
     void                unacquireResources();
 
     void                setPipelineViewport( const Viewport& viewport, const CameraData* cameraData );
+
+    void                dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount );
+
+    const DrawCmdBucket&    getDrawCmdBucket( const DrawCommandKey::Layer layer, const uint8_t viewportLayer ) const;
+    void*                   getVectorBufferData() const;
 
     const CameraData*   getMainCamera() const;
     const Viewport*     getMainViewport() const;
@@ -136,15 +175,23 @@ public:
     void                allocateSampler( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const SamplerDesc& description );
 
 private:
-    Buffer*     cbuffers[96];
-    size_t      cbuffersSize[96];
-    bool        isCBufferFree[96];
+    void*               instanceBufferData;
 
-    int         cbufferAllocatedCount;
+    Buffer*             cbuffers[96];
+    size_t              cbuffersSize[96];
+    bool                isCBufferFree[96];
 
-    RenderTarget*   renderTargets[96];
-    TextureDescription renderTargetsDesc[96];
-    bool isRenderTargetAvailable[96];
+    int                 cbufferAllocatedCount;
+
+    Buffer*             uavBuffer[96];
+    size_t              uavBufferSize[96];
+    bool                isUAVBufferFree[96];
+
+    int                 uavAllocatedCount;
+
+    RenderTarget*       renderTargets[96];
+    TextureDescription  renderTargetsDesc[96];
+    bool                isRenderTargetAvailable[96];
 
     int             rtAllocatedCount;
 
@@ -157,6 +204,7 @@ private:
     RenderTarget*   allocatedRenderTargets[48];
     Sampler*        allocatedSamplers[48];
 
+    DrawCmdBucket   drawCmdBuckets[4][8];
     CameraData      activeCameraData;
     Viewport        activeViewport;
 };
@@ -164,10 +212,10 @@ private:
 class RenderPipeline
 {
 public:
-    RenderPipeline();
-    RenderPipeline( RenderPipeline& ) = default;
-    RenderPipeline& operator = ( RenderPipeline& ) = default;
-    ~RenderPipeline();
+            RenderPipeline( BaseAllocator* allocator );
+            RenderPipeline( RenderPipeline& ) = default;
+            RenderPipeline& operator = ( RenderPipeline& ) = default;
+            ~RenderPipeline();
 
     void    destroy( RenderDevice* renderDevice );
     void    enableProfiling( RenderDevice* renderDevice );
@@ -179,8 +227,7 @@ public:
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
 
     template<typename T>
-    T& addRenderPass( const std::string& name, nyaPassSetup_t<T> setup, nyaPassCallback_t<T> execute )
-    {
+    T&      addRenderPass( const std::string& name, nyaPassSetup_t<T> setup, nyaPassCallback_t<T> execute ) {
         static_assert( sizeof( T ) <= sizeof( ResHandle_t ) * 128, "Pass data 128 resource limit hit!" );
         static_assert( sizeof( execute ) <= 1024 * 1024, "Execute lambda should be < 1ko!" );
 
@@ -203,6 +250,7 @@ public:
     }
 
 private:
+    BaseAllocator*              memoryAllocator;
     RenderPipelineRenderPass    renderPasses[48];
 
     int                         renderPassCount;

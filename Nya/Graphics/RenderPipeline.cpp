@@ -182,6 +182,16 @@ RenderPipelineResources::~RenderPipelineResources()
 
 }
 
+void RenderPipelineResources::create( BaseAllocator* allocator )
+{
+    instanceBufferData = nya::core::allocateArray<uint8_t>( allocator, sizeof( glm::vec4 ) * 1024 );
+}
+
+void RenderPipelineResources::destroy( BaseAllocator* allocator )
+{
+    nya::core::freeArray<uint8_t>( allocator, (uint8_t*)instanceBufferData );
+}
+
 void RenderPipelineResources::releaseResources( RenderDevice* renderDevice )
 {
     for ( int cbufferIdx = 0; cbufferIdx < cbufferAllocatedCount; cbufferIdx++ ) {
@@ -208,6 +218,58 @@ void RenderPipelineResources::setPipelineViewport( const Viewport& viewport, con
 {
     activeCameraData = *cameraData;
     activeViewport = viewport;
+}
+
+void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount )
+{
+    if ( drawCmdCount == 0 ) {
+        return;
+    }
+
+    const auto& firstDrawCmdKey = drawCmds[0].key.bitfield;
+
+    DrawCommandKey::Layer layer = firstDrawCmdKey.layer;
+    uint8_t viewportLayer = firstDrawCmdKey.viewportLayer;
+
+    drawCmdBuckets[layer][viewportLayer].beginAddr = ( drawCmds + 0 );
+
+    DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
+
+    size_t instanceBufferOffset = 0;
+
+    for ( size_t drawCmdIdx = 1; drawCmdIdx < drawCmdCount; drawCmdIdx++ ) {
+        const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
+
+        // Copy instance data to shared buffer
+        const size_t instancesDataSize = sizeof( glm::mat4x4 ) * drawCmds[drawCmdIdx].infos.instanceCount;
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[drawCmdIdx].infos.modelMatrix, instancesDataSize );
+        instanceBufferOffset += instancesDataSize;
+
+        if ( layer != drawCmdKey.layer || viewportLayer != drawCmdKey.viewportLayer ) {
+            previousBucket->endAddr = ( drawCmds + drawCmdIdx );
+            auto& bucket = drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
+            bucket.beginAddr = ( drawCmds + drawCmdIdx );
+            bucket.vectorPerInstance = static_cast< float >( sizeof( glm::mat4x4 ) / sizeof( glm::vec4 ) );
+            bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset );
+
+            layer = drawCmdKey.layer;
+            viewportLayer = drawCmdKey.viewportLayer;
+
+            previousBucket = &drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
+        }
+    }
+
+    previousBucket->endAddr = ( drawCmds + drawCmdCount );
+}
+
+const RenderPipelineResources::DrawCmdBucket& RenderPipelineResources::getDrawCmdBucket( const DrawCommandKey::Layer layer, const uint8_t viewportLayer ) const
+{
+    return drawCmdBuckets[layer][viewportLayer];
+}
+
+void* RenderPipelineResources::getVectorBufferData() const
+{
+    return nullptr;
 }
 
 const CameraData* RenderPipelineResources::getMainCamera() const
@@ -241,6 +303,26 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
     
     switch ( description.type ) {
     case BufferDesc::CONSTANT_BUFFER: {
+        auto desiredSize = description.size;
+
+        for ( int i = 0; i < cbufferAllocatedCount; i++ ) {
+            if ( cbuffersSize[i] == desiredSize && isCBufferFree[i] ) {
+                buffer = cbuffers[i];
+                isCBufferFree[i] = false;
+                break;
+            }
+        }
+
+        if ( buffer == nullptr ) {
+            buffer = renderDevice->createBuffer( description );
+
+            cbuffers[cbufferAllocatedCount] = buffer;
+            cbuffersSize[cbufferAllocatedCount] = description.size;
+            cbufferAllocatedCount++;
+        }
+    } break;
+
+    case BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER: {
         auto desiredSize = description.size;
 
         for ( int i = 0; i < cbufferAllocatedCount; i++ ) {
@@ -325,13 +407,14 @@ void RenderPipelineResources::allocateSampler( RenderDevice* renderDevice, const
     allocatedSamplers[resourceHandle] = sampler;
 }
 
-RenderPipeline::RenderPipeline()
-    : renderPasses{ 0 } 
+RenderPipeline::RenderPipeline( BaseAllocator* allocator )
+    : memoryAllocator( allocator )
+    , renderPasses{ 0 }
     , renderPassCount( 0 )
     , passGroupStartIndexes{ 0u }
     , passGroupCount( 0 )
 {
-
+    renderPipelineResources.create( allocator );
 }
 
 RenderPipeline::~RenderPipeline()
@@ -342,6 +425,7 @@ RenderPipeline::~RenderPipeline()
 void RenderPipeline::destroy( RenderDevice* renderDevice )
 {
     renderPipelineResources.releaseResources( renderDevice );
+    renderPipelineResources.destroy( memoryAllocator );
 }
 
 void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
@@ -380,6 +464,7 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
 
 void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount )
 {
+    renderPipelineResources.dispatchToBuckets( drawCmds, drawCmdCount );
 }
 
 void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* camera )
