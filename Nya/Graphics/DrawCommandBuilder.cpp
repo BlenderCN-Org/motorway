@@ -32,6 +32,7 @@
 
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderPasses/PresentRenderPass.h"
+#include "RenderPasses/LightRenderPass.h"
 
 #include <glm/glm/glm.hpp>
 
@@ -110,8 +111,9 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer )
         renderPipeline.beginPassGroup();
         {
             auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
-            auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, skyRenderTarget );
-            AddPresentRenderPass( &renderPipeline, skyRenderTarget );
+            auto lightRenderTarget = AddLightRenderPass( &renderPipeline, skyRenderTarget );
+            auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, lightRenderTarget );
+            AddPresentRenderPass( &renderPipeline, hudRenderTarget );
         }
 
         // Cull static mesh instances
