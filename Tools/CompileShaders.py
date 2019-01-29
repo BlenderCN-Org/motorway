@@ -116,7 +116,7 @@ def get_permutation_hashcode( name, flags ):
         
     hash_object = MurmurHash.hash128( filename.encode( 'utf-8' ) ) #hashlib.md5( filename.encode( 'utf-8' ) )
     
-    return hex( hash_object )[2:] # remove '0x'
+    return hex( hash_object )[2:].zfill( 32 )
     
 def get_entry_point( type ):
     return {
