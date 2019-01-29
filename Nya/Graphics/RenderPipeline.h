@@ -73,6 +73,9 @@ public:
     void        compile( RenderDevice* renderDevice, RenderPipelineResources& resources );
     void        cullRenderPasses( RenderPipelineRenderPass* renderPassList, int& renderPassCount );
 
+    void        useAsyncCompute( const bool state );
+    void        setUncullablePass();
+
     void        addRenderPass();
     void        setPipelineViewport( const Viewport& viewport );
 
@@ -182,7 +185,6 @@ public:
         static_assert( sizeof( execute ) <= 1024 * 1024, "Execute lambda should be < 1ko!" );
 
         auto& renderPass = renderPasses[renderPassCount++];
-
         T& passData = *( T* )renderPass.data;
 
         renderPipelineBuilder.addRenderPass();

@@ -20,8 +20,6 @@
 #include <Shared.h>
 #include "RenderPipeline.h"
 
-#include "WorldRenderer.h"
-
 RenderPipelineBuilder::RenderPipelineBuilder()
     : passRenderTargetRefs{ {0} }
     , renderPassCount( -1 )
@@ -37,18 +35,23 @@ RenderPipelineBuilder::~RenderPipelineBuilder()
 
 }
 
-void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPassList, int& renderPassCount )
+void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPassList, int& renderPassListLength )
 {
     int tmpRenderPassCount = 0;
 
-    for ( int32_t i = 0; i < renderPassCount; i++ ) {
+    for ( int32_t i = 0; i < renderPassListLength; i++ ) {
         auto& passInfos = passRenderTargetRefs[i];
 
         bool cullPass = true;
-        for ( uint32_t j = 0; j < passInfos.renderTargetCount; j++ ) {
-            if ( renderTarget[passInfos.renderTarget[j]].referenceCount > 0 ) {
-                cullPass = false;
-                break;
+
+        if ( passInfos.renderTargetCount == static_cast< uint32_t >( -1 ) ) {
+            cullPass = false;
+        } else {
+            for ( uint32_t j = 0; j < passInfos.renderTargetCount; j++ ) {
+                if ( renderTarget[passInfos.renderTarget[j]].referenceCount > 0 ) {
+                    cullPass = false;
+                    break;
+                }
             }
         }
 
@@ -57,7 +60,17 @@ void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPa
         }
     }
 
-    renderPassCount = tmpRenderPassCount;
+    renderPassListLength = tmpRenderPassCount;
+}
+
+void RenderPipelineBuilder::useAsyncCompute( const bool state )
+{
+
+}
+
+void RenderPipelineBuilder::setUncullablePass()
+{
+    passRenderTargetRefs[renderPassCount].renderTargetCount = static_cast< uint32_t >( -1 );
 }
 
 void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineResources& resources )
@@ -84,7 +97,7 @@ void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineR
         resources.allocateSampler( renderDevice, i, resToAlloc );
     }
 
-    renderPassCount = 0;
+    renderPassCount = -1;
     renderTargetCount = 0;
     bufferCount = 0;
     samplerCount = 0;
