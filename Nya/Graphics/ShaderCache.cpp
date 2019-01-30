@@ -90,10 +90,13 @@ nyaString_t GetHashcodeDigest128( const Hash128& hashcode128 )
     static constexpr size_t HASHCODE_SIZE = sizeof( Hash128 ) << 1;
     static constexpr size_t HALF_HASHCODE_SIZE = ( HASHCODE_SIZE / 2 );
     static constexpr nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
-
     nyaString_t digest( HASHCODE_SIZE, NYA_STRING( '0' ) );
     for ( size_t i = 0, j = ( HASHCODE_SIZE - 1 ) * 4; i < HASHCODE_SIZE; ++i, j -= 4 ) {
-        digest[i] = LUT[( hashcode128.data[i / HALF_HASHCODE_SIZE] >> j ) & 0x0f];
+        // NOTE Somehow, MSVC tries to unroll the loop but doesn't write the correct index (the div
+        // is skipped)
+        // Declaring explicitly the index seems to do the trick
+        const size_t index = ( i / HALF_HASHCODE_SIZE );
+        digest[i] = LUT[( hashcode128.data[index] >> j ) & 0x0f];
     }
 
     return digest;
