@@ -43,6 +43,7 @@
 
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 static constexpr nyaChar_t* const PROJECT_NAME = ( nyaChar_t* const )NYA_STRING( "NyaEd" );
 
@@ -70,6 +71,7 @@ Scene*                  g_SceneTest;
 FreeCamera*             g_FreeCamera;
 
 std::atomic_bool        g_ThreadSync( false );
+std::mutex              g_SceneMutex;
 
 FramerateCounter renderCounter = {};
 FramerateCounter logicCounter = {};
@@ -274,7 +276,7 @@ void Initialize()
     g_LightGrid->create( g_RenderDevice );
     g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
-    // g_RenderDevice->enableVerticalSynchronisation( true );
+    //g_RenderDevice->enableVerticalSynchronisation( true );
 
     RegisterInputContexts();
 
@@ -283,20 +285,34 @@ void Initialize()
 #endif
 }
 
+void CollectDrawCmds( const Scene::GameWorldState& snapshot, DrawCommandBuilder& drawCmdBuilder )
+{
+    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < snapshot.StaticGeometryCount; staticGeomIdx++ ) {
+        auto& geometry = snapshot.StaticGeometry[staticGeomIdx];
+
+        auto& transform = snapshot.TransformDatabase[geometry.transform];
+        auto& renderable = snapshot.RenderableMeshDatabase[geometry.mesh];
+
+        // Check renderable flags (but don't cull the instance yet)
+        if ( renderable.isVisible ) {
+            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix() );
+        }
+    }
+
+    for ( uint32_t freeCameraIdx = 0; freeCameraIdx < snapshot.FreeCameraDatabase.usageIndex; freeCameraIdx++ ) {
+        drawCmdBuilder.addCamera( &snapshot.FreeCameraDatabase[freeCameraIdx].getData() );
+    }
+}
+
 void RenderLoop()
 {
-    // TODO Test only; basically this should hold the whole scene state
-    CameraData gameworldState;
+    thread_local Scene::GameWorldState gameWorldSnapshot = {};
 
     Timer updateTimer = {};
-
     float frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
 
     while ( 1 ) {
-        // TODO Copy gameworld state
-        gameworldState = g_FreeCamera->getData();
-
-        frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
+        frameTime = static_cast< float >( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
 
         if ( g_ThreadSync ) {
             break;
@@ -311,8 +327,14 @@ void RenderLoop()
 
         g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling\n", 0.350f, 0.0f, 0.0f );
         g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, glm::vec4( 1, 1, 0, 1 ) );
+        
+        {
+            std::unique_lock<std::mutex>( g_SceneMutex );
+            g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );
+        }
 
-        g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
+        CollectDrawCmds( gameWorldSnapshot, *g_DrawCommandBuilder );
+
         g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer );
 
         // Do pre-world render steps (update light grid, upload buffers, etc.)
@@ -374,17 +396,20 @@ void MainLoop()
 
         logicCounter.onFrame( frameTime );
 
-        accumulator += frameTime;
-        while ( accumulator >= nya::editor::LOGIC_DELTA ) {
-            // Update Input
-            g_InputReader->onFrame( g_InputMapper );
+        {
+            std::unique_lock<std::mutex>( g_SceneMutex );
+            accumulator += frameTime;
+            while ( accumulator >= nya::editor::LOGIC_DELTA ) {
+                // Update Input
+                g_InputReader->onFrame( g_InputMapper );
 
-            // Update Local Game Instance
-            g_InputMapper->update( nya::editor::LOGIC_DELTA );
-            g_InputMapper->clear();
+                // Update Local Game Instance
+                g_InputMapper->update( nya::editor::LOGIC_DELTA );
+                g_InputMapper->clear();
 
-            g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
-            accumulator -= nya::editor::LOGIC_DELTA;
+                g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
+                accumulator -= nya::editor::LOGIC_DELTA;
+            }
         }
     }
 
@@ -395,6 +420,7 @@ void MainLoop()
 
 void Shutdown()
 {
+    g_LightGrid->destroy( g_RenderDevice );
     g_WorldRenderer->destroy( g_RenderDevice );
     g_GraphicsAssetCache->destroy();
     

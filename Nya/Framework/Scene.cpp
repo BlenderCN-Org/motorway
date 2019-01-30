@@ -20,8 +20,6 @@
 #include <Shared.h>
 #include "Scene.h"
 
-#include <Graphics/DrawCommandBuilder.h>
-
 #include <Maths/Transform.h>
 
 #include "Cameras/FreeCamera.h"
@@ -103,23 +101,15 @@ void Scene::updateLogic( const float deltaTime )
     }
 }
 
-void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
+void Scene::getWorldStateSnapshot( GameWorldState& worldState )
 {
-    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < staticGeometryCount; staticGeomIdx++ ) {
-        auto& geometry = staticGeometry[staticGeomIdx];
+    worldState.TransformDatabase = TransformDatabase;
+    worldState.RenderableMeshDatabase = RenderableMeshDatabase;
+    worldState.FreeCameraDatabase = FreeCameraDatabase;
+    worldState.LightDatabase = LightDatabase;
+    worldState.StaticGeometryCount = staticGeometryCount;
 
-        auto& transform = TransformDatabase[geometry.transform];
-        auto& renderable = RenderableMeshDatabase[geometry.mesh];
-
-        // Check renderable flags (but don't cull the instance yet)
-        if ( renderable.isVisible ) {
-            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix() );
-        }
-    }
-
-    for ( uint32_t freeCameraIdx = 0; freeCameraIdx < FreeCameraDatabase.usageIndex; freeCameraIdx++ ) {
-        drawCmdBuilder.addCamera( &FreeCameraDatabase[freeCameraIdx].getData() );
-    }
+    memcpy( worldState.StaticGeometry, staticGeometry, sizeof( StaticGeometry ) * staticGeometryCount );
 }
 
 Scene::StaticGeometry& Scene::allocateStaticGeometry()

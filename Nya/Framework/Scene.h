@@ -20,7 +20,6 @@
 
 #pragma once
 
-class DrawCommandBuilder;
 class Transform;
 class Mesh;
 class FreeCamera;
@@ -77,6 +76,10 @@ private:
         T& operator [] ( const nyaComponentHandle_t handle ) {
             return components[handle];
         }
+
+        T& operator [] ( const nyaComponentHandle_t handle ) const {
+            return components[handle];
+        }
     };
 
 public:
@@ -97,6 +100,16 @@ public:
         nyaComponentHandle_t    mesh;
     };
 
+    struct GameWorldState {
+        ComponentDatabase<Transform>        TransformDatabase;
+        ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
+        ComponentDatabase<FreeCamera>       FreeCameraDatabase;
+        ComponentDatabase<Light>            LightDatabase;
+
+        StaticGeometry                      StaticGeometry[4096];
+        uint32_t                            StaticGeometryCount;
+    };
+
     ComponentDatabase<Transform>        TransformDatabase;
     ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
     ComponentDatabase<FreeCamera>       FreeCameraDatabase;
@@ -112,7 +125,7 @@ public:
     const std::string&      getSceneName() const;
 
     void                    updateLogic( const float deltaTime );
-    void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
+    void                    getWorldStateSnapshot( GameWorldState& worldState );
 
     StaticGeometry&         allocateStaticGeometry();
 
