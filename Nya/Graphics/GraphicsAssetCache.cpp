@@ -60,6 +60,8 @@ GraphicsAssetCache::GraphicsAssetCache( BaseAllocator* allocator, RenderDevice* 
 
 GraphicsAssetCache::~GraphicsAssetCache()
 {
+    meshMap.clear();
+    materialMap.clear();
     fontMap.clear();
     textureMap.clear();
 }
@@ -68,6 +70,10 @@ void GraphicsAssetCache::destroy()
 {
     for ( auto& meshes : meshMap ) {
         meshes.second->destroy( renderDevice );
+    }
+
+    for ( auto& mat : materialMap ) {
+        mat.second->destroy( renderDevice );
     }
 
     for ( auto& texture : textureMap ) {
@@ -115,8 +121,7 @@ Texture* GraphicsAssetCache::getTexture( const nyaChar_t* assetName, const bool 
     auto texFileFormatHashcode = CRC32( texFileFormat );
 
     switch ( texFileFormatHashcode ) {
-    case NYA_STRING_HASH( "dds" ):
-    {
+    case NYA_STRING_HASH( "dds" ): {
         DirectDrawSurface ddsData;
         LoadDirectDrawSurface( file, ddsData );
 
