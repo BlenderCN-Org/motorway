@@ -318,7 +318,8 @@ struct BufferDesc
         STRUCTURED_BUFFER,
         APPEND_STRUCTURED_BUFFER,
 
-        INDIRECT_DRAW_ARGUMENTS
+        INDIRECT_DRAW_ARGUMENTS,
+        GENERIC_BUFFER
     } type;
 
     eImageFormat    viewFormat; // Required by UAV only
@@ -349,7 +350,8 @@ struct RenderPassDesc
     {
         UNUSED = 0,
         READ,
-        WRITE
+        WRITE,
+        WRITE_DEPTH
     };
 
     enum State
@@ -386,6 +388,7 @@ struct ResourceListDesc
 
     ResourceList<Buffer*>    constantBuffers[64];
     ResourceList<Sampler*>   samplers[64];
+    ResourceList<Buffer*>    buffers[64];
 };
 
 struct DepthStencilStateDesc

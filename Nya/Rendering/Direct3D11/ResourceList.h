@@ -22,6 +22,7 @@
 #if NYA_D3D11
 struct ID3D11Buffer;
 struct ID3D11SamplerState;
+struct ID3D11ShaderResourceView;
 
 static constexpr int MAX_RES_COUNT = 64;
 
@@ -46,7 +47,8 @@ struct ResourceList
         UINT computeBindCount;
     };
 
-    ResourceBinding<ID3D11Buffer*>          constantBuffers;
-    ResourceBinding<ID3D11SamplerState*>    samplers;
+    ResourceBinding<ID3D11ShaderResourceView*>  buffers;
+    ResourceBinding<ID3D11Buffer*>              constantBuffers;
+    ResourceBinding<ID3D11SamplerState*>        samplers;
 };
 #endif

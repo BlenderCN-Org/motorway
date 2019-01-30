@@ -93,6 +93,30 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
         }
     }
 
+    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
+        const auto& buffer = description.buffers[i];
+
+        if ( buffer.stageBind & SHADER_STAGE_VERTEX ) {
+            resList.buffers.vertexStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
+        }
+
+        if ( buffer.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
+            resList.buffers.hullStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
+        }
+
+        if ( buffer.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
+            resList.buffers.domainStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
+        }
+
+        if ( buffer.stageBind & SHADER_STAGE_PIXEL ) {
+            resList.buffers.pixelStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
+        }
+
+        if ( buffer.stageBind & SHADER_STAGE_COMPUTE ) {
+            resList.buffers.computeStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
+        }
+    }
+
     return resList;
 }
 
@@ -109,5 +133,11 @@ void CommandList::bindResourceList( ResourceList* resourceList )
     NativeCommandList->deferredContext->DSSetConstantBuffers( 0, 14, resourceList->constantBuffers.domainStage );
     NativeCommandList->deferredContext->PSSetConstantBuffers( 0, 14, resourceList->constantBuffers.pixelStage );
     NativeCommandList->deferredContext->CSSetConstantBuffers( 0, 14, resourceList->constantBuffers.computeStage );
+
+    NativeCommandList->deferredContext->VSSetShaderResources( 8, 14, resourceList->buffers.vertexStage );
+    NativeCommandList->deferredContext->HSSetShaderResources( 8, 14, resourceList->buffers.hullStage );
+    NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
+    NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
+    NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
 }
 #endif

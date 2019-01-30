@@ -36,8 +36,10 @@
 struct RenderPass
 {
     ID3D11RenderTargetView* renderTargetViews[8];
-    FLOAT clearValue[8][4];
-    bool clearTarget[8];
+    ID3D11DepthStencilView* depthStencilView;
+
+    FLOAT clearValue[8+1][4];
+    bool clearTarget[8+1];
     UINT rtvCount;
 
     ID3D11ShaderResourceView* shaderResourceView[8];
@@ -67,7 +69,14 @@ RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
 
             renderPass->renderTargetViews[renderPass->rtvCount++] = description.attachements[i].renderTarget->textureRenderTargetView;
             break;
-        
+
+        case RenderPassDesc::WRITE_DEPTH:
+            renderPass->clearTarget[8] = ( description.attachements[i].targetState != RenderPassDesc::DONT_CARE );
+            memcpy( renderPass->clearValue, description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
+
+            renderPass->depthStencilView = description.attachements[i].renderTarget->textureDepthRenderTargetView;
+            break;
+
         default:
             break;
         }
@@ -88,7 +97,12 @@ void CommandList::useRenderPass( RenderPass* renderPass )
             NativeCommandList->deferredContext->ClearRenderTargetView( renderPass->renderTargetViews[i], renderPass->clearValue[i] );
         }
     }
-    NativeCommandList->deferredContext->OMSetRenderTargets( renderPass->rtvCount, renderPass->renderTargetViews, nullptr );
+    
+    if ( renderPass->clearTarget[8] ) {
+        NativeCommandList->deferredContext->ClearDepthStencilView( renderPass->depthStencilView, D3D11_CLEAR_DEPTH, renderPass->clearValue[8][0], 0x0 );
+    }
+
+    NativeCommandList->deferredContext->OMSetRenderTargets( renderPass->rtvCount, renderPass->renderTargetViews, renderPass->depthStencilView );
     NativeCommandList->deferredContext->PSSetShaderResources( 0, renderPass->srvCount, renderPass->shaderResourceView );
 }
 #endif

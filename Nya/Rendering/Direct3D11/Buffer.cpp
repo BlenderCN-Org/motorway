@@ -337,6 +337,35 @@ Buffer* CreateUAVBuffer( ID3D11Device* device, Buffer* preallocatedBuffer, const
     return preallocatedBuffer;
 }
 
+Buffer* CreateGenericBuffer( ID3D11Device* device, Buffer* preallocatedBuffer, const BufferDesc& description, const void* initialData )
+{
+    // Subresource description
+    D3D11_SUBRESOURCE_DATA subresourceDataDesc = {};
+    subresourceDataDesc.pSysMem = initialData;
+
+    // Buffer
+    D3D11_BUFFER_DESC bufferDescription = {};
+    bufferDescription.ByteWidth = static_cast<UINT>( description.size );
+    bufferDescription.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    bufferDescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    bufferDescription.Usage = D3D11_USAGE_DYNAMIC;
+
+    DXGI_FORMAT viewFormat = static_cast< DXGI_FORMAT >( description.viewFormat );
+
+    // SRV
+    D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = {
+        viewFormat,
+        D3D11_SRV_DIMENSION_BUFFER
+    };
+    shaderResourceViewDesc.Buffer.FirstElement = 0;
+    shaderResourceViewDesc.Buffer.ElementWidth = ( UINT )description.stride;
+
+    device->CreateBuffer( &bufferDescription, ( initialData != nullptr ) ? &subresourceDataDesc : nullptr, &preallocatedBuffer->bufferObject );
+    device->CreateShaderResourceView( preallocatedBuffer->bufferObject, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
+
+    return preallocatedBuffer;
+}
+
 Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* initialData )
 {
     ID3D11Device* nativeDevice = renderContext->nativeDevice;
@@ -372,6 +401,9 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
 
     case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D:
         return CreateUnorderedAccessViewBuffer3D( nativeDevice, buffer, this, description, initialData );
+
+    case BufferDesc::GENERIC_BUFFER:
+        return CreateGenericBuffer( nativeDevice, buffer, description, initialData );
 
     default:
         break;
