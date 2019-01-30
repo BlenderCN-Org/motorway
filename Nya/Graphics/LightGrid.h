@@ -38,6 +38,8 @@ public:
                         ~LightGrid();
 
     void                create( RenderDevice* renderDevice );
+    void                destroy( RenderDevice* renderDevice );
+
     void                updateClusters( CommandList* cmdList );
 
     void                setSceneBounds( const glm::vec3& aabbMax, const glm::vec3& aabbMin );

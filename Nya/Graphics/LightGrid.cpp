@@ -69,6 +69,12 @@ void LightGrid::create( RenderDevice* renderDevice )
     lightsBuffer = renderDevice->createBuffer( lightBufferDesc );
 }
 
+void LightGrid::destroy( RenderDevice* renderDevice )
+{
+    renderDevice->destroyTexture( clustersTexture );
+    renderDevice->destroyBuffer( lightsBuffer );
+}
+
 void LightGrid::updateClusters( CommandList* cmdList )
 {
     uint32_t lightClusters[CLUSTER_Z][CLUSTER_Y][CLUSTER_X] = {};
