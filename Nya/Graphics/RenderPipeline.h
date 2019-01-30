@@ -183,17 +183,17 @@ private:
 
     int                 cbufferAllocatedCount;
 
-    Buffer*             uavBuffer[96];
-    size_t              uavBufferSize[96];
-    bool                isUAVBufferFree[96];
+    Buffer*             genBuffer[96];
+    BufferDesc          genBufferDesc[96];
+    bool                isGenBufferFree[96];
 
-    int                 uavAllocatedCount;
+    int                 genAllocatedCount;
 
     RenderTarget*       renderTargets[96];
     TextureDescription  renderTargetsDesc[96];
     bool                isRenderTargetAvailable[96];
 
-    int             rtAllocatedCount;
+    int                 rtAllocatedCount;
 
     Sampler*        samplers[96];
     SamplerDesc     samplersDesc[96];

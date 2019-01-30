@@ -13,6 +13,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
 {
     struct PassData {
         ResHandle_t input;
+        ResHandle_t zBuffer;
         ResHandle_t velocityRenderTarget;
         ResHandle_t thinGBuffer;
 
@@ -48,6 +49,13 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
 
             passData.velocityRenderTarget = renderPipelineBuilder.allocateRenderTarget( velocityRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS );
 
+            TextureDescription zBufferRenderTargetDesc = {};
+            zBufferRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+            zBufferRenderTargetDesc.format = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
+            zBufferRenderTargetDesc.flags.isDepthResource = 1;
+
+            passData.zBuffer = renderPipelineBuilder.allocateRenderTarget( zBufferRenderTargetDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS );
+
             TextureDescription thinGBufferRenderTargetDesc = {};
             thinGBufferRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
             thinGBufferRenderTargetDesc.format = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
@@ -57,6 +65,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             // Fake refcounter increment
             renderPipelineBuilder.readRenderTarget( passData.velocityRenderTarget );
             renderPipelineBuilder.readRenderTarget( passData.thinGBuffer );
+            renderPipelineBuilder.readRenderTarget( passData.zBuffer );
 
             // Buffers
             BufferDesc instanceBufferDesc;
@@ -78,10 +87,10 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             passData.cameraBuffer = renderPipelineBuilder.allocateBuffer( cameraBufferDesc, SHADER_STAGE_VERTEX );
 
             BufferDesc vectorDataBufferDesc;
-            vectorDataBufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER;
+            vectorDataBufferDesc.type = BufferDesc::GENERIC_BUFFER;
             vectorDataBufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32G32B32A32_FLOAT;
-            vectorDataBufferDesc.stride = sizeof( glm::vec4 );
             vectorDataBufferDesc.size = sizeof( glm::vec4 ) * 1024;
+            vectorDataBufferDesc.stride = 1024;
 
             passData.vectorDataBuffer = renderPipelineBuilder.allocateBuffer( vectorDataBufferDesc, SHADER_STAGE_VERTEX );
 
@@ -100,27 +109,42 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* clustersBuffer = renderPipelineResources.getBuffer( passData.clustersBuffer );
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
+            Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
 
             ResourceListDesc resListDesc = {};
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };        
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
+            resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
 
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
             cmdList->bindResourceList( &resourceList );
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
+            RenderTarget* zBufferTarget = renderPipelineResources.getRenderTarget( passData.zBuffer );
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.velocityRenderTarget );
             RenderTarget* thinGBufferTarget = renderPipelineResources.getRenderTarget( passData.thinGBuffer );
 
+            // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
+            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( glm::vec4 ) * 1024 );
+            
+            InstanceBuffer instanceBufferData;
+            instanceBufferData.StartVector = 0;
+            instanceBufferData.VectorPerInstance = 4;
+
+            cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+
+            const CameraData* cameraData = renderPipelineResources.getMainCamera();
+            cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPassDesc passDesc = {};
             passDesc.attachements[0] = { outputTarget, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
             passDesc.attachements[1] = { velocityTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
             passDesc.attachements[2] = { thinGBufferTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
+            passDesc.attachements[3] = { zBufferTarget, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH, { 0, 0, 0, 0 } };
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
             for ( const auto& drawCmd : drawCmdBucket ) {

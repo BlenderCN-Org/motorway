@@ -165,6 +165,9 @@ RenderPipelineResources::RenderPipelineResources()
     : cbuffers{ 0 }
     , isCBufferFree{ false }
     , cbufferAllocatedCount( 0 )
+    , genBuffer{ 0 }
+    , isGenBufferFree{ false }
+    , genAllocatedCount( 0 )
     , renderTargets{ nullptr }
     , renderTargetsDesc{}
     , isRenderTargetAvailable{ false }
@@ -185,6 +188,7 @@ RenderPipelineResources::~RenderPipelineResources()
 void RenderPipelineResources::create( BaseAllocator* allocator )
 {
     instanceBufferData = nya::core::allocateArray<uint8_t>( allocator, sizeof( glm::vec4 ) * 1024 );
+    memset( instanceBufferData, 0, sizeof( glm::vec4 ) * 1024 );
 }
 
 void RenderPipelineResources::destroy( BaseAllocator* allocator )
@@ -196,6 +200,10 @@ void RenderPipelineResources::releaseResources( RenderDevice* renderDevice )
 {
     for ( int cbufferIdx = 0; cbufferIdx < cbufferAllocatedCount; cbufferIdx++ ) {
         renderDevice->destroyBuffer( cbuffers[cbufferIdx] );
+    }
+
+    for ( int genIdx = 0; genIdx < genAllocatedCount; genIdx++ ) {
+        renderDevice->destroyBuffer( genBuffer[genIdx] );
     }
 
     for ( int rtIdx = 0; rtIdx < rtAllocatedCount; rtIdx++ ) {
@@ -210,6 +218,7 @@ void RenderPipelineResources::releaseResources( RenderDevice* renderDevice )
 void RenderPipelineResources::unacquireResources()
 {
     memset( isCBufferFree, 1, sizeof( bool ) * cbufferAllocatedCount );
+    memset( isGenBufferFree, 1, sizeof( bool ) * genAllocatedCount );
     memset( isRenderTargetAvailable, 1, sizeof( bool ) * rtAllocatedCount );
     memset( isSamplerAvailable, 1, sizeof( bool ) * samplerAllocatedCount );
 }
@@ -233,9 +242,14 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
 
     drawCmdBuckets[layer][viewportLayer].beginAddr = ( drawCmds + 0 );
 
-    DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
-
     size_t instanceBufferOffset = 0;
+
+    // Copy instance data to shared buffer
+    const size_t instancesDataSize = sizeof( glm::mat4x4 ) * drawCmds[0].infos.instanceCount;
+    memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[0].infos.modelMatrix, instancesDataSize );
+    instanceBufferOffset += instancesDataSize;
+
+    DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
 
     for ( size_t drawCmdIdx = 1; drawCmdIdx < drawCmdCount; drawCmdIdx++ ) {
         const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
@@ -269,7 +283,7 @@ const RenderPipelineResources::DrawCmdBucket& RenderPipelineResources::getDrawCm
 
 void* RenderPipelineResources::getVectorBufferData() const
 {
-    return nullptr;
+    return instanceBufferData;
 }
 
 const CameraData* RenderPipelineResources::getMainCamera() const
@@ -322,13 +336,14 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
         }
     } break;
 
-    case BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER: {
-        auto desiredSize = description.size;
-
-        for ( int i = 0; i < cbufferAllocatedCount; i++ ) {
-            if ( cbuffersSize[i] == desiredSize && isCBufferFree[i] ) {
-                buffer = cbuffers[i];
-                isCBufferFree[i] = false;
+    case BufferDesc::GENERIC_BUFFER: {
+        for ( int i = 0; i < genAllocatedCount; i++ ) {
+            if ( genBufferDesc[i].size == description.size 
+                && genBufferDesc[i].stride == description.stride
+                && genBufferDesc[i].viewFormat == description.viewFormat
+                && isGenBufferFree[i] ) {
+                buffer = genBuffer[i];
+                isGenBufferFree[i] = false;
                 break;
             }
         }
@@ -336,9 +351,9 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
         if ( buffer == nullptr ) {
             buffer = renderDevice->createBuffer( description );
 
-            cbuffers[cbufferAllocatedCount] = buffer;
-            cbuffersSize[cbufferAllocatedCount] = description.size;
-            cbufferAllocatedCount++;
+            genBuffer[genAllocatedCount] = buffer;
+            genBufferDesc[genAllocatedCount] = description;
+            genAllocatedCount++;
         }
     } break;
 
