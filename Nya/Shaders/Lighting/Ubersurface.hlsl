@@ -1,6 +1,6 @@
 #include <CameraData.hlsli>
 
-Buffer<float4> g_InstanceVectorBuffer : register( t0 );
+Buffer<float4> g_InstanceVectorBuffer : register( t8 );
 cbuffer InstanceBuffer : register( b1 )
 {
     float   g_StartVector;
@@ -86,7 +86,7 @@ struct PixelStageData
     float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
 };
 
-Texture3D<uint> g_Clusters : register( t0 );
+Texture3D<uint> g_Clusters : register( t8 );
 cbuffer ClusterBuffer : register( b1 )
 {
     float   g_ClustersScale;
