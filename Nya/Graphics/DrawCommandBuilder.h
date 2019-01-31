@@ -24,6 +24,7 @@ class RenderDevice;
 class WorldRenderer;
 class Mesh;
 class VertexArrayObject;
+class LightGrid;
 
 struct CameraData;
 
@@ -47,7 +48,7 @@ public:
     void                addGeometryToRender( const Mesh* meshResource, const glm::mat4* modelMatrix );
     void                addCamera( const CameraData* cameraData );
 
-    void                buildRenderQueues( WorldRenderer* worldRenderer );
+    void                buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
 
 private:
     struct MeshInstance {

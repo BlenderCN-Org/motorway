@@ -335,7 +335,7 @@ void RenderLoop()
 
         CollectDrawCmds( gameWorldSnapshot, *g_DrawCommandBuilder );
 
-        g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer );
+        g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );
 
         // Do pre-world render steps (update light grid, upload buffers, etc.)
         CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();

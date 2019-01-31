@@ -23,4 +23,9 @@
 class RenderPipeline;
 using ResHandle_t = uint32_t;
 
-ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t output );
+struct Texture;
+struct Buffer;
+
+#include <Graphics/LightGrid.h>
+
+ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsClusters, Buffer* lightsBuffer, const LightGrid::ClustersInfos& clustersInfos, ResHandle_t output );

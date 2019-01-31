@@ -27,6 +27,7 @@
 
 #include "WorldRenderer.h"
 #include "RenderPipeline.h"
+#include "LightGrid.h"
 
 #include <Rendering/RenderDevice.h>
 
@@ -99,7 +100,7 @@ void DrawCommandBuilder::addCamera( const CameraData* cameraData )
     cameras[cameraCount++] = cameraData;
 }
 
-void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer )
+void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid )
 {
     for ( uint32_t cameraIdx = 0; cameraIdx < cameraCount; cameraIdx++ ) {
         const CameraData* camera = cameras[cameraIdx];
@@ -111,7 +112,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer )
         renderPipeline.beginPassGroup();
         {
             auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
-            auto lightRenderTarget = AddLightRenderPass( &renderPipeline, skyRenderTarget );
+            auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightGrid->getLightsClusters(), lightGrid->getLightsBuffer(), lightGrid->getClustersInfos(), skyRenderTarget );
             auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, lightRenderTarget );
             AddPresentRenderPass( &renderPipeline, hudRenderTarget );
         }

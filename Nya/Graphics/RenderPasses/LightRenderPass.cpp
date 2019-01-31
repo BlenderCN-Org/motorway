@@ -3,18 +3,19 @@
 
 #include <Graphics/ShaderCache.h>
 #include <Graphics/RenderPipeline.h>
+#include <Graphics/LightGrid.h>
 
 #include <Rendering/CommandList.h>
 #include <Rendering/ImageFormat.h>
 
 #include <Framework/Material.h>
 
-ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
+ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsClusters, Buffer* lightsBuffer, const LightGrid::ClustersInfos& clustersInfos, ResHandle_t output )
 {
     struct PassData {
         ResHandle_t input;
         ResHandle_t zBuffer;
-        ResHandle_t velocityRenderTarget;
+        ResHandle_t velocityRenderTarget; 
         ResHandle_t thinGBuffer;
 
         ResHandle_t bilinearSampler;
@@ -32,9 +33,10 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
     };
 
     struct ClustersBuffer {
-        float ClustersScale;
-        float ClustersBias;
-        uint32_t __PADDING__[2];
+        glm::vec3 ClustersScale;
+        uint32_t __PADDING__;
+        glm::vec3 ClustersBias;
+        uint32_t __PADDING_2__;
     };
 
     PassData& passData = renderPipeline->addRenderPass<PassData>(
@@ -110,12 +112,13 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             Buffer* clustersBuffer = renderPipelineResources.getBuffer( passData.clustersBuffer );
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
-
+             
             ResourceListDesc resListDesc = {};
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };        
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
+            resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
             resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
 
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
@@ -137,6 +140,12 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
 
             cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
+            ClustersBuffer clustersBufferData;
+            clustersBufferData.ClustersBias = clustersInfos.Bias;
+            clustersBufferData.ClustersScale = clustersInfos.Scale;
+
+            cmdList->updateBuffer( clustersBuffer, &clustersBufferData, sizeof( ClustersBuffer ) );
+
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
@@ -145,6 +154,10 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, ResHandle_t outp
             passDesc.attachements[1] = { velocityTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
             passDesc.attachements[2] = { thinGBufferTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0, 0, 0, 0 } };
             passDesc.attachements[3] = { zBufferTarget, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH, { 0, 0, 0, 0 } };
+
+            passDesc.attachements[4].texture = lightsClusters;
+            passDesc.attachements[4].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[4].targetState = RenderPassDesc::IS_TEXTURE;
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
             for ( const auto& drawCmd : drawCmdBucket ) {
