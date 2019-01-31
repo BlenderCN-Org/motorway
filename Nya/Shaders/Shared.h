@@ -17,10 +17,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-#ifdef __cplusplus
-#pragma once
-#endif
+#ifndef __SHARED_H__
+#define __SHARED_H__ 1
 
 #define MAX_POINT_LIGHT_COUNT               256
 #define MAX_SPOT_LIGHT_COUNT                256
@@ -34,3 +32,5 @@
 #define MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT  1
 
 #define MAX_ENVIRONMENT_PROBE_COUNT         ( MAX_LOCAL_ENVIRONMENT_PROBE_COUNT + MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT )
+
+#endif
