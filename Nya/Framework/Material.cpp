@@ -353,9 +353,9 @@ void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) cons
 {
     cmdList->bindPipelineState( defaultPipelineState );
 
-    // 0..2 -> Output RenderTargets
-    // 3 -> Clusters (3D Tex)
-    int32_t textureBindIndex = 4;
+    // 0..3 -> Output RenderTargets
+    // 4 -> Clusters (3D Tex)
+    int32_t textureBindIndex = 5;
 
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
         renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
