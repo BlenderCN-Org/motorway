@@ -32,29 +32,40 @@ class CommandList;
 class LightGrid
 {
 public:
-                        LightGrid( BaseAllocator* allocator );
-                        LightGrid( LightGrid& ) = default;
-                        LightGrid& operator = ( LightGrid& ) = default;
-                        ~LightGrid();
+    struct ClustersInfos {
+        glm::vec3   Scale;
+        glm::vec3   Bias;
+    };
 
-    void                create( RenderDevice* renderDevice );
-    void                destroy( RenderDevice* renderDevice );
+public:
+                            LightGrid( BaseAllocator* allocator );
+                            LightGrid( LightGrid& ) = default;
+                            LightGrid& operator = ( LightGrid& ) = default;
+                            ~LightGrid();
 
-    void                updateClusters( CommandList* cmdList );
+    void                    create( RenderDevice* renderDevice );
+    void                    destroy( RenderDevice* renderDevice );
 
-    void                setSceneBounds( const glm::vec3& aabbMax, const glm::vec3& aabbMin );
+    void                    updateClusters( CommandList* cmdList );
+
+    void                    setSceneBounds( const glm::vec3& aabbMax, const glm::vec3& aabbMin );
+
+    Buffer*                 getLightsBuffer() const;
+    Texture*                getLightsClusters() const;
+    const ClustersInfos&    getClustersInfos() const;
 
     DirectionalLightData*   allocateDirectionalLightData( const DirectionalLightData&& lightData );
     PointLightData*         allocatePointLightData( const PointLightData&& lightData );
 
 private:
-    BaseAllocator*      memoryAllocator;
+    BaseAllocator*          memoryAllocator;
 
-    Buffer*             lightsBuffer;
-    Texture*            clustersTexture;
+    Buffer*                 lightsBuffer;
+    Texture*                clustersTexture;
+    ClustersInfos           clustersInfos;
 
-    glm::vec3           aabbMin;
-    glm::vec3           aabbMax;
+    glm::vec3               aabbMin;
+    glm::vec3               aabbMax;
 
     struct {
         uint32_t                DirectionalLightCount;
@@ -77,4 +88,7 @@ private:
         EnvironmentProbeData    GlobalEnvironmentProbes[MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT];
         EnvironmentProbeData    LocalEnvironmentProbes[MAX_LOCAL_ENVIRONMENT_PROBE_COUNT];
     } lights;
+
+private:
+    void                        updateClustersInfos();
 };

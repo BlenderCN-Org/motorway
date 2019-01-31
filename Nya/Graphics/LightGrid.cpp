@@ -138,6 +138,21 @@ void LightGrid::setSceneBounds( const glm::vec3& sceneAABBMax, const glm::vec3& 
     aabbMin = sceneAABBMin;
 }
 
+Buffer* LightGrid::getLightsBuffer() const
+{
+    return lightsBuffer;
+}
+
+Texture* LightGrid::getLightsClusters() const
+{
+    return clustersTexture;
+}
+
+const LightGrid::ClustersInfos&  LightGrid::getClustersInfos() const
+{
+    return clustersInfos;
+}
+
 #define NYA_IMPL_LIGHT_ALLOC( lightType, lightMacroName )\
 lightType##Data* LightGrid::allocate##lightType##Data( const lightType##Data&& lightData )\
 {\
@@ -156,3 +171,9 @@ NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
 NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
 
 #undef NYA_IMPL_LIGHT_ALLOC
+
+void LightGrid::updateClustersInfos()
+{
+    clustersInfos.Scale = glm::vec3( float( CLUSTER_X ), float( CLUSTER_Y ), float( CLUSTER_Z ) ) / ( aabbMax - aabbMin );
+    clustersInfos.Bias = -clustersInfos.Scale * aabbMin;
+}
