@@ -1,4 +1,5 @@
 #include <CameraData.hlsli>
+#include <LightsData.hlsli>
 
 Buffer<float4> g_InstanceVectorBuffer : register( t8 );
 cbuffer InstanceBuffer : register( b1 )
@@ -86,11 +87,11 @@ struct PixelStageData
     float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
 };
 
-Texture3D<uint> g_Clusters : register( t8 );
+Texture3D<uint> g_Clusters : register( t4 );
 cbuffer ClusterBuffer : register( b1 )
 {
-    float   g_ClustersScale;
-    float   g_ClustersBias;
+    float3   g_ClustersScale;
+    float3   g_ClustersBias;
 };
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
@@ -131,6 +132,9 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		// Extract a light from the mask and disable that bit
 		uint i = firstbitlow( light_mask );
         
+		PointLight light = PointLights[i];
+		LightContributio.rgb += light.ColorAndPowerInLux.rgb;
+		
         // Do lighting
         
 		light_mask &= ~( 1 << i );
