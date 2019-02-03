@@ -87,7 +87,7 @@ struct PixelStageData
     float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
 };
 
-Texture3D<uint> g_Clusters : register( t4 );
+Texture3D<uint> g_Clusters : register( t0 );
 cbuffer ClusterBuffer : register( b1 )
 {
     float3   g_ClustersScale;
@@ -133,7 +133,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		uint i = firstbitlow( light_mask );
         
 		PointLight light = PointLights[i];
-		LightContributio.rgb += light.ColorAndPowerInLux.rgb;
+		LightContribution.rgb += light.ColorAndPowerInLux.rgb;
 		
         // Do lighting
         
