@@ -145,16 +145,18 @@ void TestStuff()
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
 
-    PointLightData pointLightData;
-    pointLightData.worldPosition = { 16, 0.5f, 0 };
-    pointLightData.radius = 2.0f;
-    pointLightData.lightPower = 2500.0f;
-    pointLightData.colorRGB = { 1, 1, 1 };
+    for ( int i = 0; i < 32; i++ ) {
+        PointLightData pointLightData;
+        pointLightData.worldPosition = { 32 + i * 2.0f, 0.5f, 0 };
+        pointLightData.radius = 4.0f;
+        pointLightData.lightPower = 2500.0f;
+        pointLightData.colorRGB = { 1, 1, 1 };
 
-    auto& pointLight = g_SceneTest->allocatePointLight();
-    pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
-    auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
-    pointLightTransform.translate( pointLightData.worldPosition );
+        auto& pointLight = g_SceneTest->allocatePointLight();
+        pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+        auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
+        pointLightTransform.translate( pointLightData.worldPosition );
+    }
 }
 
 void Initialize()
