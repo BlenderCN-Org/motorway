@@ -598,7 +598,7 @@ void RenderDevice::setDebugMarker( Texture* texture, const char* objectName )
     texture->textureResource->SetPrivateData( WKPDID_D3DDebugObjectName, static_cast< UINT >( strlen( objectName ) ), objectName );
 }
 
-void CommandList::updateTexture( Texture* texture, const void* data, const size_t dataSize )
+void CommandList::updateTexture3D( Texture* texture, const void*** data, const size_t widthSize, const size_t height, const size_t depth )
 {
     ID3D11DeviceContext* nativeDeviceContext = NativeCommandList->deferredContext;
 
@@ -606,11 +606,15 @@ void CommandList::updateTexture( Texture* texture, const void* data, const size_
     HRESULT operationResult = nativeDeviceContext->Map( texture->textureResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource );
 
     if ( SUCCEEDED( operationResult ) ) {
-        memcpy( mappedSubResource.pData, data, dataSize );
+        for ( uint32_t z = 0; z < depth; z++ ) {
+            for ( uint32_t y = 0; y < height; y++ ) {
+                memcpy( ( ( uint8_t* )mappedSubResource.pData ) + z * mappedSubResource.DepthPitch + y * mappedSubResource.RowPitch, (const uint32_t***)( data )[z][y], widthSize );
+            }
+        }
 
         nativeDeviceContext->Unmap( texture->textureResource, 0 );
     } else {
-        NYA_CERR << "Failed to map texture! (error code: " << NYA_PRINT_HEX( operationResult ) << ")" << std::endl;
+        NYA_CERR << "Failed to map 3D texture! (error code: " << NYA_PRINT_HEX( operationResult ) << ")" << std::endl;
     }
 }
 #endif

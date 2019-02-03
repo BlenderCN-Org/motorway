@@ -128,7 +128,7 @@ void LightGrid::updateClusters( CommandList* cmdList )
         }
     }
 
-    cmdList->updateTexture( clustersTexture, lightClusters, sizeof( lightClusters ) );
+    cmdList->updateTexture3D( clustersTexture, lightClusters, ( CLUSTER_X * sizeof( uint32_t ) ), CLUSTER_Y, CLUSTER_Z );
     cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
 }
 

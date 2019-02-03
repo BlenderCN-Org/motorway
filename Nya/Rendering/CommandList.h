@@ -80,7 +80,8 @@ public:
     void                writeTimestamp( QueryPool* queryPool, const unsigned int queryIndex );
 
     // NOTE Texture must have been created with the flag 'allowCPUWrite' set
-    void                updateTexture( Texture* texture, const void* data, const size_t dataSize );
+    // NOTE widthSize = texture width * texture format size (in bytes)
+    void                updateTexture3D( Texture* texture, const void*** data, const size_t widthSize, const size_t height, const size_t depth );
 
 private:
     BaseAllocator*      memoryAllocator;
