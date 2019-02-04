@@ -598,17 +598,21 @@ void RenderDevice::setDebugMarker( Texture* texture, const char* objectName )
     texture->textureResource->SetPrivateData( WKPDID_D3DDebugObjectName, static_cast< UINT >( strlen( objectName ) ), objectName );
 }
 
-void CommandList::updateTexture3D( Texture* texture, const void*** data, const size_t widthSize, const size_t height, const size_t depth )
+void CommandList::updateTexture3D( Texture* texture, const void* data, const size_t texelSize, const size_t width, const size_t height, const size_t depth )
 {
     ID3D11DeviceContext* nativeDeviceContext = NativeCommandList->deferredContext;
 
     D3D11_MAPPED_SUBRESOURCE mappedSubResource;
     HRESULT operationResult = nativeDeviceContext->Map( texture->textureResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource );
 
+    const uint32_t*** dataPointer = ( const uint32_t*** )( data );
+
     if ( SUCCEEDED( operationResult ) ) {
         for ( uint32_t z = 0; z < depth; z++ ) {
             for ( uint32_t y = 0; y < height; y++ ) {
-                memcpy( ( ( uint8_t* )mappedSubResource.pData ) + z * mappedSubResource.DepthPitch + y * mappedSubResource.RowPitch, (const uint32_t***)( data )[z][y], widthSize );
+                const void* pitchPtr = ( uint8_t* )data + ( ( z * height ) + y ) * texelSize;
+
+                memcpy( ( ( uint8_t* )mappedSubResource.pData ) + z * mappedSubResource.DepthPitch + y * mappedSubResource.RowPitch, pitchPtr, width * texelSize );
             }
         }
 

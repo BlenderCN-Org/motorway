@@ -81,7 +81,7 @@ public:
 
     // NOTE Texture must have been created with the flag 'allowCPUWrite' set
     // NOTE widthSize = texture width * texture format size (in bytes)
-    void                updateTexture3D( Texture* texture, const void*** data, const size_t widthSize, const size_t height, const size_t depth );
+    void                updateTexture3D( Texture* texture, const void* data, const size_t texelSize, const size_t width, const size_t height, const size_t depth );
 
 private:
     BaseAllocator*      memoryAllocator;
