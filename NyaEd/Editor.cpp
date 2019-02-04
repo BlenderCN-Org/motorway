@@ -157,6 +157,8 @@ void TestStuff()
         auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
         pointLightTransform.translate( pointLightData.worldPosition );
     }
+
+    g_LightGrid->setSceneBounds( glm::vec3( 32, 32, 32 ), glm::vec3( 0, 0, 0 ) );
 }
 
 void Initialize()

@@ -128,7 +128,7 @@ void LightGrid::updateClusters( CommandList* cmdList )
         }
     }
 
-    cmdList->updateTexture3D( clustersTexture, lightClusters, ( CLUSTER_X * sizeof( uint32_t ) ), CLUSTER_Y, CLUSTER_Z );
+    cmdList->updateTexture3D( clustersTexture, lightClusters, sizeof( uint32_t ), CLUSTER_X, CLUSTER_Y, CLUSTER_Z );
     cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
 }
 
@@ -136,6 +136,8 @@ void LightGrid::setSceneBounds( const glm::vec3& sceneAABBMax, const glm::vec3& 
 {
     aabbMax = sceneAABBMax;
     aabbMin = sceneAABBMin;
+
+    updateClustersInfos();
 }
 
 Buffer* LightGrid::getLightsBuffer() const
