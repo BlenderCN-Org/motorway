@@ -4,4 +4,10 @@
         * Use GetMonitorInfo( MonitorFromWindow( surface->Handle, MONITOR_DEFAULTTOPRIMARY ), &mi );
           to figure out which monitor is the closest to the app rect (x, y, x + width, y + height rectangle)
         * Use the same monitor handle when creating the render device
-    
+    - Implement RenderDoc API (see renderdoc header in 3rd party folder)
+    - Implement NVAPI
+    - Implement AMD AGS
+    - Allow refresh rate selection
+        * e.g. "RefreshRate = 60 ; in Hz" in envars file
+        * If the refresh rate is unavailable on the current monitor, fallback to the safest one (the lowest one?)
+        
