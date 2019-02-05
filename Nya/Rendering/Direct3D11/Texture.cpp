@@ -605,14 +605,14 @@ void CommandList::updateTexture3D( Texture* texture, const void* data, const siz
     D3D11_MAPPED_SUBRESOURCE mappedSubResource;
     HRESULT operationResult = nativeDeviceContext->Map( texture->textureResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource );
 
-    const uint32_t*** dataPointer = ( const uint32_t*** )( data );
-
     if ( SUCCEEDED( operationResult ) ) {
         for ( uint32_t z = 0; z < depth; z++ ) {
-            for ( uint32_t y = 0; y < height; y++ ) {
-                const void* pitchPtr = ( uint8_t* )data + ( ( z * height ) + y ) * texelSize;
+            const uint8_t* depthTexelsPtr = ( uint8_t* )data + ( z * ( height * width ) ) * texelSize;
 
-                memcpy( ( ( uint8_t* )mappedSubResource.pData ) + z * mappedSubResource.DepthPitch + y * mappedSubResource.RowPitch, pitchPtr, width * texelSize );
+            for ( uint32_t y = 0; y < height; y++ ) {
+                const void* pitchTexelsPtr = depthTexelsPtr + y * width * texelSize;
+
+                memcpy( ( ( uint8_t* )mappedSubResource.pData ) + z * mappedSubResource.DepthPitch + y * mappedSubResource.RowPitch, pitchTexelsPtr, ( width * texelSize ) );
             }
         }
 
