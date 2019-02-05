@@ -94,8 +94,8 @@ void GetShaderStage( const eShadingModel shadingModel, std::string& standardVert
     switch ( shadingModel ) {
     case eShadingModel::SHADING_MODEL_STANDARD:
         standardVertexStage = "Lighting/Ubersurface";
-        standardPixelStage = "Lighting/Ubersurface+NYA_BRDF_STANDARD";
-        probePixelStage = "Lighting/Ubersurface+NYA_BRDF_STANDARD+NYA_PROBE_CAPTURE";
+        standardPixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD";
+        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD+NYA_PROBE_CAPTURE";
         break;
 
     default:

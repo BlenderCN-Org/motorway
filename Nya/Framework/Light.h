@@ -112,6 +112,6 @@ struct EnvironmentProbeData
     uint16_t        CaptureFrequency; // Defines the span of time during which the probe is captured and convoluted
     uint16_t        __PADDING2__; // Defines the span of time during which the probe is captured and convoluted
 
+    uint32_t        __PADDING_3__[3] = { ( unsigned int )~0, ( unsigned int )0, ( unsigned int )~0 };
     uint32_t        ProbeIndex; // Array index 
-    uint32_t        __PADDING_3__;
 };

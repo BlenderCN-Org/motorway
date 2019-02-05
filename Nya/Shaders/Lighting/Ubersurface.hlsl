@@ -1,5 +1,45 @@
 #include <CameraData.hlsli>
 #include <LightsData.hlsli>
+#include <BRDF.hlsli>
+
+struct LightSurfaceInfos
+{
+    float3  V;
+    float   AmbientOcclusion;
+
+    float3  N;
+    float   Roughness;
+
+    float3  Albedo;
+    float   Metalness;
+
+    float3  FresnelColor;
+    float   F90;
+
+    float3  PositionWorldSpace;
+    float   LinearRoughness;
+
+    float3  R;
+    float   DisneyRoughness;
+
+    float3  SecondaryNormal;
+    float   NoV;
+
+    float   ClearCoat;
+    float   ClearCoatGlossiness;
+    float   SubsurfaceScatteringStrength; // 0..1 range
+    uint    PADDING;
+};
+
+#if NYA_EDITOR
+#include <MaterialShared.h>
+#endif
+
+#if NYA_BRDF_STANDARD
+#include "ShadingModels/Standard.hlsl"
+#else
+#include "ShadingModels/Debug.hlsl"
+#endif    
 
 Buffer<float4> g_InstanceVectorBuffer : register( t8 );
 cbuffer InstanceBuffer : register( b1 )
@@ -80,6 +120,34 @@ float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, o
     return float3x3( T, B, N );
 }
 
+struct MaterialReadLayer
+{
+    float3  BaseColor;
+    float   Reflectance;
+    
+    float   Roughness;
+    float   Metalness;
+    float   AmbientOcclusion;
+    float   Emissivity;
+    
+    float3  Normal;
+    float   AlphaMask;
+    
+    float3  SecondaryNormal;
+    float   BlendMask;
+    
+    float   Refraction;
+    float   RefractionIor;
+    float   ClearCoat;
+    float   ClearCoatGlossiness;
+    
+    float   DiffuseContribution;
+    float   SpecularContribution;
+    float   NormalContribution;
+    float   AlphaCutoff;
+    float   SSStrength;
+};
+
 struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
@@ -93,6 +161,18 @@ cbuffer ClusterBuffer : register( b1 )
     float3   g_ClustersScale;
     float3   g_ClustersBias;
 };
+
+float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
+{
+    float3 unormalizedL = light.PositionAndRadius.xyz - surface.PositionWorldSpace;
+    float distance = length( unormalizedL );
+    L = normalize( unormalizedL );
+
+    float illuminance = pow( saturate( 1 - pow( ( distance / light.PositionAndRadius.w ), 4 ) ), 2 ) / ( distance * distance + 1 );
+    float luminancePower = light.ColorAndPowerInLux.a / ( 4.0f * sqrt( light.PositionAndRadius.w * PI ) );
+
+    return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+}
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
@@ -113,6 +193,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Compute common terms from vertex stage variables
     float3 N = normalize( VertexStage.normal );
     float3 V = normalize( g_WorldPosition.xyz - VertexStage.positionWS.xyz );
+    float3 R = reflect( -V, N );
     
     float3 Tangent, Binormal;
     
@@ -120,6 +201,54 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float3x3 TBNMatrix = ComputeTangentFrame( N, VertexStage.positionWS.xyz, VertexStage.uvCoord, Tangent, Binormal );
 #endif
     
+    float3 baseColor = float3( 1, 0, 0 );
+    float metalness = 0.0f;
+    float reflectance = 1.0f;
+    float roughness = 1.0f;
+    float ao = 1.0f;
+    
+    const LightSurfaceInfos surface = {
+        V,
+        ao,
+
+        N,
+        roughness,
+
+        // Albedo
+        lerp( baseColor, 0.0f, metalness ),
+        metalness,
+
+        // F0
+        lerp( ( 0.16f * ( reflectance * reflectance ) ), baseColor, metalness ),
+
+        // F90
+        saturate( 50.0 * dot( reflectance, 0.33 ) ),
+
+        VertexStage.positionWS.xyz,
+
+        // LinearRoughness
+        max( 0.01f, ( roughness * roughness ) ),
+
+        // Reflection Vector
+        R,
+
+        // Disney BRDF LinearRoughness
+        ( 0.5f + roughness / 2.0f ),
+
+        // Clear Coat Normal
+        N,
+
+        // N dot V
+        // FIX Use clamp instead of saturate (clamp dot product between epsilon and 1)
+        clamp( dot( N, V ), 1e-5f, 1.0f ),
+
+        0.0f,
+        0.0f,
+
+        0.0f,
+        0u // Explicit Padding
+    };
+
     // Outputs
     float4 LightContribution = float4( 0, 0, 0, 1 );
     float2 Velocity = float2( 0, 0 );
@@ -132,13 +261,20 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		// Extract a light from the mask and disable that bit
 		uint i = firstbitlow( light_mask );
         
-		PointLight light = PointLights[i];
-		LightContribution.rgb += light.ColorAndPowerInLux.rgb;
-		
         // Do lighting
-        
+        float3 L;
+		PointLight light = PointLights[i];
+        float3 pointLightIlluminance = GetPointLightIlluminance( light, surface, VertexStage.depth, L );        
+		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;
+		
 		light_mask &= ~( 1 << i );
     }
+    
+    float2 prevPositionSS = (VertexStage.previousPosition.xy / VertexStage.previousPosition.z) * float2(0.5f, -0.5f) + 0.5f;
+    //prevPositionSS *= float2( g_BackbufferDimension );
+   
+    Velocity = VertexStage.position.xy - prevPositionSS;
+    Velocity -= g_CameraJitteringOffset;
     
     // Write output to buffer(s)
     PixelStageData output;

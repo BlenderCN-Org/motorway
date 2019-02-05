@@ -275,4 +275,4 @@ compile_shader_PS( "UI/SDFTextRendering" )
 
 # Lighting
 compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
-compile_shader_PS( "Lighting/Ubersurface", [ "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW" ] )
+compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW" ] )

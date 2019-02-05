@@ -61,23 +61,6 @@ struct EnvironmentProbe
 
 cbuffer LightsBuffer : register( b2 )
 {
-	uint                DirectionalLightCount;
-    uint                PointLightCount;
-    uint                SpotLightCount;
-    uint                SphereLightCount;
-    uint                DiscLightCount;
-    uint                RectangleAndTubeLightCount;
-    uint                LocalEnvironmentProbeCount;
-    uint                GlobalEnvironmentProbeCount;
-
-    DirectionalLight    DirectionalLights[MAX_DIRECTIONAL_LIGHT_COUNT];
     PointLight          PointLights[MAX_POINT_LIGHT_COUNT];
-    SpotLight           SpotLights[MAX_SPOT_LIGHT_COUNT];
-    SphereLight         SphereLights[MAX_SPHERE_LIGHT_COUNT];
-    DiscLight           DiscLights[MAX_DISC_LIGHT_COUNT];
-    RectangleLight      RectangleAndTubeLights[MAX_RECTANGLE_LIGHT_COUNT];
-
-    EnvironmentProbe    GlobalEnvProbes[MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT];
-    EnvironmentProbe    LocalEnvProbes[MAX_LOCAL_ENVIRONMENT_PROBE_COUNT];
 };
 #endif
