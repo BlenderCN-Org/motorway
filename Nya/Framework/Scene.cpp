@@ -103,12 +103,13 @@ void Scene::updateLogic( const float deltaTime )
 
 void Scene::getWorldStateSnapshot( GameWorldState& worldState )
 {
-    worldState.TransformDatabase = TransformDatabase;
-    worldState.RenderableMeshDatabase = RenderableMeshDatabase;
-    worldState.FreeCameraDatabase = FreeCameraDatabase;
-    worldState.LightDatabase = LightDatabase;
-    worldState.StaticGeometryCount = staticGeometryCount;
+    // Retrieve DBs copy
+    TransformDatabase.getCopy( worldState.TransformDatabase );
+    RenderableMeshDatabase.getCopy( worldState.RenderableMeshDatabase );
+    FreeCameraDatabase.getCopy( worldState.FreeCameraDatabase );
+    LightDatabase.getCopy( worldState.LightDatabase );
 
+    worldState.StaticGeometryCount = staticGeometryCount;
     memcpy( worldState.StaticGeometry, staticGeometry, sizeof( StaticGeometry ) * staticGeometryCount );
 }
 

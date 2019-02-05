@@ -147,7 +147,7 @@ void TestStuff()
 
     for ( int i = 0; i < 32; i++ ) {
         PointLightData pointLightData;
-        pointLightData.worldPosition = { 20 - i * 2.0f, 2.0f, 20 - i * 2.0f };
+        pointLightData.worldPosition = { 20 - i * 2.0f, 4.0f, 20 - i * 2.0f };
         pointLightData.radius = 4.0f;
         pointLightData.lightPower = 1250.0f;
         pointLightData.colorRGB = { 1, 1, 1 };
@@ -312,6 +312,16 @@ void RenderLoop()
 {
     thread_local Scene::GameWorldState gameWorldSnapshot = {};
 
+    // TODO Test!!
+    gameWorldSnapshot.TransformDatabase.components = nya::core::allocateArray<Transform>( g_GlobalAllocator, 8192 );
+    gameWorldSnapshot.TransformDatabase.capacity = 8192;
+
+    gameWorldSnapshot.RenderableMeshDatabase.components = nya::core::allocateArray<RenderableMesh>( g_GlobalAllocator, 1024 );
+    gameWorldSnapshot.RenderableMeshDatabase.capacity = 1024;
+
+    gameWorldSnapshot.FreeCameraDatabase.components = nya::core::allocateArray<FreeCamera>( g_GlobalAllocator, 4 );
+    gameWorldSnapshot.FreeCameraDatabase.capacity = 4;
+
     Timer updateTimer = {};
     float frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
 
@@ -400,9 +410,11 @@ void MainLoop()
 
         logicCounter.onFrame( frameTime );
 
+        accumulator += frameTime;
+
         {
             std::unique_lock<std::mutex>( g_SceneMutex );
-            accumulator += frameTime;
+
             while ( accumulator >= nya::editor::LOGIC_DELTA ) {
                 // Update Input
                 g_InputReader->onFrame( g_InputMapper );

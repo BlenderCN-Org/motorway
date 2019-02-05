@@ -69,6 +69,15 @@ private:
 
         }
 
+        // NOTE dbCopy.components must be allocated prior to function call
+        inline void getCopy( ComponentDatabase& dbCopy )
+        {
+            memcpy( dbCopy.components, components, sizeof( T ) * capacity );
+
+            dbCopy.capacity = capacity;
+            dbCopy.usageIndex = usageIndex;
+        }
+
         nyaComponentHandle_t allocate() {
             return ( usageIndex++ % capacity );
         }
