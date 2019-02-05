@@ -67,26 +67,10 @@ private:
     glm::vec3               aabbMin;
     glm::vec3               aabbMax;
 
+    uint32_t                PointLightCount;
+
     struct {
-        uint32_t                DirectionalLightCount;
-        uint32_t                PointLightCount;
-        uint32_t                SpotLightCount;
-        uint32_t                SphereLightCount;
-
-        uint32_t                DiskLightCount;
-        uint32_t                RectangleLightCount;
-        uint32_t                LocalEnvironmentProbeCount;
-        uint32_t                GlobalEnvironmentProbeCount;
-
-        DirectionalLightData    DirectionalLights[MAX_DIRECTIONAL_LIGHT_COUNT];
         PointLightData          PointLights[MAX_POINT_LIGHT_COUNT];
-        SpotLightData           SpotLights[MAX_SPOT_LIGHT_COUNT];
-        PointLightData          SphereLights[MAX_SPHERE_LIGHT_COUNT];
-        DiskLightData           DiskLights[MAX_DISC_LIGHT_COUNT];
-        RectangleLightData      RectangleLights[MAX_RECTANGLE_LIGHT_COUNT];
-
-        EnvironmentProbeData    GlobalEnvironmentProbes[MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT];
-        EnvironmentProbeData    LocalEnvironmentProbes[MAX_LOCAL_ENVIRONMENT_PROBE_COUNT];
     } lights;
 
 private:

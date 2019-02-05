@@ -37,6 +37,7 @@ LightGrid::LightGrid( BaseAllocator* allocator )
     , clustersTexture( nullptr )
     , aabbMin( 0, 0, 0 )
     , aabbMax( 0, 0, 0 )
+    , PointLightCount( 0 )
     , lights{}
 {
 
@@ -79,21 +80,19 @@ void LightGrid::updateClusters( CommandList* cmdList )
 {
     uint32_t lightClusters[CLUSTER_Z][CLUSTER_Y][CLUSTER_X] = {};
 
-    glm::vec3 worldSize = ( aabbMax - aabbMin );
-    glm::vec3 clusterScale = glm::vec3( static_cast< float >( CLUSTER_X ), static_cast< float >( CLUSTER_Y ), static_cast< float >( CLUSTER_Z ) ) / worldSize;
-    glm::vec3 clusterInvScale = 1.0f / clusterInvScale;
+    glm::vec3 clusterInvScale = ( 1.0f / clustersInfos.Scale );
 
-    for ( uint32_t pointLightIdx = 0; pointLightIdx < lights.PointLightCount; pointLightIdx++ ) {
+    for ( uint32_t pointLightIdx = 0; pointLightIdx < PointLightCount; pointLightIdx++ ) {
         const auto& light = lights.PointLights[pointLightIdx];
 
         const glm::vec3 p = ( light.worldPosition - aabbMin );
-        const glm::vec3 pMin = ( p - light.radius ) * clusterScale;
-        const glm::vec3 pMax = ( p + light.radius ) * clusterScale;
+        const glm::vec3 pMin = ( p - light.radius ) * clustersInfos.Scale;
+        const glm::vec3 pMax = ( p + light.radius ) * clustersInfos.Scale;
 
         // Cluster for the center of the light
-        const int px = ( int )floorf( p.x * clusterScale.x );
-        const int py = ( int )floorf( p.y * clusterScale.y );
-        const int pz = ( int )floorf( p.z * clusterScale.z );
+        const int px = ( int )floorf( p.x * clustersInfos.Scale.x );
+        const int py = ( int )floorf( p.y * clustersInfos.Scale.y );
+        const int pz = ( int )floorf( p.z * clustersInfos.Scale.z );
 
         // Cluster bounds for the light
         const int x0 = glm::max( ( int )floorf( pMin.x ), 0 );
@@ -158,18 +157,18 @@ const LightGrid::ClustersInfos&  LightGrid::getClustersInfos() const
 #define NYA_IMPL_LIGHT_ALLOC( lightType, lightMacroName )\
 lightType##Data* LightGrid::allocate##lightType##Data( const lightType##Data&& lightData )\
 {\
-    if ( lights.lightType##Count >= MAX_##lightMacroName##_COUNT ) {\
+    if ( lightType##Count >= MAX_##lightMacroName##_COUNT ) {\
         NYA_CERR << "Too many " << #lightType << "! (max is set to " << MAX_##lightMacroName##_COUNT << ")" << std::endl;\
         return nullptr;\
     }\
 \
-    lightType##Data& light = lights.lightType##s[lights.lightType##Count++];\
+    lightType##Data& light = lights.lightType##s[lightType##Count++];\
     light = std::move( lightData );\
 \
     return &light;\
 }
 
-NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
+//NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
 NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
 
 #undef NYA_IMPL_LIGHT_ALLOC
