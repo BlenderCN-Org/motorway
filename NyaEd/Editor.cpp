@@ -147,9 +147,9 @@ void TestStuff()
 
     for ( int i = 0; i < 32; i++ ) {
         PointLightData pointLightData;
-        pointLightData.worldPosition = { 32 + i * 2.0f, 0.5f, 0 };
+        pointLightData.worldPosition = { 20 - i * 2.0f, 2.0f, 20 - i * 2.0f };
         pointLightData.radius = 4.0f;
-        pointLightData.lightPower = 2500.0f;
+        pointLightData.lightPower = 1250.0f;
         pointLightData.colorRGB = { 1, 1, 1 };
 
         auto& pointLight = g_SceneTest->allocatePointLight();
@@ -158,7 +158,7 @@ void TestStuff()
         pointLightTransform.translate( pointLightData.worldPosition );
     }
 
-    g_LightGrid->setSceneBounds( glm::vec3( 32, 32, 32 ), glm::vec3( 0, 0, 0 ) );
+    g_LightGrid->setSceneBounds( glm::vec3( 20, 20, 20 ), glm::vec3( -20, -20, -20 ) );
 }
 
 void Initialize()
