@@ -19,11 +19,17 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
         ResHandle_t thinGBuffer;
 
         ResHandle_t bilinearSampler;
+        ResHandle_t anisotropicSampler;
 
         ResHandle_t cameraBuffer;
         ResHandle_t instanceBuffer;
         ResHandle_t clustersBuffer;
         ResHandle_t vectorDataBuffer;
+
+#if NYA_DEVBUILD
+        // Realtime material edition buffer
+        ResHandle_t materialEditionBuffer;
+#endif
     };
 
     struct InstanceBuffer {
@@ -88,6 +94,14 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
 
             passData.cameraBuffer = renderPipelineBuilder.allocateBuffer( cameraBufferDesc, SHADER_STAGE_VERTEX );
 
+#if NYA_DEVBUILD
+            BufferDesc materialBufferDesc;
+            materialBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
+            materialBufferDesc.size = sizeof( Material::EditorBuffer );
+
+            passData.materialEditionBuffer = renderPipelineBuilder.allocateBuffer( materialBufferDesc, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+#endif
+
             BufferDesc vectorDataBufferDesc;
             vectorDataBufferDesc.type = BufferDesc::GENERIC_BUFFER;
             vectorDataBufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32G32B32A32_FLOAT;
@@ -104,22 +118,40 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
             bilinearSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
+
+            SamplerDesc anisotropicSamplerDesc = {};
+            anisotropicSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            anisotropicSamplerDesc.addressV = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            anisotropicSamplerDesc.addressW = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            anisotropicSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_16;
+
+            passData.anisotropicSampler = renderPipelineBuilder.allocateSampler( anisotropicSamplerDesc );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
+            Sampler* anisotropicSampler = renderPipelineResources.getSampler( passData.anisotropicSampler );
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* clustersBuffer = renderPipelineResources.getBuffer( passData.clustersBuffer );
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
-             
+
+#if NYA_DEVBUILD
+            Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
+#endif
+
             ResourceListDesc resListDesc = {};
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
+            resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, anisotropicSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };        
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
             resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
             resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
+
+#if NYA_DEVBUILD
+            resListDesc.constantBuffers[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, materialEditorBuffer };
+#endif
 
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
             cmdList->bindResourceList( &resourceList );
@@ -162,6 +194,11 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
             for ( const auto& drawCmd : drawCmdBucket ) {
                 drawCmd.infos.material->bind( cmdList, passDesc );
+
+#if NYA_DEVBUILD
+                const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
+                cmdList->updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
+#endif
 
                 RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
                 cmdList->useRenderPass( renderPass );

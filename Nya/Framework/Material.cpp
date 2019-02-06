@@ -34,12 +34,15 @@
 #include <Rendering/ImageFormat.h>
 
 #include <Shaders/MaterialShared.h>
+
+#include <Maths/Helpers.h>
+
 #include <glm/glm/glm.hpp>
 
 using namespace nya::graphics;
 using namespace nya::rendering;
 
-void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetCache* graphicsAssetCache, MaterialEditionInput& materialComponent, Texture** textureSet )
+void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetCache* graphicsAssetCache, MaterialEditionInput& materialComponent, Texture** textureSet, int& textureCount )
 {
     auto valueHashcode = nya::core::CRC32( materialInputLine.c_str() );
     const bool isNone = ( valueHashcode == NYA_STRING_HASH( "None" ) ) || materialInputLine.empty();
@@ -65,6 +68,8 @@ void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint
         materialComponent.InputTexture = graphicsAssetCache->getTexture( assetPath.c_str() );
 
         textureSet[inputTextureBindIndex] = materialComponent.InputTexture;
+
+        textureCount = nya::maths::Max( inputTextureBindIndex, static_cast<uint32_t>( textureCount + 1 ) );
     } else {
         materialComponent.InputType = MaterialEditionInput::COLOR_1D;
         materialComponent.Input1D = std::stof( materialInputLine );
@@ -167,8 +172,8 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
 {
 #define NYA_CASE_READ_MATERIAL_FLAG( streamLine, variable ) case NYA_STRING_HASH( #variable ): editableMaterialData.variable = nya::core::StringToBoolean( streamLine ); break;
 #define NYA_CASE_READ_MATERIAL_FLOAT( streamLine, layerIndex, variable ) case NYA_STRING_HASH( #variable ): editableMaterialData.layers[layerIndex].variable = std::stof( dictionaryValue.c_str() ); break;
-#define NYA_CASE_READ_LAYER_PIXEL_INPUT( streamLine, layerIndex, variableIndex, variable )  case NYA_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetCache, editableMaterialData.layers[layerIndex].variable, defaultTextureSet ); break;
-#define NYA_CASE_READ_LAYER_VERTEX_INPUT( streamLine, layerIndex, variableIndex, variable )  case NYA_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetCache, editableMaterialData.layers[layerIndex].variable, vertexTextureSet ); break;
+#define NYA_CASE_READ_LAYER_PIXEL_INPUT( streamLine, layerIndex, variableIndex, variable )  case NYA_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetCache, editableMaterialData.layers[layerIndex].variable, defaultTextureSet, defaultTextureSetCount ); break;
+#define NYA_CASE_READ_LAYER_VERTEX_INPUT( streamLine, layerIndex, variableIndex, variable )  case NYA_STRING_HASH( #variable ): ReadEditableMaterialInput( streamLine, layerIndex, variableIndex, graphicsAssetCache, editableMaterialData.layers[layerIndex].variable, vertexTextureSet, defaultTextureSetCount ); break;
 
     // Reset material inputs (incase of hot reloading)
     defaultTextureSetCount = 0;
@@ -312,7 +317,7 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
             case NYA_STRING_HASH( "Layer" ):
                 if ( currentLayerIndex < MAX_LAYER_COUNT ) {
                     currentLayerIndex++;
-                    slotBaseIndex = 4 + ( 10 * currentLayerIndex );
+                    slotBaseIndex = 0 + ( 10 * currentLayerIndex );
                 }
                 break;
             }
@@ -365,3 +370,10 @@ void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) cons
         textureBindIndex++;
     }
 }
+
+#if NYA_DEVBUILD
+const Material::EditorBuffer& Material::getEditorBuffer() const
+{
+    return editableMaterialData;
+}
+#endif

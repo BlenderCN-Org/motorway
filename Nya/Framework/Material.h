@@ -52,6 +52,22 @@ namespace nya
 class Material
 {
 public:
+    struct EditorBuffer {
+        // Per Material Input
+        uint32_t WriteVelocity;
+        uint32_t EnableAlphaTest;
+        uint32_t EnableAlphaBlend;
+        uint32_t IsDoubleFace;
+
+        uint32_t CastShadow;
+        uint32_t ReceiveShadow;
+        uint32_t AlphaToCoverage;
+        uint32_t LayerCount;
+
+        MaterialLayer layers[MAX_LAYER_COUNT];
+    };
+
+public:
                                 Material( const nyaString_t& matName = NYA_STRING( "Material" ) );
                                 Material( Material& material ) = default;
                                 Material& operator = ( Material& material ) = default;
@@ -72,6 +88,10 @@ public:
 
     void                        bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
 
+#if NYA_DEVBUILD
+    const EditorBuffer&         getEditorBuffer() const;
+#endif
+
 private:
     nyaString_t                 name;
     int32_t                     builderVersion;
@@ -79,6 +99,8 @@ private:
     PipelineState*              defaultPipelineState;
     Texture*                    defaultTextureSet[8];
     int32_t                     defaultTextureSetCount;
+
+    EditorBuffer                editableMaterialData;
 
     union {
         struct {
@@ -101,19 +123,4 @@ private:
 
         uint32_t                sortKey;
     };
-
-    struct {
-        // Per Material Input
-        uint32_t WriteVelocity;
-        uint32_t EnableAlphaTest;
-        uint32_t EnableAlphaBlend;
-        uint32_t IsDoubleFace;
-
-        uint32_t CastShadow;
-        uint32_t ReceiveShadow;
-        uint32_t AlphaToCoverage;
-        uint32_t LayerCount;
-
-        MaterialLayer layers[MAX_LAYER_COUNT];
-    } editableMaterialData;
 };
