@@ -2,45 +2,6 @@
 #include <LightsData.hlsli>
 #include <BRDF.hlsli>
 
-struct LightSurfaceInfos
-{
-    float3  V;
-    float   AmbientOcclusion;
-
-    float3  N;
-    float   Roughness;
-
-    float3  Albedo;
-    float   Metalness;
-
-    float3  FresnelColor;
-    float   F90;
-
-    float3  PositionWorldSpace;
-    float   LinearRoughness;
-
-    float3  R;
-    float   DisneyRoughness;
-
-    float3  SecondaryNormal;
-    float   NoV;
-
-    float   ClearCoat;
-    float   ClearCoatGlossiness;
-    float   SubsurfaceScatteringStrength; // 0..1 range
-    uint    PADDING;
-};
-
-#if NYA_EDITOR
-#include <MaterialShared.h>
-#endif
-
-#if NYA_BRDF_STANDARD
-#include "ShadingModels/Standard.hlsl"
-#else
-#include "ShadingModels/Debug.hlsl"
-#endif    
-
 Buffer<float4> g_InstanceVectorBuffer : register( t8 );
 cbuffer InstanceBuffer : register( b1 )
 {
@@ -104,6 +65,18 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : S
 	return output;
 }
 
+float3 accurateSRGBToLinear( in float3 sRGBCol )
+{
+    float3 linearRGBLo = sRGBCol / 12.92;
+
+    // Ignore X3571, incoming vector will always be superior to 0
+    float3 linearRGBHi = pow( abs( ( sRGBCol + 0.055 ) / 1.055 ), 2.4 );
+
+    float3 linearRGB = ( sRGBCol <= 0.04045 ) ? linearRGBLo : linearRGBHi;
+
+    return linearRGB;
+}
+
 float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, out float3 T, out float3 B )
 {
     // ddx_coarse can be faster than ddx, but could result in artifacts. Haven't observed any artifacts yet.
@@ -119,6 +92,49 @@ float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, o
 
     return float3x3( T, B, N );
 }
+
+struct PixelStageData
+{
+    float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
+    float2  Buffer1         : SV_TARGET1; // Velocity (Opaque RenderList ONLY)
+    float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
+};
+
+Texture3D<uint> g_Clusters : register( t0 );
+cbuffer ClusterBuffer : register( b1 )
+{
+    float3   g_ClustersScale;
+    float3   g_ClustersBias;
+};
+
+struct LightSurfaceInfos
+{
+    float3  V;
+    float   AmbientOcclusion;
+
+    float3  N;
+    float   Roughness;
+
+    float3  Albedo;
+    float   Metalness;
+
+    float3  FresnelColor;
+    float   F90;
+
+    float3  PositionWorldSpace;
+    float   LinearRoughness;
+
+    float3  R;
+    float   DisneyRoughness;
+
+    float3  SecondaryNormal;
+    float   NoV;
+
+    float   ClearCoat;
+    float   ClearCoatGlossiness;
+    float   SubsurfaceScatteringStrength; // 0..1 range
+    uint    PADDING;
+};
 
 struct MaterialReadLayer
 {
@@ -148,19 +164,121 @@ struct MaterialReadLayer
     float   SSStrength;
 };
 
-struct PixelStageData
+#if NYA_EDITOR
+#include <MaterialShared.h>
+
+sampler g_BRDFInputsSampler : register( s1 );
+Texture2D g_TexBaseColor0 : register( t1 );
+Texture2D g_TexAlphaMask0 : register( t2 );
+Texture2D g_TexReflectance0 : register( t3 );
+Texture2D g_TexRoughness0 : register( t4 );
+Texture2D g_TexMetalness0 : register( t5 );
+Texture2D g_TexAmbientOcclusion0 : register( t6 );
+Texture2D g_TexNormal0 : register( t7 );
+Texture2D g_TexDisplacement0 : register( t8 );
+Texture2D g_TexEmissivity0 : register( t9 );
+Texture2D g_TexClearCoatNormal0 : register( t10 );
+
+cbuffer MaterialEdition : register( b3 )
 {
-    float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
-    float2  Buffer1         : SV_TARGET1; // Velocity (Opaque RenderList ONLY)
-    float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
+    // Flags
+    uint                    g_WriteVelocity; // Range: 0..1 (should be 0 for transparent surfaces)
+    uint                    g_EnableAlphaTest;
+    uint                    g_EnableAlphaBlend;
+    uint                    g_IsDoubleFace;
+    
+    uint                    g_CastShadow;
+    uint                    g_ReceiveShadow;
+    uint                    g_EnableAlphaToCoverage;
+    uint                    g_LayerCount;
+    
+    MaterialLayer           g_Layers[MAX_LAYER_COUNT];
 };
 
-Texture3D<uint> g_Clusters : register( t0 );
-cbuffer ClusterBuffer : register( b1 )
+float3 ReadInput3D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float3 defaultValue )
 {
-    float3   g_ClustersScale;
-    float3   g_ClustersBias;
-};
+	float3 input = defaultValue;
+	
+	if ( materialInput.Type == INPUT_TYPE_1D ) {
+		input = materialInput.Input1D.rrr;
+	} else if ( materialInput.Type == INPUT_TYPE_3D ) {
+		input = materialInput.Input3D.rgb;
+	} else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
+		input = textureSampler.Sample( texSampler, uvCoordinates ).rgb;
+	}
+	
+	return input;
+}
+
+float ReadInput1D( in MaterialEditionInput materialInput, Texture2D textureSampler, sampler texSampler, float2 uvCoordinates, float defaultValue )
+{
+    float input = defaultValue;
+    
+    if ( materialInput.Type == INPUT_TYPE_1D ) {
+        input = materialInput.Input1D.r;
+    } else if ( materialInput.Type == INPUT_TYPE_3D ) {
+        input = materialInput.Input3D.r;
+    } else if ( materialInput.Type == INPUT_TYPE_TEXTURE ) {
+        input = textureSampler.Sample( texSampler, uvCoordinates ).r;
+    }
+    
+    return input;
+}
+
+#define NYA_READ_LAYER( layerIdx )\
+MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3 N, in float3 V, in float3x3 TBNMatrix, inout bool needNormalMapUnpack, inout bool needSecondaryNormalMapUnpack )\
+{\
+	MaterialReadLayer layer;\
+	\
+	float2 uvCoords = ( VertexStage.uvCoord + g_Layers[layerIdx].LayerOffset ) * g_Layers[layerIdx].LayerScale;\
+	\
+    layer.BaseColor = ReadInput3D( g_Layers[layerIdx].BaseColor, g_TexBaseColor##layerIdx, g_BRDFInputsSampler, uvCoords, float3( 0.42, 0.42, 0.42 ) );\
+	if ( g_Layers[layerIdx].BaseColor.SamplingMode == SAMPLING_MODE_SRGB ) {\
+        layer.BaseColor = accurateSRGBToLinear( layer.BaseColor );\
+    }\
+	layer.Roughness = ReadInput1D( g_Layers[layerIdx].Roughness, g_TexRoughness##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
+    if ( g_Layers[layerIdx].Roughness.SamplingMode == SAMPLING_MODE_ALPHA_ROUGHNESS ) {\
+        layer.Roughness = ( layer.Roughness * layer.Roughness );\
+    }\
+	layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_BRDFInputsSampler, uvCoords, 0.0f );\
+    layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
+	\
+	layer.Emissivity = 0.0f;\
+	layer.Reflectance = 1.0f;\
+	needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE && g_Layers[layerIdx].Normal.SamplingMode == SAMPLING_MODE_TANGENT_SPACE );\
+    if ( needNormalMapUnpack ) {\
+        float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_BRDFInputsSampler, uvCoords );\
+        layer.Normal = normalize( ( sampledTexture.rgb * g_Layers[layerIdx].NormalMapStrength ) * 2.0f - 1.0f );\
+    } else {\
+        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_BRDFInputsSampler, uvCoords, N );\
+    }\
+	layer.SecondaryNormal = float3( 0, 1, 0 );\
+    layer.AlphaMask = 1.0f;\
+    \
+	layer.Refraction = g_Layers[layerIdx].Refraction;\
+    layer.RefractionIor = g_Layers[layerIdx].RefractionIor;\
+    layer.ClearCoat = g_Layers[layerIdx].ClearCoat;\
+    layer.ClearCoatGlossiness = g_Layers[layerIdx].ClearCoatGlossiness;\
+    \
+    layer.DiffuseContribution = g_Layers[layerIdx].DiffuseContribution;\
+    layer.SpecularContribution = g_Layers[layerIdx].SpecularContribution;\
+    layer.NormalContribution = g_Layers[layerIdx].NormalContribution;\
+    layer.AlphaCutoff = g_Layers[layerIdx].AlphaCutoff;\
+    layer.SSStrength = g_Layers[layerIdx].SSStrength;\
+	\
+	layer.BlendMask = 1.0f;\
+    \
+	return layer;\
+}\
+
+NYA_READ_LAYER( 0 )
+#endif
+
+#if NYA_BRDF_STANDARD
+#include "ShadingModels/Standard.hlsl"
+#else
+#include "ShadingModels/Debug.hlsl"
+#endif    
 
 float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
 {
@@ -199,48 +317,63 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
 #if NYA_USE_NORMAL_MAPPING
     float3x3 TBNMatrix = ComputeTangentFrame( N, VertexStage.positionWS.xyz, VertexStage.uvCoord, Tangent, Binormal );
+#else
+	static const float3x3 TBNMatrix = float3x3( 1, 0, 0, 0, 1, 0, 0, 0, 1 );
 #endif
     
-    float3 baseColor = float3( 1, 0, 0 );
-    float metalness = 0.0f;
-    float reflectance = 1.0f;
-    float roughness = 1.0f;
-    float ao = 1.0f;
-    
+	bool needNormalMapUnpack = false, needSecondaryNormalMapUnpack = false;
+	
+#if NYA_EDITOR
+	MaterialReadLayer layer = ReadLayer0( VertexStage, N, V, TBNMatrix, needNormalMapUnpack, needSecondaryNormalMapUnpack );
+#else
+	MaterialReadLayer layer;
+	layer.BaseColor = float3( 0.42, 0.42, 0.42 );
+	layer.Metalness = 0.0f;
+	layer.Roughness = 1.0f;
+	layer.Reflectance = 1.0f;
+	layer.AmbientOcclusion = 1.0f;
+	layer.Normal = N;
+#endif
+
+	if ( needNormalMapUnpack ) {
+        layer.Normal = normalize( mul( layer.Normal, TBNMatrix ) );
+    }
+	
+	// Build surface infos
     const LightSurfaceInfos surface = {
         V,
-        ao,
+        layer.AmbientOcclusion,
 
-        N,
-        roughness,
+        layer.Normal,
+        layer.Roughness,
 
         // Albedo
-        lerp( baseColor, 0.0f, metalness ),
-        metalness,
+        lerp( layer.BaseColor, 0.0f, layer.Metalness ),
+        layer.Metalness,
 
         // F0
-        lerp( ( 0.16f * ( reflectance * reflectance ) ), baseColor, metalness ),
+        lerp( ( 0.16f * ( layer.Reflectance * layer.Reflectance ) ), layer.BaseColor, layer.Metalness ),
 
         // F90
-        saturate( 50.0 * dot( reflectance, 0.33 ) ),
+        saturate( 50.0 * dot( layer.Reflectance, 0.33 ) ),
 
         VertexStage.positionWS.xyz,
 
         // LinearRoughness
-        max( 0.01f, ( roughness * roughness ) ),
+        max( 0.01f, ( layer.Reflectance * layer.Reflectance ) ),
 
         // Reflection Vector
         R,
 
         // Disney BRDF LinearRoughness
-        ( 0.5f + roughness / 2.0f ),
+        ( 0.5f + layer.Reflectance / 2.0f ),
 
         // Clear Coat Normal
-        N,
+        layer.Normal,
 
         // N dot V
         // FIX Use clamp instead of saturate (clamp dot product between epsilon and 1)
-        clamp( dot( N, V ), 1e-5f, 1.0f ),
+        clamp( dot( layer.Normal, V ), 1e-5f, 1.0f ),
 
         0.0f,
         0.0f,

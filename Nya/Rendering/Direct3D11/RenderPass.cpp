@@ -60,7 +60,7 @@ RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
                                 ? description.attachements[i].renderTarget->texture 
                                 : description.attachements[i].texture;
 
-            renderPass->shaderResourceView[renderPass->srvCount++] = texture->shaderResourceView;
+            renderPass->shaderResourceView[renderPass->srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
         } break;
 
         case RenderPassDesc::WRITE:
