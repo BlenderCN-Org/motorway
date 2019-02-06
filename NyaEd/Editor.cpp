@@ -37,6 +37,8 @@
 #include <Core/EnvVarsRegister.h>
 #include <Core/FramerateCounter.h>
 
+#include <Core/Threading/SpinLock.h>
+
 #include "DefaultInputConfig.h"
 
 #include <Graphics/LightGrid.h>
@@ -71,7 +73,7 @@ Scene*                  g_SceneTest;
 FreeCamera*             g_FreeCamera;
 
 std::atomic_bool        g_ThreadSync( false );
-std::mutex              g_SceneMutex;
+SpinLock                g_SceneSyncLock = {};
 
 FramerateCounter renderCounter = {};
 FramerateCounter logicCounter = {};
@@ -342,10 +344,9 @@ void RenderLoop()
         g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling\n", 0.350f, 0.0f, 0.0f );
         g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, glm::vec4( 1, 1, 0, 1 ) );
         
-        {
-            std::unique_lock<std::mutex>( g_SceneMutex );
-            g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );
-        }
+        g_SceneSyncLock.lock();
+        g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );
+        g_SceneSyncLock.unlock();
 
         CollectDrawCmds( gameWorldSnapshot, *g_DrawCommandBuilder );
 
@@ -411,22 +412,22 @@ void MainLoop()
         logicCounter.onFrame( frameTime );
 
         accumulator += frameTime;
+        
+        g_SceneSyncLock.lock();
 
-        {
-            std::unique_lock<std::mutex>( g_SceneMutex );
+        while ( accumulator >= nya::editor::LOGIC_DELTA ) {
+            // Update Input
+            g_InputReader->onFrame( g_InputMapper );
 
-            while ( accumulator >= nya::editor::LOGIC_DELTA ) {
-                // Update Input
-                g_InputReader->onFrame( g_InputMapper );
+            // Update Local Game Instance
+            g_InputMapper->update( nya::editor::LOGIC_DELTA );
+            g_InputMapper->clear();
 
-                // Update Local Game Instance
-                g_InputMapper->update( nya::editor::LOGIC_DELTA );
-                g_InputMapper->clear();
-
-                g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
-                accumulator -= nya::editor::LOGIC_DELTA;
-            }
+            g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
+            accumulator -= nya::editor::LOGIC_DELTA;
         }
+
+        g_SceneSyncLock.unlock();
     }
 
     // Finish render/audio thread
