@@ -18,8 +18,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #    
 
-import sys, string, os, argparse, platform, codecs, subprocess, itertools, MurmurHash
+import sys, string, os, argparse, platform, codecs, itertools, MurmurHash
+
 from pathlib import Path
+from subprocess import Popen
 
 # Script args (see description below)
 isProd = False
@@ -164,7 +166,7 @@ def compile_permutation_d3d11( shader_name, filename, entry_point, extension, sh
     else:
         cmdLine = cmdLine + " /O1"
         
-    subprocess.run( cmdLine )
+    Popen( cmdLine, shell = True )
      
 def compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):  
     # GLSLang args are '-' delimited
@@ -178,7 +180,8 @@ def compile_permutation_spirv( shader_name, filename, entry_point, extension, sh
     # HLSL > SPIRV (VK)
     # SPIRV (VK) > GLSL
     # GLSL > SPIRV (GLSL)
-    subprocess.run( glslang_exe + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"  )    
+    cmdLine = glslang_exe + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
+    Popen( cmdLine, shell = True )
     # subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename + extension + ".vk --output ./tmp/" + filename + extension + ".glsl" )
     # subprocess.run( glslang_exe + " -S " + shading_model + " -G -o " + compiled_shader_folder + filename + extension + ".gl ./tmp/" + filename + extension + ".glsl" )
     
