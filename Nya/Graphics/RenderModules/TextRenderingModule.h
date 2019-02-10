@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <glm/glm/glm.hpp>
+#include <Maths/Vector.h>
 
 struct Texture;
 struct FontDescriptor;
@@ -50,7 +50,7 @@ public:
     MutableResHandle_t           renderText( RenderPipeline* renderPipeline, MutableResHandle_t output );
     void                         loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
-    void                         addOutlinedText( const char* text, float size, float x, float y, const glm::vec4& textColor = glm::vec4( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
+    void                         addOutlinedText( const char* text, float size, float x, float y, const nyaVec4f& textColor = nyaVec4f( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
 
 private:
     static constexpr int BUFFER_COUNT = 2;

@@ -98,7 +98,7 @@ bool RenderDevice::getQueryResult( QueryPool* queryPool, const unsigned int quer
                 return false;
             }
 
-            queryPool->deviceClockFrequency = nya::maths::Max( queryPool->deviceClockFrequency, disjointQueryResult.Frequency );
+            queryPool->deviceClockFrequency = nya::maths::max( queryPool->deviceClockFrequency, disjointQueryResult.Frequency );
         }
     }
 

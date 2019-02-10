@@ -1,5 +1,7 @@
 #include <BRDF.hlsli>
 
+Texture2D g_DFGLUTStandard : register( t1 );
+
 float3 DoShading( in float3 L, in LightSurfaceInfos surface )
 {
     const float3 H = normalize( surface.V + L );

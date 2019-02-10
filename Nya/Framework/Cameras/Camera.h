@@ -22,32 +22,35 @@
 #include <Maths/Frustum.h>
 #include <Shaders/ShadowMappingShared.h>
 
+#include <Maths/Matrix.h>
+#include <Maths/Vector.h>
+
 struct CameraData
 {
-    glm::mat4    viewMatrix;
-    glm::mat4    projectionMatrix;
-    glm::mat4    inverseViewMatrix;
-    glm::mat4    inverseProjectionMatrix;
-    glm::mat4    viewProjectionMatrix;
+    nyaMat4x4f  viewMatrix;
+    nyaMat4x4f  projectionMatrix;
+    nyaMat4x4f  inverseViewMatrix;
+    nyaMat4x4f  inverseProjectionMatrix;
+    nyaMat4x4f  viewProjectionMatrix;
 
-    glm::mat4    inverseViewProjectionMatrix;
-    glm::vec3    worldPosition;
-    int32_t      cameraFrameNumber;
+    nyaMat4x4f  inverseViewProjectionMatrix;
+    nyaVec3f    worldPosition;
+    int32_t     cameraFrameNumber;
 
     // Shadow mapping rendering specifics
-    glm::mat4    depthProjectionMatrix;
-    glm::mat4    depthViewProjectionMatrix;
-    glm::vec4    cascadeOffsets[CSM_SLICE_COUNT];
-    glm::vec4    cascadeScales[CSM_SLICE_COUNT];
-    float        cascadeSplitDistances[CSM_SLICE_COUNT];
-    glm::mat4    shadowViewMatrix[CSM_SLICE_COUNT];
-    glm::mat4    globalShadowMatrix;
+    nyaMat4x4f  depthProjectionMatrix;
+    nyaMat4x4f  depthViewProjectionMatrix;
+    nyaVec4f    cascadeOffsets[CSM_SLICE_COUNT];
+    nyaVec4f    cascadeScales[CSM_SLICE_COUNT];
+    float       cascadeSplitDistances[CSM_SLICE_COUNT];
+    nyaMat4x4f  shadowViewMatrix[CSM_SLICE_COUNT];
+    nyaMat4x4f  globalShadowMatrix;
 
     // Temporal infos
-    glm::mat4    previousViewProjectionMatrix;
-    glm::mat4    previousViewMatrix;
-    glm::vec2    jitteringOffset;
-    glm::vec2    previousJitteringOffset;
+    nyaMat4x4f  previousViewProjectionMatrix;
+    nyaMat4x4f  previousViewMatrix;
+    nyaVec2f    jitteringOffset;
+    nyaVec2f    previousJitteringOffset;
 
-    Frustum      frustum;
+    Frustum     frustum;
 };

@@ -24,8 +24,6 @@
 #include <FileSystem/FileSystemObject.h>
 #include "TextStreamHelpers.h"
 
-#include <glm/glm/glm.hpp>
-
 using blockMagic_t = uint32_t;
 
 //=====================================
@@ -133,9 +131,9 @@ void nya::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
                     file->read( subMesh.boundingSphere );
                     
                     if ( fileHeader.version >= 3 ) {
-                        glm::vec3 location, dimensions;
-                        file->read( ( uint8_t* )&location, sizeof( glm::vec3 ) );
-                        file->read( ( uint8_t* )&dimensions, sizeof( glm::vec3 ) );
+                        nyaVec3f location, dimensions;
+                        file->read( ( uint8_t* )&location, sizeof( nyaVec3f ) );
+                        file->read( ( uint8_t* )&dimensions, sizeof( nyaVec3f ) );
 
                         nya::core::CreateAABB( subMesh.aabb, location, dimensions );
                     }

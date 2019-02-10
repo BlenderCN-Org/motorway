@@ -24,7 +24,11 @@
 #include <Framework/Cameras/FreeCamera.h>
 #include <Framework/Scene.h>
 
+#include <Maths/Helpers.h>
 #include <Maths/Transform.h>
+#include <Maths/Vector.h>
+#include <Maths/Quaternion.h>
+#include <Maths/CoordinatesSystems.h>
 
 #include <FileSystem/VirtualFileSystem.h>
 #include <FileSystem/FileSystemNative.h>
@@ -86,12 +90,13 @@ NYA_ENV_OPTION_LIST( WindowMode, WIN_MODE_OPTION_LIST )
 NYA_ENV_VAR( WindowWidth, 1280, int32_t ) // "Defines application window width [0..N]"
 NYA_ENV_VAR( WindowHeight, 720, int32_t ) // "Defines application window height [0..N]"
 NYA_ENV_VAR( WindowMode, WINDOWED, eWindowMode ) // Defines application window mode [Windowed/Fullscreen/Borderless]
+NYA_ENV_VAR( CameraFOV, 80.0f, float ) // "Camera FieldOfView (in degrees)"
 
 // Incomplete module declaration
 class TextRenderingModule
 {
 public:
-    void addOutlinedText( const char* text, float size, float x, float y, const glm::vec4& textColor = glm::vec4( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
+    void addOutlinedText( const char* text, float size, float x, float y, const nyaVec4f& textColor = nyaVec4f( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
 };
 
 void RegisterInputContexts()
@@ -138,11 +143,11 @@ void TestStuff()
 
     // Retrieve pointer to camera instance from scene db
     g_FreeCamera = &g_SceneTest->FreeCameraDatabase[freeCameraId];
-    g_FreeCamera->setProjectionMatrix( 90.0f, static_cast<float>( WindowWidth ), static_cast<float>( WindowHeight ) );
+    g_FreeCamera->setProjectionMatrix( CameraFOV, static_cast<float>( WindowWidth ), static_cast<float>( WindowHeight ) );
 
     auto& meshTest = g_SceneTest->allocateStaticGeometry();
     auto& meshTransform = g_SceneTest->TransformDatabase[meshTest.transform];
-    meshTransform.translate( glm::vec3( 32, 0, 0 ) );
+    meshTransform.translate( nyaVec3f( 32, 0, 0 ) );
 
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
@@ -160,19 +165,25 @@ void TestStuff()
         pointLightTransform.translate( pointLightData.worldPosition );
     }
 
-    g_LightGrid->setSceneBounds( glm::vec3( 20, 20, 20 ), glm::vec3( -20, -20, -20 ) );
+    DirectionalLightData sunLight = {};
+    sunLight.isSunLight = true;
+    sunLight.intensityInLux = 100000.0f;
+    sunLight.angularRadius = 0.007f;
+    const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
+
+    sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
+    sunLight.sphericalCoordinates = nyaVec2f( 1.0f, 0.5f );
+    sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
+
+    auto& dirLight = g_SceneTest->allocateDirectionalLight();
+    dirLight.directionalLight = g_LightGrid->allocateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
+
+    g_LightGrid->setSceneBounds( nyaVec3f( 20, 20, 20 ), nyaVec3f( -20, -20, -20 ) );
 }
 
-void Initialize()
+void InitializeIOSubsystems()
 {
-    // Allocate memory for every subsystem
-    g_AllocatedTable = nya::core::malloc( 1024 * 1024 * 1024 );
-    g_AllocatedVirtualMemory = nya::core::PageAlloc( 256 * 1024 * 1024 );
-
-    g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
-    g_GrowingGlobalAllocator = new ( g_BaseBuffer + sizeof( LinearAllocator ) ) GrowingStackAllocator( 256 * 1024 * 1024, g_AllocatedVirtualMemory, nya::core::GetPageSize() );
-
-    NYA_CLOG << "Initializing '" << PROJECT_NAME << "'..." << std::endl;
+    NYA_CLOG << "Initializing I/O subsystems..." << std::endl;
 
     g_VirtualFileSystem = nya::core::allocate<VirtualFileSystem>( g_GlobalAllocator );
 
@@ -223,9 +234,6 @@ void Initialize()
 
     nya::core::OpenLogFile( SaveFolder, PROJECT_NAME );
 
-    // Log generic stuff that could be useful
-    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\n" << std::endl;
-
     NYA_CLOG << "SaveData folder at : '" << SaveFolder << "'" << std::endl;
 
     g_SaveFileSystem = nya::core::allocate<FileSystemNative>( g_GlobalAllocator, SaveFolder );
@@ -242,10 +250,11 @@ void Initialize()
         EnvironmentVariables::deserialize( envConfigurationFile );
         envConfigurationFile->close();
     }
+}
 
-    // Create and initialize subsystems
-    g_DisplaySurface = nya::display::CreateDisplaySurface( g_GlobalAllocator, WindowWidth, WindowHeight );
-    nya::display::SetCaption( g_DisplaySurface, PROJECT_NAME );
+void InitializeInputSubsystems()
+{
+    NYA_CLOG << "Initializing input subsystems..." << std::endl;
 
     g_InputMapper = nya::core::allocate<InputMapper>( g_GlobalAllocator );
     g_InputReader = nya::core::allocate<InputReader>( g_GlobalAllocator );
@@ -265,9 +274,15 @@ void Initialize()
     NYA_CLOG << "Loading input configuration..." << std::endl;
     g_InputMapper->deserialize( inputConfigurationFile );
     inputConfigurationFile->close();
+}
 
-    g_AudioDevice = nya::core::allocate<AudioDevice>( g_GlobalAllocator, g_GlobalAllocator );
-    g_AudioDevice->create();
+void InitializeRenderSubsystems()
+{
+    NYA_CLOG << "Initializing render subsystems..." << std::endl;
+
+    // Create and initialize subsystems
+    g_DisplaySurface = nya::display::CreateDisplaySurface( g_GlobalAllocator, WindowWidth, WindowHeight );
+    nya::display::SetCaption( g_DisplaySurface, PROJECT_NAME );
 
     g_RenderDevice = nya::core::allocate<RenderDevice>( g_GlobalAllocator, g_GlobalAllocator );
     g_RenderDevice->create( g_DisplaySurface );
@@ -277,12 +292,51 @@ void Initialize()
     g_GraphicsAssetCache = nya::core::allocate<GraphicsAssetCache>( g_GlobalAllocator, g_GlobalAllocator, g_RenderDevice, g_ShaderCache, g_VirtualFileSystem );
     g_DrawCommandBuilder = nya::core::allocate<DrawCommandBuilder>( g_GlobalAllocator, g_GlobalAllocator );
     g_LightGrid = nya::core::allocate<LightGrid>( g_GlobalAllocator, g_GlobalAllocator );
-    g_SceneTest = nya::core::allocate<Scene>( g_GlobalAllocator, g_GlobalAllocator );
 
     g_LightGrid->create( g_RenderDevice );
     g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
     //g_RenderDevice->enableVerticalSynchronisation( true );
+}
+
+void InitializeAudioSubsystems()
+{
+    NYA_CLOG << "Initializing audio subsystems..." << std::endl;
+
+    g_AudioDevice = nya::core::allocate<AudioDevice>( g_GlobalAllocator, g_GlobalAllocator );
+    g_AudioDevice->create();
+}
+
+void InitializeGameLogicSubsystems()
+{
+    NYA_CLOG << "Initializing game logic subsystems..." << std::endl;
+
+    g_SceneTest = nya::core::allocate<Scene>( g_GlobalAllocator, g_GlobalAllocator );
+}
+
+void InitializeMemorySubsystems()
+{
+    NYA_CLOG << "Initializing memory subsystems..." << std::endl;
+
+    // Allocate memory for every subsystem
+    g_AllocatedTable = nya::core::malloc( 1024 * 1024 * 1024 );
+    g_AllocatedVirtualMemory = nya::core::PageAlloc( 256 * 1024 * 1024 );
+
+    g_GlobalAllocator = new ( g_BaseBuffer ) LinearAllocator( 1024 * 1024 * 1024, g_AllocatedTable );
+    g_GrowingGlobalAllocator = new ( g_BaseBuffer + sizeof( LinearAllocator ) ) GrowingStackAllocator( 256 * 1024 * 1024, g_AllocatedVirtualMemory, nya::core::GetPageSize() );
+}
+
+void Initialize()
+{
+    InitializeMemorySubsystems();
+    InitializeIOSubsystems();
+
+    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\n" << std::endl;
+
+    InitializeInputSubsystems();
+    InitializeRenderSubsystems();
+    InitializeAudioSubsystems();
+    InitializeGameLogicSubsystems();
 
     RegisterInputContexts();
 
@@ -342,7 +396,7 @@ void RenderLoop()
             "Audio " + std::to_string( audioCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( audioCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n";
 
         g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling\n", 0.350f, 0.0f, 0.0f );
-        g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, glm::vec4( 1, 1, 0, 1 ) );
+        g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
         
         g_SceneSyncLock.lock();
         g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );

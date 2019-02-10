@@ -57,7 +57,7 @@ void FramerateCounter::onFrame( const float frameTime )
     // NOTE Avoid divison per zero (frameTime might be 0 when logic workload is low)
     static constexpr float EPSILON = 1e-9f;
 
-    fpsSamples[currentSampleIdx % SAMPLE_COUNT] = 1.0f / nya::maths::Max( EPSILON, frameTime );
+    fpsSamples[currentSampleIdx % SAMPLE_COUNT] = 1.0f / nya::maths::max( EPSILON, frameTime );
 
     // Update FPS
     float fps = 0.0f;
@@ -66,8 +66,8 @@ void FramerateCounter::onFrame( const float frameTime )
     }
     fps /= SAMPLE_COUNT;
 
-    MinFramePerSecond = nya::maths::Min( MinFramePerSecond, fps );
-    MaxFramePerSecond = nya::maths::Max( MaxFramePerSecond, fps );
+    MinFramePerSecond = nya::maths::min( MinFramePerSecond, fps );
+    MaxFramePerSecond = nya::maths::max( MaxFramePerSecond, fps );
     AvgFramePerSecond = fps;
 
     // Update dt
@@ -81,8 +81,8 @@ void FramerateCounter::onFrame( const float frameTime )
     // Convert to ms
     dt *= 1000.0f;
 
-    MinDeltaTime = nya::maths::Min( MinDeltaTime, dt );
-    MaxDeltaTime = nya::maths::Max( MaxDeltaTime, dt );
+    MinDeltaTime = nya::maths::min( MinDeltaTime, dt );
+    MaxDeltaTime = nya::maths::max( MaxDeltaTime, dt );
     AvgDeltaTime = dt;
 
     // Avoid overflow (happens during long playtest)

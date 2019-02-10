@@ -39,9 +39,9 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
     };
 
     struct ClustersBuffer {
-        glm::vec3 ClustersScale;
+        nyaVec3f ClustersScale;
         uint32_t __PADDING__;
-        glm::vec3 ClustersBias;
+        nyaVec3f ClustersBias;
         uint32_t __PADDING_2__;
     };
 
@@ -105,7 +105,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
             BufferDesc vectorDataBufferDesc;
             vectorDataBufferDesc.type = BufferDesc::GENERIC_BUFFER;
             vectorDataBufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32G32B32A32_FLOAT;
-            vectorDataBufferDesc.size = sizeof( glm::vec4 ) * 1024;
+            vectorDataBufferDesc.size = sizeof( nyaVec4f ) * 1024;
             vectorDataBufferDesc.stride = 1024;
 
             passData.vectorDataBuffer = renderPipelineBuilder.allocateBuffer( vectorDataBufferDesc, SHADER_STAGE_VERTEX );
@@ -144,7 +144,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, anisotropicSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
-            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };        
+            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
             resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
             resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
@@ -164,7 +164,7 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
 
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
-            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( glm::vec4 ) * 1024 );
+            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
             
             InstanceBuffer instanceBufferData;
             instanceBufferData.StartVector = 0;

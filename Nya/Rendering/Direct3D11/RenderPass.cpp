@@ -42,7 +42,7 @@ struct RenderPass
     bool clearTarget[8+1];
     UINT rtvCount;
 
-    ID3D11ShaderResourceView* shaderResourceView[8];
+    ID3D11ShaderResourceView* shaderResourceView[16];
     UINT srvCount;
 };
 
@@ -52,7 +52,7 @@ RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
     renderPass->rtvCount = 0u;
     renderPass->srvCount = 0u;
 
-    for ( int i = 0; i < 8; i++ ) {
+    for ( int i = 0; i < 16; i++ ) {
         switch ( description.attachements[i].bindMode ) {
         case RenderPassDesc::READ:
         {

@@ -35,14 +35,9 @@ struct CameraData;
 struct Viewport;
 struct Buffer;
 
-namespace glm
-{
-    enum qualifier;
-    template<int i, int j, typename T, qualifier Q>
-    struct mat;
-
-    typedef mat<4, 4, float, (qualifier)0>	mat4;
-}
+template <typename Precision, int RowCount, int ColumnCount>
+struct Matrix;
+using nyaMat4x4f = Matrix<float, 4, 4>;
 
 struct DrawCommandKey
 {
@@ -111,7 +106,7 @@ struct DrawCommandInfos
     uint32_t                    indiceBufferCount; // same as above
     float                       alphaDitheringValue; // 0..1 (1.0f if disabled)
     uint32_t                    instanceCount; // 0 or 1 implicitly disable instancing
-    const glm::mat4*            modelMatrix; // Points to a single matrix or an array of matrix (if instanciation is used)
+    const nyaMat4x4f*           modelMatrix; // Points to a single matrix or an array of matrix (if instanciation is used)
 };
 
 struct DrawCmd

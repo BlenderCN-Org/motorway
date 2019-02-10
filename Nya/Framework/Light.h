@@ -20,27 +20,28 @@
 
 #pragma once
 
-#include <glm/glm/glm.hpp>
+#include <Maths/Vector.h>
+#include <Maths/Matrix.h>
 
 // Punctual Lights
 struct PointLightData
 {
-    glm::vec3   worldPosition;
+    nyaVec3f    worldPosition;
     float       radius;
 
-    glm::vec3   colorRGB;
+    nyaVec3f    colorRGB;
     float       lightPower;
 };
 
 struct SpotLightData
 {
-    glm::vec3   worldPosition;
+    nyaVec3f   worldPosition;
     float       cutoff;
 
-    glm::vec3   colorRGB;
+    nyaVec3f   colorRGB;
     float       lightPower;
 
-    glm::vec3   lightDirection;
+    nyaVec3f   lightDirection;
     float       outerCutoff;
 
     float       radius;
@@ -52,57 +53,58 @@ struct SpotLightData
 // NOTE Sphere Lights share the same data as a pointlight
 struct DiskLightData
 {
-    glm::vec3   worldPosition;
+    nyaVec3f   worldPosition;
     float       radius;
 
-    glm::vec3   colorRGB;
+    nyaVec3f   colorRGB;
     float       lightPower;
 
-    glm::vec3   planeNormal;
+    nyaVec3f   planeNormal;
     int32_t     __PADDING__;
 };
 
 struct RectangleLightData
 {
-    glm::vec3   worldPosition;
+    nyaVec3f   worldPosition;
     float       radius;
 
-    glm::vec3   colorRGB;
+    nyaVec3f   colorRGB;
     float       lightPower;
 
-    glm::vec3   planeNormal;
+    nyaVec3f   planeNormal;
     float       width;
 
-    glm::vec3   upVector;
+    nyaVec3f   upVector;
     float       height;
 
-    glm::vec3   leftVector;
+    nyaVec3f   leftVector;
     uint32_t    isTubeLight;
 };
 
 // Directional Light
 struct DirectionalLightData
 {
-    glm::vec3   colorRGB;
+    nyaVec3f   colorRGB;
     float       angularRadius;
 
-    glm::vec3   direction;
+    nyaVec3f   direction;
     float       illuminanceInLux;
 
-    glm::vec2   sphericalCoordinates;
+    nyaVec2f   sphericalCoordinates;
     float       intensityInLux;
     bool        isSunLight;
     bool        enableShadow;
-    bool        __PADDING__[2];
+    bool        isEnabled;
+    bool        __PADDING__;
 };
 
 // Environment Probe
 struct EnvironmentProbeData
 {
-    glm::vec3   worldPosition;
+    nyaVec3f   worldPosition;
     float       radius;
 
-    glm::mat4   inverseModelMatrix;
+    nyaMat4x4f   inverseModelMatrix;
 
     bool        isCaptured;
     bool        isDynamic;

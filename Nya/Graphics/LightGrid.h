@@ -28,13 +28,14 @@ class CommandList;
 
 #include <Framework/Light.h>
 #include <Shaders/Shared.h>
+#include <Maths/Vector.h>
 
 class LightGrid
 {
 public:
     struct ClustersInfos {
-        glm::vec3   Scale;
-        glm::vec3   Bias;
+        nyaVec3f   Scale;
+        nyaVec3f   Bias;
     };
 
 public:
@@ -48,7 +49,7 @@ public:
 
     void                    updateClusters( CommandList* cmdList );
 
-    void                    setSceneBounds( const glm::vec3& aabbMax, const glm::vec3& aabbMin );
+    void                    setSceneBounds( const nyaVec3f& aabbMax, const nyaVec3f& aabbMin );
 
     Buffer*                 getLightsBuffer() const;
     Texture*                getLightsClusters() const;
@@ -64,13 +65,15 @@ private:
     Texture*                clustersTexture;
     ClustersInfos           clustersInfos;
 
-    glm::vec3               aabbMin;
-    glm::vec3               aabbMax;
+    nyaVec3f                aabbMin;
+    nyaVec3f                aabbMax;
 
     uint32_t                PointLightCount;
+    uint32_t                DirectionalLightCount;
 
     struct {
         PointLightData          PointLights[MAX_POINT_LIGHT_COUNT];
+        DirectionalLightData    DirectionalLights[MAX_DIRECTIONAL_LIGHT_COUNT];
     } lights;
 
 private:

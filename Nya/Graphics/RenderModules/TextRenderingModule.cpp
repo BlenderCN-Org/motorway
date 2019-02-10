@@ -31,8 +31,6 @@
 #include <Rendering/CommandList.h>
 #include <Rendering/ImageFormat.h>
 
-#include <glm/glm/glm.hpp>
-
 using namespace nya::rendering;
 
 TextRenderingModule::TextRenderingModule()
@@ -87,7 +85,7 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
 
             BufferDesc passBuffer;
             passBuffer.type = BufferDesc::CONSTANT_BUFFER;
-            passBuffer.size = sizeof( glm::uvec4 );
+            passBuffer.size = sizeof( nyaVec4u );
 
             passData.viewportBuffer = renderPipelineBuilder.allocateBuffer( passBuffer, eShaderStage::SHADER_STAGE_VERTEX );
 
@@ -128,13 +126,13 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             Buffer* viewportBuffer = renderPipelineResources.getBuffer( passData.viewportBuffer );
 
             const Viewport* pipelineDimensions = renderPipelineResources.getMainViewport();
-            glm::uvec4 rtDimensions = {
+            nyaVec4u rtDimensions = {
                 static_cast< uint32_t >( pipelineDimensions->Width ),
                 static_cast< uint32_t >( pipelineDimensions->Height ),
                 0u,
                 0u
             };
-            cmdList->updateBuffer( viewportBuffer, &rtDimensions, sizeof( glm::uvec4 ) );
+            cmdList->updateBuffer( viewportBuffer, &rtDimensions, sizeof( nyaVec4u ) );
 
             ResourceListDesc resListDesc = {};
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX, viewportBuffer };
@@ -253,7 +251,7 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     renderTextPso = renderDevice->createPipelineState( pipelineState );
 }
 
-void TextRenderingModule::addOutlinedText( const char* text, float size, float x, float y, const glm::vec4& textColor, const float outlineThickness )
+void TextRenderingModule::addOutlinedText( const char* text, float size, float x, float y, const nyaVec4f& textColor, const float outlineThickness )
 {
     const float baseX = x, localSize = size;
     float localX = x, localY = y;
@@ -295,10 +293,10 @@ void TextRenderingModule::addOutlinedText( const char* text, float size, float x
         buffer[bufferOffset++] = ( outlineThickness );
         buffer[bufferOffset++] = ( u1 );
         buffer[bufferOffset++] = ( v1 );
-        buffer[bufferOffset++] = ( localTextColor.r );
-        buffer[bufferOffset++] = ( localTextColor.g );
-        buffer[bufferOffset++] = ( localTextColor.b );
-        buffer[bufferOffset++] = ( localTextColor.a );
+        buffer[bufferOffset++] = ( localTextColor.x );
+        buffer[bufferOffset++] = ( localTextColor.y );
+        buffer[bufferOffset++] = ( localTextColor.z );
+        buffer[bufferOffset++] = ( localTextColor.w );
 
         buffer[bufferOffset++] = ( gx );
         buffer[bufferOffset++] = ( gy - gh );
@@ -306,10 +304,10 @@ void TextRenderingModule::addOutlinedText( const char* text, float size, float x
         buffer[bufferOffset++] = ( outlineThickness );
         buffer[bufferOffset++] = ( u1 );
         buffer[bufferOffset++] = ( v2 );
-        buffer[bufferOffset++] = ( localTextColor.r );
-        buffer[bufferOffset++] = ( localTextColor.g );
-        buffer[bufferOffset++] = ( localTextColor.b );
-        buffer[bufferOffset++] = ( localTextColor.a );
+        buffer[bufferOffset++] = ( localTextColor.x );
+        buffer[bufferOffset++] = ( localTextColor.y );
+        buffer[bufferOffset++] = ( localTextColor.z );
+        buffer[bufferOffset++] = ( localTextColor.w );
 
         buffer[bufferOffset++] = ( gx + gw );
         buffer[bufferOffset++] = ( gy - gh );
@@ -317,10 +315,10 @@ void TextRenderingModule::addOutlinedText( const char* text, float size, float x
         buffer[bufferOffset++] = ( outlineThickness );
         buffer[bufferOffset++] = ( u2 );
         buffer[bufferOffset++] = ( v2 );
-        buffer[bufferOffset++] = ( localTextColor.r );
-        buffer[bufferOffset++] = ( localTextColor.g );
-        buffer[bufferOffset++] = ( localTextColor.b );
-        buffer[bufferOffset++] = ( localTextColor.a );
+        buffer[bufferOffset++] = ( localTextColor.x );
+        buffer[bufferOffset++] = ( localTextColor.y );
+        buffer[bufferOffset++] = ( localTextColor.z );
+        buffer[bufferOffset++] = ( localTextColor.w );
 
         buffer[bufferOffset++] = ( gx + gw );
         buffer[bufferOffset++] = ( gy );
@@ -328,10 +326,10 @@ void TextRenderingModule::addOutlinedText( const char* text, float size, float x
         buffer[bufferOffset++] = ( outlineThickness );
         buffer[bufferOffset++] = ( u2 );
         buffer[bufferOffset++] = ( v1 );
-        buffer[bufferOffset++] = ( localTextColor.r );
-        buffer[bufferOffset++] = ( localTextColor.g );
-        buffer[bufferOffset++] = ( localTextColor.b );
-        buffer[bufferOffset++] = ( localTextColor.a );
+        buffer[bufferOffset++] = ( localTextColor.x );
+        buffer[bufferOffset++] = ( localTextColor.y );
+        buffer[bufferOffset++] = ( localTextColor.z );
+        buffer[bufferOffset++] = ( localTextColor.w );
 
         indiceCount += 6;
     }

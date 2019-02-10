@@ -97,7 +97,7 @@ private:
     int32_t                     builderVersion;
 
     PipelineState*              defaultPipelineState;
-    Texture*                    defaultTextureSet[8];
+    Texture*                    defaultTextureSet[12];
     int32_t                     defaultTextureSetCount;
 
     EditorBuffer                editableMaterialData;
@@ -123,4 +123,7 @@ private:
 
         uint32_t                sortKey;
     };
+
+private:
+    void                        getShadingModelResources( GraphicsAssetCache* graphicsAssetCache );
 };

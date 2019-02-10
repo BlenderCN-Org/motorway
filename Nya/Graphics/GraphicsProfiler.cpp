@@ -96,7 +96,7 @@ void GraphicsProfiler::onFrame( RenderDevice* renderDevice, WorldRenderer* world
 
     // Submit profiler text to the renderer
     //if ( enableDrawOnScreen ) {
-    //    worldRenderer->drawDebugText( sectionSummaryString, 0.3f, screenPosX, screenPosY, 0.0f, glm::vec4( 1, 1, 1, 1 ) );
+    //    worldRenderer->drawDebugText( sectionSummaryString, 0.3f, screenPosX, screenPosY, 0.0f, nyaVec4f( 1, 1, 1, 1 ) );
     //}
 }
 

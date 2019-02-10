@@ -28,14 +28,9 @@ class LightGrid;
 
 struct CameraData;
 
-namespace glm
-{
-    enum qualifier;
-    template<int i, int j, typename T, qualifier Q>
-    struct mat;
-
-    typedef mat<4, 4, float, ( qualifier )0>    mat4;
-}
+template <typename Precision, int RowCount, int ColumnCount>
+struct Matrix;
+using nyaMat4x4f = Matrix<float, 4, 4>;
 
 class DrawCommandBuilder
 {
@@ -45,7 +40,7 @@ public:
                         DrawCommandBuilder& operator = ( DrawCommandBuilder& ) = delete;
                         ~DrawCommandBuilder();
         
-    void                addGeometryToRender( const Mesh* meshResource, const glm::mat4* modelMatrix );
+    void                addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
     void                addCamera( const CameraData* cameraData );
 
     void                buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
@@ -53,7 +48,7 @@ public:
 private:
     struct MeshInstance {
         const Mesh*         mesh;
-        const glm::mat4*    modelMatrix;
+        const nyaMat4x4f*   modelMatrix;
     };
 
 private:

@@ -28,7 +28,6 @@ struct Texture;
 struct PipelineState;
 
 #include <Graphics/RenderPipeline.h>
-#include <glm/glm/glm.hpp>
 
 class BrunetonSkyRenderModule
 {
@@ -55,9 +54,9 @@ private:
     float                       sunAngularRadius;
 
     struct {
-        glm::vec3               EarthCenter;
+        nyaVec3f               EarthCenter;
         float                   SunSizeX;
-        glm::vec3               SunDirection;
+        nyaVec3f               SunDirection;
         float                   SunSizeY;
     } parameters;
 };

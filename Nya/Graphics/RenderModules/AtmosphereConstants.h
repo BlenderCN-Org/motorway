@@ -32,7 +32,7 @@
 // Most of these are physically coherent and should not be changed
 
 // Math constants (PI, radians to degrees, ...)
-#include <glm/glm/gtc/constants.hpp>
+#include <Maths/Helpers.h>
 #include "AtmosphereSettings.h"
 
 // Values from "Reference Solar Spectral Irradiance: ASTM G-173", ETR column
@@ -83,7 +83,7 @@ constexpr double kMieSingleScatteringAlbedo = 0.9;
 constexpr double kMiePhaseFunctionG = 0.8;
 constexpr double kGroundAlbedo = 0.1;
 const double max_sun_zenith_angle =
-( use_half_precision_ ? 102.0 : 120.0 ) / 180.0 * glm::pi<float>();
+( use_half_precision_ ? 102.0 : 120.0 ) / 180.0 * nya::maths::PI<float>();
 
 
 // An atmosphere layer of width 'width' (in m), and whose density is defined as
@@ -120,7 +120,7 @@ constexpr int IRRADIANCE_TEXTURE_HEIGHT = 16;
 constexpr double MAX_LUMINOUS_EFFICACY = 683.0;
 
 constexpr double kSunAngularRadius = 0.00935 / 2.0;
-const double kSunSolidAngle = glm::pi<double>() * kSunAngularRadius * kSunAngularRadius;
+const double kSunSolidAngle = nya::maths::PI<double>() * kSunAngularRadius * kSunAngularRadius;
 constexpr double kLengthUnitInMeters = 1000.0;
 
 // Values from "CIE (1931) 2-deg color matching functions", see

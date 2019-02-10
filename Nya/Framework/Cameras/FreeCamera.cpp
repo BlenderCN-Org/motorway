@@ -23,8 +23,12 @@
 
 #include <FileSystem/FileSystemObject.h>
 
+#include <Maths/Helpers.h>
+#include <Maths/Trigonometry.h>
+#include <Maths/Sampling.h>
 #include <Maths/MatrixTransformations.h>
-#include <glm/glm/glm.hpp>
+
+using namespace nya::maths;
 
 FreeCamera::FreeCamera( const float camSpeed )
 	: rightVector{ 0.0f }
@@ -40,7 +44,7 @@ FreeCamera::FreeCamera( const float camSpeed )
     , aspectRatio( 1.0f )
     , width( 1280.0f )
     , height( 720.0f )
-    , fov( glm::radians( 90.0f ) )
+    , fov( radians( 90.0f ) )
     , nearPlane( 0.1f )
 {
     data = {};
@@ -48,103 +52,99 @@ FreeCamera::FreeCamera( const float camSpeed )
 
 void FreeCamera::update( const float frameTime )
 {
-    if ( yaw < -glm::pi<float>() ) {
-        yaw += glm::two_pi<float>();
-    } else if ( yaw > glm::pi<float>() ) {
-        yaw -= glm::two_pi<float>();
+    if ( yaw < -PI<float>() ) {
+        yaw += TWO_PI<float>();
+    } else if ( yaw > PI<float>() ) {
+        yaw -= TWO_PI<float>();
     }
 
-    pitch = glm::clamp( pitch, -glm::half_pi<float>(), glm::half_pi<float>() );
+    pitch = clamp( pitch, -HALF_PI<float>(), HALF_PI<float>() );
 
     eyeDirection = {
         cosf( pitch ) * sinf( yaw ),
         sinf( pitch ),
         cosf( pitch ) * cosf( yaw )
     };
-    eyeDirection = glm::normalize( eyeDirection );
+    eyeDirection = eyeDirection.normalize();
 
-    const float yawResult = yaw - glm::half_pi<float>();
+    const float yawResult = yaw - HALF_PI<float>();
 
     rightVector = {
         sinf( yawResult + roll ),
         0.0f,
         cosf( yawResult + roll )
     };
-    rightVector = glm::normalize( rightVector );
+    rightVector = rightVector.normalize();
 
-    glm::vec3 upVector = glm::cross( rightVector, eyeDirection );
-    upVector = glm::normalize( upVector );
+    nyaVec3f upVector = nyaVec3f::cross( rightVector, eyeDirection );
+    upVector = upVector.normalize();
 
     // Update world position
-    auto nextWorldPosition = data.worldPosition + eyeDirection * speedX;
-    data.worldPosition = glm::mix( data.worldPosition, nextWorldPosition, frameTime );
+    nyaVec3f nextWorldPosition = data.worldPosition + eyeDirection * speedX;
+    data.worldPosition = lerp( data.worldPosition, nextWorldPosition, frameTime );
 
     if ( speedX > 0.0f ) {
         speedX -= frameTime * moveSpeed * 0.50f;
-        speedX = glm::max( speedX, 0.0f );
+        speedX = max( speedX, 0.0f );
     } else if ( speedX < 0.0f ) {
         speedX += frameTime * moveSpeed * 0.50f;
-        speedX = glm::min( speedX, 0.0f );
+        speedX = min( speedX, 0.0f );
     }
 
     nextWorldPosition = data.worldPosition + rightVector * speedY;
-    data.worldPosition = glm::mix( data.worldPosition, nextWorldPosition, frameTime );
+    data.worldPosition = lerp( data.worldPosition, nextWorldPosition, frameTime );
 
     if ( speedY > 0.0f ) {
         speedY -= frameTime * moveSpeed * 0.50f;
-        speedY = glm::max( speedY, 0.0f );
+        speedY = max( speedY, 0.0f );
     } else if ( speedY < 0.0f ) {
         speedY += frameTime * moveSpeed * 0.50f;
-        speedY = glm::min( speedY, 0.0f );
+        speedY = min( speedY, 0.0f );
     }
 
-    auto nextUpWorldPosition = data.worldPosition + glm::vec3( 0, 1, 0 ) * speedAltitude;
-    data.worldPosition = glm::mix( data.worldPosition, nextUpWorldPosition, frameTime );
+    auto nextUpWorldPosition = data.worldPosition + nyaVec3f( 0, 1, 0 ) * speedAltitude;
+    data.worldPosition = lerp( data.worldPosition, nextUpWorldPosition, frameTime );
 
     if ( speedAltitude > 0.0f ) {
         speedAltitude -= frameTime * moveSpeed * 0.50f;
-        speedAltitude = glm::max( speedAltitude, 0.0f );
+        speedAltitude = max( speedAltitude, 0.0f );
     } else if ( speedAltitude < 0.0f ) {
         speedAltitude += frameTime * moveSpeed * 0.50f;
-        speedAltitude = glm::min( speedAltitude, 0.0f );
+        speedAltitude = min( speedAltitude, 0.0f );
     }
 
-    // Build matrices
-    const glm::vec3 lookAtVector = data.worldPosition + eyeDirection;
+    const nyaVec3f lookAtVector = data.worldPosition + eyeDirection;
 
     // Save previous frame matrices (for temporal-based effects)
     data.previousViewProjectionMatrix = data.viewProjectionMatrix;
     data.previousViewMatrix = data.viewMatrix;
 
-    data.viewProjectionMatrix = glm::transpose( data.projectionMatrix * data.viewMatrix );
-
-    data.viewMatrix = glm::lookAtLH( data.worldPosition, lookAtVector, upVector );
+    // Rebuild matrices
+    data.viewMatrix = MakeLookAtMat( data.worldPosition, lookAtVector, upVector );
+    data.inverseViewMatrix = data.viewMatrix.inverse();
     data.depthViewProjectionMatrix = data.depthProjectionMatrix * data.viewMatrix;
+    data.viewProjectionMatrix = data.projectionMatrix * data.viewMatrix;
 
-    //if ( false ) {
-    //    const uint32_t samplingIndex = ( data.cameraFrameNumber % 16 );
+    if ( true ) {
+        const uint32_t samplingIndex = ( data.cameraFrameNumber % 16 );
 
-    //    glm::vec2 projectionJittering = ( flan::core::Hammersley2D( samplingIndex, 16 ) - glm::vec2( 0.5f ) ) * TAAJitteringScale;
+        static constexpr float TAAJitteringScale = 0.05f;
+        nyaVec2f projectionJittering = ( nya::maths::Hammersley2D( samplingIndex, 16 ) - nyaVec2f( 0.5f ) ) * TAAJitteringScale;
 
-    //    const float offsetX = projectionJittering.x * ( 1.0f / width );
-    //    const float offsetY = projectionJittering.y * ( 1.0f / height );
+        const float offsetX = projectionJittering.x * ( 1.0f / width );
+        const float offsetY = projectionJittering.y * ( 1.0f / height );
 
-    //    // Apply jittering to projection matrix
-    //    data.projectionMatrix = glm::translate( data.projectionMatrix, glm::vec3( offsetX, -offsetY, 0 ) );
+        // Apply jittering to projection matrix
+        data.projectionMatrix = MakeTranslationMat( nyaVec3f( offsetX, -offsetY, 0.0f ), data.projectionMatrix );
 
-    //    data.jitteringOffset = ( projectionJittering - data.previousJitteringOffset ) * 0.5f;
-    //    data.previousJitteringOffset = projectionJittering;
-    //}
-        
-    data.viewProjectionMatrix = glm::transpose( data.projectionMatrix * data.viewMatrix );
-
-    data.inverseViewMatrix = glm::inverse( data.viewMatrix );
-    data.viewMatrix = glm::transpose( data.viewMatrix );
-
-    data.inverseViewProjectionMatrix = glm::inverse( data.viewProjectionMatrix );
+        data.jitteringOffset = ( projectionJittering - data.previousJitteringOffset ) * 0.5f;
+        data.previousJitteringOffset = projectionJittering;
+    }
+    
+    data.inverseViewProjectionMatrix = data.viewProjectionMatrix.inverse();
 
     // Update frustum with the latest view projection matrix
-    flan::core::UpdateFrustumPlanes( data.depthViewProjectionMatrix, data.frustum );
+    UpdateFrustumPlanes( data.depthViewProjectionMatrix, data.frustum );
 
     // Update camera frame number
     data.cameraFrameNumber++;
@@ -171,7 +171,7 @@ void FreeCamera::restore( FileSystemObject* stream )
     stream->read( width );
     stream->read( height );
 
-    auto fovDeg = glm::degrees( fov );
+    auto fovDeg = degrees( fov );
     setProjectionMatrix( fovDeg, width, height, nearPlane );
 }
 
@@ -182,19 +182,19 @@ void FreeCamera::setProjectionMatrix( const float fieldOfView, const float scree
     width = screenWidth;
     height = screenHeight;
 
-    fov = glm::radians( fieldOfView );
+    fov = radians( fieldOfView );
 
     nearPlane = zNear;
 
-    data.projectionMatrix = flan::core::MakeInfReversedZProj( fov, aspectRatio, nearPlane );
-    data.inverseProjectionMatrix = glm::transpose( glm::inverse( data.projectionMatrix ) );
-    data.depthProjectionMatrix = glm::perspectiveFovLH( fov, width, height, 1.0f, 512.0f );
+    data.projectionMatrix = MakeInfReversedZProj( fov, aspectRatio, nearPlane );
+    data.inverseProjectionMatrix = data.projectionMatrix.inverse();
+    data.depthProjectionMatrix = MakeFovProj( fov, aspectRatio, 1.0f, 512.0f );
 }
 
 void FreeCamera::updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept
 {
-    pitch -= static_cast< float >( mouseDeltaY ) * frameTime * 4; // *0.01f;
-    yaw += static_cast< float >( mouseDeltaX ) * frameTime * 4; // *0.1f;
+    pitch -= static_cast< float >( mouseDeltaY ) * frameTime * 4;
+    yaw += static_cast< float >( mouseDeltaX ) * frameTime * 4;
 }
 
 void FreeCamera::moveForward( const float dt )

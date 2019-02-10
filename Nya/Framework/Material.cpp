@@ -37,8 +37,6 @@
 
 #include <Maths/Helpers.h>
 
-#include <glm/glm/glm.hpp>
-
 using namespace nya::graphics;
 using namespace nya::rendering;
 
@@ -59,7 +57,7 @@ void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint
         float blueChannel = std::stoul( materialInputLine.substr( 5, 2 ).c_str(), nullptr, 16 ) / 255.0f;
 
         materialComponent.InputType = MaterialEditionInput::COLOR_3D;
-        materialComponent.Input3D = glm::vec3( redChannel, greenChannel, blueChannel );
+        materialComponent.Input3D = nyaVec3f( redChannel, greenChannel, blueChannel );
     } else if ( materialInputLine.front() == '"' && materialInputLine.back() == '"' ) {
         auto assetPath = nya::core::WrappedStringToString( materialInputLine );
         auto extension = nya::core::GetFileExtensionFromPath( assetPath );
@@ -69,7 +67,7 @@ void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint
 
         textureSet[inputTextureBindIndex] = materialComponent.InputTexture;
 
-        textureCount = nya::maths::Max( inputTextureBindIndex, static_cast<uint32_t>( textureCount + 1 ) );
+        textureCount = nya::maths::max( inputTextureBindIndex, static_cast<uint32_t>( textureCount ) ) + 1u;
     } else {
         materialComponent.InputType = MaterialEditionInput::COLOR_1D;
         materialComponent.Input1D = std::stof( materialInputLine );
@@ -220,6 +218,7 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
 
                 case NYA_STRING_HASH( "ShadingModel" ):
                     sortKeyInfos.shadingModel = nya::graphics::StringToShadingModel( nya::core::CRC32( dictionaryValue ) );
+                    getShadingModelResources( graphicsAssetCache );
                     break;
 
                 case NYA_STRING_HASH( "Version" ):
@@ -317,7 +316,7 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
             case NYA_STRING_HASH( "Layer" ):
                 if ( currentLayerIndex < MAX_LAYER_COUNT ) {
                     currentLayerIndex++;
-                    slotBaseIndex = 0 + ( 10 * currentLayerIndex );
+                    slotBaseIndex = 1 + ( 10 * currentLayerIndex ) + currentLayerIndex;
                 }
                 break;
             }
@@ -377,3 +376,17 @@ const Material::EditorBuffer& Material::getEditorBuffer() const
     return editableMaterialData;
 }
 #endif
+
+void Material::getShadingModelResources( GraphicsAssetCache* graphicsAssetCache )
+{
+    switch ( sortKeyInfos.shadingModel ) {
+    case eShadingModel::SHADING_MODEL_STANDARD: {
+        // Load BRDF DFG LUT
+        defaultTextureSet[0] = graphicsAssetCache->getTexture( NYA_STRING( "GameData/textures/DFG_LUT_Standard.dds" ) );
+        defaultTextureSetCount++;
+    } break;
+
+    default:
+        break;
+    }
+}

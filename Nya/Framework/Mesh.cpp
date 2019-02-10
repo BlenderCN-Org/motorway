@@ -22,6 +22,7 @@
 #include "Mesh.h"
 
 #include <Rendering/RenderDevice.h>
+#include <Maths/Helpers.h>
 
 Mesh::Mesh( const nyaString_t& meshName )
     : name( meshName )
@@ -46,7 +47,7 @@ void Mesh::create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDes
     indiceBuffer = renderDevice->createBuffer( indiceBufferDesc, indiceBufferContent );
 
     // Implicitly resets bounding box
-    aabb.minPoint = aabb.maxPoint = glm::vec3( 0, 0, 0 );
+    aabb.minPoint = aabb.maxPoint = nyaVec3f( 0, 0, 0 );
 }
 
 void Mesh::destroy( RenderDevice* renderDevice )
@@ -100,7 +101,7 @@ const Mesh::LevelOfDetail& Mesh::getLevelOfDetail( const float distance ) const
 
 const Mesh::LevelOfDetail& Mesh::getLevelOfDetailByIndex( const uint32_t lodIndex ) const
 {
-    return lod[glm::min( ( MAX_LOD_COUNT - 1u ), lodIndex )];
+    return lod[nya::maths::min( ( MAX_LOD_COUNT - 1u ), lodIndex )];
 }
 
 const int Mesh::getLevelOfDetailCount() const
@@ -111,7 +112,7 @@ const int Mesh::getLevelOfDetailCount() const
 void Mesh::reset()
 {
     name.clear();
-    aabb.maxPoint = aabb.minPoint = glm::vec3( 0, 0, 0 );
+    aabb.maxPoint = aabb.minPoint = nyaVec3f( 0, 0, 0 );
     lodCount = 0;
 }
 

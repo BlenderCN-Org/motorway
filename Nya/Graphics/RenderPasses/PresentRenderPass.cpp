@@ -30,8 +30,7 @@ void FreeCachedResourcesPP( RenderDevice* renderDevice )
 
 void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
 {
-    struct PassData
-    {
+    struct PassData {
         ResHandle_t input;
         ResHandle_t bilinearSampler;
     };

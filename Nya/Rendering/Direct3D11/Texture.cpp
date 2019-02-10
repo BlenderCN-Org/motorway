@@ -302,11 +302,11 @@ void GetSurfaceInfo( size_t width, size_t height, DXGI_FORMAT fmt, size_t* outNu
     if ( bc ) {
         size_t numBlocksWide = 0;
         if ( width > 0 ) {
-            numBlocksWide = nya::maths::Max( 1, ( width + 3 ) / 4 );
+            numBlocksWide = nya::maths::max( 1, ( width + 3 ) / 4 );
         }
         size_t numBlocksHigh = 0;
         if ( height > 0 ) {
-            numBlocksHigh = nya::maths::Max( 1, ( height + 3 ) / 4 );
+            numBlocksHigh = nya::maths::max( 1, ( height + 3 ) / 4 );
         }
         rowBytes = numBlocksWide * bpe;
         numRows = numBlocksHigh;
@@ -419,7 +419,7 @@ Texture* RenderDevice::createTexture1D( const TextureDescription& description, c
     shaderResourceViewDesc.Texture1D.MostDetailedMip = 0;
     shaderResourceViewDesc.Texture1D.MipLevels = ( description.mipCount <= 0 ) ? -1 : description.mipCount;
 
-    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::Max( 1u, description.mipCount ) * description.arraySize );
+    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::max( 1u, description.mipCount ) * description.arraySize );
     GetSubResourceDescriptor( subResourceData, initialData, description, nativeTextureFormat );
 
     Texture* texture = nya::core::allocate<Texture>( memoryAllocator );
@@ -514,7 +514,7 @@ Texture* RenderDevice::createTexture2D( const TextureDescription& description, c
         shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
     }
 
-    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::Max( 1u, description.mipCount ) * description.arraySize );
+    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::max( 1u, description.mipCount ) * description.arraySize );
     GetSubResourceDescriptor( subResourceData, initialData, description, nativeTextureFormat );
 
     Texture* texture = nya::core::allocate<Texture>( memoryAllocator );
@@ -567,7 +567,7 @@ Texture* RenderDevice::createTexture3D( const TextureDescription& description, c
     shaderResourceViewDesc.Texture3D.MostDetailedMip = 0;
     shaderResourceViewDesc.Texture3D.MipLevels = ( description.mipCount <= 0 ) ? -1 : description.mipCount;
 
-    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::Max( 1u, description.mipCount ) * description.arraySize );
+    std::vector<D3D11_SUBRESOURCE_DATA> subResourceData( nya::maths::max( 1u, description.mipCount ) * description.arraySize );
     GetSubResourceDescriptor( subResourceData, initialData, description, nativeTextureFormat );
 
     Texture* texture = nya::core::allocate<Texture>( memoryAllocator );

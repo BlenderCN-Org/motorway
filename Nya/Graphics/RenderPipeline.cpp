@@ -187,8 +187,8 @@ RenderPipelineResources::~RenderPipelineResources()
 
 void RenderPipelineResources::create( BaseAllocator* allocator )
 {
-    instanceBufferData = nya::core::allocateArray<uint8_t>( allocator, sizeof( glm::vec4 ) * 1024 );
-    memset( instanceBufferData, 0, sizeof( glm::vec4 ) * 1024 );
+    instanceBufferData = nya::core::allocateArray<uint8_t>( allocator, sizeof( nyaVec4f ) * 1024 );
+    memset( instanceBufferData, 0, sizeof( nyaVec4f ) * 1024 );
 }
 
 void RenderPipelineResources::destroy( BaseAllocator* allocator )
@@ -245,7 +245,7 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
     size_t instanceBufferOffset = 0;
 
     // Copy instance data to shared buffer
-    const size_t instancesDataSize = sizeof( glm::mat4x4 ) * drawCmds[0].infos.instanceCount;
+    const size_t instancesDataSize = sizeof( nyaMat4x4f ) * drawCmds[0].infos.instanceCount;
     memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[0].infos.modelMatrix, instancesDataSize );
     instanceBufferOffset += instancesDataSize;
 
@@ -255,7 +255,7 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
         const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
 
         // Copy instance data to shared buffer
-        const size_t instancesDataSize = sizeof( glm::mat4x4 ) * drawCmds[drawCmdIdx].infos.instanceCount;
+        const size_t instancesDataSize = sizeof( nyaMat4x4f ) * drawCmds[drawCmdIdx].infos.instanceCount;
         memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[drawCmdIdx].infos.modelMatrix, instancesDataSize );
         instanceBufferOffset += instancesDataSize;
 
@@ -263,7 +263,7 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
             previousBucket->endAddr = ( drawCmds + drawCmdIdx );
             auto& bucket = drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
             bucket.beginAddr = ( drawCmds + drawCmdIdx );
-            bucket.vectorPerInstance = static_cast< float >( sizeof( glm::mat4x4 ) / sizeof( glm::vec4 ) );
+            bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
             bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset );
 
             layer = drawCmdKey.layer;

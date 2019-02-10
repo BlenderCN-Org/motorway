@@ -27,48 +27,48 @@ class FileSystemObject;
 class FreeCamera
 {
 public:
-					FreeCamera( const float camSpeed = 50.0f );
-					FreeCamera( FreeCamera& camera ) = default;
-					~FreeCamera() = default;
+                    FreeCamera( const float camSpeed = 50.0f );
+                    FreeCamera( FreeCamera& camera ) = default;
+                    ~FreeCamera() = default;
 
     void            update( const float frameTime );
-    void			updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept;
+    void            updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept;
 
     void            save( FileSystemObject* stream );
     void            restore(  FileSystemObject* stream );
 
-	void			setProjectionMatrix( const float fieldOfView, const float screenWidth, float screenHeight, const float zNear = 0.01f );
+    void            setProjectionMatrix( const float fieldOfView, const float screenWidth, float screenHeight, const float zNear = 0.01f );
 
-	void			moveForward( const float dt );
-	void			moveBackward( const float dt );
-	void			moveLeft( const float dt );
-	void			moveRight( const float dt );
+    void            moveForward( const float dt );
+    void            moveBackward( const float dt );
+    void            moveLeft( const float dt );
+    void            moveRight( const float dt );
 
     void            takeAltitude( const float dt );
     void            lowerAltitude( const float dt );
 
     // NOTE Override current camera state
     void            setOrientation( const float yaw, const float pitch, const float roll );
-    glm::vec3       getOrientation() const { return glm::vec3( yaw, pitch, roll ); }
+    nyaVec3f        getOrientation() const { return nyaVec3f( yaw, pitch, roll ); }
 
     const CameraData&     getData() const;
 
 private:
     CameraData      data;
 
-    glm::vec3		rightVector;
-	glm::vec3		eyeDirection;
+    nyaVec3f        rightVector;
+    nyaVec3f        eyeDirection;
 
     float           speedX;
     float           speedY;
     float           speedAltitude;
 
-	float			yaw;
-	float			pitch;
-	float			roll;
+    float           yaw;
+    float           pitch;
+    float           roll;
 
-	float			moveSpeed;
-    float			moveDamping;
+    float           moveSpeed;
+    float           moveDamping;
 
     float           aspectRatio;
     float           width;

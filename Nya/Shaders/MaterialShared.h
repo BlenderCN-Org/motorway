@@ -21,17 +21,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifdef __cplusplus
 #pragma once
 
-#include <glm/glm/glm.hpp>
+#include <Maths/Vector.h>
 
 #define uint uint32_t
-#define float2 glm::vec2
-#define float3 glm::vec3
+#define float2 nyaVec2f
+#define float3 nyaVec3f
 
 struct Texture;
 
 struct MaterialEditionInput
 {
-    glm::vec3 Input3D;
+    nyaVec3f  Input3D;
     float     Input1D;
 
     enum : int

@@ -102,7 +102,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             // Update Parameters
             parameters.SunSizeX = tan( sunAngularRadius );
             parameters.SunSizeY = cos( sunAngularRadius * 4.0f );
-            parameters.SunDirection = glm::vec3(
+            parameters.SunDirection = nyaVec3f(
                 cos( sunVerticalAngle ) * cos( sunHorizontalAngle ),
                 cos( sunVerticalAngle ) * sin( sunHorizontalAngle ),
                 sin( sunVerticalAngle )
@@ -185,5 +185,5 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     irradianceTexture = graphicsAssetCache->getTexture( ATMOSPHERE_IRRADIANCE_TEXTURE_NAME );
 
     // Set Default Parameters
-    parameters.EarthCenter = glm::vec3( 0.0, 0.0, -kBottomRadius / kLengthUnitInMeters );
+    parameters.EarthCenter = nyaVec3f( 0.0, 0.0, -kBottomRadius / kLengthUnitInMeters );
 }

@@ -168,16 +168,21 @@ struct MaterialReadLayer
 #include <MaterialShared.h>
 
 sampler g_BRDFInputsSampler : register( s1 );
-Texture2D g_TexBaseColor0 : register( t1 );
-Texture2D g_TexAlphaMask0 : register( t2 );
-Texture2D g_TexReflectance0 : register( t3 );
-Texture2D g_TexRoughness0 : register( t4 );
-Texture2D g_TexMetalness0 : register( t5 );
-Texture2D g_TexAmbientOcclusion0 : register( t6 );
-Texture2D g_TexNormal0 : register( t7 );
-Texture2D g_TexDisplacement0 : register( t8 );
-Texture2D g_TexEmissivity0 : register( t9 );
-Texture2D g_TexClearCoatNormal0 : register( t10 );
+
+// t0 => Light clusters
+// t1 => Shading Model BRDF DFG LUT
+
+Texture2D g_TexBaseColor0 : register( t2 );
+Texture2D g_TexAlphaMask0 : register( t3 );
+Texture2D g_TexReflectance0 : register( t4 );
+Texture2D g_TexRoughness0 : register( t5 );
+Texture2D g_TexMetalness0 : register( t6 );
+Texture2D g_TexAmbientOcclusion0 : register( t7 );
+Texture2D g_TexNormal0 : register( t8 );
+Texture2D g_TexDisplacement0 : register( t9 );
+Texture2D g_TexEmissivity0 : register( t10 );
+Texture2D g_TexClearCoatNormal0 : register( t11 );
+Texture2D g_TexBlendMask0 : register( t12 );
 
 cbuffer MaterialEdition : register( b3 )
 {
@@ -243,8 +248,8 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
 	layer.Metalness = ReadInput1D( g_Layers[layerIdx].Metalness, g_TexMetalness##layerIdx, g_BRDFInputsSampler, uvCoords, 0.0f );\
     layer.AmbientOcclusion = ReadInput1D( g_Layers[layerIdx].AmbientOcclusion, g_TexAmbientOcclusion##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
 	\
-	layer.Emissivity = 0.0f;\
-	layer.Reflectance = 1.0f;\
+	layer.Emissivity = ReadInput1D( g_Layers[layerIdx].Emissivity, g_TexEmissivity##layerIdx, g_BRDFInputsSampler, uvCoords, 0.0f );\
+	layer.Reflectance = ReadInput1D( g_Layers[layerIdx].Reflectance, g_TexReflectance##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
 	needNormalMapUnpack = ( g_Layers[layerIdx].Normal.Type == INPUT_TYPE_TEXTURE && g_Layers[layerIdx].Normal.SamplingMode == SAMPLING_MODE_TANGENT_SPACE );\
     if ( needNormalMapUnpack ) {\
         float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_BRDFInputsSampler, uvCoords );\
@@ -266,7 +271,7 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     layer.AlphaCutoff = g_Layers[layerIdx].AlphaCutoff;\
     layer.SSStrength = g_Layers[layerIdx].SSStrength;\
 	\
-	layer.BlendMask = 1.0f;\
+	layer.BlendMask = ReadInput1D( g_Layers[layerIdx].BlendMask, g_TexBlendMask##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
     \
 	return layer;\
 }\
@@ -290,6 +295,95 @@ float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surfa
     float luminancePower = light.ColorAndPowerInLux.a / ( 4.0f * sqrt( light.PositionAndRadius.w * PI ) );
 
     return ( light.ColorAndPowerInLux.rgb ) * luminancePower * illuminance;
+}
+
+float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
+{
+    float r = sin( light.SunColorAndAngularRadius.w );
+    float d = cos( light.SunColorAndAngularRadius.w );
+
+    float DoR = dot( light.SunDirectionAndIlluminanceInLux.xyz, surface.R );
+    float3 S = surface.R - DoR * light.SunDirectionAndIlluminanceInLux.xyz;
+
+    L = ( DoR < d ) ? normalize( d * light.SunDirectionAndIlluminanceInLux.xyz + normalize( S ) * r ) : surface.R;
+
+    float illuminance = light.SunDirectionAndIlluminanceInLux.w * saturate( dot( surface.N, light.SunDirectionAndIlluminanceInLux.xyz ) );
+
+    // Add shadow
+    // We assume the surface is lit if not covered by the shadow map
+    float3 shadowVisibility = 1.0f;
+    float3 surfaceTransmittance = float3( 0, 0, 0 );
+    
+// #ifdef NYA_RECEIVE_SHADOW
+    // // Figure out which cascade to sample from
+    // uint cascadeIdx = ~0;
+
+    // if ( depth <= ShadowSplitDistances.x ) cascadeIdx = 0;
+    // else if ( depth <= ShadowSplitDistances.y ) cascadeIdx = 1;
+    // else if ( depth <= ShadowSplitDistances.z ) cascadeIdx = 2;
+    // else if ( depth <= ShadowSplitDistances.w ) cascadeIdx = 3;
+
+    // [branch]
+    // if ( cascadeIdx <= 3 ) {
+        // float NoL = saturate( dot( surface.N, L ) );
+
+        // // Apply offset
+        // float3 offset = GetCascadedShadowMapShadowPosOffset( NoL, surface.N ) / abs( CascadeScales[cascadeIdx].z );
+
+        // // Project into shadow space
+        // float3 samplePos = surface.PositionWorldSpace + offset;
+        // float3 shadowPosition = mul( float4( samplePos, 1.0f ), ShadowMatrixShared ).xyz;
+        // float3 shadowPosDX = ddx_fine( shadowPosition );
+        // float3 shadowPosDY = ddy_fine( shadowPosition );
+
+        // shadowVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
+
+        // // Make sure the value is within a valid range (avoid NaN)
+        // shadowVisibility = saturate( shadowVisibility );
+
+        // // Sample the next cascade, and blend between the two results to
+        // // smooth the transition
+        // float nextSplit = ShadowSplitDistances[cascadeIdx];
+        // float splitSize = cascadeIdx == 0 ? nextSplit : nextSplit - ShadowSplitDistances[cascadeIdx - 1];
+        // float fadeFactor = ( nextSplit - depth ) / splitSize;
+
+        // [branch]
+        // if ( fadeFactor <= CSM_SLICE_BLEND_THRESHOLD && cascadeIdx != CSM_SLICE_COUNT - 1 ) {
+            // float3 nextSplitVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx + 1 );
+            // float lerpAmt = smoothstep( 0.0f, CSM_SLICE_BLEND_THRESHOLD, fadeFactor );
+            // shadowVisibility = lerp( nextSplitVisibility, shadowVisibility, lerpAmt );
+            // shadowVisibility = saturate( shadowVisibility );
+        // }
+    // }
+
+    // // [branch]
+    // // if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
+        // // float NoL = saturate( dot( surface.N, L ) );
+
+        // // // Apply offset
+        // // float3 offset = GetCascadedShadowMapShadowPosOffset( NoL, surface.N ) / abs( CascadeScales[cascadeIdx].z );
+
+        // // // Project into shadow space
+        // // float3 samplePos = surface.PositionWorldSpace + offset;
+        // // float4 shrinkedPos = float4(surface.PositionWorldSpace - 0.005 * surface.N, 1.0);
+        // // float3 ssShadowPosition = mul( shrinkedPos, ShadowMatrixShared ).xyz;
+        // // float3 ssShadowPosDX = ddx_fine( ssShadowPosition );
+        // // float3 ssShadowPosDY = ddy_fine( ssShadowPosition );
+
+        // // float d1 = SampleShadowCascade( light, ssShadowPosition, ssShadowPosDX, ssShadowPosDY, cascadeIdx ).g; //SSSSSample(shadowMap, shadowPosition.xy / shadowPosition.w).r; // 'd1' has a range of 0..1
+        // // d1 = saturate( d1 );
+        
+        // // surfaceTransmittance = SSSSTransmittance( surface.SubsurfaceScatteringStrength, 0.005f, surface.N, L, ( d1 * 128.0f ), ssShadowPosition.z );
+    // // }    
+// #endif
+
+    // Get Sun Irradiance
+    // NOTE Do not add sky irradiance since we already have IBL as ambient term
+    float3 skyIrradiance = float3( 0, 0, 0 );
+    float3 sunIrradiance = float3( 1, 1, 1 ); //GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy * 1.0 - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
+    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.r );
+    
+    return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
@@ -385,7 +479,12 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Outputs
     float4 LightContribution = float4( 0, 0, 0, 1 );
     float2 Velocity = float2( 0, 0 );
- 
+    
+    // Add explicit sun/moon light contribution
+    float3 L;
+    float3 dirLightIlluminance = GetDirectionalLightIlluminance( g_DirectionalLight, surface, VertexStage.depth, L );        
+    LightContribution.rgb += DoShading( L, surface ) * dirLightIlluminance;
+    
     // Compute cluster and fetch its light mask
 	int4 coord = int4( VertexStage.positionWS.xyz * g_ClustersScale + g_ClustersBias, 0 );
 	uint light_mask = g_Clusters.Load( coord );
@@ -396,7 +495,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         
         // Do lighting
         float3 L;
-		PointLight light = PointLights[i];
+		PointLight light = g_PointLights[i];
         float3 pointLightIlluminance = GetPointLightIlluminance( light, surface, VertexStage.depth, L );        
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;
 		

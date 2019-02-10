@@ -25,7 +25,9 @@
 #include <Rendering/CommandList.h>
 #include <Rendering/ImageFormat.h>
 
-#include <glm/glm/glm.hpp>
+#include <Maths/Helpers.h>
+
+using namespace nya::maths;
 
 static constexpr int CLUSTER_X = 32;
 static constexpr int CLUSTER_Y = 8;
@@ -38,6 +40,7 @@ LightGrid::LightGrid( BaseAllocator* allocator )
     , aabbMin( 0, 0, 0 )
     , aabbMax( 0, 0, 0 )
     , PointLightCount( 0 )
+    , DirectionalLightCount( 0 )
     , lights{}
 {
 
@@ -80,14 +83,14 @@ void LightGrid::updateClusters( CommandList* cmdList )
 {
     uint32_t lightClusters[CLUSTER_Z][CLUSTER_Y][CLUSTER_X] = {};
 
-    glm::vec3 clusterInvScale = ( 1.0f / clustersInfos.Scale );
+    nyaVec3f clusterInvScale = ( 1.0f / clustersInfos.Scale );
 
     for ( uint32_t pointLightIdx = 0; pointLightIdx < PointLightCount; pointLightIdx++ ) {
         const auto& light = lights.PointLights[pointLightIdx];
 
-        const glm::vec3 p = ( light.worldPosition - aabbMin );
-        const glm::vec3 pMin = ( p - light.radius ) * clustersInfos.Scale;
-        const glm::vec3 pMax = ( p + light.radius ) * clustersInfos.Scale;
+        const nyaVec3f p = ( light.worldPosition - aabbMin );
+        const nyaVec3f pMin = ( p - light.radius ) * clustersInfos.Scale;
+        const nyaVec3f pMax = ( p + light.radius ) * clustersInfos.Scale;
 
         // Cluster for the center of the light
         const int px = ( int )floorf( p.x * clustersInfos.Scale.x );
@@ -95,12 +98,12 @@ void LightGrid::updateClusters( CommandList* cmdList )
         const int pz = ( int )floorf( p.z * clustersInfos.Scale.z );
 
         // Cluster bounds for the light
-        const int x0 = glm::max( ( int )floorf( pMin.x ), 0 );
-        const int x1 = glm::min( ( int )ceilf( pMax.x ), CLUSTER_X );
-        const int y0 = glm::max( ( int )floorf( pMin.y ), 0 );
-        const int y1 = glm::min( ( int )ceilf( pMax.y ), CLUSTER_Y );
-        const int z0 = glm::max( ( int )floorf( pMin.z ), 0 );
-        const int z1 = glm::min( ( int )ceilf( pMax.z ), CLUSTER_Z );
+        const int x0 = max( ( int )floorf( pMin.x ), 0 );
+        const int x1 = min( ( int )ceilf( pMax.x ), CLUSTER_X );
+        const int y0 = max( ( int )floorf( pMin.y ), 0 );
+        const int y1 = min( ( int )ceilf( pMax.y ), CLUSTER_Y );
+        const int z0 = max( ( int )floorf( pMin.z ), 0 );
+        const int z1 = min( ( int )ceilf( pMax.z ), CLUSTER_Z );
 
         const float squaredRadius = light.radius * light.radius;
         const uint32_t mask = ( 1 << pointLightIdx );
@@ -131,7 +134,7 @@ void LightGrid::updateClusters( CommandList* cmdList )
     cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
 }
 
-void LightGrid::setSceneBounds( const glm::vec3& sceneAABBMax, const glm::vec3& sceneAABBMin )
+void LightGrid::setSceneBounds( const nyaVec3f& sceneAABBMax, const nyaVec3f& sceneAABBMin )
 {
     aabbMax = sceneAABBMax;
     aabbMin = sceneAABBMin;
@@ -168,13 +171,13 @@ lightType##Data* LightGrid::allocate##lightType##Data( const lightType##Data&& l
     return &light;\
 }
 
-//NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
+NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
 NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
 
 #undef NYA_IMPL_LIGHT_ALLOC
 
 void LightGrid::updateClustersInfos()
 {
-    clustersInfos.Scale = glm::vec3( float( CLUSTER_X ), float( CLUSTER_Y ), float( CLUSTER_Z ) ) / ( aabbMax - aabbMin );
+    clustersInfos.Scale = nyaVec3f( float( CLUSTER_X ), float( CLUSTER_Y ), float( CLUSTER_Z ) ) / ( aabbMax - aabbMin );
     clustersInfos.Bias = -clustersInfos.Scale * aabbMin;
 }

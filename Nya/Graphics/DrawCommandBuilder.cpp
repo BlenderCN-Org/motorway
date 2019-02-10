@@ -35,7 +35,8 @@
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/LightRenderPass.h"
 
-#include <glm/glm/glm.hpp>
+#include <Maths/Helpers.h>
+#include <Maths/Matrix.h>
 
 class TextRenderingModule
 {
@@ -43,9 +44,9 @@ public:
     MutableResHandle_t renderText( RenderPipeline* renderPipeline, MutableResHandle_t output );
 };
 
-float DistanceToPlane( glm::vec4 vPlane, glm::vec3 vPoint )
+float DistanceToPlane( const nyaVec4f& vPlane, const nyaVec3f& vPoint )
 {
-    return glm::dot( glm::vec4( vPoint, 1.0 ), vPlane );
+    return nyaVec4f::dot( nyaVec4f( vPoint, 1.0f ), vPlane );
 }
 
 unsigned FloatFlip( unsigned f )
@@ -68,13 +69,13 @@ uint16_t DepthToBits( const float depth )
 
 // Frustum cullling on a sphere. Returns > 0 if visible, <= 0 otherwise
 // NOTE Infinite Z version (it implicitly skips the far plane check)
-float CullSphereInfReversedZ( const Frustum* frustum, glm::vec3 vCenter, float fRadius )
+float CullSphereInfReversedZ( const Frustum* frustum, const nyaVec3f& vCenter, float fRadius )
 {
-    float dist01 = glm::min( DistanceToPlane( frustum->planes[0], vCenter ), DistanceToPlane( frustum->planes[1], vCenter ) );
-    float dist23 = glm::min( DistanceToPlane( frustum->planes[2], vCenter ), DistanceToPlane( frustum->planes[3], vCenter ) );
+    float dist01 = nya::maths::min( DistanceToPlane( frustum->planes[0], vCenter ), DistanceToPlane( frustum->planes[1], vCenter ) );
+    float dist23 = nya::maths::min( DistanceToPlane( frustum->planes[2], vCenter ), DistanceToPlane( frustum->planes[3], vCenter ) );
     float dist45 = DistanceToPlane( frustum->planes[5], vCenter );
 
-    return glm::min( glm::min( dist01, dist23 ), dist45 ) + fRadius;
+    return nya::maths::min( nya::maths::min( dist01, dist23 ), dist45 ) + fRadius;
 }
 
 DrawCommandBuilder::DrawCommandBuilder( BaseAllocator* allocator )
@@ -90,7 +91,7 @@ DrawCommandBuilder::~DrawCommandBuilder()
 
 }
 
-void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const glm::mat4* modelMatrix )
+void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix )
 {
     meshes[meshCount++] = { meshResource, modelMatrix };
 }
@@ -121,8 +122,8 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
         for ( uint32_t meshIdx = 0; meshIdx < meshCount; meshIdx++ ) {
             const MeshInstance& meshInstance = meshes[meshIdx];
 
-            const glm::vec3 instancePosition = ( *meshInstance.modelMatrix )[3];
-            const float distanceToCamera = glm::distance( camera->worldPosition, instancePosition );
+            const nyaVec3f instancePosition = ( *meshInstance.modelMatrix )[3];
+            const float distanceToCamera = nyaVec3f::distanceSquared( camera->worldPosition, instancePosition );
 
             // Retrieve LOD based on instance to camera distance
             const auto& activeLOD = meshInstance.mesh->getLevelOfDetail( distanceToCamera );
@@ -132,7 +133,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
             for ( const SubMesh& subMesh : activeLOD.subMeshes ) {
                 // Transform sphere origin by instance model matrix
-                glm::vec3 position = ( *meshInstance.modelMatrix * glm::vec4( subMesh.boundingSphere.center, 0 ) );
+                nyaVec3f position = instancePosition + subMesh.boundingSphere.center;
 
                 if ( CullSphereInfReversedZ( &camera->frustum, position, subMesh.boundingSphere.radius ) > 0.0f ) {
                     // Build drawcmd is the submesh is visible

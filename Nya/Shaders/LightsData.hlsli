@@ -4,8 +4,9 @@
 
 struct DirectionalLight
 {
-    float4 SunColorAndAngularRadius;
-    float4 SunDirectionAndIlluminanceInLux;
+    float4      SunColorAndAngularRadius;
+    float4      SunDirectionAndIlluminanceInLux;
+    float4      SunReservedData;
 };
 
 struct PointLight
@@ -61,6 +62,7 @@ struct EnvironmentProbe
 
 cbuffer LightsBuffer : register( b2 )
 {
-    PointLight          PointLights[MAX_POINT_LIGHT_COUNT];
+    PointLight          g_PointLights[MAX_POINT_LIGHT_COUNT];
+    DirectionalLight    g_DirectionalLight;
 };
 #endif

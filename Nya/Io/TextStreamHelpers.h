@@ -20,7 +20,7 @@
 #pragma once
 
 #include <Core/StringHelpers.h>
-#include <glm/glm/glm.hpp>
+#include <Maths/Vector.h>
 
 namespace nya
 {
@@ -81,13 +81,13 @@ namespace nya
             return ( lowerCaseString == NYA_STRING( "1" ) || lowerCaseString == NYA_STRING( "true" ) );
         }
 
-        static glm::vec2 StringTo2DVector( const nyaString_t& str )
+        static nyaVec2f StringTo2DVector( const nyaString_t& str )
         {
             if ( str.front() != '{' || str.back() != '}' ) {
-                return glm::vec3();
+                return nyaVec2f();
             }
 
-            glm::vec2 vec = {};
+            nyaVec2f vec = {};
 
             std::size_t offsetX = str.find_first_of( ',' ),
                 offsetY = str.find_last_of( ',' ),
@@ -103,13 +103,13 @@ namespace nya
             return vec;
         }
 
-        static glm::vec3 StringTo3DVector( const nyaString_t& str )
+        static nyaVec3f StringTo3DVector( const nyaString_t& str )
         {
             if ( str.size() <= 2 || str.front() != '{' || str.back() != '}' ) {
-                return glm::vec3();
+                return nyaVec3f();
             }
 
-            glm::vec3 vec = {};
+            nyaVec3f vec = {};
 
             std::size_t offsetX = str.find_first_of( ',' ),
                 offsetY = str.find_first_of( ',', offsetX + 1 ),
