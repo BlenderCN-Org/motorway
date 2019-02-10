@@ -22,6 +22,7 @@ import sys, string, os, argparse, platform, codecs, itertools, MurmurHash
 
 from pathlib import Path
 from subprocess import Popen
+from threading import Thread
 
 # Script args (see description below)
 isProd = False
@@ -155,7 +156,7 @@ def get_sprv_sm( type ):
         'PS': 'frag',
         'CS': 'comp'
     }.get( type, 'vs_5_0' )
-  
+      
 def compile_permutation_d3d11( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):
     cmd_args_list = build_flag_list( permutation )
     
@@ -167,7 +168,7 @@ def compile_permutation_d3d11( shader_name, filename, entry_point, extension, sh
         cmdLine = cmdLine + " /O1"
         
     Popen( cmdLine, shell = True )
-     
+ 
 def compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):  
     # GLSLang args are '-' delimited
     flag_list_glsl = build_flag_list_GLSL( permutation )
@@ -218,7 +219,7 @@ def compile_shader_CS( shader_name, flags = [] ):
     compile_shader( shader_name, 'CS', flags )
      
 # Parse script args
-parser = argparse.ArgumentParser(description='Flan Game Engine. Compile shaders permutations for Graphics backends.')
+parser = argparse.ArgumentParser(description='Nya Game Engine. Compile shaders permutations for Graphics backends.')
 parser.add_argument('--d3d11', dest='compileD3D11', action='store_const',
                    const=True, default=False,
                    help='compile shaders for Direct3D11')
