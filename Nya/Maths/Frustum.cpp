@@ -20,45 +20,47 @@
 #include <Shared.h>
 #include "Frustum.h"
 
-void flan::core::UpdateFrustumPlanes( const glm::mat4x4& viewProjectionMatrix, Frustum& frustum )
+#include "Helpers.h"
+
+void nya::maths::UpdateFrustumPlanes( const nyaMat4x4f& viewProjectionMatrix, Frustum& frustum )
 {
-    frustum.planes[0] = glm::vec4( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][0],
+    frustum.planes[0] = nyaVec4f( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][0],
                                 viewProjectionMatrix[1][3] - viewProjectionMatrix[1][0],
                                 viewProjectionMatrix[2][3] - viewProjectionMatrix[2][0],
                                 viewProjectionMatrix[3][3] - viewProjectionMatrix[3][0] );
 
-    frustum.planes[1] = glm::vec4( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][0],
+    frustum.planes[1] = nyaVec4f( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][0],
                                 viewProjectionMatrix[1][3] + viewProjectionMatrix[1][0],
                                 viewProjectionMatrix[2][3] + viewProjectionMatrix[2][0],
                                 viewProjectionMatrix[3][3] + viewProjectionMatrix[3][0] );
 
-    frustum.planes[2] = glm::vec4( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][1],
+    frustum.planes[2] = nyaVec4f( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][1],
                                 viewProjectionMatrix[1][3] + viewProjectionMatrix[1][1],
                                 viewProjectionMatrix[2][3] + viewProjectionMatrix[2][1],
                                 viewProjectionMatrix[3][3] + viewProjectionMatrix[3][1] );
 
-    frustum.planes[3] = glm::vec4( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][1],
+    frustum.planes[3] = nyaVec4f( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][1],
                                 viewProjectionMatrix[1][3] - viewProjectionMatrix[1][1],
                                 viewProjectionMatrix[2][3] - viewProjectionMatrix[2][1],
                                 viewProjectionMatrix[3][3] - viewProjectionMatrix[3][1] );
 
     // Near
-    frustum.planes[5] = glm::vec4( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][2],
+    frustum.planes[5] = nyaVec4f( viewProjectionMatrix[0][3] + viewProjectionMatrix[0][2],
                                 viewProjectionMatrix[1][3] + viewProjectionMatrix[1][2],
                                 viewProjectionMatrix[2][3] + viewProjectionMatrix[2][2],
                                 viewProjectionMatrix[3][3] + viewProjectionMatrix[3][2] );
 
     // Far
-    frustum.planes[4] = glm::vec4( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][2],
+    frustum.planes[4] = nyaVec4f( viewProjectionMatrix[0][3] - viewProjectionMatrix[0][2],
                                     viewProjectionMatrix[1][3] - viewProjectionMatrix[1][2],
                                     viewProjectionMatrix[2][3] - viewProjectionMatrix[2][2],
                                     viewProjectionMatrix[3][3] - viewProjectionMatrix[3][2] );
 
     // Normalize them
     for ( int i = 0; i < 6; i++ ) {
-        float invl = sqrt( frustum.planes[i].x * frustum.planes[i].x +
-                           frustum.planes[i].y * frustum.planes[i].y +
-                           frustum.planes[i].z * frustum.planes[i].z );
+        float invl = nya::maths::sqrt( frustum.planes[i].x * frustum.planes[i].x +
+                                       frustum.planes[i].y * frustum.planes[i].y +
+                                       frustum.planes[i].z * frustum.planes[i].z );
 
         frustum.planes[i] /= invl;
     }

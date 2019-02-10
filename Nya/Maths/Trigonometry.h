@@ -19,24 +19,34 @@
 */
 #pragma once
 
-#include "Ray.h"
-
-template <typename Precision, int ScalarCount>
-struct Vector;
-using nyaVec3f = Vector<float, 3>;
-
-struct BoundingSphere
+namespace
 {
-    nyaVec3f    center;
-    float       radius;
-};
+    static constexpr int SQRT_ITERATION_COUNT = 128;
+
+    template<typename T>
+    constexpr T sqrt_eps() 
+    {
+        return ( T )0.00001;
+    }
+
+    template<typename T>
+    constexpr T r_sqrt( const T x, const T x_half, const int itCount )
+    {
+        return ( nya::maths::abs( x_half - x / x_half ) / ( ( T )1 + x_half ) < sqrt_eps<T>() ) ? 
+            ( itCount < SQRT_ITERATION_COUNT ) ? r_sqrt( x, ( T )0.5f * ( x_half + x / x_half ), ( itCount + 1 ) ) : x_half : x_half;
+    }
+}
 
 namespace nya
 {
-    namespace core
+    namespace maths
     {
-        void CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius );
-        bool SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right );
-        bool RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance );
+        template< typename T > constexpr T abs( const T x );
+
+        template< typename T >
+        constexpr T sqrt( const T x )
+        {
+            return ( x < ( T )0 ) ? ( T )-1 : sqrt_eps<T>() > abs( x ) ? ( T )0 : sqrt_eps<T>() > abs( ( T )1 - x ) ? x : r_sqrt( x, x / ( T )2, 0 );
+        }
     }
 }

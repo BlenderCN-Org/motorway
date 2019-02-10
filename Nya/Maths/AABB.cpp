@@ -20,40 +20,44 @@
 #include <Shared.h>
 #include "AABB.h"
 
-void nya::core::CreateAABBFromMinMaxPoints( AABB& aabb, const glm::vec3& minPoint, const glm::vec3& maxPoint )
+#include "Helpers.h"
+
+using namespace nya::maths;
+
+void nya::core::CreateAABBFromMinMaxPoints( AABB& aabb, const nyaVec3f& minPoint, const nyaVec3f& maxPoint )
 {
     aabb.minPoint = minPoint;
     aabb.maxPoint = maxPoint;
 }
 
-void nya::core::CreateAABB( AABB& aabb, const glm::vec3& boxCentroid, const glm::vec3& boxHalfExtents )
+void nya::core::CreateAABB( AABB& aabb, const nyaVec3f& boxCentroid, const nyaVec3f& boxHalfExtents )
 {
     aabb.minPoint = boxCentroid - boxHalfExtents;
     aabb.maxPoint = boxCentroid + boxHalfExtents;
 }
 
-glm::vec3 nya::core::GetAABBHalfExtents( const AABB& aabb )
+nyaVec3f nya::core::GetAABBHalfExtents( const AABB& aabb )
 {
     return ( ( aabb.maxPoint - aabb.minPoint ) * 0.5f );
 }
 
-glm::vec3 nya::core::GetAABBCentroid( const AABB& aabb )
+nyaVec3f nya::core::GetAABBCentroid( const AABB& aabb )
 {
     auto halfExtents = GetAABBHalfExtents( aabb );
 
     return ( aabb.minPoint + halfExtents );
 }
 
-void nya::core::ExpandAABB( AABB& aabb, const glm::vec3& pointToInclude )
+void nya::core::ExpandAABB( AABB& aabb, const nyaVec3f& pointToInclude )
 {
-    aabb.minPoint = glm::min( aabb.minPoint, pointToInclude );
-    aabb.maxPoint = glm::max( aabb.maxPoint, pointToInclude );
+    aabb.minPoint = min( aabb.minPoint, pointToInclude );
+    aabb.maxPoint = max( aabb.maxPoint, pointToInclude );
 }
 
 void nya::core::ExpandAABB( AABB& aabb, const AABB& aabbToInclude )
 {
-    aabb.minPoint = glm::min( aabb.minPoint, aabbToInclude.minPoint );
-    aabb.maxPoint = glm::max( aabb.maxPoint, aabbToInclude.maxPoint );
+    aabb.minPoint = min( aabb.minPoint, aabbToInclude.minPoint );
+    aabb.maxPoint = max( aabb.maxPoint, aabbToInclude.maxPoint );
 }
 
 void nya::core::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
@@ -61,8 +65,8 @@ void nya::core::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
     auto minPoint = sphereToInclude.center - sphereToInclude.radius;
     auto maxPoint = sphereToInclude.center + sphereToInclude.radius;
 
-    aabb.minPoint = glm::min( aabb.minPoint, minPoint );
-    aabb.maxPoint = glm::max( aabb.maxPoint, maxPoint );
+    aabb.minPoint = min( aabb.minPoint, minPoint );
+    aabb.maxPoint = max( aabb.maxPoint, maxPoint );
 }
 
 bool nya::core::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float& minHit, float& maxHit )
@@ -72,23 +76,23 @@ bool nya::core::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float
     double invx = 1 / ray.direction.x;
     double tx1 = ( aabb.minPoint.x - ray.origin.x ) * invx;
     double tx2 = ( aabb.maxPoint.x - ray.origin.x ) * invx;
-    txMin = glm::min( tx1, tx2 );
-    txMax = glm::max( tx1, tx2 );
+    txMin = min( tx1, tx2 );
+    txMax = max( tx1, tx2 );
 
     double invy = 1 / ray.direction.y;
     double ty1 = ( aabb.minPoint.y - ray.origin.y ) * invy;
     double ty2 = ( aabb.maxPoint.y - ray.origin.y ) * invy;
-    tyMin = glm::min( ty1, ty2 );
-    tyMax = glm::max( ty1, ty2 );
+    tyMin = min( ty1, ty2 );
+    tyMax = max( ty1, ty2 );
 
     double invz = 1 / ray.direction.z;
     double tz1 = ( aabb.minPoint.z - ray.origin.z ) * invz;
     double tz2 = ( aabb.maxPoint.z - ray.origin.z ) * invz;
-    tzMin = glm::min( tz1, tz2 );
-    tzMax = glm::max( tz1, tz2 );
+    tzMin = min( tz1, tz2 );
+    tzMax = max( tz1, tz2 );
 
-    double mint = glm::max( txMin, glm::max( tyMin, tzMin ) );
-    double maxt = glm::min( txMax, glm::min( tyMax, tzMax ) );
+    double mint = max( txMin, max( tyMin, tzMin ) );
+    double maxt = min( txMax, min( tyMax, tzMax ) );
 
     if ( mint > maxt ) {
         return false;

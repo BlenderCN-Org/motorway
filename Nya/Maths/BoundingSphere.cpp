@@ -20,7 +20,9 @@
 #include <Shared.h>
 #include "BoundingSphere.h"
 
-void nya::core::CreateSphere( BoundingSphere& sphere, const glm::vec3& sphereCenter, const float sphereRadius )
+#include "Vector.h"
+
+void nya::core::CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius )
 {
     sphere.center = sphereCenter;
     sphere.radius = sphereRadius;
@@ -44,18 +46,17 @@ bool nya::core::SphereSphereIntersectionTest( const BoundingSphere& left, const 
 
 bool nya::core::RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance )
 {
-    static constexpr auto VEC3_EPSILON = std::numeric_limits<float>::epsilon();
-
     auto sphereRadiusSqr = sphere.radius * sphere.radius;
 
-    glm::vec3 diff = sphere.center - ray.origin;
-    auto t0 = dot( diff, ray.direction );
-    auto dSquared = dot( diff, diff ) - t0 * t0;
+    auto diff = sphere.center - ray.origin;
+    auto t0 = nyaVec3f::dot( diff, ray.direction );
+    auto dSquared = nyaVec3f::dot( diff, diff ) - t0 * t0;
     if ( dSquared > sphereRadiusSqr ) {
         return false;
     }
 
     auto t1 = sqrt( sphereRadiusSqr - dSquared );
-    hitDistance = t0 > t1 + VEC3_EPSILON ? t0 - t1 : t0 + t1;
-    return hitDistance > VEC3_EPSILON;
+    hitDistance = t0 > t1 + nyaVec3f::EPSILON ? t0 - t1 : t0 + t1;
+
+    return ( hitDistance > nyaVec3f::EPSILON );
 }

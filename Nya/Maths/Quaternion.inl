@@ -17,26 +17,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "Ray.h"
 
-template <typename Precision, int ScalarCount>
-struct Vector;
-using nyaVec3f = Vector<float, 3>;
+template<typename Precision>
+const Quaternion<Precision> Quaternion<Precision>::Zero = Quaternion( ( Precision )0, ( Precision )0, ( Precision )0, ( Precision )0 );
 
-struct BoundingSphere
-{
-    nyaVec3f    center;
-    float       radius;
-};
-
-namespace nya
-{
-    namespace core
-    {
-        void CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius );
-        bool SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right );
-        bool RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance );
-    }
-}
+template<typename Precision>
+const Quaternion<Precision> Quaternion<Precision>::Identity = Quaternion( ( Precision )0, ( Precision )0, ( Precision )0, ( Precision )1 );

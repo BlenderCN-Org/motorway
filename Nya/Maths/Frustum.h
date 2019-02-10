@@ -19,18 +19,19 @@
 */
 #pragma once
 
-#include <glm/glm/glm.hpp>
+#include "Vector.h"
+#include "Matrix.h"
 
 struct Frustum
 {
-    glm::vec4 planes[6];
+    nyaVec4f planes[6];
 };
 static_assert( std::is_pod<Frustum>(), "Frustum must be POD (since it is used on the GPU side; see Camera constant buffer declaration" );
 
-namespace flan
+namespace nya
 {
-    namespace core
+    namespace maths
     {
-        void UpdateFrustumPlanes( const glm::mat4x4& viewProjectionMatrix, Frustum& frustum );
+        void UpdateFrustumPlanes( const nyaMat4x4f& viewProjectionMatrix, Frustum& frustum );
     }
 }

@@ -20,14 +20,13 @@
 #include "Shared.h"
 #include "Transform.h"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm/gtx/euler_angles.hpp>
-#include <glm/glm/gtx/quaternion.hpp>
-#include <glm/glm/gtx/matrix_decompose.hpp>
-
 #include <FileSystem/FileSystemObject.h>
 
-Transform::Transform( const glm::vec3& worldTranslation, const glm::vec3& worldScale, const glm::quat& worldRotation )
+#include "MatrixTransformations.h"
+
+using namespace nya::maths;
+
+Transform::Transform( const nyaVec3f& worldTranslation, const nyaVec3f& worldScale, const nyaQuatf& worldRotation )
     : isDirty( true )
     , worldTranslation( worldTranslation )
     , worldScale( worldScale )
@@ -35,10 +34,10 @@ Transform::Transform( const glm::vec3& worldTranslation, const glm::vec3& worldS
     , localTranslation( worldTranslation )
     , localScale( worldScale )
     , localRotation( worldRotation )
-    , localModelMatrix( 1.0f )
-    , worldModelMatrix( 1.0f )
+    , localModelMatrix( nyaMat4x4f::Identity )
+    , worldModelMatrix( nyaMat4x4f::Identity )
 {
-   rebuildModelMatrix();
+    rebuildModelMatrix();
 }
 
 bool Transform::rebuildModelMatrix()
@@ -47,13 +46,13 @@ bool Transform::rebuildModelMatrix()
 
     // Rebuild model matrix if anything has changed
     if ( isDirty ) {
-        glm::mat4 translationMatrix = glm::translate( glm::mat4( 1.0 ), localTranslation );
-        glm::mat4 rotationMatrix = glm::mat4_cast( localRotation );
-        glm::mat4 scaleMatrix = glm::scale( glm::mat4( 1.0 ), localScale );
+        nyaMat4x4f translationMatrix = MakeTranslationMat( localTranslation );
+        nyaMat4x4f rotationMatrix = localRotation.toMat4x4();
+        nyaMat4x4f scaleMatrix = MakeScaleMat( localScale );
 
         localModelMatrix = translationMatrix * rotationMatrix * scaleMatrix;
 
-        propagateParentModelMatrix( glm::mat4x4( 1.0f ) );
+        propagateParentModelMatrix( nyaMat4x4f::Identity );
 
         isDirty = false;
     }
@@ -63,112 +62,112 @@ bool Transform::rebuildModelMatrix()
 
 void Transform::serialize( FileSystemObject* stream )
 {
-    stream->write( (uint8_t*)&localModelMatrix[0][0], sizeof( glm::mat4 ) );
+    stream->write( (uint8_t*)&localModelMatrix[0][0], sizeof( nyaMat4x4f ) );
 }
 
 void Transform::deserialize( FileSystemObject* stream )
 {
-    stream->read( ( uint8_t* )&localModelMatrix[0][0], sizeof( glm::mat4 ) );
+    stream->read( ( uint8_t* )&localModelMatrix[0][0], sizeof( nyaMat4x4f ) );
 
-    glm::vec3 skewDecomposed;
-    glm::vec4 perspectiveDecomposed;
-    glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
+    //nyaVec3f skewDecomposed;
+    //nyaVec4f perspectiveDecomposed;
+    //glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
 
     isDirty = true;
 
     rebuildModelMatrix();
 }
 
-void Transform::setLocalTranslation( const glm::vec3& newTranslation )
+void Transform::setLocalTranslation( const nyaVec3f& newTranslation )
 {
     localTranslation = newTranslation;
     isDirty = true;
 }
 
-void Transform::setLocalRotation( const glm::quat& newRotation )
+void Transform::setLocalRotation( const nyaQuatf& newRotation )
 {
     localRotation = newRotation;
     isDirty = true;
 }
 
-void Transform::setLocalScale( const glm::vec3& newScale )
+void Transform::setLocalScale( const nyaVec3f& newScale )
 {
     localScale = newScale;
     isDirty = true;
 }
 
-void Transform::setLocalModelMatrix( const glm::mat4& modelMat )
+void Transform::setLocalModelMatrix( const nyaMat4x4f& modelMat )
 {
     localModelMatrix = modelMat;
 
-    glm::vec3 skewDecomposed;
-    glm::vec4 perspectiveDecomposed;
-    glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
+    //nyaVec3f skewDecomposed;
+    //nyaVec4f perspectiveDecomposed;
+    //glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
 }
 
-void Transform::setWorldTranslation( const glm::vec3& newTranslation )
+void Transform::setWorldTranslation( const nyaVec3f& newTranslation )
 {
     worldTranslation = newTranslation;
     isDirty = true;
 }
 
-void Transform::setWorldRotation( const glm::quat& newRotation )
+void Transform::setWorldRotation( const nyaQuatf& newRotation )
 {
     worldRotation = newRotation;
     isDirty = true;
 }
 
-void Transform::setWorldScale( const glm::vec3& newScale )
+void Transform::setWorldScale( const nyaVec3f& newScale )
 {
     worldScale = newScale;
     isDirty = true;
 }
 
-void Transform::setWorldModelMatrix( const glm::mat4& modelMat )
+void Transform::setWorldModelMatrix( const nyaMat4x4f& modelMat )
 {
     worldModelMatrix = modelMat;
 
-    glm::vec3 skewDecomposed;
-    glm::vec4 perspectiveDecomposed;
-    glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );
+    //nyaVec3f skewDecomposed;
+    //nyaVec4f perspectiveDecomposed;
+    //glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );
 }
 
-void Transform::translate( const glm::vec3& translation )
+void Transform::translate( const nyaVec3f& translation )
 {
     worldTranslation += translation;
     isDirty = true;
 }
 
-void Transform::propagateParentModelMatrix( const glm::mat4& parentModelMatrix )
+void Transform::propagateParentModelMatrix( const nyaMat4x4f& parentModelMatrix )
 {
     worldModelMatrix = localModelMatrix * parentModelMatrix;
 
-    glm::vec3 skewDecomposed;
-    glm::vec4 perspectiveDecomposed;
-    glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );
+   /* nyaVec3f skewDecomposed;
+    nyaVec4f perspectiveDecomposed;
+    glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );*/
 }
 
-glm::mat4* Transform::getWorldModelMatrix()
+nyaMat4x4f* Transform::getWorldModelMatrix()
 {
     return &worldModelMatrix;
 }
 
-const glm::mat4& Transform::getWorldModelMatrix() const
+const nyaMat4x4f& Transform::getWorldModelMatrix() const
 {
     return worldModelMatrix;
 }
 
-glm::vec3 Transform::getWorldScale() const
+const nyaVec3f& Transform::getWorldScale() const
 {
     return worldScale;
 }
 
-glm::vec3 Transform::getWorldTranslation() const
+const nyaVec3f& Transform::getWorldTranslation() const
 {
     return worldTranslation;
 }
 
-glm::quat Transform::getWorldRotation() const
+const nyaQuatf& Transform::getWorldRotation() const
 {
     return worldRotation;
 }
@@ -188,27 +187,27 @@ float Transform::getWorldBiggestScale() const
     return biggestScale;
 }
 
-glm::mat4* Transform::getLocalModelMatrix()
+nyaMat4x4f* Transform::getLocalModelMatrix()
 {
     return &localModelMatrix;
 }
 
-const glm::mat4& Transform::getLocalModelMatrix() const
+const nyaMat4x4f& Transform::getLocalModelMatrix() const
 {
     return localModelMatrix;
 }
 
-glm::vec3 Transform::getLocalScale() const
+const nyaVec3f& Transform::getLocalScale() const
 {
     return localScale;
 }
 
-glm::vec3 Transform::getLocalTranslation() const
+const nyaVec3f& Transform::getLocalTranslation() const
 {
     return localTranslation;
 }
 
-glm::quat Transform::getLocalRotation() const
+const nyaQuatf& Transform::getLocalRotation() const
 {
     return localRotation;
 }

@@ -17,26 +17,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "Ray.h"
+template<typename Precision>
+const Matrix<Precision, 4, 4> Matrix<Precision, 4, 4>::Zero = Matrix( ( Precision )0 );
 
-template <typename Precision, int ScalarCount>
-struct Vector;
-using nyaVec3f = Vector<float, 3>;
-
-struct BoundingSphere
-{
-    nyaVec3f    center;
-    float       radius;
-};
-
-namespace nya
-{
-    namespace core
-    {
-        void CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius );
-        bool SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right );
-        bool RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance );
-    }
-}
+template<typename Precision>
+const Matrix<Precision, 4, 4> Matrix<Precision, 4, 4>::Identity = Matrix( ( Precision )1 );

@@ -20,13 +20,18 @@
 
 #pragma once
 
-#include <glm/glm/glm.hpp>
-#include <glm/glm/gtc/matrix_transform.hpp>
+#include "Matrix.h"
 
-namespace flan
+namespace nya
 {
-    namespace core
+    namespace maths
     {
-        glm::mat4 MakeInfReversedZProj( const float fovY_radians, const float aspectWbyH, const float zNear );
+        nyaMat4x4f  MakeInfReversedZProj( const float fovY_radians, const float aspectWbyH, const float zNear );
+        nyaMat4x4f  MakeFovProj( const float fovY_radians, const float aspectWbyH, float zNear, float zFar );
+
+        nyaMat4x4f  MakeTranslationMat( const nyaVec3f& translation, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
+        nyaMat4x4f  MakeScaleMat( const nyaVec3f& scale, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
+    
+        nyaMat4x4f  MakeLookAtMat( const nyaVec3f& eye, const nyaVec3f& center, const nyaVec3f& up );
     }
 }

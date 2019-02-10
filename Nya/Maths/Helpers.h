@@ -19,20 +19,73 @@
 */
 #pragma once
 
+namespace
+{
+    static constexpr double _PI = 3.14159265358979323846;
+}
+
 namespace nya
 {
     namespace maths
     {
+        template< typename T >
+        constexpr T PI()
+        {
+            return (T)_PI;
+        }
+
+        template< typename T >
+        constexpr T TWO_PI()
+        {
+            return ( T )2 * PI<T>();
+        }
+
+        template< typename T >
+        constexpr T HALF_PI()
+        {
+            return PI<T>() / (T)2;
+        }
+
+        template< typename T >
+        inline constexpr T radians( const T x )
+        {
+            return ( x * PI<T>() ) / ( T )180;
+        }
+
+        template< typename T >
+        inline constexpr T degrees( const T x )
+        {
+            return ( x * ( T )180 ) / PI<T>();
+        }
+
         template< typename T, typename R >
-        inline T Min( const T a, const R b )
+        inline constexpr T min( const T a, const R b )
         {
             return static_cast< T >( ( a < b ) ? a : b );
         }
 
         template< typename T, typename R >
-        inline T Max( const T a, const R b )
+        inline constexpr T max( const T a, const R b )
         {
             return static_cast< T >( ( a > b ) ? a : b );
+        } 
+        
+        template<typename T>
+        constexpr T clamp( const T x, const T minVal, const T maxVal)
+        {
+            return min( max( x, minVal ), maxVal );
+        }
+
+        template< typename T >
+        constexpr T abs( const T x )
+        {
+            return ( x == ( T )0 ? ( T )0 : ( ( x < ( T )0 ) ? -x : x ) );
+        }
+
+        template<typename T>
+        constexpr T lerp( const T x, const T y, const float a )
+        {
+            return ( x * ( T(1) - a ) + y ) * a;
         }
     }
 }

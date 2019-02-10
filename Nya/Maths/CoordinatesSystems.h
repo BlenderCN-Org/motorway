@@ -19,24 +19,20 @@
 */
 #pragma once
 
-#include "Ray.h"
-
-template <typename Precision, int ScalarCount>
-struct Vector;
-using nyaVec3f = Vector<float, 3>;
-
-struct BoundingSphere
-{
-    nyaVec3f    center;
-    float       radius;
-};
+#include "Vector.h"
 
 namespace nya
 {
-    namespace core
+    namespace maths
     {
-        void CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius );
-        bool SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right );
-        bool RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance );
+        static nyaVec3f SphericalToCarthesianCoordinates( const float theta, const float gamma )
+        {
+            return nyaVec3f( cos( gamma ) * cos( theta ), cos( gamma ) * sin( theta ), sin( gamma ) );
+        }
+
+        static nyaVec2f CarthesianToSphericalCoordinates( const nyaVec3f& coords )
+        {
+            return nyaVec2f( atan2( coords.x, coords.y ), atan2( hypot( coords.x, coords.y ), coords.z ) );
+        }
     }
 }

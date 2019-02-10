@@ -19,16 +19,16 @@
 */
 #pragma once
 
-#include <glm/glm/glm.hpp>
+#include "Vector.h"
 
 struct Ray
 {
-    glm::vec3   origin;
-    float       maxDepth;
-    glm::vec3   direction;
-    float       minDepth;
+    nyaVec3f   origin;
+    float      maxDepth;
+    nyaVec3f   direction;
+    float      minDepth;
 
-    Ray( const glm::vec3& origin, const glm::vec3& direction )
+    Ray( const nyaVec3f& origin, const nyaVec3f& direction )
         : origin( origin )
         , direction( direction )
         , maxDepth( std::numeric_limits<float>::max() )

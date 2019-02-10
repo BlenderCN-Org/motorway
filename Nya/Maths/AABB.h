@@ -19,15 +19,14 @@
 */
 #pragma once
 
-#include <glm/glm/glm.hpp>
 #include "Ray.h"
 #include "BoundingSphere.h"
 
 struct AABB
 {
-    glm::vec3 minPoint;
+    nyaVec3f minPoint;
     uint32_t  __PADDING1__;
-    glm::vec3 maxPoint;
+    nyaVec3f maxPoint;
     uint32_t  __PADDING2__;
 };
 
@@ -35,13 +34,13 @@ namespace nya
 {
     namespace core
     {
-        void CreateAABB( AABB& aabb, const glm::vec3& boxCentroid, const glm::vec3& boxHalfExtents );
-        void CreateAABBFromMinMaxPoints( AABB& aabb, const glm::vec3& minPoint, const glm::vec3& maxPoint );
+        void CreateAABB( AABB& aabb, const nyaVec3f& boxCentroid, const nyaVec3f& boxHalfExtents );
+        void CreateAABBFromMinMaxPoints( AABB& aabb, const nyaVec3f& minPoint, const nyaVec3f& maxPoint );
 
-        glm::vec3 GetAABBHalfExtents( const AABB& aabb );
-        glm::vec3 GetAABBCentroid( const AABB& aabb );
+        nyaVec3f GetAABBHalfExtents( const AABB& aabb );
+        nyaVec3f GetAABBCentroid( const AABB& aabb );
 
-        void ExpandAABB( AABB& aabb, const glm::vec3& pointToInclude );
+        void ExpandAABB( AABB& aabb, const nyaVec3f& pointToInclude );
         void ExpandAABB( AABB& aabb, const AABB& aabbToInclude );
         void ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude );
 

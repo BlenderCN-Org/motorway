@@ -19,51 +19,52 @@
 */
 #pragma once
 
-#include <glm/glm/gtc/matrix_transform.hpp>
-#include <glm/glm/gtc/quaternion.hpp>
+#include "Matrix.h"
+#include "Vector.h"
+#include "Quaternion.h"
 
 class FileSystemObject;
 
 class Transform
 {
 public:
-                        Transform( const glm::vec3& worldTranslation = glm::vec3(), const glm::vec3& worldScale = glm::vec3( 1.0f ), const glm::quat& worldRotation = glm::quat( 1.0f, 0.0f, 0.0f, 0.0f ) );
+                        Transform( const nyaVec3f& worldTranslation = nyaVec3f::Zero, const nyaVec3f& worldScale = nyaVec3f( 1.0f, 1.0f, 1.0f ), const nyaQuatf& worldRotation = nyaQuatf::Identity );
                         Transform( Transform& transform ) = default;
                         Transform& operator = ( Transform& transform ) = default;
                         ~Transform() = default;
 
     bool                rebuildModelMatrix();
 
-    void                setLocalTranslation( const glm::vec3& newTranslation );
-    void                setLocalRotation( const glm::quat& newRotation );
-    void                setLocalScale( const glm::vec3& newScale );
+    void                setLocalTranslation( const nyaVec3f& newTranslation );
+    void                setLocalRotation( const nyaQuatf& newRotation );
+    void                setLocalScale( const nyaVec3f& newScale );
 
-    void                setLocalModelMatrix( const glm::mat4& modelMat );
+    void                setLocalModelMatrix( const nyaMat4x4f& modelMat );
 
-    void                setWorldTranslation( const glm::vec3& newTranslation );
-    void                setWorldRotation( const glm::quat& newRotation );
-    void                setWorldScale( const glm::vec3& newScale );
+    void                setWorldTranslation( const nyaVec3f& newTranslation );
+    void                setWorldRotation( const nyaQuatf& newRotation );
+    void                setWorldScale( const nyaVec3f& newScale );
 
-    void                setWorldModelMatrix( const glm::mat4& modelMat );
+    void                setWorldModelMatrix( const nyaMat4x4f& modelMat );
 
-    void                translate( const glm::vec3& translation );
+    void                translate( const nyaVec3f& translation );
 
-    void                propagateParentModelMatrix( const glm::mat4& parentModelMatrix );
+    void                propagateParentModelMatrix( const nyaMat4x4f& parentModelMatrix );
 
-    glm::mat4*          getWorldModelMatrix();
-    const glm::mat4&    getWorldModelMatrix() const;
+    nyaMat4x4f*         getWorldModelMatrix();
+    const nyaMat4x4f&   getWorldModelMatrix() const;
 
-    glm::vec3           getWorldScale() const;
-    glm::vec3           getWorldTranslation() const;
-    glm::quat           getWorldRotation() const;
+    const nyaVec3f&     getWorldScale() const;
+    const nyaVec3f&     getWorldTranslation() const;
+    const nyaQuatf&     getWorldRotation() const;
     float               getWorldBiggestScale() const;
 
-    glm::mat4*          getLocalModelMatrix();
-    const glm::mat4&    getLocalModelMatrix() const;
+    nyaMat4x4f*         getLocalModelMatrix();
+    const nyaMat4x4f&   getLocalModelMatrix() const;
 
-    glm::vec3           getLocalScale() const;
-    glm::vec3           getLocalTranslation() const;
-    glm::quat           getLocalRotation() const;
+    const nyaVec3f&     getLocalScale() const;
+    const nyaVec3f&     getLocalTranslation() const;
+    const nyaQuatf&     getLocalRotation() const;
     float               getLocalBiggestScale() const;
 
     void                serialize( FileSystemObject* stream );
@@ -74,14 +75,14 @@ public:
 private:
     bool                isDirty;
 
-    glm::vec3           worldTranslation;
-    glm::vec3           worldScale;
-    glm::quat           worldRotation;
+    nyaVec3f            worldTranslation;
+    nyaVec3f            worldScale;
+    nyaQuatf            worldRotation;
 
-    glm::vec3           localTranslation;
-    glm::vec3           localScale;
-    glm::quat           localRotation;
+    nyaVec3f            localTranslation;
+    nyaVec3f            localScale;
+    nyaQuatf            localRotation;
 
-    glm::mat4           localModelMatrix;
-    glm::mat4           worldModelMatrix;
+    nyaMat4x4f          localModelMatrix;
+    nyaMat4x4f          worldModelMatrix;
 };
