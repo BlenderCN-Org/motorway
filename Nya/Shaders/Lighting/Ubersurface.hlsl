@@ -54,10 +54,10 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : S
 #endif
 
     output.positionWS       = mul( ModelMatrix, float4( VertexBuffer.Position, 1.0f ) );
-    output.position         = mul( float4( output.positionWS.xyz, 1.0f ), g_ViewProjectionMatrix );    
-    output.previousPosition = mul( float4( output.positionWS.xyz, 1.0f ), g_PreviousViewProjectionMatrix );
+    output.position         = mul( g_ViewProjectionMatrix, float4( output.positionWS.xyz, 1.0f ) );    
+    output.previousPosition = mul( g_PreviousViewProjectionMatrix, float4( output.positionWS.xyz, 1.0f ) );
    
-    float4 PositionVS = mul( float4( output.positionWS.xyz, 1.0f ), g_ViewMatrix );
+    float4 PositionVS = mul( g_ViewMatrix, float4( output.positionWS.xyz, 1.0f ) );
     output.depth = ( PositionVS.z / PositionVS.w );
     output.normal = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
     output.uvCoord = uvCoordinates;
@@ -104,7 +104,9 @@ Texture3D<uint> g_Clusters : register( t0 );
 cbuffer ClusterBuffer : register( b1 )
 {
     float3   g_ClustersScale;
+	float	 g_ViewportWidth;
     float3   g_ClustersBias;
+	float	 g_ViewportHeight;
 };
 
 struct LightSurfaceInfos
@@ -503,7 +505,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     }
     
     float2 prevPositionSS = (VertexStage.previousPosition.xy / VertexStage.previousPosition.z) * float2(0.5f, -0.5f) + 0.5f;
-    //prevPositionSS *= float2( g_BackbufferDimension );
+    prevPositionSS *= float2( g_ViewportWidth, g_ViewportHeight );
    
     Velocity = VertexStage.position.xy - prevPositionSS;
     Velocity -= g_CameraJitteringOffset;
