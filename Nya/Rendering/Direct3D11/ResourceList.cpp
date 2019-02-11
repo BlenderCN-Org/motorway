@@ -116,6 +116,14 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
             resList.buffers.computeStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
         }
     }
+    
+    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
+        const auto& buffer = description.uavBuffers[i];
+
+        if ( buffer.stageBind & eShaderStage::SHADER_STAGE_COMPUTE ) {
+            resList.uavBuffers[buffer.bindPoint] = buffer.resource->bufferUAVObject;
+        }
+    }
 
     return resList;
 }
@@ -139,5 +147,7 @@ void CommandList::bindResourceList( ResourceList* resourceList )
     NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
     NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
     NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
+
+    NativeCommandList->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
 }
 #endif

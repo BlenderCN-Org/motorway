@@ -386,6 +386,7 @@ struct ResourceListDesc
         Res         resource;
     };
 
+    ResourceList<Buffer*>    uavBuffers[64];
     ResourceList<Buffer*>    constantBuffers[64];
     ResourceList<Sampler*>   samplers[64];
     ResourceList<Buffer*>    buffers[64];

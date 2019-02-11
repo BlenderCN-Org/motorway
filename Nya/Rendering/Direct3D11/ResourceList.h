@@ -23,6 +23,7 @@
 struct ID3D11Buffer;
 struct ID3D11SamplerState;
 struct ID3D11ShaderResourceView;
+struct ID3D11UnorderedAccessView;
 
 static constexpr int MAX_RES_COUNT = 64;
 
@@ -48,6 +49,8 @@ struct ResourceList
     };
 
     ResourceBinding<ID3D11ShaderResourceView*>  buffers;
+    ID3D11UnorderedAccessView*                  uavBuffers[MAX_RES_COUNT];
+    UINT                                        uavBuffersBindCount;
     ResourceBinding<ID3D11Buffer*>              constantBuffers;
     ResourceBinding<ID3D11SamplerState*>        samplers;
 };
