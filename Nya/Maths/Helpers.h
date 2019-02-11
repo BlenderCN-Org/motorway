@@ -85,7 +85,7 @@ namespace nya
         template<typename T>
         constexpr T lerp( const T x, const T y, const float a )
         {
-            return ( x * ( T(1) - a ) + y ) * a;
+            return x * ( 1.0f - a ) + y * a;
         }
     }
 }
