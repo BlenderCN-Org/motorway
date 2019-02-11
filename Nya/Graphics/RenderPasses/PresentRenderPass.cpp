@@ -4,6 +4,7 @@
 #include <Graphics/ShaderCache.h>
 #include <Graphics/RenderPipeline.h>
 
+#include <Rendering/ImageFormat.h>
 #include <Rendering/CommandList.h>
 
 PipelineState*  g_PipelineStateObject = nullptr;
@@ -11,14 +12,7 @@ PipelineState*  g_PipelineStateObject = nullptr;
 void LoadCachedResourcesPP( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
     PipelineStateDesc psoDesc = {};
-    psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "PostFX/FinalPost", SHADER_STAGE_PIXEL );
-    psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    psoDesc.rasterizerState.cullMode = nya::rendering::eCullMode::CULL_MODE_NONE;
-    psoDesc.depthStencilState.enableDepthTest = false;
-    psoDesc.depthStencilState.enableDepthWrite = false;
-    psoDesc.blendState.enableBlend = false;
-    psoDesc.rasterizerState.useTriangleCCW = false;
+    psoDesc.computeShader = shaderCache->getOrUploadStage( "PostFX/FinalPost", SHADER_STAGE_COMPUTE );
 
     g_PipelineStateObject = renderDevice->createPipelineState( psoDesc );
 }
@@ -32,7 +26,7 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
 {
     struct PassData {
         ResHandle_t input;
-        ResHandle_t bilinearSampler;
+        ResHandle_t output;
     };
 
     PassData& passData = renderPipeline->addRenderPass<PassData>(
@@ -41,38 +35,39 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
             renderPipelineBuilder.setUncullablePass();
 
             passData.input = renderPipelineBuilder.readRenderTarget( output );
+            
+            BufferDesc bufferDesc = {};
+            bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
+            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+            bufferDesc.width = 1280;
+            bufferDesc.height = 720;
+            bufferDesc.depth = 1;
+            bufferDesc.mipCount = 1;
 
-            SamplerDesc bilinearSamplerDesc = {};
-            bilinearSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            bilinearSamplerDesc.addressV = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            bilinearSamplerDesc.addressW = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
-            bilinearSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
-
-            passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
+            passData.output = renderPipelineBuilder.allocateBuffer( bufferDesc, eShaderStage::SHADER_STAGE_COMPUTE );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
-            Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
+            Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.input );
+            
             ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
+            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, outputBuffer };
 
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
             cmdList->bindResourceList( &resourceList );
 
             // RenderPass
-            RenderTarget* outputTarget = renderDevice->getSwapchainBuffer();
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { inputTarget, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0] = { inputTarget, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
 
             cmdList->bindPipelineState( g_PipelineStateObject );
             
-            cmdList->draw( 3 );
+            const Viewport* viewport = renderPipelineResources.getMainViewport();
+            cmdList->dispatchCompute( viewport->Width / 16u, viewport->Height / 16u, 1u );
 
             renderDevice->destroyRenderPass( renderPass );
         }

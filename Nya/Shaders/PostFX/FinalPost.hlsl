@@ -1,12 +1,3 @@
-struct VertexStageData
-{
-	float4	Position : SV_POSITION;
-	float2	TexCoordinates : TEXCOORD;
-};
-
-Texture2D 	g_InputTexture : register( t0 );
-sampler		g_LinearSampler : register( s0 );
-
 static const float A = 0.15;
 static const float B = 0.50;
 static const float C = 0.10;
@@ -34,22 +25,31 @@ float3 InterleavedGradientNoise( float2 uv )
     return frac( magic.z * frac( dot( uv, magic.xy ) ) );
 }
 
-float4 EntryPointPS( VertexStageData VertexStage ) : SV_TARGET0
+Texture2D<float4>	g_InputRenderTarget : register( t0 );
+RWTexture2D<float4>	g_OutputRenderTarget : register( u0 );
+
+cbuffer RenderInfos : register( b1 )
 {
-    float4 finalColor = g_InputTexture.Sample( g_LinearSampler, VertexStage.TexCoordinates );
-    
-    // Apply Tonemapping
+	float2	g_BackbufferDimensions;
+};
+
+[numthreads( 16, 16, 1 )]
+void EntryPointCS( uint2 id : SV_DispatchThreadID )
+{
+	float4 finalColor = g_InputRenderTarget[id];
+	
+	// Apply Tonemapping
     static const float ExposureBias = 2.0f;
     
     float3 curr = Uncharted2Tonemap(ExposureBias*finalColor.rgb * 2.0f);
     float3 whiteScale = 1.0f/Uncharted2Tonemap(W);
     float3 color = curr*whiteScale;
     
-    color.rgb = accurateLinearToSRGB( color.rgb );
-    
+    color = accurateLinearToSRGB( color );
+
     // Add a dithering pattern to attenuate color banding
-    float3 rnd = InterleavedGradientNoise( VertexStage.Position.xy ) / 255.0f;
+    float3 rnd = InterleavedGradientNoise( float2( id ) ) / 255.0f;
     color.rgb += rnd;
-        
-    return float4( color, 1.0f );
+   
+	g_OutputRenderTarget[uint2( id.x, 719 - id.y )] = float4( color, 1.0f );
 }
