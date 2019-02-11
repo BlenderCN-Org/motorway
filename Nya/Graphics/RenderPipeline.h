@@ -189,6 +189,12 @@ private:
 
     int                 genAllocatedCount;
 
+    Buffer*             uavTex2dBuffer[96];
+    BufferDesc          uavTex2dBufferDesc[96];
+    bool                isUavTex2dBufferFree[96];
+
+    int                 uavTex2dAllocatedCount;
+
     RenderTarget*       renderTargets[96];
     TextureDescription  renderTargetsDesc[96];
     bool                isRenderTargetAvailable[96];

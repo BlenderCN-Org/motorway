@@ -336,6 +336,29 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
         }
     } break;
 
+    case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D: {
+        for ( int i = 0; i < uavTex2dAllocatedCount; i++ ) {
+            if ( uavTex2dBufferDesc[i].height == description.height
+                && uavTex2dBufferDesc[i].width == description.width
+                && uavTex2dBufferDesc[i].depth == description.depth
+                && uavTex2dBufferDesc[i].mipCount == description.mipCount
+                && uavTex2dBufferDesc[i].viewFormat == description.viewFormat
+                && isUavTex2dBufferFree[i] ) {
+                buffer = uavTex2dBuffer[i];
+                isUavTex2dBufferFree[i] = false;
+                break;
+            }
+        }
+
+        if ( buffer == nullptr ) {
+            buffer = renderDevice->createBuffer( description );
+
+            uavTex2dBuffer[uavTex2dAllocatedCount] = buffer;
+            uavTex2dBufferDesc[uavTex2dAllocatedCount] = description;
+            uavTex2dAllocatedCount++;
+        }
+    } break;
+
     case BufferDesc::GENERIC_BUFFER: {
         for ( int i = 0; i < genAllocatedCount; i++ ) {
             if ( genBufferDesc[i].size == description.size 
