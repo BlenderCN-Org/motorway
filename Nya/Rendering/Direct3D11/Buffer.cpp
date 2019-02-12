@@ -130,8 +130,8 @@ Buffer* CreateUnorderedAccessViewBuffer1D( ID3D11Device* device, Buffer* preallo
     desc.format = description.viewFormat;
 
     preallocatedBuffer->bufferTexture = renderDevice->createTexture1D( desc, initialData );
-    device->CreateShaderResourceView( preallocatedBuffer->bufferObject, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
-    device->CreateUnorderedAccessView( preallocatedBuffer->bufferObject, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
+    device->CreateShaderResourceView( preallocatedBuffer->bufferTexture->textureResource, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
+    device->CreateUnorderedAccessView( preallocatedBuffer->bufferTexture->textureResource, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
 
     return preallocatedBuffer;
 }
@@ -170,8 +170,8 @@ Buffer* CreateUnorderedAccessViewBuffer2D( ID3D11Device* device, Buffer* preallo
     desc.format = description.viewFormat;
 
     preallocatedBuffer->bufferTexture = renderDevice->createTexture2D( desc, initialData );
-    device->CreateShaderResourceView( preallocatedBuffer->bufferObject, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
-    device->CreateUnorderedAccessView( preallocatedBuffer->bufferObject, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
+    device->CreateShaderResourceView( preallocatedBuffer->bufferTexture->textureResource, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
+    device->CreateUnorderedAccessView( preallocatedBuffer->bufferTexture->textureResource, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
 
     return preallocatedBuffer;
 }
@@ -212,8 +212,8 @@ Buffer* CreateUnorderedAccessViewBuffer3D( ID3D11Device* device, Buffer* preallo
     desc.format = description.viewFormat;
 
     preallocatedBuffer->bufferTexture = renderDevice->createTexture3D( desc, initialData );
-    device->CreateShaderResourceView( preallocatedBuffer->bufferObject, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
-    device->CreateUnorderedAccessView( preallocatedBuffer->bufferObject, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
+    device->CreateShaderResourceView( preallocatedBuffer->bufferTexture->textureResource, &shaderResourceViewDesc, &preallocatedBuffer->bufferResourceView );
+    device->CreateUnorderedAccessView( preallocatedBuffer->bufferTexture->textureResource, &unorderedAccessViewDesc, &preallocatedBuffer->bufferUAVObject );
 
     return preallocatedBuffer;
 }
@@ -416,12 +416,15 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
 
 void RenderDevice::destroyBuffer( Buffer* buffer )
 {
-    buffer->bufferObject->Release();
-
 #define RELEASE_IF_ALLOCATED( obj ) if ( obj != nullptr ) { obj->Release(); }
 
+    RELEASE_IF_ALLOCATED( buffer->bufferObject );
     RELEASE_IF_ALLOCATED( buffer->bufferResourceView );
     RELEASE_IF_ALLOCATED( buffer->bufferUAVObject );
+
+    if ( buffer->bufferTexture != nullptr ) {
+        destroyTexture( buffer->bufferTexture );
+    }
 
     nya::core::free( memoryAllocator, buffer );
 }
