@@ -36,7 +36,8 @@ cbuffer RenderInfos : register( b1 )
 [numthreads( 16, 16, 1 )]
 void EntryPointCS( uint2 id : SV_DispatchThreadID )
 {
-	float4 finalColor = g_InputRenderTarget[id];
+	float4 finalColor = g_InputRenderTarget.Load( id ); 
+	
 	
 	// Apply Tonemapping
     static const float ExposureBias = 2.0f;
@@ -51,5 +52,5 @@ void EntryPointCS( uint2 id : SV_DispatchThreadID )
     float3 rnd = InterleavedGradientNoise( float2( id ) ) / 255.0f;
     color.rgb += rnd;
    
-	g_OutputRenderTarget[uint2( id.x, 719 - id.y )] = float4( color, 1.0f );
+	g_OutputRenderTarget[id] = float4( color, 1.0f );
 }
