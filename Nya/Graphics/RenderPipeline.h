@@ -28,6 +28,7 @@
 
 #include "WorldRenderer.h"
 
+class GraphicsProfiler;
 class RenderPipelineBuilder;
 class RenderPipelineResources;
 class RenderDevice;
@@ -270,4 +271,6 @@ private:
 
     RenderPipelineResources     renderPipelineResources;
     RenderPipelineBuilder       renderPipelineBuilder;
+
+    GraphicsProfiler*           graphicsProfiler;
 };

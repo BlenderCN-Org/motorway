@@ -154,6 +154,12 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
 
     LoadCachedResourcesFP( renderDevice, shaderCache );
     LoadCachedResourcesPP( renderDevice, shaderCache );
+
+#if NYA_DEVBUILD
+    // for ( int i = 0; i < 8; i++ ) {
+    //    renderPipelines[i].enableProfiling( renderDevice );
+    // }
+#endif
 }
 
 RenderPipeline& WorldRenderer::allocateRenderPipeline( const Viewport& viewport, const CameraData* camera )

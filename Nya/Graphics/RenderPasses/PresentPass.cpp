@@ -26,7 +26,7 @@ void FreeCachedResourcesPP( RenderDevice* renderDevice )
     renderDevice->destroyPipelineState( g_PipelineStateObject );
 }
 
-ResHandle_t AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
+void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
 {
     struct PassData
     {

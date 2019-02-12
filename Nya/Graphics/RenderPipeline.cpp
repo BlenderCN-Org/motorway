@@ -20,6 +20,8 @@
 #include <Shared.h>
 #include "RenderPipeline.h"
 
+#include "GraphicsProfiler.h"
+
 RenderPipelineBuilder::RenderPipelineBuilder()
     : passRenderTargetRefs{ {0} }
     , renderPassCount( -1 )
@@ -467,6 +469,7 @@ RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     , renderPassCount( 0 )
     , passGroupStartIndexes{ 0u }
     , passGroupCount( 0 )
+    , graphicsProfiler( nullptr )
 {
     renderPipelineResources.create( allocator );
 }
@@ -484,7 +487,8 @@ void RenderPipeline::destroy( RenderDevice* renderDevice )
 
 void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
 {
-
+    graphicsProfiler = new GraphicsProfiler();
+    graphicsProfiler->create( renderDevice );
 }
 
 void RenderPipeline::beginPassGroup()
@@ -504,9 +508,25 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
     cmdList.begin();
     cmdList.setViewport( activeViewport );
 
+#if NYA_DEVBUILD
+    if ( graphicsProfiler != nullptr ) {
+        for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
+            graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
+                renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+            graphicsProfiler->endSection( &cmdList );
+        }
+
+        graphicsProfiler->onFrame( renderDevice, nullptr );
+    } else {
+        for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
+            renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+        }
+    }
+#else
     for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
         renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
     }
+#endif
 
     cmdList.end();
 
