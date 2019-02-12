@@ -88,7 +88,7 @@ def need_to_recompile( filename_input, filename_output, ext ):
     if forceRecompile:
         return True
     
-    file_timestamp = str( os.path.getmtime( shader_folder + filename_input ) )
+    file_timestamp = str( os.path.getmtime( shader_folder + filename_input + ".hlsl" ) )
     
     cache_file = "./cache/" + filename_output + ext + ".stamp"
     if os.path.isfile( cache_file ):
