@@ -20,7 +20,7 @@
 #include <Shared.h>
 #include "Frustum.h"
 
-#include "Helpers.h"
+#include "Trigonometry.h"
 
 void nya::maths::UpdateFrustumPlanes( const nyaMat4x4f& viewProjectionMatrix, Frustum& frustum )
 {

@@ -21,6 +21,7 @@
 #include "AABB.h"
 
 #include "Helpers.h"
+#include "Trigonometry.h"
 
 using namespace nya::maths;
 

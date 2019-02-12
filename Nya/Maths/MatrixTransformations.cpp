@@ -21,6 +21,7 @@
 #include "MatrixTransformations.h"
 
 #include "Helpers.h"
+#include "Trigonometry.h"
 
 namespace nya
 {

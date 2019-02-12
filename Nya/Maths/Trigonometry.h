@@ -19,6 +19,8 @@
 */
 #pragma once
 
+#include "Helpers.h"
+
 namespace
 {
     static constexpr int SQRT_ITERATION_COUNT = 128;
