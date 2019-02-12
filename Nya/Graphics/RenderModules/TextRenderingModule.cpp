@@ -107,10 +107,12 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
 
             RenderPassDesc passDesc = {};
             passDesc.attachements[0].renderTarget = outputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
             passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
 
             passDesc.attachements[1].texture = fontAtlas;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[1].bindMode = RenderPassDesc::READ;
             passDesc.attachements[1].targetState = RenderPassDesc::IS_TEXTURE;
 

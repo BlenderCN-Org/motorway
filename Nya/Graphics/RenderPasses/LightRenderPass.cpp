@@ -12,8 +12,7 @@
 
 ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsClusters, Buffer* lightsBuffer, const LightGrid::ClustersInfos& clustersInfos, ResHandle_t output )
 {
-    struct PassData
-    {
+    struct PassData  {
         ResHandle_t input;
         ResHandle_t zBuffer;
         ResHandle_t velocityRenderTarget;
@@ -33,15 +32,13 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
 #endif
     };
 
-    struct InstanceBuffer
-    {
+    struct InstanceBuffer {
         float StartVector;
         float VectorPerInstance;
         uint32_t __PADDING__[2];
     };
 
-    struct ClustersBuffer
-    {
+    struct ClustersBuffer {
         nyaVec3f ClustersScale;
         float    ViewportWidth;
         nyaVec3f ClustersBias;
@@ -189,12 +186,13 @@ ResHandle_t AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsC
         cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
         RenderPassDesc passDesc = {};
-        passDesc.attachements[0] = { outputTarget, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-        passDesc.attachements[1] = { velocityTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
-        passDesc.attachements[2] = { thinGBufferTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
-        passDesc.attachements[3] = { zBufferTarget, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH,{ 0, 0, 0, 0 } };
+        passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+        passDesc.attachements[1] = { velocityTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
+        passDesc.attachements[2] = { thinGBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
+        passDesc.attachements[3] = { zBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH,{ 0, 0, 0, 0 } };
 
         passDesc.attachements[4].texture = lightsClusters;
+        passDesc.attachements[4].stageBind = SHADER_STAGE_PIXEL;
         passDesc.attachements[4].bindMode = RenderPassDesc::READ;
         passDesc.attachements[4].targetState = RenderPassDesc::IS_TEXTURE;
 

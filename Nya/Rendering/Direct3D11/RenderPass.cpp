@@ -28,6 +28,7 @@
 
 #include "RenderTarget.h"
 #include "Texture.h"
+#include "Buffer.h"
 
 #include <Core/Allocators/PoolAllocator.h>
 
@@ -42,25 +43,41 @@ struct RenderPass
     bool clearTarget[8+1];
     UINT rtvCount;
 
-    ID3D11ShaderResourceView* shaderResourceView[16];
-    UINT srvCount;
+    struct SRVStageBind
+    {
+        ID3D11ShaderResourceView* shaderResourceView[16];
+        UINT srvCount;
+    };
+
+    SRVStageBind    pixelStage;
+    SRVStageBind    computeStage;
 };
 
 RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
 {
     RenderPass* renderPass = nya::core::allocate<RenderPass>( renderContext->renderPassAllocator );
     renderPass->rtvCount = 0u;
-    renderPass->srvCount = 0u;
+
+    renderPass->pixelStage.srvCount = 0u;
+    renderPass->computeStage.srvCount = 0u;
 
     for ( int i = 0; i < 16; i++ ) {
         switch ( description.attachements[i].bindMode ) {
         case RenderPassDesc::READ:
         {
-            Texture* texture = ( description.attachements[i].targetState != RenderPassDesc::IS_TEXTURE ) 
-                                ? description.attachements[i].renderTarget->texture 
-                                : description.attachements[i].texture;
+            Texture* texture = nullptr;
+            
+            if ( description.attachements[i].targetState == RenderPassDesc::IS_TEXTURE )
+                texture = description.attachements[i].texture;
+            else if ( description.attachements[i].targetState == RenderPassDesc::IS_UAV_TEXTURE )
+                texture = description.attachements[i].buffer->bufferTexture;
+            else
+                texture = description.attachements[i].renderTarget->texture;
 
-            renderPass->shaderResourceView[renderPass->srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
+            if ( description.attachements[i].stageBind & eShaderStage::SHADER_STAGE_PIXEL )
+                renderPass->pixelStage.shaderResourceView[renderPass->pixelStage.srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
+            if ( description.attachements[i].stageBind & eShaderStage::SHADER_STAGE_COMPUTE )
+                renderPass->computeStage.shaderResourceView[renderPass->computeStage.srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
         } break;
 
         case RenderPassDesc::WRITE:
@@ -103,6 +120,8 @@ void CommandList::useRenderPass( RenderPass* renderPass )
     }
 
     NativeCommandList->deferredContext->OMSetRenderTargets( renderPass->rtvCount, renderPass->renderTargetViews, renderPass->depthStencilView );
-    NativeCommandList->deferredContext->PSSetShaderResources( 0, renderPass->srvCount, renderPass->shaderResourceView );
+
+    NativeCommandList->deferredContext->PSSetShaderResources( 0, renderPass->pixelStage.srvCount, renderPass->pixelStage.shaderResourceView );
+    NativeCommandList->deferredContext->CSSetShaderResources( 0, renderPass->computeStage.srvCount, renderPass->computeStage.shaderResourceView );
 }
 #endif

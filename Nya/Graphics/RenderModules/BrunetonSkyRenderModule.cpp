@@ -131,17 +131,20 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0 } };
+            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0 } };
 
             passDesc.attachements[1].texture = scatteringTexture;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[1].bindMode = RenderPassDesc::READ;
             passDesc.attachements[1].targetState = RenderPassDesc::IS_TEXTURE;
 
             passDesc.attachements[2].texture = irradianceTexture;
+            passDesc.attachements[2].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[2].bindMode = RenderPassDesc::READ;
             passDesc.attachements[2].targetState = RenderPassDesc::IS_TEXTURE;
 
             passDesc.attachements[3].texture = transmittanceTexture;
+            passDesc.attachements[3].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[3].bindMode = RenderPassDesc::READ;
             passDesc.attachements[3].targetState = RenderPassDesc::IS_TEXTURE;
 

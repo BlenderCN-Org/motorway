@@ -363,6 +363,7 @@ void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) cons
 
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
         renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
+        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
         renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
         renderPassDesc.attachements[textureBindIndex].texture = defaultTextureSet[textureIdx];
 

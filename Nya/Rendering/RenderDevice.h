@@ -359,7 +359,8 @@ struct RenderPassDesc
         DONT_CARE = 0,
         CLEAR_COLOR,
         CLEAR_DEPTH,
-        IS_TEXTURE
+        IS_TEXTURE,
+        IS_UAV_TEXTURE
     };
 
     struct
@@ -368,8 +369,10 @@ struct RenderPassDesc
         {
             RenderTarget*   renderTarget;
             Texture*        texture;
+            Buffer*         buffer;
         };
 
+        uint32_t        stageBind;
         BindMode        bindMode;
         State           targetState;
         float           clearValue[4];
