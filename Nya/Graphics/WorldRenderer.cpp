@@ -26,6 +26,7 @@
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderModules/TextRenderingModule.h"
 #include "RenderPasses/PresentRenderPass.h"
+#include "RenderPasses/FinalPostFxRenderPass.h"
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
@@ -54,6 +55,7 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
     textRenderModule->destroy( renderDevice );
     skyRenderModule->destroy( renderDevice );
 
+    FreeCachedResourcesFP( renderDevice );
     FreeCachedResourcesPP( renderDevice );
 }
 
@@ -150,6 +152,7 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
     skyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     textRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
 
+    LoadCachedResourcesFP( renderDevice, shaderCache );
     LoadCachedResourcesPP( renderDevice, shaderCache );
 }
 

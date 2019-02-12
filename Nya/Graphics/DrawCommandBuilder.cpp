@@ -34,6 +34,7 @@
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/LightRenderPass.h"
+#include "RenderPasses/FinalPostFxRenderPass.h"
 
 #include <Maths/Helpers.h>
 #include <Maths/Matrix.h>
@@ -114,8 +115,12 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
         {
             auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
             auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightGrid->getLightsClusters(), lightGrid->getLightsBuffer(), lightGrid->getClustersInfos(), skyRenderTarget );
+
+            // NOTE UI Rendering should be done in linear space! (once async compute is implemented, UI rendering will be parallelized with PostFx)
             auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, lightRenderTarget );
-            AddPresentRenderPass( &renderPipeline, hudRenderTarget );
+
+            auto postFxRenderTarget = AddFinalPostFxRenderPass( &renderPipeline, hudRenderTarget );
+            AddPresentRenderPass( &renderPipeline, postFxRenderTarget );
         }
 
         // Cull static mesh instances

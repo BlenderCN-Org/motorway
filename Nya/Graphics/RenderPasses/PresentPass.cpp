@@ -7,7 +7,7 @@
 #include <Rendering/ImageFormat.h>
 #include <Rendering/CommandList.h>
 
-static PipelineState*  g_PipelineStateObject = nullptr;
+PipelineState*  g_PipelineStateObject = nullptr;
 
 void LoadCachedResourcesPP( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
@@ -26,9 +26,10 @@ void FreeCachedResourcesPP( RenderDevice* renderDevice )
     renderDevice->destroyPipelineState( g_PipelineStateObject );
 }
 
-void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVBuffer )
+ResHandle_t AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t output )
 {
-    struct PassData {
+    struct PassData
+    {
         ResHandle_t input;
         ResHandle_t bilinearSampler;
     };
@@ -38,7 +39,7 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
             renderPipelineBuilder.setUncullablePass();
 
-            passData.input = renderPipelineBuilder.readBuffer( inputUAVBuffer );
+            passData.input = renderPipelineBuilder.readRenderTarget( output );
 
             SamplerDesc bilinearSamplerDesc = {};
             bilinearSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
@@ -59,15 +60,11 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
 
             // RenderPass
             RenderTarget* outputTarget = renderDevice->getSwapchainBuffer();
-            Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPassDesc passDesc = {};
             passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-
-            passDesc.attachements[1].buffer = inputBuffer;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[1].targetState = RenderPassDesc::IS_UAV_TEXTURE;
+            passDesc.attachements[1] = { inputTarget,  SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
