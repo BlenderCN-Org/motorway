@@ -36,7 +36,7 @@ cbuffer RenderInfos : register( b1 )
 [numthreads( 16, 16, 1 )]
 void EntryPointCS( uint2 id : SV_DispatchThreadID )
 {
-	float4 finalColor = g_InputRenderTarget.Load( id ); 
+	float4 finalColor = g_InputRenderTarget.Load( int3( id, 0 ) ); 
 	
 	
 	// Apply Tonemapping
