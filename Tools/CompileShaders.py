@@ -267,7 +267,7 @@ compile_shader_VS( "Atmosphere/BrunetonSky" )
 compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC" ] )
 
 # PostFX
-compile_shader_PS( "PostFX/FinalPost" )
+compile_shader_CS( "PostFX/FinalPost" )
 
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
