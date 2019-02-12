@@ -45,6 +45,8 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
     }
 
     ResourceList& resList = renderContext->resListPool[resListIdx];
+    resList = { 0 };
+
     for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
         const auto& sampler = description.samplers[i];
 
@@ -130,6 +132,8 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
 void CommandList::bindResourceList( ResourceList* resourceList )
 {
+    NativeCommandList->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
+
     NativeCommandList->deferredContext->VSSetSamplers( 0, 16, resourceList->samplers.vertexStage );
     NativeCommandList->deferredContext->HSSetSamplers( 0, 16, resourceList->samplers.hullStage );
     NativeCommandList->deferredContext->DSSetSamplers( 0, 16, resourceList->samplers.domainStage );
@@ -147,7 +151,5 @@ void CommandList::bindResourceList( ResourceList* resourceList )
     NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
     NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
     NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
-
-    NativeCommandList->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
 }
 #endif
