@@ -86,6 +86,7 @@ public:
     ResHandle_t allocateSampler( const SamplerDesc& description );
 
     ResHandle_t readRenderTarget( const ResHandle_t resourceHandle );
+    ResHandle_t readBuffer( const ResHandle_t resourceHandle );
 
 private:
     Viewport    pipelineViewport;
@@ -106,6 +107,7 @@ private:
     struct {
         BufferDesc  description;
         uint32_t    shaderStageBinding;
+        uint32_t    referenceCount;
     } buffers[48]; 
     uint32_t bufferCount;
 

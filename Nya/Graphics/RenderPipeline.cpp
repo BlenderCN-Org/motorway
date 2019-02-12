@@ -161,6 +161,14 @@ ResHandle_t RenderPipelineBuilder::readRenderTarget( const ResHandle_t resourceH
     return resourceHandle;
 }
 
+ResHandle_t RenderPipelineBuilder::readBuffer( const ResHandle_t resourceHandle )
+{
+    // TODO Implement pass cullling with buffer reference counting
+    buffers[resourceHandle].referenceCount++;
+
+    return resourceHandle;
+}
+
 RenderPipelineResources::RenderPipelineResources()
     : cbuffers{ 0 }
     , isCBufferFree{ false }
@@ -168,6 +176,9 @@ RenderPipelineResources::RenderPipelineResources()
     , genBuffer{ 0 }
     , isGenBufferFree{ false }
     , genAllocatedCount( 0 )
+    , uavTex2dBuffer{ 0 }
+    , isUavTex2dBufferFree{ false }
+    , uavTex2dAllocatedCount( 0 )
     , renderTargets{ nullptr }
     , renderTargetsDesc{}
     , isRenderTargetAvailable{ false }
@@ -206,6 +217,10 @@ void RenderPipelineResources::releaseResources( RenderDevice* renderDevice )
         renderDevice->destroyBuffer( genBuffer[genIdx] );
     }
 
+    for ( int uav2dIdx = 0; uav2dIdx < uavTex2dAllocatedCount; uav2dIdx++ ) {
+        renderDevice->destroyBuffer( uavTex2dBuffer[uav2dIdx] );
+    }
+
     for ( int rtIdx = 0; rtIdx < rtAllocatedCount; rtIdx++ ) {
         renderDevice->destroyRenderTarget( renderTargets[rtIdx] );
     }
@@ -219,6 +234,7 @@ void RenderPipelineResources::unacquireResources()
 {
     memset( isCBufferFree, 1, sizeof( bool ) * cbufferAllocatedCount );
     memset( isGenBufferFree, 1, sizeof( bool ) * genAllocatedCount );
+    memset( isUavTex2dBufferFree, 1, sizeof( bool ) * uavTex2dAllocatedCount );
     memset( isRenderTargetAvailable, 1, sizeof( bool ) * rtAllocatedCount );
     memset( isSamplerAvailable, 1, sizeof( bool ) * samplerAllocatedCount );
 }
