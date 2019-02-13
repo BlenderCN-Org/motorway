@@ -27,6 +27,7 @@
 #include "RenderModules/TextRenderingModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
+#include "RenderPasses/BlurPyramidRenderPass.h"
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
@@ -55,6 +56,7 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
     textRenderModule->destroy( renderDevice );
     skyRenderModule->destroy( renderDevice );
 
+    FreeCachedResourcesBP( renderDevice );
     FreeCachedResourcesFP( renderDevice );
     FreeCachedResourcesPP( renderDevice );
 }
@@ -154,6 +156,7 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
 
     LoadCachedResourcesFP( renderDevice, shaderCache );
     LoadCachedResourcesPP( renderDevice, shaderCache );
+    LoadCachedResourcesBP( renderDevice, shaderCache );
 
 #if NYA_DEVBUILD
     // for ( int i = 0; i < 8; i++ ) {

@@ -35,6 +35,7 @@
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/LightRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
+#include "RenderPasses/BlurPyramidRenderPass.h"
 
 #include <Maths/Helpers.h>
 #include <Maths/Matrix.h>
@@ -115,6 +116,8 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
         {
             auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
             auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightGrid->getLightsClusters(), lightGrid->getLightsBuffer(), lightGrid->getClustersInfos(), skyRenderTarget );
+
+            auto blurPyramid = AddBlurPyramidRenderPass( &renderPipeline, lightRenderTarget, 1280u, 720u );
 
             // NOTE UI Rendering should be done in linear space! (once async compute is implemented, UI rendering will be parallelized with PostFx)
             auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, lightRenderTarget );

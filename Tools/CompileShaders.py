@@ -268,6 +268,7 @@ compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC" ] )
 
 # PostFX
 compile_shader_CS( "PostFX/FinalPost" )
+compile_shader_CS( "PostFX/DownsampleWeighted", [ "NYA_USE_KARIS_AVERAGE" ] )
 
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
