@@ -33,10 +33,11 @@ inline float rgbToLuminance( float3 colour )
     return dot( float3( 0.2126f, 0.7152f, 0.0722f ), colour );
 }
 
-groupshared float4 g_Samples;
+groupshared float4 g_BlockWeighted[5*16*16];
+groupshared float4 g_TexelsValues[16*16];
 
 [numthreads( 16, 16, 1 )]
-void EntryPointCS( uint2 id : SV_DispatchThreadID )
+void EntryPointCS( uint2 id : SV_DispatchThreadID, uint ThreadIndex : SV_GroupIndex )
 {
     float textureWidth, textureHeight;
     g_InputRenderTarget.GetDimensions( textureWidth, textureHeight );
@@ -61,6 +62,8 @@ void EntryPointCS( uint2 id : SV_DispatchThreadID )
     float4 Fetch12 = g_InputRenderTarget.SampleLevel( g_BilinearSampler, UV, 0, int2( +0, +2 ) );
     float4 Fetch13 = g_InputRenderTarget.SampleLevel( g_BilinearSampler, UV, 0, int2( -2, +2 ) );
 
+	uint ThreadStorageId = ThreadIndex * 5u;
+	
 #if NYA_USE_KARIS_AVERAGE
     // Partial Karis Average (apply the Karis average in blocks of 4 samples)
     float4 BlockFetch01 = ( Fetch01 + Fetch02 + Fetch03 + Fetch04 );
@@ -83,18 +86,18 @@ void EntryPointCS( uint2 id : SV_DispatchThreadID )
     float InvWeightSum = 1 / WeightSum;
 
     // Weighting fetches
-    float4 Weighted1 = BlockFetch01 * Weight01;
-    float4 Weighted2 = BlockFetch02 * Weight02;
-    float4 Weighted3 = BlockFetch03 * Weight03;
-    float4 Weighted4 = BlockFetch04 * Weight04;
-    float4 Weighted5 = BlockFetch05 * Weight05;
+    g_BlockWeighted[ThreadStorageId + 0] = BlockFetch01 * Weight01;
+    g_BlockWeighted[ThreadStorageId + 1] = BlockFetch02 * Weight02;
+    g_BlockWeighted[ThreadStorageId + 2] = BlockFetch03 * Weight03;
+    g_BlockWeighted[ThreadStorageId + 3] = BlockFetch04 * Weight04;
+    g_BlockWeighted[ThreadStorageId + 4] = BlockFetch05 * Weight05;
 #else
     // Weighting fetches
-    float4 Weighted1 = ( Fetch01 + Fetch02 + Fetch03 + Fetch04 ) * 0.500f;
-    float4 Weighted2 = ( Fetch05 + Fetch06 + Fetch07 + Fetch08 ) * 0.125f;
-    float4 Weighted3 = ( Fetch06 + Fetch09 + Fetch10 + Fetch07 ) * 0.125f;
-    float4 Weighted4 = ( Fetch07 + Fetch10 + Fetch11 + Fetch12 ) * 0.125f;
-    float4 Weighted5 = ( Fetch08 + Fetch07 + Fetch12 + Fetch13 ) * 0.125f;
+    g_BlockWeighted[ThreadStorageId + 0] = ( Fetch01 + Fetch02 + Fetch03 + Fetch04 ) * 0.500f;
+    g_BlockWeighted[ThreadStorageId + 1] = ( Fetch05 + Fetch06 + Fetch07 + Fetch08 ) * 0.125f;
+    g_BlockWeighted[ThreadStorageId + 2] = ( Fetch06 + Fetch09 + Fetch10 + Fetch07 ) * 0.125f;
+    g_BlockWeighted[ThreadStorageId + 3] = ( Fetch07 + Fetch10 + Fetch11 + Fetch12 ) * 0.125f;
+    g_BlockWeighted[ThreadStorageId + 4] = ( Fetch08 + Fetch07 + Fetch12 + Fetch13 ) * 0.125f;
 
 	static const float InvWeightSum = 1.0f;
 #endif
@@ -102,12 +105,16 @@ void EntryPointCS( uint2 id : SV_DispatchThreadID )
 	GroupMemoryBarrierWithGroupSync();
 
     // Sum them' up	
-    float4 TexelValue = ( Weighted1 + Weighted2 + Weighted3 + Weighted4 + Weighted5 ) * InvWeightSum;
+    g_TexelsValues[ThreadStorageId + 0] = ( g_BlockWeighted[ThreadStorageId + 0] 
+											+ g_BlockWeighted[ThreadStorageId + 1] 
+											+ g_BlockWeighted[ThreadStorageId + 2] 
+											+ g_BlockWeighted[ThreadStorageId + 3] 
+											+ g_BlockWeighted[ThreadStorageId + 4] ) * InvWeightSum;
 
-    g_DownsampledRenderTarget.GetDimensions( textureWidth, textureHeight );
+	GroupMemoryBarrierWithGroupSync();
 	
-	float2 downsampledTextureDimensions = ceil( textureDimensions * 0.5f );
+    g_DownsampledRenderTarget.GetDimensions( textureWidth, textureHeight );
 	int2 texelCoordinates = UV * float2( textureWidth, textureHeight );
 	
-	g_DownsampledRenderTarget[texelCoordinates] = TexelValue;
+	g_DownsampledRenderTarget[texelCoordinates] = g_TexelsValues[ThreadStorageId];
 }
