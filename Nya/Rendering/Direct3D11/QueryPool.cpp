@@ -128,7 +128,7 @@ void RenderDevice::destroyQueryPool( QueryPool* queryPool )
 
 unsigned int CommandList::allocateQuery( QueryPool* queryPool )
 {
-    queryPool->currentAllocableIndex = ( queryPool->currentAllocableIndex++ % queryPool->capacity );
+    queryPool->currentAllocableIndex = ( ++queryPool->currentAllocableIndex % queryPool->capacity );
 
     return queryPool->currentAllocableIndex;
 }
