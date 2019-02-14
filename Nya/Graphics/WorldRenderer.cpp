@@ -136,6 +136,14 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
     for ( uint32_t pipelineIdx = 0; pipelineIdx < renderPipelineCount; pipelineIdx++ ) {
         renderPipelines[pipelineIdx].submitAndDispatchDrawCmds( drawCmds, drawCmdCount );
         renderPipelines[pipelineIdx].execute( renderDevice );
+
+#if NYA_DEVBUILD
+        const char* profilingString = renderPipelines[pipelineIdx].getProfilingSummary();
+
+        if ( profilingString != nullptr ) {
+            textRenderModule->addOutlinedText( profilingString, 0.35f, 10.0f + 200.0f * pipelineIdx, 96.0f );
+        }
+#endif
     }
 
     // Reset DrawCmd Pool
@@ -159,9 +167,9 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
     LoadCachedResourcesBP( renderDevice, shaderCache );
 
 #if NYA_DEVBUILD
-    // for ( int i = 0; i < 8; i++ ) {
-    //    renderPipelines[i].enableProfiling( renderDevice );
-    // }
+    for ( int i = 0; i < 8; i++ ) {
+        renderPipelines[i].enableProfiling( renderDevice );
+    }
 #endif
 }
 

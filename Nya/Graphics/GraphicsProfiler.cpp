@@ -36,9 +36,6 @@ GraphicsProfiler::GraphicsProfiler()
     , sectionCount( 0 )
     , sectionReadIndex( 0 )
     , sectionWriteIndex( 0 )
-    , enableDrawOnScreen( false )
-    , screenPosX( 0.0f )
-    , screenPosY( 0.0f )
 {
 
 }
@@ -62,7 +59,7 @@ void GraphicsProfiler::destroy( RenderDevice* renderDevice )
     renderDevice->destroyQueryPool( timestampQueryPool );
 }
 
-void GraphicsProfiler::onFrame( RenderDevice* renderDevice, WorldRenderer* worldRenderer )
+void GraphicsProfiler::onFrame( RenderDevice* renderDevice )
 {
     frameIndex++;
 
@@ -70,7 +67,7 @@ void GraphicsProfiler::onFrame( RenderDevice* renderDevice, WorldRenderer* world
         auto retrievedQueryCount = getSectionsResult( renderDevice );
 
         // Move on the next frame if at least one result is available
-        if ( retrievedQueryCount > 0 && enableDrawOnScreen ) {
+        if ( retrievedQueryCount > 0 ) {
             // Build profiler summary string
             sectionSummaryString.clear();
 
@@ -81,23 +78,11 @@ void GraphicsProfiler::onFrame( RenderDevice* renderDevice, WorldRenderer* world
             }
         }
 
-        sectionReadIndex += MAX_PROFILE_SECTION_COUNT;
-        if ( sectionReadIndex == TOTAL_QUERY_COUNT ) {
-            sectionReadIndex = 0;
-        }
+        sectionReadIndex = ( sectionReadIndex + MAX_PROFILE_SECTION_COUNT ) % TOTAL_QUERY_COUNT;
     }
 
-    sectionWriteIndex += MAX_PROFILE_SECTION_COUNT;
-    if ( sectionWriteIndex == TOTAL_QUERY_COUNT ) {
-        sectionWriteIndex = 0;
-    }
-
+    sectionWriteIndex = ( sectionWriteIndex + MAX_PROFILE_SECTION_COUNT ) % TOTAL_QUERY_COUNT;
     sectionCount = 0;
-
-    // Submit profiler text to the renderer
-    //if ( enableDrawOnScreen ) {
-    //    worldRenderer->drawDebugText( sectionSummaryString, 0.3f, screenPosX, screenPosY, 0.0f, nyaVec4f( 1, 1, 1, 1 ) );
-    //}
 }
 
 void GraphicsProfiler::beginSection( CommandList* cmdList, const std::string& sectionName )
@@ -131,7 +116,7 @@ void GraphicsProfiler::endSection( CommandList* cmdList )
 std::size_t GraphicsProfiler::getSectionsResult( RenderDevice* renderDevice )
 {
     for ( std::size_t sectionIdx = 0; sectionIdx < sectionCount; sectionIdx++ ) {
-        const auto sectionArrayIdx = ( sectionReadIndex + sectionIdx );
+        const std::size_t sectionArrayIdx = ( sectionReadIndex + sectionIdx );
 
         uint64_t beginQueryResult = 0, endQueryResult = 0;
 
@@ -157,15 +142,13 @@ std::size_t GraphicsProfiler::getSectionsResult( RenderDevice* renderDevice )
     return sectionCount;
 }
 
-void GraphicsProfiler::drawOnScreen( const bool enabled, const float positionX, const float positionY )
-{
-    enableDrawOnScreen = enabled;
-    screenPosX = positionX;
-    screenPosY = positionY;
-}
-
 const double* GraphicsProfiler::getSectionResultArray() const
 {
     return sectionsResult;
+}
+
+const std::string& GraphicsProfiler::getProfilingSummaryString() const
+{
+    return sectionSummaryString;
 }
 #endif

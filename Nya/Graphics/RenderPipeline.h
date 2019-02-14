@@ -236,7 +236,7 @@ public:
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
 
     template<typename T>
-    T&      addRenderPass( const std::string& name, nyaPassSetup_t<T> setup, nyaPassCallback_t<T> execute ) {
+    T& addRenderPass( const std::string& name, nyaPassSetup_t<T> setup, nyaPassCallback_t<T> execute ) {
         static_assert( sizeof( T ) <= sizeof( ResHandle_t ) * 128, "Pass data 128 resource limit hit!" );
         static_assert( sizeof( execute ) <= 1024 * 1024, "Execute lambda should be < 1ko!" );
 
@@ -257,6 +257,10 @@ public:
 
         return passData;
     }
+
+#if NYA_DEVBUILD
+    const char* getProfilingSummary() const;
+#endif
 
 private:
     BaseAllocator*              memoryAllocator;

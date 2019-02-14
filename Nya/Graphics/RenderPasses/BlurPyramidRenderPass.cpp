@@ -48,8 +48,8 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             BufferDesc bufferDesc = {};
             bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
             bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
-            bufferDesc.width = inputWidth * downsample;
-            bufferDesc.height = inputHeight * downsample;
+            bufferDesc.width = static_cast<uint32_t>( inputWidth * downsample );
+            bufferDesc.height = static_cast<uint32_t>( inputHeight * downsample );
             bufferDesc.depth = 1;
             bufferDesc.mipCount = 1;
 

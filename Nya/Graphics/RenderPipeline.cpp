@@ -516,7 +516,7 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
             graphicsProfiler->endSection( &cmdList );
         }
 
-        graphicsProfiler->onFrame( renderDevice, nullptr );
+        graphicsProfiler->onFrame( renderDevice );
     } else {
         for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
             renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
@@ -551,3 +551,11 @@ void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* ca
         renderPipelineResources.setPipelineViewport( viewport, camera );
     }
 }
+
+#if NYA_DEVBUILD
+const char* RenderPipeline::getProfilingSummary() const
+{
+    const std::string& proflingString = graphicsProfiler->getProfilingSummaryString();
+    return ( !proflingString.empty() ) ? proflingString.c_str() : nullptr;
+}
+#endif

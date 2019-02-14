@@ -21,8 +21,8 @@
 
 #if NYA_DEVBUILD
 struct QueryPool;
+
 class RenderDevice;
-class WorldRenderer;
 class CommandList;
 
 #include <queue>
@@ -30,50 +30,44 @@ class CommandList;
 class GraphicsProfiler
 {
 public:
-    static constexpr unsigned int RESULT_RETRIVAL_FRAME_LAG = 5;
-    static constexpr int MAX_PROFILE_SECTION_COUNT = 128;
+                                    GraphicsProfiler();
+                                    GraphicsProfiler( GraphicsProfiler& ) = delete;
+                                    GraphicsProfiler& operator = ( GraphicsProfiler& ) = delete;
+                                    ~GraphicsProfiler();
 
-    static constexpr int TOTAL_QUERY_COUNT = MAX_PROFILE_SECTION_COUNT * RESULT_RETRIVAL_FRAME_LAG;
+    void                            create( RenderDevice* renderDevice );
+    void                            destroy( RenderDevice* renderDevice );
+    void                            onFrame( RenderDevice* renderDevice );
 
-public:
-            GraphicsProfiler();
-            GraphicsProfiler( GraphicsProfiler& ) = delete;
-            GraphicsProfiler& operator = ( GraphicsProfiler& ) = delete;
-            ~GraphicsProfiler();
+    void                            beginSection( CommandList* cmdList, const std::string& sectionName );
+    void                            endSection( CommandList* cmdList );
 
-    void    destroy( RenderDevice* renderDevice );
-    void    create( RenderDevice* renderDevice );
-    void    onFrame( RenderDevice* renderDevice, WorldRenderer* worldRenderer );
-
-    void    beginSection( CommandList* cmdList, const std::string& sectionName );
-    void    endSection( CommandList* cmdList );
-
-    void    drawOnScreen( const bool enabled, const float positionX, const float positionY );
-
-    const double* getSectionResultArray() const;
+    const double*                   getSectionResultArray() const;
+    const std::string&              getProfilingSummaryString() const;
 
 private:
-    uint64_t                    frameIndex;
-
-    QueryPool*                  timestampQueryPool;
-    std::queue<uint32_t>        recordedSectionIndexes;
-
-    std::string                 sectionSummaryString;
-
-    double                      sectionsResult[TOTAL_QUERY_COUNT];
-    uint32_t                    sectionsBeginQueryHandle[TOTAL_QUERY_COUNT];
-    uint32_t                    sectionsEndQueryHandle[TOTAL_QUERY_COUNT];
-    std::string                 sectionsName[TOTAL_QUERY_COUNT];
-
-    unsigned int                sectionCount;
-    unsigned int                sectionReadIndex;
-    unsigned int                sectionWriteIndex;
-
-    bool                        enableDrawOnScreen;
-    float                       screenPosX;
-    float                       screenPosY;
+    static constexpr unsigned int   RESULT_RETRIVAL_FRAME_LAG = 5;
+    static constexpr int            MAX_PROFILE_SECTION_COUNT = 128;
+    static constexpr int            TOTAL_QUERY_COUNT = MAX_PROFILE_SECTION_COUNT * RESULT_RETRIVAL_FRAME_LAG;
 
 private:
-    std::size_t                 getSectionsResult( RenderDevice* renderDevice );
+    uint64_t                        frameIndex;
+
+    QueryPool*                      timestampQueryPool;
+    std::queue<uint32_t>            recordedSectionIndexes;
+
+    std::string                     sectionSummaryString;
+
+    double                          sectionsResult[TOTAL_QUERY_COUNT];
+    uint32_t                        sectionsBeginQueryHandle[TOTAL_QUERY_COUNT];
+    uint32_t                        sectionsEndQueryHandle[TOTAL_QUERY_COUNT];
+    std::string                     sectionsName[TOTAL_QUERY_COUNT];
+
+    unsigned int                    sectionCount;
+    unsigned int                    sectionReadIndex;
+    unsigned int                    sectionWriteIndex;
+
+private:
+    std::size_t                     getSectionsResult( RenderDevice* renderDevice );
 };
 #endif
