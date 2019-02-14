@@ -65,6 +65,7 @@ void LightGrid::create( RenderDevice* renderDevice )
     clustersDesc.flags.allowCPUWrite = 1;
 
     clustersTexture = renderDevice->createTexture3D( clustersDesc );
+    renderDevice->setDebugMarker( clustersTexture, "Light Clusters" );
 
     BufferDesc lightBufferDesc = {};
     lightBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
