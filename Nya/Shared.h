@@ -34,6 +34,8 @@
 #include "Core/Allocators/AllocationHelpers.h"
 #include "Core/Allocators/BaseAllocator.h"
 
+#include "Core/Profiler.h"
+
 // Macro redefinition annoyance (NYA_FILENAME is defined per file so it shouldn't matter anyway)
 #pragma warning( push )
 #pragma warning( disable : 4651 )

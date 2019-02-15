@@ -38,7 +38,7 @@ ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_
             
             BufferDesc bufferDesc = {};
             bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D;
-            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
             bufferDesc.width = 1280;
             bufferDesc.height = 720;
             bufferDesc.depth = 1;
