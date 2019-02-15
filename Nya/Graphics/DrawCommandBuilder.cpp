@@ -105,6 +105,8 @@ void DrawCommandBuilder::addCamera( const CameraData* cameraData )
 
 void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     for ( uint32_t cameraIdx = 0; cameraIdx < cameraCount; cameraIdx++ ) {
         const CameraData* camera = cameras[cameraIdx];
 

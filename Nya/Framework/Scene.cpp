@@ -63,6 +63,8 @@ const std::string& Scene::getSceneName() const
 
 void Scene::updateLogic( const float deltaTime )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     // Propagate light transform prior to transform update
     for ( uint32_t pointLightIdx = 0; pointLightIdx < pointLightCount; pointLightIdx++ ) {
         auto& light = pointLight[pointLightIdx];

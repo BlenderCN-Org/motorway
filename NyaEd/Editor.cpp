@@ -331,7 +331,7 @@ void Initialize()
     InitializeMemorySubsystems();
     InitializeIOSubsystems();
 
-    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\n" << std::endl;
+    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\n" << NYA_COMPILER << "\n" << std::endl;
 
     InitializeInputSubsystems();
     InitializeRenderSubsystems();
@@ -347,6 +347,8 @@ void Initialize()
 
 void CollectDrawCmds( const Scene::GameWorldState& snapshot, DrawCommandBuilder& drawCmdBuilder )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     for ( uint32_t staticGeomIdx = 0; staticGeomIdx < snapshot.StaticGeometryCount; staticGeomIdx++ ) {
         auto& geometry = snapshot.StaticGeometry[staticGeomIdx];
 
@@ -395,9 +397,12 @@ void RenderLoop()
             + std::to_string( renderCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n"
             "Audio " + std::to_string( audioCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( audioCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n";
 
-        g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling\n", 0.350f, 0.0f, 0.0f );
+        g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
         g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
         
+        const std::string& profileString = g_Profiler.getProfilingSummaryString();
+        g_WorldRenderer->textRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
+
         g_SceneSyncLock.lock();
         g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );
         g_SceneSyncLock.unlock();
@@ -482,6 +487,8 @@ void MainLoop()
         }
 
         g_SceneSyncLock.unlock();
+
+        g_Profiler.onFrame();
     }
 
     // Finish render/audio thread

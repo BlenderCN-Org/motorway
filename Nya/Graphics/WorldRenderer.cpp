@@ -63,6 +63,8 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
 
 void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     static constexpr size_t RADIXSORT_BITS = 11;
     static constexpr size_t RADIXSORT_HISTOGRAM_SIZE = ( 1 << RADIXSORT_BITS );
     static constexpr size_t RADIXSORT_BIT_MASK = ( RADIXSORT_HISTOGRAM_SIZE - 1 );
@@ -125,6 +127,8 @@ done:
 
 void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     DrawCmd* drawCmds = static_cast<DrawCmd*>( drawCmdAllocator->getBaseAddress() );
     const size_t drawCmdCount = drawCmdAllocator->getAllocationCount();
 

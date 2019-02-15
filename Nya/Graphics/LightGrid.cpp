@@ -82,6 +82,8 @@ void LightGrid::destroy( RenderDevice* renderDevice )
 
 void LightGrid::updateClusters( CommandList* cmdList )
 {
+    NYA_PROFILE( __FUNCTION__ )
+
     uint32_t lightClusters[CLUSTER_Z][CLUSTER_Y][CLUSTER_X] = {};
 
     nyaVec3f clusterInvScale = ( 1.0f / clustersInfos.Scale );
