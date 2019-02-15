@@ -63,6 +63,24 @@
 #define NYA_GFX_BACKEND "SOFTWARE"
 #endif
 
+#if NYA_MSVC
+#if _MSC_VER >= 1910
+#define NYA_COMPILER "Visual Studio 2017 (15.0)"
+#elif _MSC_VER >= 1900
+#define NYA_COMPILER "Visual Studio 2015 (14.0)"
+#elif _MSC_VER >= 1800
+#define NYA_COMPILER "Visual Studio 2013 (12.0)"
+#else
+#define NYA_COMPILER "Visual Studio 2012 (11.0)"
+#endif
+#elif NYA_GCC
+#if defined(__GNUC__) && (__GNUC___ > 5 || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1))
+#define NYA_COMPILER "gcc 5.1"
+#endif
+#else
+#define NYA_COMPILER "Unknown Compiler"
+#endif
+
 #if NYA_DEVBUILD
 #define NYA_VERSION_TYPE "DEV_BUILD"
 #else
