@@ -483,11 +483,16 @@ void RenderPipeline::destroy( RenderDevice* renderDevice )
 {
     renderPipelineResources.releaseResources( renderDevice );
     renderPipelineResources.destroy( memoryAllocator );
+
+    if ( graphicsProfiler != nullptr ) {
+        graphicsProfiler->destroy( renderDevice );
+        nya::core::free<GraphicsProfiler>( memoryAllocator, graphicsProfiler );
+    }
 }
 
 void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
 {
-    graphicsProfiler = new GraphicsProfiler();
+    graphicsProfiler = nya::core::allocate<GraphicsProfiler>( memoryAllocator );
     graphicsProfiler->create( renderDevice );
 }
 
