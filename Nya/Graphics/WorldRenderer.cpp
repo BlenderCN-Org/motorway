@@ -25,9 +25,12 @@
 
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderModules/TextRenderingModule.h"
+#include "RenderModules/AutomaticExposureRenderModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
 #include "RenderPasses/BlurPyramidRenderPass.h"
+#include "RenderPasses/CopyRenderPass.h"
+#include "RenderPasses/MSAAResolveRenderPass.h"
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
@@ -36,6 +39,7 @@ WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
     , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
     , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
+    , automaticExposureModule( nya::core::allocate<AutomaticExposureModule>( allocator ) )
     , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8, allocator ) )
 {
 
@@ -55,15 +59,18 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
     // Free render modules resources
     textRenderModule->destroy( renderDevice );
     skyRenderModule->destroy( renderDevice );
+    automaticExposureModule->destroy( renderDevice );
 
+    FreeCachedResourcesCP( renderDevice );
     FreeCachedResourcesBP( renderDevice );
     FreeCachedResourcesFP( renderDevice );
     FreeCachedResourcesPP( renderDevice );
+    FreeCachedResourcesMRP( renderDevice );
 }
 
 void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
 {
-    NYA_PROFILE( __FUNCTION__ )
+    NYA_PROFILE_FUNCTION
 
     static constexpr size_t RADIXSORT_BITS = 11;
     static constexpr size_t RADIXSORT_HISTOGRAM_SIZE = ( 1 << RADIXSORT_BITS );
@@ -127,7 +134,7 @@ done:
 
 void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime )
 {
-    NYA_PROFILE( __FUNCTION__ )
+    NYA_PROFILE_FUNCTION
 
     DrawCmd* drawCmds = static_cast<DrawCmd*>( drawCmdAllocator->getBaseAddress() );
     const size_t drawCmdCount = drawCmdAllocator->getAllocationCount();
@@ -139,7 +146,7 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
     // TODO Could it be parallelized?
     for ( uint32_t pipelineIdx = 0; pipelineIdx < renderPipelineCount; pipelineIdx++ ) {
         renderPipelines[pipelineIdx].submitAndDispatchDrawCmds( drawCmds, drawCmdCount );
-        renderPipelines[pipelineIdx].execute( renderDevice );
+        renderPipelines[pipelineIdx].execute( renderDevice, deltaTime );
 
 #if NYA_DEVBUILD
         const char* profilingString = renderPipelines[pipelineIdx].getProfilingSummary();
@@ -165,10 +172,13 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
     // Load render modules resources (cached pipeline states, LUTs, precomputed data tables, etc.)
     skyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     textRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    automaticExposureModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
 
     LoadCachedResourcesFP( renderDevice, shaderCache );
     LoadCachedResourcesPP( renderDevice, shaderCache );
     LoadCachedResourcesBP( renderDevice, shaderCache );
+    LoadCachedResourcesCP( renderDevice, shaderCache );
+    LoadCachedResourcesMRP( renderDevice, shaderCache );
 
 #if NYA_DEVBUILD
     for ( int i = 0; i < 8; i++ ) {

@@ -70,8 +70,7 @@ void TextRenderingModule::destroy( RenderDevice* renderDevice )
 
 MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeline, MutableResHandle_t output )
 {
-    struct PassData
-    {
+    struct PassData {
         MutableResHandle_t  output;
 
         ResHandle_t         viewportBuffer;

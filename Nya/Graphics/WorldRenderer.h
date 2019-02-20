@@ -24,7 +24,7 @@ class RenderDevice;
 class PoolAllocator;
 class Material;
 class VertexArrayObject;
-class HosekSkyRenderModule;
+class AutomaticExposureModule;
 class BrunetonSkyRenderModule;
 class TextRenderingModule;
 class ShaderCache;
@@ -142,8 +142,9 @@ public:
 
     RenderPipeline&         allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
 
-    TextRenderingModule*     textRenderModule;
-    BrunetonSkyRenderModule* skyRenderModule;
+    TextRenderingModule*        textRenderModule;
+    BrunetonSkyRenderModule*    skyRenderModule;
+    AutomaticExposureModule*    automaticExposureModule;
 
 private:
     PoolAllocator*          drawCmdAllocator;

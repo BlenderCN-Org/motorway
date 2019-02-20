@@ -22,6 +22,8 @@
 
 #include <Maths/Transform.h>
 
+#include <Graphics/DrawCommandBuilder.h>
+
 #include "Cameras/FreeCamera.h"
 #include "Light.h"
 
@@ -63,8 +65,6 @@ const std::string& Scene::getSceneName() const
 
 void Scene::updateLogic( const float deltaTime )
 {
-    NYA_PROFILE( __FUNCTION__ )
-
     // Propagate light transform prior to transform update
     for ( uint32_t pointLightIdx = 0; pointLightIdx < pointLightCount; pointLightIdx++ ) {
         auto& light = pointLight[pointLightIdx];
@@ -103,16 +103,25 @@ void Scene::updateLogic( const float deltaTime )
     }
 }
 
-void Scene::getWorldStateSnapshot( GameWorldState& worldState )
+void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 {
-    // Retrieve DBs copy
-    TransformDatabase.getCopy( worldState.TransformDatabase );
-    RenderableMeshDatabase.getCopy( worldState.RenderableMeshDatabase );
-    FreeCameraDatabase.getCopy( worldState.FreeCameraDatabase );
-    LightDatabase.getCopy( worldState.LightDatabase );
+    NYA_PROFILE( __FUNCTION__ )
 
-    worldState.StaticGeometryCount = staticGeometryCount;
-    memcpy( worldState.StaticGeometry, staticGeometry, sizeof( StaticGeometry ) * staticGeometryCount );
+    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < staticGeometryCount; staticGeomIdx++ ) {
+        auto& geometry = staticGeometry[staticGeomIdx];
+
+        auto& transform = TransformDatabase[geometry.transform];
+        auto& renderable = RenderableMeshDatabase[geometry.mesh];
+
+        // Check renderable flags (but don't cull the instance yet)
+        if ( renderable.isVisible ) {
+            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix() );
+        }
+    }
+
+    for ( uint32_t freeCameraIdx = 0; freeCameraIdx < FreeCameraDatabase.usageIndex; freeCameraIdx++ ) {
+        drawCmdBuilder.addCamera( &FreeCameraDatabase[freeCameraIdx].getData() );
+    }
 }
 
 Scene::StaticGeometry& Scene::allocateStaticGeometry()

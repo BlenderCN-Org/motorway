@@ -13,17 +13,14 @@ struct VertexOutput
     float  OutlineThickness : TEXCOORD1;
 };
 
-cbuffer PassData : register( b0 )
+cbuffer ScreenInfos : register( b0 )
 {
-    uint2 BackbufferDimension;
-}
-
+    uint2  g_ScreenSize;
+};
+    
 float2 projectPoint( float2 vPoint )
 {
-    float2 vProjected;
-    vProjected.x = vPoint.x * ( 1.0f / ( BackbufferDimension.x * 0.5f ) ) - 1.0f;
-    vProjected.y = vPoint.y * ( 1.0f / ( BackbufferDimension.y * 0.5f ) ) + 1.0f;
-    return vProjected;
+    return ( vPoint * ( 1.0f / ( g_ScreenSize * 0.5f ) ) + float2( -1.0f, 1.0f ) );
 }
 
 VertexOutput EntryPointVS( in VertexBufferData VertexBuffer )

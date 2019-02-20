@@ -20,6 +20,7 @@
 #pragma once
 
 #include <functional>
+#include <map>
 
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
@@ -67,6 +68,10 @@ public:
         USE_PIPELINE_SAMPLER_COUNT  = 1 << 1, // Use builder sampler count (override samplerCount)
     };
 
+    enum eRenderTargetCopyFlags {
+        NO_MULTISAMPLE = 1 << 0, // Copy description with sampler count set to 1
+    };
+
 public:
                 RenderPipelineBuilder();
                 RenderPipelineBuilder( RenderPipelineBuilder& ) = default;
@@ -81,28 +86,36 @@ public:
 
     void        addRenderPass();
     void        setPipelineViewport( const Viewport& viewport );
+    void        setMSAAQuality( const uint32_t samplerCount = 1 );
 
     ResHandle_t allocateRenderTarget( TextureDescription& description, const uint32_t flags = 0 );
-    ResHandle_t allocateBuffer( const BufferDesc& description, const uint32_t shaderStageBinding );
+    ResHandle_t copyRenderTarget( const ResHandle_t resourceToCopy, const uint32_t copyFlags = 0 );
+    ResHandle_t allocateBuffer( BufferDesc& description, const uint32_t shaderStageBinding, const uint32_t flags = 0 );
     ResHandle_t allocateSampler( const SamplerDesc& description );
 
     ResHandle_t readRenderTarget( const ResHandle_t resourceHandle );
     ResHandle_t readBuffer( const ResHandle_t resourceHandle );
 
+    ResHandle_t retrievePersistentRenderTarget( const nyaStringHash_t resourceHashcode );
+    ResHandle_t retrievePersistentBuffer( const nyaStringHash_t resourceHashcode );
+
 private:
     Viewport    pipelineViewport;
+    uint32_t    pipelineSamplerCount;
 
     struct {
-        uint32_t renderTarget[8];
+        uint32_t renderTargets[48];
         uint32_t renderTargetCount;
-    } passRenderTargetRefs[48];
+        uint32_t buffers[48];
+        uint32_t buffersCount;
+    } passRefs[48];
     int32_t     renderPassCount;
 
     struct {
         TextureDescription  description;
         uint32_t            flags;
         uint32_t            referenceCount;
-    } renderTarget[48];
+    } renderTargets[48];
     uint32_t renderTargetCount;
 
     struct {
@@ -112,8 +125,14 @@ private:
     } buffers[48]; 
     uint32_t bufferCount;
 
+    nyaStringHash_t persitentBuffers[48];
+    uint32_t persitentBufferCount;
+
+    nyaStringHash_t persitentRenderTargets[48];
+    uint32_t persitentRenderTargetCount;
+
     SamplerDesc samplers[48];
-    uint32_t    samplerCount;
+    uint32_t samplerCount;
 };
 
 class RenderPipelineResources
@@ -126,96 +145,121 @@ public:
         float    vectorPerInstance;
         float    instanceDataStartOffset;
 
-        DrawCmd* begin()
-        {
+        DrawCmd* begin() {
             return beginAddr;
         }
 
-        const DrawCmd* begin() const
-        {
+        const DrawCmd* begin() const {
             return beginAddr;
         }
 
-        DrawCmd* end()
-        {
+        DrawCmd* end() {
             return endAddr;
         }
 
-        const DrawCmd* end() const
-        {
+        const DrawCmd* end() const {
             return endAddr;
         }
     };
 
 public:
-                        RenderPipelineResources();
-                        RenderPipelineResources( RenderPipelineResources& ) = default;
-                        RenderPipelineResources& operator = ( RenderPipelineResources& ) = default;
-                        ~RenderPipelineResources();
+                            RenderPipelineResources();
+                            RenderPipelineResources( RenderPipelineResources& ) = default;
+                            RenderPipelineResources& operator = ( RenderPipelineResources& ) = default;
+                            ~RenderPipelineResources();
 
-    void                create( BaseAllocator* allocator );
-    void                destroy( BaseAllocator* allocator );
+    void                    create( BaseAllocator* allocator );
+    void                    destroy( BaseAllocator* allocator );
 
-    void                releaseResources( RenderDevice* renderDevice );
-    void                unacquireResources();
+    void                    releaseResources( RenderDevice* renderDevice );
+    void                    unacquireResources();
 
-    void                setPipelineViewport( const Viewport& viewport, const CameraData* cameraData );
+    void                    setPipelineViewport( const Viewport& viewport, const CameraData* cameraData );
 
-    void                dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount );
+    void                    dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount );
+    void                    importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget );
+    void                    importPersistentBuffer( const nyaStringHash_t resourceHashcode, Buffer* buffer );
 
     const DrawCmdBucket&    getDrawCmdBucket( const DrawCommandKey::Layer layer, const uint8_t viewportLayer ) const;
     void*                   getVectorBufferData() const;
 
-    const CameraData*   getMainCamera() const;
-    const Viewport*     getMainViewport() const;
+    const CameraData*       getMainCamera() const;
+    const Viewport*         getMainViewport() const;
 
-    Buffer*             getBuffer( const ResHandle_t resourceHandle ) const;
-    RenderTarget*       getRenderTarget( const ResHandle_t resourceHandle ) const;
-    Sampler*            getSampler( const ResHandle_t resourceHandle ) const;
+    void                    updateDeltaTime( const float dt );
+    const float             getDeltaTime() const;
 
-    void                allocateBuffer( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const BufferDesc& description );
-    void                allocateRenderTarget( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const TextureDescription& description );
-    void                allocateSampler( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const SamplerDesc& description );
+    Buffer*                 getBuffer( const ResHandle_t resourceHandle ) const;
+    RenderTarget*           getRenderTarget( const ResHandle_t resourceHandle ) const;
+    Sampler*                getSampler( const ResHandle_t resourceHandle ) const;
+
+    // TODO Find a clean way to merge persitent getters with regular resource getters?
+    Buffer*                 getPersistentBuffer( const ResHandle_t resourceHandle ) const;
+    RenderTarget*           getPersitentRenderTarget( const ResHandle_t resourceHandle ) const;
+
+    void                    allocateBuffer( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const BufferDesc& description );
+    void                    allocateRenderTarget( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const TextureDescription& description );
+    void                    allocateSampler( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const SamplerDesc& description );
+
+    void                    bindPersistentBuffers( const ResHandle_t resourceHandle, const nyaStringHash_t hashcode );
+    void                    bindPersistentRenderTargets( const ResHandle_t resourceHandle, const nyaStringHash_t hashcode );
+
+    bool                    isPersistentRenderTargetAvailable( const nyaStringHash_t resourceHashcode ) const;
+    bool                    isPersistentBufferAvailable( const nyaStringHash_t resourceHashcode ) const;
 
 private:
-    void*               instanceBufferData;
+    void*                   instanceBufferData;
 
-    Buffer*             cbuffers[96];
-    size_t              cbuffersSize[96];
-    bool                isCBufferFree[96];
+    Buffer*                 cbuffers[96];
+    size_t                  cbuffersSize[96];
+    bool                    isCBufferFree[96];
 
-    int                 cbufferAllocatedCount;
+    int                     cbufferAllocatedCount;
 
-    Buffer*             genBuffer[96];
-    BufferDesc          genBufferDesc[96];
-    bool                isGenBufferFree[96];
+    Buffer*                 genBuffer[96];
+    BufferDesc              genBufferDesc[96];
+    bool                    isGenBufferFree[96];
 
-    int                 genAllocatedCount;
+    int                     genAllocatedCount;
 
-    Buffer*             uavTex2dBuffer[96];
-    BufferDesc          uavTex2dBufferDesc[96];
-    bool                isUavTex2dBufferFree[96];
+    Buffer*                 uavTex2dBuffer[96];
+    BufferDesc              uavTex2dBufferDesc[96];
+    bool                    isUavTex2dBufferFree[96];
 
-    int                 uavTex2dAllocatedCount;
+    int                     uavTex2dAllocatedCount;
 
-    RenderTarget*       renderTargets[96];
-    TextureDescription  renderTargetsDesc[96];
-    bool                isRenderTargetAvailable[96];
+    Buffer*                 uavBuffer[96];
+    BufferDesc              uavBufferDesc[96];
+    bool                    isUavBufferFree[96];
 
-    int                 rtAllocatedCount;
+    int                     uavBufferAllocatedCount;
 
-    Sampler*        samplers[96];
-    SamplerDesc     samplersDesc[96];
-    bool            isSamplerAvailable[96];
-    int             samplerAllocatedCount;
+    RenderTarget*           renderTargets[96];
+    TextureDescription      renderTargetsDesc[96];
+    bool                    isRenderTargetAvailable[96];
 
-    Buffer*         allocatedBuffers[48];
-    RenderTarget*   allocatedRenderTargets[48];
-    Sampler*        allocatedSamplers[48];
+    int                     rtAllocatedCount;
 
-    DrawCmdBucket   drawCmdBuckets[4][8];
-    CameraData      activeCameraData;
-    Viewport        activeViewport;
+    Sampler*                samplers[96];
+    SamplerDesc             samplersDesc[96];
+    bool                    isSamplerAvailable[96];
+    int                     samplerAllocatedCount;
+
+    Buffer*                 allocatedBuffers[48];
+    RenderTarget*           allocatedRenderTargets[48];
+    Sampler*                allocatedSamplers[48];
+
+    Buffer*                 allocatedPersistentBuffers[48];
+    RenderTarget*           allocatedPersistentRenderTargets[48];
+
+    DrawCmdBucket           drawCmdBuckets[4][8];
+    CameraData              activeCameraData;
+    Viewport                activeViewport;
+    uint32_t                msaaSamplerCount;
+    float                   deltaTime;
+
+    std::map<nyaStringHash_t, Buffer*>          persistentBuffers;
+    std::map<nyaStringHash_t, RenderTarget*>    persistentRenderTarget;
 };
 
 class RenderPipeline
@@ -230,10 +274,14 @@ public:
     void    enableProfiling( RenderDevice* renderDevice );
 
     void    beginPassGroup();
-    void    execute( RenderDevice* renderDevice );
+    void    execute( RenderDevice* renderDevice, const float deltaTime );
 
     void    submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount );
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
+    void    setMSAAQuality( const uint32_t samplerCount = 1 );
+
+    void    importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget );
+    void    importPersistentBuffer( const nyaStringHash_t resourceHashcode, Buffer* buffer );
 
     template<typename T>
     T& addRenderPass( const std::string& name, nyaPassSetup_t<T> setup, nyaPassCallback_t<T> execute ) {
@@ -263,18 +311,22 @@ public:
 #endif
 
 private:
-    BaseAllocator*              memoryAllocator;
-    RenderPipelineRenderPass    renderPasses[48];
+    BaseAllocator*                      memoryAllocator;
+    RenderPipelineRenderPass            renderPasses[48];
 
-    int                         renderPassCount;
+    int                                 renderPassCount;
 
-    uint32_t                    passGroupStartIndexes[8];
-    int                         passGroupCount;
+    uint32_t                            passGroupStartIndexes[8];
+    int                                 passGroupCount;
 
-    Viewport                    activeViewport;
+    Viewport                            activeViewport;
+    bool                                hasViewportChanged;
 
-    RenderPipelineResources     renderPipelineResources;
-    RenderPipelineBuilder       renderPipelineBuilder;
+    // Persistent Resources
+    RenderTarget*                       lastFrameRenderTarget;
 
-    GraphicsProfiler*           graphicsProfiler;
+    RenderPipelineResources             renderPipelineResources;
+    RenderPipelineBuilder               renderPipelineBuilder;
+
+    GraphicsProfiler*                   graphicsProfiler;
 };

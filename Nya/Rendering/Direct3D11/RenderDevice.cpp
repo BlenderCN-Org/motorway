@@ -282,11 +282,7 @@ RenderTarget* RenderDevice::getSwapchainBuffer()
 CommandList& RenderDevice::allocateGraphicsCommandList() const
 {
     const auto cmdListIdx = renderContext->cmdListPoolIndex;
-
-    ++renderContext->cmdListPoolIndex;
-    if ( renderContext->cmdListPoolIndex >= renderContext->cmdListPoolCapacity ) {
-        renderContext->cmdListPoolIndex = 0;
-    }
+    renderContext->cmdListPoolIndex = ( ++renderContext->cmdListPoolIndex % renderContext->cmdListPoolCapacity );
 
     return renderContext->cmdListPool[cmdListIdx];
 }
@@ -309,8 +305,11 @@ void RenderDevice::submitCommandList( CommandList* commandList )
 
 void RenderDevice::present()
 {
+    NYA_PROFILE_FUNCTION
+
     HRESULT swapBufferResult = renderContext->swapChain->Present( ( renderContext->enableVsync ) ? 1 : 0, 0 );
     if ( FAILED( swapBufferResult ) ) {
+        NYA_TRIGGER_BREAKPOINT
         NYA_CERR << "Failed to swap buffers! (error code " << NYA_PRINT_HEX( swapBufferResult ) << ")" << std::endl;
         NYA_ASSERT( swapBufferResult == DXGI_ERROR_DEVICE_REMOVED, "Device removed! (error code: 0%X)", renderContext->nativeDevice->GetDeviceRemovedReason() );
     }

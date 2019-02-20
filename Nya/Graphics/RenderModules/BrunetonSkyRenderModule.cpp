@@ -41,7 +41,7 @@ BrunetonSkyRenderModule::BrunetonSkyRenderModule()
     , scatteringTexture( nullptr )
     , irradianceTexture( nullptr )
     , sunVerticalAngle( 1.000f )
-    , sunHorizontalAngle( 0.05f )
+    , sunHorizontalAngle( 0.5f )
     , sunAngularRadius( static_cast<float>( kSunAngularRadius ) )
 {
 
@@ -56,12 +56,12 @@ BrunetonSkyRenderModule::~BrunetonSkyRenderModule()
 
 MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPipeline, bool renderSunDisk )
 {
-    struct PassData
-    {
+    struct PassData {
         MutableResHandle_t  output;
 
         ResHandle_t         parametersBuffer;
         ResHandle_t         cameraBuffer;
+        ResHandle_t         autoExposureBuffer;
         ResHandle_t         bilinearSampler;
     };
 
@@ -84,7 +84,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             rtDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
             rtDesc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
-            passData.output = renderPipelineBuilder.allocateRenderTarget( rtDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS );
+            passData.output = renderPipelineBuilder.allocateRenderTarget( rtDesc, RenderPipelineBuilder::USE_PIPELINE_DIMENSIONS | RenderPipelineBuilder::USE_PIPELINE_SAMPLER_COUNT );
 
             // Sampler State
             SamplerDesc bilinearSamplerDesc;
@@ -94,6 +94,8 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             bilinearSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_BILINEAR;
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
+
+            passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             // Resource List
@@ -116,10 +118,14 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             cmdList->updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
 
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
+            Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
 
             ResourceListDesc resListDesc = {};
             resListDesc.constantBuffers[0] = { 1, SHADER_STAGE_PIXEL, skyBuffer };
-            resListDesc.constantBuffers[1] = { 0, SHADER_STAGE_VERTEX, cameraBuffer };
+            resListDesc.constantBuffers[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
+
+            resListDesc.buffers[0] = { 0, SHADER_STAGE_PIXEL, autoExposureBuffer };
+
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.samplers[2] = { 2, SHADER_STAGE_PIXEL, bilinearSampler };
@@ -172,7 +178,7 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
 {
     PipelineStateDesc psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky", SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky", SHADER_STAGE_PIXEL );
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_RENDER_SUN_DISC", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
     psoDesc.rasterizerState.cullMode = nya::rendering::eCullMode::CULL_MODE_NONE;
     psoDesc.depthStencilState.enableDepthTest = false;

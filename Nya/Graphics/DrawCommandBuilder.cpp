@@ -32,10 +32,13 @@
 #include <Rendering/RenderDevice.h>
 
 #include "RenderModules/BrunetonSkyRenderModule.h"
+#include "RenderModules/AutomaticExposureRenderModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/LightRenderPass.h"
+#include "RenderPasses/CopyRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
 #include "RenderPasses/BlurPyramidRenderPass.h"
+#include "RenderPasses/MSAAResolveRenderPass.h"
 
 #include <Maths/Helpers.h>
 #include <Maths/Matrix.h>
@@ -105,26 +108,37 @@ void DrawCommandBuilder::addCamera( const CameraData* cameraData )
 
 void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid )
 {
-    NYA_PROFILE( __FUNCTION__ )
+    NYA_PROFILE_FUNCTION
 
     for ( uint32_t cameraIdx = 0; cameraIdx < cameraCount; cameraIdx++ ) {
         const CameraData* camera = cameras[cameraIdx];
 
         // Register viewport into the world renderer
-        RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0, 1280, 720, 0.0f, 1.0f }, camera );
-        
+        RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0,  static_cast<int32_t>( camera->viewportSize.x ), static_cast<int32_t>( camera->viewportSize.y ), 0.0f, 1.0f }, camera );
+        renderPipeline.setMSAAQuality( 8 );
+
+        bool useTAA = true;
+
         // !!TEST!!
         renderPipeline.beginPassGroup();
         {
             auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
             auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightGrid->getLightsClusters(), lightGrid->getLightsBuffer(), lightGrid->getClustersInfos(), skyRenderTarget );
 
-            auto blurPyramid = AddBlurPyramidRenderPass( &renderPipeline, lightRenderTarget, 1280u, 720u );
+            auto resolvedTarget = AddMSAAResolveRenderPass( &renderPipeline, lightRenderTarget.lightRenderTarget, lightRenderTarget.velocityRenderTarget, lightRenderTarget.depthRenderTarget, 8, useTAA );
+
+            if ( useTAA ) {
+                AddCurrentFrameSaveRenderPass( &renderPipeline, resolvedTarget );
+            }
+
+            worldRenderer->automaticExposureModule->computeExposure( &renderPipeline, resolvedTarget, camera->viewportSize );
+
+            auto blurPyramid = AddBlurPyramidRenderPass( &renderPipeline, resolvedTarget, static_cast<uint32_t>( camera->viewportSize.x ), static_cast<uint32_t>( camera->viewportSize.y ) );
 
             // NOTE UI Rendering should be done in linear space! (once async compute is implemented, UI rendering will be parallelized with PostFx)
-            auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, lightRenderTarget );
+            auto hudRenderTarget = worldRenderer->textRenderModule->renderText( &renderPipeline, resolvedTarget );
 
-            auto postFxRenderTarget = AddFinalPostFxRenderPass( &renderPipeline, hudRenderTarget );
+            auto postFxRenderTarget = AddFinalPostFxRenderPass( &renderPipeline, resolvedTarget, blurPyramid );
             AddPresentRenderPass( &renderPipeline, postFxRenderTarget );
         }
 

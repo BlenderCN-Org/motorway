@@ -456,14 +456,14 @@ Texture* RenderDevice::createTexture2D( const TextureDescription& description, c
         description.mipCount,			// UINT MipLevels
         description.arraySize,			// UINT ArraySize
         nativeTextureFormat,	        // DXGI_FORMAT Format
-    {								// DXGI_SAMPLE_DESC SampleDesc
-        description.samplerCount,	//		UINT Count
-        sampleDescQuality, 	        //		UINT Quality
-    },								//
-    ( description.flags.allowCPUWrite == 1 ) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,			// D3D11_USAGE Usage
-    bindFlags,		                // UINT BindFlags
-    ( description.flags.allowCPUWrite == 1 ) ? D3D11_CPU_ACCESS_WRITE : static_cast<UINT>( 0 ),			// UINT CPUAccessFlags
-    miscFlags,  					// UINT MiscFlags
+        {								// DXGI_SAMPLE_DESC SampleDesc
+            description.samplerCount,	//		UINT Count
+            sampleDescQuality, 	        //		UINT Quality
+        },								//
+        ( description.flags.allowCPUWrite == 1 ) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,			// D3D11_USAGE Usage
+        bindFlags,		                // UINT BindFlags
+        ( description.flags.allowCPUWrite == 1 ) ? D3D11_CPU_ACCESS_WRITE : static_cast<UINT>( 0 ),			// UINT CPUAccessFlags
+        miscFlags,  					// UINT MiscFlags
     };
 
     // Create Texture SRV
@@ -523,6 +523,9 @@ Texture* RenderDevice::createTexture2D( const TextureDescription& description, c
     ID3D11Device* device = renderContext->nativeDevice;
 
     HRESULT operationResult = device->CreateTexture2D( &renderTargetDesc, ( initialData != nullptr ) ? subResourceData.data() : nullptr, &texture->texture2D );
+
+    if ( !SUCCEEDED( operationResult ) )
+        NYA_TRIGGER_BREAKPOINT
 
     NYA_ASSERT( SUCCEEDED( operationResult ), "Texture creation failed! (error code 0x%X)", operationResult );
 

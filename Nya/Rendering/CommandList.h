@@ -39,6 +39,26 @@ struct Viewport
     float   MaxDepth;
 };
 
+static bool operator == ( const Viewport& l, const Viewport& r )
+{
+    return l.X == r.X
+        && l.Y == r.Y
+        && l.Width == r.Width
+        && l.Height == r.Height
+        && l.MinDepth == r.MinDepth
+        && l.MaxDepth == r.MaxDepth;
+}
+
+static bool operator != ( const Viewport& l, const Viewport& r )
+{
+    return l.X != r.X
+        && l.Y != r.Y
+        && l.Width != r.Width
+        && l.Height != r.Height
+        && l.MinDepth != r.MinDepth
+        && l.MaxDepth != r.MaxDepth;
+}
+
 class CommandList
 {
 public:

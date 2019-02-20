@@ -3,8 +3,6 @@
 #if NYA_DEVBUILD
 #include "Profiler.h"
 
-#include <Graphics/WorldRenderer.h>
-
 Profiler::Profiler()
     : sectionSummaryString( "" )
     , sectionsResult{ -1.0 }
@@ -23,7 +21,7 @@ void Profiler::onFrame()
 {
     sectionSummaryString.clear();
 
-    for ( int sectionIdx = 0; sectionIdx < sectionCount; sectionIdx++ ) {
+    for ( unsigned int sectionIdx = 0; sectionIdx < sectionCount; sectionIdx++ ) {
         sectionSummaryString.append( sectionsName[sectionIdx] );
         sectionSummaryString.append( "  " );
         sectionSummaryString.append( std::to_string( sectionsResult[sectionIdx] ) + "ms\n" );
@@ -38,7 +36,7 @@ void Profiler::beginSection( const std::string& sectionName )
         return;
     }
 
-    const char sectionIdx = sectionCount;
+    const auto sectionIdx = sectionCount;
     sectionsResult[sectionIdx] = -1.0;
     
     nya::core::StartTimer( &sectionsTimer[sectionIdx] );
@@ -50,10 +48,7 @@ void Profiler::beginSection( const std::string& sectionName )
     sectionsName[sectionIdx] += sectionName;
 
     sectionCount++;
-
-    sectionLock.lock();
-        recordedSectionIndexes.push_back( sectionIdx );
-    sectionLock.unlock();
+    recordedSectionIndexes.push_back( sectionIdx );
 }
 
 void Profiler::endSection()
@@ -65,9 +60,7 @@ void Profiler::endSection()
     auto latestSectionIdx = recordedSectionIndexes.back();
     sectionsResult[latestSectionIdx] = nya::core::GetTimerDeltaAsMiliseconds( &sectionsTimer[latestSectionIdx] );
 
-    sectionLock.lock();
-        recordedSectionIndexes.pop_back();
-    sectionLock.unlock();
+    recordedSectionIndexes.pop_back();
 }
 
 const double* Profiler::getSectionResultArray() const

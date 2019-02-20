@@ -2,7 +2,7 @@ Name: "Default World Material"
 Version: 1
 
 ShadingModel: SHADING_MODEL_STANDARD
-WriteVelocity: True
+WriteVelocity: False
 EnableAlphaTest: False
 EnableAlphaToCoverage: False
 IsDoubleFace: False
@@ -13,16 +13,17 @@ ScaleUVByModelScale: True
 
 Layer 
 {
-    BaseColor: { 0.42, 0.0, 0.42 }
+    BaseColor: "GameData/textures/default.dds"
     AlphaMask: None
-    Reflectance: 0.00
+    Reflectance: 1.00
     Refraction: 0.000000
     RefractionIor: 0.000000
     Metalness: 0.000000
     AmbientOcclusion: None
     Normal: None
-    Roughness: 0.0
+    Roughness: 1.0
     Emissivity: 0.000000
 
-    Scale: { 1, 1 }
+    Offset: { 0, 0 }
+    Scale: { 8, 8 }
 }

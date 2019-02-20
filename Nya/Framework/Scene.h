@@ -20,6 +20,8 @@
 
 #pragma once
 
+class DrawCommandBuilder;
+
 class Transform;
 class Mesh;
 class FreeCamera;
@@ -69,15 +71,6 @@ private:
 
         }
 
-        // NOTE dbCopy.components must be allocated prior to function call
-        inline void getCopy( ComponentDatabase& dbCopy )
-        {
-            memcpy( dbCopy.components, components, sizeof( T ) * capacity );
-
-            dbCopy.capacity = capacity;
-            dbCopy.usageIndex = usageIndex;
-        }
-
         nyaComponentHandle_t allocate() {
             return ( usageIndex++ % capacity );
         }
@@ -109,16 +102,6 @@ public:
         nyaComponentHandle_t    mesh;
     };
 
-    struct GameWorldState {
-        ComponentDatabase<Transform>        TransformDatabase;
-        ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
-        ComponentDatabase<FreeCamera>       FreeCameraDatabase;
-        ComponentDatabase<Light>            LightDatabase;
-
-        StaticGeometry                      StaticGeometry[4096];
-        uint32_t                            StaticGeometryCount;
-    };
-
     ComponentDatabase<Transform>        TransformDatabase;
     ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
     ComponentDatabase<FreeCamera>       FreeCameraDatabase;
@@ -134,7 +117,7 @@ public:
     const std::string&      getSceneName() const;
 
     void                    updateLogic( const float deltaTime );
-    void                    getWorldStateSnapshot( GameWorldState& worldState );
+    void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
 
     StaticGeometry&         allocateStaticGeometry();
 

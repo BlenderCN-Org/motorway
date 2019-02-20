@@ -97,16 +97,14 @@ struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
     float2  Buffer1         : SV_TARGET1; // Velocity (Opaque RenderList ONLY)
-    float4  Buffer2         : SV_TARGET2; // Thin GBuffer: R: Subsurface Scattering Strength / GBA: Unused
+    float3  Buffer2         : SV_TARGET2; // Thin GBuffer: RG: Normal (Spheremap encoded) / B: Roughness
 };
 
 Texture3D<uint> g_Clusters : register( t0 );
 cbuffer ClusterBuffer : register( b1 )
 {
     float3   g_ClustersScale;
-	float	 g_ViewportWidth;
     float3   g_ClustersBias;
-	float	 g_ViewportHeight;
 };
 
 struct LightSurfaceInfos
@@ -257,7 +255,7 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
         float4 sampledTexture = g_TexNormal##layerIdx.Sample( g_BRDFInputsSampler, uvCoords );\
         layer.Normal = normalize( ( sampledTexture.rgb * g_Layers[layerIdx].NormalMapStrength ) * 2.0f - 1.0f );\
     } else {\
-        layer.Normal = ReadInput3D( g_Layers[layerIdx].Normal, g_TexNormal##layerIdx, g_BRDFInputsSampler, uvCoords, N );\
+        layer.Normal = N;\
     }\
 	layer.SecondaryNormal = float3( 0, 1, 0 );\
     layer.AlphaMask = 1.0f;\
@@ -286,6 +284,14 @@ NYA_READ_LAYER( 0 )
 #else
 #include "ShadingModels/Debug.hlsl"
 #endif    
+
+float2 EncodeNormals( const in float3 n )
+{
+    float2 enc = normalize(n.xy) * (sqrt(-n.z*0.5+0.5));
+    enc = enc*0.5+0.5;
+    
+    return enc;
+}
 
 float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
 {
@@ -504,17 +510,20 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		light_mask &= ~( 1 << i );
     }
     
-    float2 prevPositionSS = (VertexStage.previousPosition.xy / VertexStage.previousPosition.z) * float2(0.5f, -0.5f) + 0.5f;
-    prevPositionSS *= float2( g_ViewportWidth, g_ViewportHeight );
+    float2 prevPositionSS = ( VertexStage.previousPosition.xy / VertexStage.previousPosition.w ) * float2( 0.5f, -0.5f ) + 0.5f;
+    prevPositionSS *= g_ScreenSize;
    
-    Velocity = VertexStage.position.xy - prevPositionSS;
+    Velocity = ( VertexStage.position.xy - prevPositionSS );
     Velocity -= g_CameraJitteringOffset;
+    Velocity /= g_ScreenSize;
     
     // Write output to buffer(s)
+    const float2 EncodedNormals = EncodeNormals( surface.N );
+    
     PixelStageData output;
     output.Buffer0 = LightContribution;
     output.Buffer1 = Velocity;
-    output.Buffer2 = float4( 0, 0, 0, 0 );
+    output.Buffer2 = float3( EncodedNormals, surface.Roughness );
 
     return output;
 }

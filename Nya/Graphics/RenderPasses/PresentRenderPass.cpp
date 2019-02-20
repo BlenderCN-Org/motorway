@@ -12,8 +12,6 @@ static PipelineState*  g_PipelineStateObject = nullptr;
 void LoadCachedResourcesPP( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
     PipelineStateDesc psoDesc = {};
-    psoDesc.computeShader = shaderCache->getOrUploadStage( "PostFX/FinalPost", SHADER_STAGE_COMPUTE );
-
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "CopyTexture", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;

@@ -259,20 +259,27 @@ compile_shader_PS( "Error" )
 compile_shader_CS( "Error" )
 
 # Atmosphere
-compile_shader_VS( "Atmosphere/HosekSky" )
-compile_shader_PS( "Atmosphere/HosekSky" )
-
-# Atmosphere
 compile_shader_VS( "Atmosphere/BrunetonSky" )
 compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC" ] )
 
+# AutoExposure
+compile_shader_CS( "AutoExposure/BinCompute" )
+compile_shader_CS( "AutoExposure/HistogramMerge" )
+compile_shader_CS( "AutoExposure/TileHistogramCompute" )
+
 # PostFX
 compile_shader_CS( "PostFX/FinalPost" )
-compile_shader_CS( "PostFX/DownsampleWeighted", [ "NYA_USE_KARIS_AVERAGE" ] )
+compile_shader_PS( "PostFX/Downsample", [ "NYA_USE_KARIS_AVERAGE" ] )
+compile_shader_PS( "PostFX/Upsample", [ "NYA_NO_ACCUMULATION" ] )
+compile_shader_PS( "PostFX/BrightPass" )
 
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
 compile_shader_PS( "CopyTexture" )
+
+compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X2", "NYA_USE_TAA" ] )
+compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X4", "NYA_USE_TAA" ] )
+compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X8", "NYA_USE_TAA" ] )
 
 # UI
 compile_shader_VS( "UI/SDFTextRendering" )
@@ -281,3 +288,5 @@ compile_shader_PS( "UI/SDFTextRendering" )
 # Lighting
 compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
 compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW" ] )
+
+# Other

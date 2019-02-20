@@ -37,6 +37,9 @@ struct CameraData
     nyaVec3f    worldPosition;
     int32_t     cameraFrameNumber;
 
+    nyaVec2f    viewportSize;
+    nyaVec2f    inverseViewportSize;
+
     // Shadow mapping rendering specifics
     nyaMat4x4f  depthProjectionMatrix;
     nyaMat4x4f  depthViewProjectionMatrix;

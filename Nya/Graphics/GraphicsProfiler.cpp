@@ -61,6 +61,8 @@ void GraphicsProfiler::destroy( RenderDevice* renderDevice )
 
 void GraphicsProfiler::onFrame( RenderDevice* renderDevice )
 {
+    NYA_PROFILE_FUNCTION
+
     frameIndex++;
 
     if ( ( frameIndex - RESULT_RETRIVAL_FRAME_LAG ) >= 0u ) {

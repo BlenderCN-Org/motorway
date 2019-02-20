@@ -30,4 +30,4 @@ using ResHandle_t = uint32_t;
 void LoadCachedResourcesFP( RenderDevice* renderDevice, ShaderCache* shaderCache );
 void FreeCachedResourcesFP( RenderDevice* renderDevice );
 
-ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_t input );
+ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_t input, ResHandle_t bloomInput );

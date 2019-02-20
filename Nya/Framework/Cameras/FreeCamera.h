@@ -71,8 +71,6 @@ private:
     float           moveDamping;
 
     float           aspectRatio;
-    float           width;
-    float           height;
     float           fov;
     float           nearPlane;
 };

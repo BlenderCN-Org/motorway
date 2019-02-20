@@ -1,10 +1,4 @@
-static const float A = 0.15;
-static const float B = 0.50;
-static const float C = 0.10;
-static const float D = 0.20;
-static const float E = 0.02;
-static const float F = 0.30;
-static const float W = 11.2;
+#include <AutoExposure/SharedAutoExposure.hlsli>
 
 float3 accurateLinearToSRGB( in float3 linearCol )
 {
@@ -13,10 +7,28 @@ float3 accurateLinearToSRGB( in float3 linearCol )
     float3 sRGB = ( linearCol <= 0.0031308 ) ? sRGBLo : sRGBHi;
     return sRGB;
 }
+// Academy Color Encoding System [http://www.oscars.org/science-technology/sci-tech-projects/aces]
+float3 ACESFilmic(const float3 x) 
+{
+	const float a = 2.51;
+	const float b = 0.03;
+	const float c = 2.43;
+	const float d = 0.59;
+	const float e = 0.14;
+	return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
 
 float3 Uncharted2Tonemap(float3 x)
 {
-     return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+    static const float A = 0.15;
+    static const float B = 0.50;
+    static const float C = 0.10;
+    static const float D = 0.20;
+    static const float E = 0.02;
+    static const float F = 0.30;
+    static const float W = 11.2;
+
+    return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
 float3 InterleavedGradientNoise( float2 uv )
@@ -25,26 +37,51 @@ float3 InterleavedGradientNoise( float2 uv )
     return frac( magic.z * frac( dot( uv, magic.xy ) ) );
 }
 
-Texture2D<float4>	g_InputRenderTarget : register( t0 );
-RWTexture2D<float4>	g_OutputRenderTarget : register( u0 );
-
-cbuffer RenderInfos : register( b1 )
+float3 computeBloomLuminance( float3 bloomColor, float bloomEC, float currentEV )
 {
-	float2	g_BackbufferDimensions;
-};
+    // currentEV is the value calculated at the previous frame
+    float bloomEV = currentEV + bloomEC;
+
+    // convert to luminance
+    // See equation (12) for explanation about converting EV to luminance
+    return bloomColor * pow( 2, bloomEV - 3 );
+}
+
+float computeEV100FromAvgLuminance( float avg_luminance )
+{
+    return log2( avg_luminance * 100.0 / 12.5 );
+}
+
+float convertEV100ToExposure(float EV100)
+{
+    float maxLuminance = 1.2f * pow(2.0f, EV100);
+    return 1.0f / maxLuminance;
+}
+
+Texture2D<float4>	g_InputRenderTarget : register( t0 );
+Texture2D<float3>	g_BloomRenderTarget : register( t1 );
+
+StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t8 );
+
+RWTexture2D<float4>	g_OutputRenderTarget : register( u0 );
 
 [numthreads( 16, 16, 1 )]
 void EntryPointCS( uint2 id : SV_DispatchThreadID )
 {
-	float4 finalColor = g_InputRenderTarget.Load( int3( id, 0 ) ); 
-	
-	
-	// Apply Tonemapping
-    static const float ExposureBias = 2.0f;
+    static const float g_BloomStrength = 0.0008f;
+       
+    AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
+    float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );
     
-    float3 curr = Uncharted2Tonemap(ExposureBias*finalColor.rgb * 2.0f);
-    float3 whiteScale = 1.0f/Uncharted2Tonemap(W);
-    float3 color = curr*whiteScale;
+    float exposure = exp2( ( convertEV100ToExposure( currentEV ) ) );
+    
+	float4 finalColor = g_InputRenderTarget.Load( int3( id, 0 ) );    
+	float3 bloomColor = g_BloomRenderTarget.Load( int3( id, 0 ) );
+    
+    float3 bloomLuminance = computeBloomLuminance( bloomColor, 0.0f, currentEV );
+    finalColor.rgb = lerp( finalColor.rgb, bloomLuminance, g_BloomStrength );
+    
+    float3 color = ACESFilmic( finalColor.rgb * exposure );
     
     color = accurateLinearToSRGB( color );
 

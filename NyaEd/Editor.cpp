@@ -47,10 +47,6 @@
 
 #include <Graphics/LightGrid.h>
 
-#include <thread>
-#include <atomic>
-#include <mutex>
-
 static constexpr nyaChar_t* const PROJECT_NAME = ( nyaChar_t* const )NYA_STRING( "NyaEd" );
 
 // CRT allocated memory for base heap allocation
@@ -75,13 +71,6 @@ LightGrid*              g_LightGrid;
 
 Scene*                  g_SceneTest;
 FreeCamera*             g_FreeCamera;
-
-std::atomic_bool        g_ThreadSync( false );
-SpinLock                g_SceneSyncLock = {};
-
-FramerateCounter renderCounter = {};
-FramerateCounter logicCounter = {};
-FramerateCounter audioCounter = {};
 
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -168,11 +157,11 @@ void TestStuff()
     DirectionalLightData sunLight = {};
     sunLight.isSunLight = true;
     sunLight.intensityInLux = 100000.0f;
-    sunLight.angularRadius = 0.007f;
+    sunLight.angularRadius = 0.00935f / 2.0f;
     const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
 
     sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
-    sunLight.sphericalCoordinates = nyaVec2f( 1.0f, 0.5f );
+    sunLight.sphericalCoordinates = nyaVec2f( 0.5f, 1.0f );
     sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
@@ -345,124 +334,21 @@ void Initialize()
 #endif
 }
 
-void CollectDrawCmds( const Scene::GameWorldState& snapshot, DrawCommandBuilder& drawCmdBuilder )
-{
-    NYA_PROFILE( __FUNCTION__ )
-
-    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < snapshot.StaticGeometryCount; staticGeomIdx++ ) {
-        auto& geometry = snapshot.StaticGeometry[staticGeomIdx];
-
-        auto& transform = snapshot.TransformDatabase[geometry.transform];
-        auto& renderable = snapshot.RenderableMeshDatabase[geometry.mesh];
-
-        // Check renderable flags (but don't cull the instance yet)
-        if ( renderable.isVisible ) {
-            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix() );
-        }
-    }
-
-    for ( uint32_t freeCameraIdx = 0; freeCameraIdx < snapshot.FreeCameraDatabase.usageIndex; freeCameraIdx++ ) {
-        drawCmdBuilder.addCamera( &snapshot.FreeCameraDatabase[freeCameraIdx].getData() );
-    }
-}
-
-void RenderLoop()
-{
-    thread_local Scene::GameWorldState gameWorldSnapshot = {};
-
-    // TODO Test!!
-    gameWorldSnapshot.TransformDatabase.components = nya::core::allocateArray<Transform>( g_GlobalAllocator, 8192 );
-    gameWorldSnapshot.TransformDatabase.capacity = 8192;
-
-    gameWorldSnapshot.RenderableMeshDatabase.components = nya::core::allocateArray<RenderableMesh>( g_GlobalAllocator, 1024 );
-    gameWorldSnapshot.RenderableMeshDatabase.capacity = 1024;
-
-    gameWorldSnapshot.FreeCameraDatabase.components = nya::core::allocateArray<FreeCamera>( g_GlobalAllocator, 4 );
-    gameWorldSnapshot.FreeCameraDatabase.capacity = 4;
-
-    Timer updateTimer = {};
-    float frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
-
-    while ( 1 ) {
-        frameTime = static_cast< float >( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
-
-        if ( g_ThreadSync ) {
-            break;
-        }
-
-        renderCounter.onFrame( frameTime );
-
-        std::string fpsString = "Logic " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n"
-            "Render " + std::to_string( renderCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( renderCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS) / "
-            + std::to_string( renderCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n"
-            "Audio " + std::to_string( audioCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( audioCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms\n";
-
-        g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
-        g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
-        
-        const std::string& profileString = g_Profiler.getProfilingSummaryString();
-        g_WorldRenderer->textRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
-
-        g_SceneSyncLock.lock();
-        g_SceneTest->getWorldStateSnapshot( gameWorldSnapshot );
-        g_SceneSyncLock.unlock();
-
-        CollectDrawCmds( gameWorldSnapshot, *g_DrawCommandBuilder );
-
-        g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );
-
-        // Do pre-world render steps (update light grid, upload buffers, etc.)
-        CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();
-        cmdList.begin();
-            g_LightGrid->updateClusters( &cmdList );
-        cmdList.end();
-        g_RenderDevice->submitCommandList( &cmdList );
-
-        g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
-
-        g_RenderDevice->present();
-    }
-}
-
-void AudioLoop()
-{
-    Timer updateTimer = {};
-
-    float frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
-
-    while ( 1 ) {
-        frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
-
-        if ( g_ThreadSync ) {
-            break;
-        }
-
-        audioCounter.onFrame( frameTime );
-
-        // IDEAS
-        // - Play Queue (or smthing like that)
-        // - Play one sound per audio frame
-        // - Enqueue asynchronously via the logic loop
-    }
-}
-
 void MainLoop()
-{ 
+{
     // Application main loop
     Timer updateTimer = {};
+    FramerateCounter logicCounter = {};
 
     float frameTime = static_cast<float>( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
     double accumulator = 0.0;
 
-    std::thread renderThread( RenderLoop );
-    std::thread audioThread( AudioLoop );
-
     while ( 1 ) {
+        g_Profiler.onFrame();
+
         nya::display::PollSystemEvents( g_DisplaySurface, g_InputReader );
 
-        // Update run signal primitive
-        g_ThreadSync.store( nya::display::HasReceivedQuitSignal( g_DisplaySurface ) );
-        if ( g_ThreadSync ) {
+        if ( nya::display::HasReceivedQuitSignal( g_DisplaySurface ) ) {
             break;
         }
 
@@ -472,28 +358,46 @@ void MainLoop()
 
         accumulator += frameTime;
         
-        g_SceneSyncLock.lock();
+        NYA_BEGIN_PROFILE_SCOPE( "Fixed-step updates" )
+            while ( accumulator >= nya::editor::LOGIC_DELTA ) {
+                // Update Input
+                g_InputReader->onFrame( g_InputMapper );
 
-        while ( accumulator >= nya::editor::LOGIC_DELTA ) {
-            // Update Input
-            g_InputReader->onFrame( g_InputMapper );
+                // Update Local Game Instance
+                g_InputMapper->update( nya::editor::LOGIC_DELTA );
+                g_InputMapper->clear();
 
-            // Update Local Game Instance
-            g_InputMapper->update( nya::editor::LOGIC_DELTA );
-            g_InputMapper->clear();
+                g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
+                accumulator -= nya::editor::LOGIC_DELTA;
+            }
+        NYA_END_PROFILE_SCOPE()
 
-            g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
-            accumulator -= nya::editor::LOGIC_DELTA;
-        }
+        NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
+            std::string fpsString = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
+            
+            g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
+            g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
+       
+            const std::string& profileString = g_Profiler.getProfilingSummaryString();
+            g_WorldRenderer->textRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
 
-        g_SceneSyncLock.unlock();
+            g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
+            g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );
 
-        g_Profiler.onFrame();
+            // Do pre-world render steps (update light grid, upload buffers, etc.)
+            NYA_BEGIN_PROFILE_SCOPE( "Pre World Render" )
+                CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();
+                cmdList.begin();
+                    g_LightGrid->updateClusters( &cmdList );
+                cmdList.end();
+                g_RenderDevice->submitCommandList( &cmdList );
+            NYA_END_PROFILE_SCOPE()
+
+            g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
+        NYA_END_PROFILE_SCOPE()
+
+        g_RenderDevice->present();
     }
-
-    // Finish render/audio thread
-    renderThread.join();
-    audioThread.join();
 }
 
 void Shutdown()

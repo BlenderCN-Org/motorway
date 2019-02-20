@@ -42,8 +42,6 @@ FreeCamera::FreeCamera( const float camSpeed )
 	, moveSpeed( camSpeed )
     , moveDamping( 1.0f )
     , aspectRatio( 1.0f )
-    , width( 1280.0f )
-    , height( 720.0f )
     , fov( radians( 90.0f ) )
     , nearPlane( 0.1f )
 {
@@ -128,14 +126,13 @@ void FreeCamera::update( const float frameTime )
     if ( true ) {
         const uint32_t samplingIndex = ( data.cameraFrameNumber % 16 );
 
-        static constexpr float TAAJitteringScale = 0.05f;
+        static constexpr float TAAJitteringScale = 0.01f;
         nyaVec2f projectionJittering = ( nya::maths::Hammersley2D( samplingIndex, 16 ) - nyaVec2f( 0.5f ) ) * TAAJitteringScale;
 
-        const float offsetX = projectionJittering.x * ( 1.0f / width );
-        const float offsetY = projectionJittering.y * ( 1.0f / height );
+        const nyaVec2f offset = projectionJittering * data.inverseViewportSize;
 
         // Apply jittering to projection matrix
-        data.projectionMatrix = MakeTranslationMat( nyaVec3f( offsetX, -offsetY, 0.0f ), data.projectionMatrix );
+        data.projectionMatrix = MakeTranslationMat( nyaVec3f( offset.x, -offset.y, 0.0f ), data.projectionMatrix );
 
         data.jitteringOffset = ( projectionJittering - data.previousJitteringOffset ) * 0.5f;
         data.previousJitteringOffset = projectionJittering;
@@ -157,8 +154,7 @@ void FreeCamera::save( FileSystemObject* stream )
     stream->write( moveDamping );
     stream->write( nearPlane );
     stream->write( fov );
-    stream->write( width );
-    stream->write( height );
+    stream->write( data.viewportSize );
 }
 
 void FreeCamera::restore( FileSystemObject* stream )
@@ -168,23 +164,21 @@ void FreeCamera::restore( FileSystemObject* stream )
     stream->read( moveDamping );
     stream->read( nearPlane );
     stream->read( fov );
-    stream->read( width );
-    stream->read( height );
+    stream->read( data.viewportSize );
 
     auto fovDeg = degrees( fov );
-    setProjectionMatrix( fovDeg, width, height, nearPlane );
+    setProjectionMatrix( fovDeg, data.viewportSize.x, data.viewportSize.y, nearPlane );
 }
 
 void FreeCamera::setProjectionMatrix( const float fieldOfView, const float screenWidth, float screenHeight, const float zNear )
 {
     aspectRatio = ( screenWidth / screenHeight );
-
-    width = screenWidth;
-    height = screenHeight;
-
     fov = radians( fieldOfView );
 
     nearPlane = zNear;
+
+    data.viewportSize = nyaVec2f( screenWidth, screenHeight );
+    data.inverseViewportSize = 1.0f / data.viewportSize;
 
     data.projectionMatrix = MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = data.projectionMatrix.inverse();

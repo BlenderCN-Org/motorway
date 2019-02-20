@@ -22,14 +22,19 @@
 
 #include "GraphicsProfiler.h"
 
+#include <Rendering/ImageFormat.h>
+
 RenderPipelineBuilder::RenderPipelineBuilder()
-    : passRenderTargetRefs{ {0} }
+    : passRefs{ {0} }
     , renderPassCount( -1 )
     , renderTargetCount( 0 )
     , bufferCount( 0 )
     , samplerCount( 0 )
+    , persitentBufferCount( 0 )
+    , persitentRenderTargetCount( 0 )
+    , pipelineSamplerCount( 1 )
 {
-    
+
 }
 
 RenderPipelineBuilder::~RenderPipelineBuilder()
@@ -42,7 +47,7 @@ void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPa
     int tmpRenderPassCount = 0;
 
     for ( int32_t i = 0; i < renderPassListLength; i++ ) {
-        auto& passInfos = passRenderTargetRefs[i];
+        auto& passInfos = passRefs[i];
 
         bool cullPass = true;
 
@@ -50,7 +55,14 @@ void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPa
             cullPass = false;
         } else {
             for ( uint32_t j = 0; j < passInfos.renderTargetCount; j++ ) {
-                if ( renderTarget[passInfos.renderTarget[j]].referenceCount > 0 ) {
+                if ( renderTargets[passInfos.renderTargets[j]].referenceCount > 0 ) {
+                    cullPass = false;
+                    break;
+                }
+            }
+
+            for ( uint32_t j = 0; j < passInfos.buffersCount; j++ ) {
+                if ( buffers[passInfos.buffers[j]].referenceCount > 0 ) {
                     cullPass = false;
                     break;
                 }
@@ -72,7 +84,7 @@ void RenderPipelineBuilder::useAsyncCompute( const bool state )
 
 void RenderPipelineBuilder::setUncullablePass()
 {
-    passRenderTargetRefs[renderPassCount].renderTargetCount = static_cast< uint32_t >( -1 );
+    passRefs[renderPassCount].renderTargetCount = static_cast< uint32_t >( -1 );
 }
 
 void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineResources& resources )
@@ -80,7 +92,7 @@ void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineR
     resources.unacquireResources();
 
     for ( uint32_t i = 0; i < renderTargetCount; i++ ) {
-        auto& resToAlloc = renderTarget[i];
+        auto& resToAlloc = renderTargets[i];
 
         if ( resToAlloc.referenceCount == 0 ) {
             continue;
@@ -99,21 +111,37 @@ void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineR
         resources.allocateSampler( renderDevice, i, resToAlloc );
     }
 
+    for ( uint32_t i = 0; i < persitentBufferCount; i++ ) {
+        resources.bindPersistentBuffers( i, persitentBuffers[i] );
+    }
+
+    for ( uint32_t i = 0; i < persitentRenderTargetCount; i++ ) {
+        resources.bindPersistentRenderTargets( i, persitentRenderTargets[i] );
+    }
+    
     renderPassCount = -1;
     renderTargetCount = 0;
     bufferCount = 0;
     samplerCount = 0;
+    persitentBufferCount = 0;
+    persitentRenderTargetCount = 0;
 }
 
 void RenderPipelineBuilder::addRenderPass()
 {
     renderPassCount++;
-    passRenderTargetRefs[renderPassCount].renderTargetCount = 0;
+    passRefs[renderPassCount].renderTargetCount = 0;
+    passRefs[renderPassCount].buffersCount = 0;
 }
 
 void RenderPipelineBuilder::setPipelineViewport( const Viewport& viewport )
 {
     pipelineViewport = viewport;
+}
+
+void RenderPipelineBuilder::setMSAAQuality( const uint32_t samplerCount )
+{
+    pipelineSamplerCount = samplerCount;
 }
 
 ResHandle_t RenderPipelineBuilder::allocateRenderTarget( TextureDescription& description, const uint32_t flags )
@@ -124,27 +152,54 @@ ResHandle_t RenderPipelineBuilder::allocateRenderTarget( TextureDescription& des
     }
 
     if ( flags & eRenderTargetFlags::USE_PIPELINE_SAMPLER_COUNT ) {
-        description.samplerCount = 4;
+        description.samplerCount = pipelineSamplerCount; 
+        description.flags.useMultisamplePattern = ( pipelineSamplerCount > 1 );
     }
 
-    renderTarget[renderTargetCount] = {
+    renderTargets[renderTargetCount] = {
         description,
         flags,
         0u
     };
 
-    auto& passInfos = passRenderTargetRefs[renderPassCount];
-    passInfos.renderTarget[passInfos.renderTargetCount++] = renderTargetCount;
+    auto& passInfos = passRefs[renderPassCount];
+    passInfos.renderTargets[passInfos.renderTargetCount++] = renderTargetCount;
 
     return renderTargetCount++;
 }
 
-ResHandle_t RenderPipelineBuilder::allocateBuffer( const BufferDesc& description, const uint32_t shaderStageBinding )
+ResHandle_t RenderPipelineBuilder::copyRenderTarget( const ResHandle_t resourceToCopy, const uint32_t copyFlags )
 {
+    renderTargets[renderTargetCount].description = renderTargets[resourceToCopy].description;
+    renderTargets[renderTargetCount].flags = 0u;
+    renderTargets[renderTargetCount].referenceCount = 0u;
+
+    if ( copyFlags & eRenderTargetCopyFlags::NO_MULTISAMPLE ) {
+        renderTargets[renderTargetCount].description.samplerCount = 1u;
+        renderTargets[renderTargetCount].description.flags.useMultisamplePattern = 0;
+    }
+
+    auto& passInfos = passRefs[renderPassCount];
+    passInfos.renderTargets[passInfos.renderTargetCount++] = renderTargetCount;
+
+    return renderTargetCount++;
+}
+
+ResHandle_t RenderPipelineBuilder::allocateBuffer( BufferDesc& description, const uint32_t shaderStageBinding, const uint32_t flags )
+{
+    if ( flags & eRenderTargetFlags::USE_PIPELINE_DIMENSIONS ) {
+        description.width = pipelineViewport.Width;
+        description.height = pipelineViewport.Height;
+    }
+
     buffers[bufferCount] = {
         description,
-        shaderStageBinding
+        shaderStageBinding,
+        0u
     };
+
+    auto& passInfos = passRefs[renderPassCount];
+    passInfos.buffers[passInfos.buffersCount++] = bufferCount;
 
     return bufferCount++;
 }
@@ -158,17 +213,38 @@ ResHandle_t RenderPipelineBuilder::allocateSampler( const SamplerDesc& descripti
 
 ResHandle_t RenderPipelineBuilder::readRenderTarget( const ResHandle_t resourceHandle )
 {
-    renderTarget[resourceHandle].referenceCount++;
+    renderTargets[resourceHandle].referenceCount++;
 
     return resourceHandle;
 }
 
 ResHandle_t RenderPipelineBuilder::readBuffer( const ResHandle_t resourceHandle )
 {
-    // TODO Implement pass cullling with buffer reference counting
     buffers[resourceHandle].referenceCount++;
 
     return resourceHandle;
+}
+
+ResHandle_t RenderPipelineBuilder::retrievePersistentRenderTarget( const nyaStringHash_t resourceHashcode )
+{
+    persitentRenderTargets[persitentRenderTargetCount] = resourceHashcode;
+
+    // NOTE If a render pass uses a persitent resource, it implicitly become uncullable (since persistent resources
+    // have no reference tracking)
+    setUncullablePass();
+
+    return persitentRenderTargetCount++;
+}
+
+ResHandle_t RenderPipelineBuilder::retrievePersistentBuffer( const nyaStringHash_t resourceHashcode )
+{
+    persitentBuffers[persitentBufferCount] = resourceHashcode;
+
+    // NOTE If a render pass uses a persitent resource, it implicitly become uncullable (since persistent resources
+    // have no reference tracking)
+    setUncullablePass();
+
+    return persitentBufferCount++;
 }
 
 RenderPipelineResources::RenderPipelineResources()
@@ -181,6 +257,9 @@ RenderPipelineResources::RenderPipelineResources()
     , uavTex2dBuffer{ 0 }
     , isUavTex2dBufferFree{ false }
     , uavTex2dAllocatedCount( 0 )
+    , uavBuffer{ 0 }
+    , isUavBufferFree{ false }
+    , uavBufferAllocatedCount( 0 )
     , renderTargets{ nullptr }
     , renderTargetsDesc{}
     , isRenderTargetAvailable{ false }
@@ -189,6 +268,8 @@ RenderPipelineResources::RenderPipelineResources()
     , samplersDesc{}
     , isSamplerAvailable{ false }
     , samplerAllocatedCount( 0 )
+    , allocatedPersistentBuffers{ nullptr }
+    , allocatedPersistentRenderTargets{ nullptr }
 {
 
 }
@@ -223,6 +304,10 @@ void RenderPipelineResources::releaseResources( RenderDevice* renderDevice )
         renderDevice->destroyBuffer( uavTex2dBuffer[uav2dIdx] );
     }
 
+    for ( int uavBufferIdx = 0; uavBufferIdx < uavBufferAllocatedCount; uavBufferIdx++ ) {
+        renderDevice->destroyBuffer( uavBuffer[uavBufferIdx] );
+    }
+
     for ( int rtIdx = 0; rtIdx < rtAllocatedCount; rtIdx++ ) {
         renderDevice->destroyRenderTarget( renderTargets[rtIdx] );
     }
@@ -237,6 +322,7 @@ void RenderPipelineResources::unacquireResources()
     memset( isCBufferFree, 1, sizeof( bool ) * cbufferAllocatedCount );
     memset( isGenBufferFree, 1, sizeof( bool ) * genAllocatedCount );
     memset( isUavTex2dBufferFree, 1, sizeof( bool ) * uavTex2dAllocatedCount );
+    memset( isUavBufferFree, 1, sizeof( bool ) * uavBufferAllocatedCount );
     memset( isRenderTargetAvailable, 1, sizeof( bool ) * rtAllocatedCount );
     memset( isSamplerAvailable, 1, sizeof( bool ) * samplerAllocatedCount );
 }
@@ -294,6 +380,16 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
     previousBucket->endAddr = ( drawCmds + drawCmdCount );
 }
 
+void RenderPipelineResources::importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget )
+{
+    persistentRenderTarget[resourceHashcode] = renderTarget;
+}
+
+void RenderPipelineResources::importPersistentBuffer( const nyaStringHash_t resourceHashcode, Buffer* buffer )
+{
+    persistentBuffers[resourceHashcode] = buffer;
+}
+
 const RenderPipelineResources::DrawCmdBucket& RenderPipelineResources::getDrawCmdBucket( const DrawCommandKey::Layer layer, const uint8_t viewportLayer ) const
 {
     return drawCmdBuckets[layer][viewportLayer];
@@ -314,6 +410,16 @@ const Viewport* RenderPipelineResources::getMainViewport() const
     return &activeViewport;
 }
 
+void RenderPipelineResources::updateDeltaTime( const float dt )
+{
+    deltaTime = dt;
+}
+
+const float RenderPipelineResources::getDeltaTime() const
+{
+    return deltaTime;
+}
+
 Buffer* RenderPipelineResources::getBuffer( const ResHandle_t resourceHandle ) const
 {
     return allocatedBuffers[resourceHandle];
@@ -327,6 +433,16 @@ RenderTarget* RenderPipelineResources::getRenderTarget( const ResHandle_t resour
 Sampler* RenderPipelineResources::getSampler( const ResHandle_t resourceHandle ) const
 {
     return allocatedSamplers[resourceHandle];
+}
+
+Buffer* RenderPipelineResources::getPersistentBuffer( const ResHandle_t resourceHandle ) const
+{
+    return allocatedPersistentBuffers[resourceHandle];
+}
+
+RenderTarget* RenderPipelineResources::getPersitentRenderTarget( const ResHandle_t resourceHandle ) const
+{
+    return allocatedPersistentRenderTargets[resourceHandle];
 }
 
 void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const ResHandle_t resourceHandle, const BufferDesc& description )
@@ -351,6 +467,27 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
             cbuffers[cbufferAllocatedCount] = buffer;
             cbuffersSize[cbufferAllocatedCount] = description.size;
             cbufferAllocatedCount++;
+        }
+    } break;
+
+    case BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER: {
+        for ( int i = 0; i < uavBufferAllocatedCount; i++ ) {
+            if ( uavBufferDesc[i].viewFormat == description.viewFormat
+                && uavBufferDesc[i].size == description.size
+                && uavBufferDesc[i].singleElementSize == description.singleElementSize
+                && isUavBufferFree[i] ) {
+                buffer = uavBuffer[i];
+                isUavBufferFree[i] = false;
+                break;
+            }
+        }
+
+        if ( buffer == nullptr ) {
+            buffer = renderDevice->createBuffer( description );
+
+            uavBuffer[uavBufferAllocatedCount] = buffer;
+            uavBufferDesc[uavBufferAllocatedCount] = description;
+            uavBufferAllocatedCount++;
         }
     } break;
 
@@ -463,6 +600,28 @@ void RenderPipelineResources::allocateSampler( RenderDevice* renderDevice, const
     allocatedSamplers[resourceHandle] = sampler;
 }
 
+void RenderPipelineResources::bindPersistentBuffers( const ResHandle_t resourceHandle, const nyaStringHash_t hashcode )
+{
+    auto it = persistentBuffers.find( hashcode );
+    allocatedPersistentBuffers[resourceHandle] = ( it != persistentBuffers.end() ) ? it->second : nullptr;
+}
+
+void RenderPipelineResources::bindPersistentRenderTargets( const ResHandle_t resourceHandle, const nyaStringHash_t hashcode )
+{
+    auto it = persistentRenderTarget.find( hashcode );
+    allocatedPersistentRenderTargets[resourceHandle] = ( it != persistentRenderTarget.end() ) ? it->second : nullptr;
+}
+
+bool RenderPipelineResources::isPersistentRenderTargetAvailable( const nyaStringHash_t resourceHashcode ) const
+{
+    return ( persistentRenderTarget.find( resourceHashcode ) != persistentRenderTarget.end() );
+}
+
+bool RenderPipelineResources::isPersistentBufferAvailable( const nyaStringHash_t resourceHashcode ) const
+{
+    return ( persistentBuffers.find( resourceHashcode ) != persistentBuffers.end() );
+}
+
 RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     : memoryAllocator( allocator )
     , renderPasses{ 0 }
@@ -470,6 +629,8 @@ RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     , passGroupStartIndexes{ 0u }
     , passGroupCount( 0 )
     , graphicsProfiler( nullptr )
+    , hasViewportChanged( false )
+    , lastFrameRenderTarget( nullptr )
 {
     renderPipelineResources.create( allocator );
 }
@@ -501,8 +662,36 @@ void RenderPipeline::beginPassGroup()
     passGroupStartIndexes[passGroupCount++] = renderPassCount;
 }
 
-void RenderPipeline::execute( RenderDevice* renderDevice )
+void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime )
 {
+    NYA_PROFILE_FUNCTION
+
+    // Update per-frame renderer infos
+    renderPipelineResources.updateDeltaTime( deltaTime );
+
+    // Check if we need to reallocate persitent resources
+    if ( hasViewportChanged ) {
+        if ( lastFrameRenderTarget != nullptr ) {
+            renderDevice->destroyRenderTarget( lastFrameRenderTarget );
+        }
+
+        TextureDescription lastFrameDesc = {};
+        lastFrameDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
+        lastFrameDesc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+        lastFrameDesc.width = activeViewport.Width;
+        lastFrameDesc.height = activeViewport.Height;
+        lastFrameDesc.depth = 1;
+        lastFrameDesc.mipCount = 1;
+        lastFrameDesc.samplerCount = 1;
+
+        lastFrameRenderTarget = renderDevice->createRenderTarget2D( lastFrameDesc );
+
+        // Import the new render target
+        renderPipelineResources.importPersistentRenderTarget( NYA_STRING_HASH( "LastFrameRenderTarget" ), lastFrameRenderTarget );
+
+        hasViewportChanged = false;
+    }
+
     // Cull & compile
     renderPipelineBuilder.cullRenderPasses( renderPasses, renderPassCount );
     renderPipelineBuilder.compile( renderDevice, renderPipelineResources );
@@ -515,11 +704,15 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
 
 #if NYA_DEVBUILD
     if ( graphicsProfiler != nullptr ) {
-        for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
-            graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
-                renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
-            graphicsProfiler->endSection( &cmdList );
-        }
+        NYA_BEGIN_PROFILE_SCOPE( "RenderPasses Execution" );
+            for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
+                NYA_BEGIN_PROFILE_SCOPE( renderPasses[passIdx].name );
+                    graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
+                        renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+                    graphicsProfiler->endSection( &cmdList );
+                NYA_END_PROFILE_SCOPE()
+            }
+        NYA_END_PROFILE_SCOPE()
 
         graphicsProfiler->onFrame( renderDevice );
     } else {
@@ -543,11 +736,15 @@ void RenderPipeline::execute( RenderDevice* renderDevice )
 
 void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount )
 {
+    NYA_PROFILE_FUNCTION
+
     renderPipelineResources.dispatchToBuckets( drawCmds, drawCmdCount );
 }
 
 void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* camera )
 {
+    hasViewportChanged = ( activeViewport != viewport );
+
     activeViewport = viewport;
 
     renderPipelineBuilder.setPipelineViewport( viewport );
@@ -555,6 +752,21 @@ void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* ca
     if ( camera != nullptr ) {
         renderPipelineResources.setPipelineViewport( viewport, camera );
     }
+}
+
+void RenderPipeline::setMSAAQuality( const uint32_t samplerCount )
+{
+    renderPipelineBuilder.setMSAAQuality( samplerCount );
+}
+
+void RenderPipeline::importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget )
+{
+    renderPipelineResources.importPersistentRenderTarget( resourceHashcode, renderTarget );
+}
+
+void RenderPipeline::importPersistentBuffer( const nyaStringHash_t resourceHashcode, Buffer* buffer )
+{
+    renderPipelineResources.importPersistentBuffer( resourceHashcode, buffer );
 }
 
 #if NYA_DEVBUILD
