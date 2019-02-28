@@ -115,17 +115,19 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
         // Register viewport into the world renderer
         RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0,  static_cast<int32_t>( camera->viewportSize.x ), static_cast<int32_t>( camera->viewportSize.y ), 0.0f, 1.0f }, camera );
-        renderPipeline.setMSAAQuality( 8 );
+        renderPipeline.setMSAAQuality( 4 );
 
         bool useTAA = true;
 
         // !!TEST!!
         renderPipeline.beginPassGroup();
         {
-            auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
-            auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightGrid->getLightsClusters(), lightGrid->getLightsBuffer(), lightGrid->getClustersInfos(), skyRenderTarget );
+            auto lightClustersData = lightGrid->updateClusters( &renderPipeline );
 
-            auto resolvedTarget = AddMSAAResolveRenderPass( &renderPipeline, lightRenderTarget.lightRenderTarget, lightRenderTarget.velocityRenderTarget, lightRenderTarget.depthRenderTarget, 8, useTAA );
+            auto skyRenderTarget = worldRenderer->skyRenderModule->renderSky( &renderPipeline );
+            auto lightRenderTarget = AddLightRenderPass( &renderPipeline, lightClustersData, skyRenderTarget );
+
+            auto resolvedTarget = AddMSAAResolveRenderPass( &renderPipeline, lightRenderTarget.lightRenderTarget, lightRenderTarget.velocityRenderTarget, lightRenderTarget.depthRenderTarget, 4, useTAA );
 
             if ( useTAA ) {
                 AddCurrentFrameSaveRenderPass( &renderPipeline, resolvedTarget );

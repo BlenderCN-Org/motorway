@@ -128,6 +128,7 @@ void RegisterInputContexts()
 
 void TestStuff()
 {
+    NYA_CLOG << "Initializing stuff..." << std::endl;
     auto freeCameraId = g_SceneTest->FreeCameraDatabase.allocate();
 
     // Retrieve pointer to camera instance from scene db
@@ -136,20 +137,21 @@ void TestStuff()
 
     auto& meshTest = g_SceneTest->allocateStaticGeometry();
     auto& meshTransform = g_SceneTest->TransformDatabase[meshTest.transform];
-    meshTransform.translate( nyaVec3f( 32, 0, 0 ) );
+    meshTransform.translate( nyaVec3f( 0, -1, 0 ) );
 
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
 
-    for ( int i = 0; i < 32; i++ ) {
+    for ( int i = 0; i < 128; i++ ) {
         PointLightData pointLightData;
-        pointLightData.worldPosition = { 20 - i * 2.0f, 4.0f, 20 - i * 2.0f };
-        pointLightData.radius = 4.0f;
-        pointLightData.lightPower = 1250.0f;
-        pointLightData.colorRGB = { 1, 1, 1 };
+        pointLightData.worldPosition = { 4.0f - i, 0, 4.0f - i };
+        pointLightData.radius = 0.50f;
+        pointLightData.lightPower = 1000.0f;
+        pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
 
         auto& pointLight = g_SceneTest->allocatePointLight();
         pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+           
         auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
         pointLightTransform.translate( pointLightData.worldPosition );
     }
@@ -167,7 +169,7 @@ void TestStuff()
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
     dirLight.directionalLight = g_LightGrid->allocateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
-    g_LightGrid->setSceneBounds( nyaVec3f( 20, 20, 20 ), nyaVec3f( -20, -20, -20 ) );
+    g_LightGrid->setSceneBounds( nyaVec3f( 16 ), nyaVec3f( -16 ) );
 }
 
 void InitializeIOSubsystems()
@@ -282,7 +284,7 @@ void InitializeRenderSubsystems()
     g_DrawCommandBuilder = nya::core::allocate<DrawCommandBuilder>( g_GlobalAllocator, g_GlobalAllocator );
     g_LightGrid = nya::core::allocate<LightGrid>( g_GlobalAllocator, g_GlobalAllocator );
 
-    g_LightGrid->create( g_RenderDevice );
+    g_LightGrid->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
     g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
     //g_RenderDevice->enableVerticalSynchronisation( true );
@@ -320,7 +322,7 @@ void Initialize()
     InitializeMemorySubsystems();
     InitializeIOSubsystems();
 
-    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\n" << NYA_COMPILER << "\n" << std::endl;
+    NYA_COUT << PROJECT_NAME << " " << NYA_BUILD << "\n" << NYA_BUILD_DATE << "\nCompiled with: " << NYA_COMPILER << "\n" << std::endl;
 
     InitializeInputSubsystems();
     InitializeRenderSubsystems();
@@ -383,15 +385,6 @@ void MainLoop()
 
             g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
             g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );
-
-            // Do pre-world render steps (update light grid, upload buffers, etc.)
-            NYA_BEGIN_PROFILE_SCOPE( "Pre World Render" )
-                CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();
-                cmdList.begin();
-                    g_LightGrid->updateClusters( &cmdList );
-                cmdList.end();
-                g_RenderDevice->submitCommandList( &cmdList );
-            NYA_END_PROFILE_SCOPE()
 
             g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
         NYA_END_PROFILE_SCOPE()

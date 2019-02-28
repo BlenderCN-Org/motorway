@@ -30,6 +30,7 @@ shader_folder = "../Nya/Shaders/"
 compiled_shader_folder = "../bin/data/shaders/"
 compileD3D11 = False
 compileSPIRV = False
+compileWaitOutput = False
 
 glslang_exe = 'glslangValidator'
 spirvcross_exe = 'spirv-cross'
@@ -167,7 +168,7 @@ def compile_permutation_d3d11( shader_name, filename, entry_point, extension, sh
     else:
         cmdLine = cmdLine + " /O1"
         
-    Popen( cmdLine, shell = True )
+    Popen( cmdLine, shell = True ) #.wait()
  
 def compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):  
     # GLSLang args are '-' delimited
@@ -286,6 +287,7 @@ compile_shader_VS( "UI/SDFTextRendering" )
 compile_shader_PS( "UI/SDFTextRendering" )
 
 # Lighting
+compile_shader_CS( "Lighting/LightCulling" )
 compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
 compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW" ] )
 

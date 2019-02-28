@@ -93,6 +93,9 @@ float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, o
     return float3x3( T, B, N );
 }
 
+// PixelShader
+#include <SceneInfos.hlsli>
+
 struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
@@ -101,11 +104,6 @@ struct PixelStageData
 };
 
 Texture3D<uint> g_Clusters : register( t0 );
-cbuffer ClusterBuffer : register( b1 )
-{
-    float3   g_ClustersScale;
-    float3   g_ClustersBias;
-};
 
 struct LightSurfaceInfos
 {

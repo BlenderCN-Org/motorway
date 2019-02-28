@@ -21,6 +21,10 @@
 #include "Shared.h"
 #include "LightGrid.h"
 
+#include <Graphics/ShaderCache.h>
+#include <Graphics/GraphicsAssetCache.h>
+#include <Graphics/RenderPipeline.h>
+
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 #include <Rendering/ImageFormat.h>
@@ -35,10 +39,8 @@ static constexpr int CLUSTER_Z = 32;
 
 LightGrid::LightGrid( BaseAllocator* allocator )
     : memoryAllocator( allocator )
-    , lightsBuffer( nullptr )
-    , clustersTexture( nullptr )
-    , aabbMin( 0, 0, 0 )
-    , aabbMax( 0, 0, 0 )
+    , lightCullingPso( nullptr )
+    , sceneInfosBuffer{ 0 }
     , PointLightCount( 0 )
     , DirectionalLightCount( 0 )
     , lights{}
@@ -51,113 +53,78 @@ LightGrid::~LightGrid()
 
 }
 
-void LightGrid::create( RenderDevice* renderDevice )
-{
-    TextureDescription clustersDesc = {};
-    clustersDesc.dimension = TextureDescription::DIMENSION_TEXTURE_3D;
-    clustersDesc.format = eImageFormat::IMAGE_FORMAT_R32_UINT;
-    clustersDesc.width = CLUSTER_X;
-    clustersDesc.height = CLUSTER_Y;
-    clustersDesc.depth = CLUSTER_Z;
-    clustersDesc.arraySize = 1;
-    clustersDesc.mipCount = 1;
-    clustersDesc.samplerCount = 1;
-    clustersDesc.flags.allowCPUWrite = 1;
-
-    clustersTexture = renderDevice->createTexture3D( clustersDesc );
-    renderDevice->setDebugMarker( clustersTexture, "Light Clusters" );
-
-    BufferDesc lightBufferDesc = {};
-    lightBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
-    lightBufferDesc.size = sizeof( lights );
-
-    lightsBuffer = renderDevice->createBuffer( lightBufferDesc );
-}
-
 void LightGrid::destroy( RenderDevice* renderDevice )
 {
-    renderDevice->destroyTexture( clustersTexture );
-    renderDevice->destroyBuffer( lightsBuffer );
+    renderDevice->destroyPipelineState( lightCullingPso );
 }
 
-void LightGrid::updateClusters( CommandList* cmdList )
+LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 {
-    NYA_PROFILE( __FUNCTION__ )
+    PassData& passData = renderPipeline->addRenderPass<PassData>(
+        "Light Clusters Update Pass",
+        [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
+            BufferDesc lightBufferDesc = {};
+            lightBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
+            lightBufferDesc.size = sizeof( lights );
+            
+            passData.lightsBuffer = renderPipelineBuilder.allocateBuffer( lightBufferDesc, SHADER_STAGE_COMPUTE );
 
-    uint32_t lightClusters[CLUSTER_Z][CLUSTER_Y][CLUSTER_X] = {};
+            BufferDesc sceneClustersBufferDesc = {};
+            sceneClustersBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
+            sceneClustersBufferDesc.size = sizeof( SceneInfosBuffer );
 
-    nyaVec3f clusterInvScale = ( 1.0f / clustersInfos.Scale );
+            passData.lightsClustersInfosBuffer = renderPipelineBuilder.allocateBuffer( sceneClustersBufferDesc, SHADER_STAGE_COMPUTE );
 
-    for ( uint32_t pointLightIdx = 0; pointLightIdx < PointLightCount; pointLightIdx++ ) {
-        const auto& light = lights.PointLights[pointLightIdx];
+            BufferDesc bufferDesc = {};
+            bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D;
+            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32_UINT;
+            bufferDesc.width = CLUSTER_X;
+            bufferDesc.height = CLUSTER_Y;
+            bufferDesc.depth = CLUSTER_Z;
+            bufferDesc.mipCount = 1;
 
-        const nyaVec3f p = ( light.worldPosition - aabbMin );
-        const nyaVec3f pMin = ( p - light.radius ) * clustersInfos.Scale;
-        const nyaVec3f pMax = ( p + light.radius ) * clustersInfos.Scale;
+            passData.lightsClusters = renderPipelineBuilder.allocateBuffer( bufferDesc, SHADER_STAGE_COMPUTE );
+        },
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+            Buffer* lightsClusters = renderPipelineResources.getBuffer( passData.lightsClusters );
+            
+            Buffer* lightsBuffer = renderPipelineResources.getBuffer( passData.lightsBuffer );
+            cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
 
-        // Cluster for the center of the light
-        const int px = ( int )floorf( p.x * clustersInfos.Scale.x );
-        const int py = ( int )floorf( p.y * clustersInfos.Scale.y );
-        const int pz = ( int )floorf( p.z * clustersInfos.Scale.z );
+            Buffer* lightsClustersInfos = renderPipelineResources.getBuffer( passData.lightsClustersInfosBuffer );
+            cmdList->updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
 
-        // Cluster bounds for the light
-        const int x0 = max( ( int )floorf( pMin.x ), 0 );
-        const int x1 = min( ( int )ceilf( pMax.x ), CLUSTER_X );
-        const int y0 = max( ( int )floorf( pMin.y ), 0 );
-        const int y1 = min( ( int )ceilf( pMax.y ), CLUSTER_Y );
-        const int z0 = max( ( int )floorf( pMin.z ), 0 );
-        const int z1 = min( ( int )ceilf( pMax.z ), CLUSTER_Z );
+            ResourceListDesc resListDesc = {};
+            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, lightsClusters };
+            resListDesc.constantBuffers[0] = { 2, SHADER_STAGE_COMPUTE, lightsBuffer };
+            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_COMPUTE, lightsClustersInfos };
 
-        const float squaredRadius = light.radius * light.radius;
-        const uint32_t mask = ( 1 << pointLightIdx );
+            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
+            cmdList->bindResourceList( &resourceList );
 
-        for ( int z = z0; z < z1; z++ ) {
-            float dz = ( pz == z ) ? 0.0f : aabbMin.z + ( ( pz < z ) ? z : z + 1 ) * clusterInvScale.z - light.worldPosition.z;
-            dz *= dz;
-
-            for ( int y = y0; y < y1; y++ ) {
-                float dy = ( py == y ) ? 0.0f : aabbMin.y + ( ( py < y ) ? y : y + 1 ) * clusterInvScale.y - light.worldPosition.y;
-                dy *= dy;
-                dy += dz;
-
-                for ( int x = x0; x < x1; x++ ) {
-                    float dx = ( px == x ) ? 0.0f : aabbMin.x + ( ( px < x ) ? x : x + 1 ) * clusterInvScale.x - light.worldPosition.x;
-                    dx *= dx;
-                    dx += dy;
-
-                    if ( dx < squaredRadius ) {
-                        lightClusters[z][y][x] |= mask;
-                    }
-                }
-            }
+            cmdList->bindPipelineState( lightCullingPso );
+            
+            cmdList->dispatchCompute( MAX_POINT_LIGHT_COUNT / 16u, MAX_POINT_LIGHT_COUNT / 16u, 1u );
         }
-    }
+    );
 
-    cmdList->updateTexture3D( clustersTexture, lightClusters, sizeof( uint32_t ), CLUSTER_X, CLUSTER_Y, CLUSTER_Z );
-    cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
+    return passData;
+}
+
+void LightGrid::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
+{
+    PipelineStateDesc pipelineState = {};
+    pipelineState.computeShader = shaderCache->getOrUploadStage( "Lighting/LightCulling", eShaderStage::SHADER_STAGE_COMPUTE );
+
+    lightCullingPso = renderDevice->createPipelineState( pipelineState );
 }
 
 void LightGrid::setSceneBounds( const nyaVec3f& sceneAABBMax, const nyaVec3f& sceneAABBMin )
 {
-    aabbMax = sceneAABBMax;
-    aabbMin = sceneAABBMin;
+    sceneInfosBuffer.SceneAABBMax = sceneAABBMax;
+    sceneInfosBuffer.SceneAABBMin = sceneAABBMin;
 
     updateClustersInfos();
-}
-
-Buffer* LightGrid::getLightsBuffer() const
-{
-    return lightsBuffer;
-}
-
-Texture* LightGrid::getLightsClusters() const
-{
-    return clustersTexture;
-}
-
-const LightGrid::ClustersInfos&  LightGrid::getClustersInfos() const
-{
-    return clustersInfos;
 }
 
 #define NYA_IMPL_LIGHT_ALLOC( lightType, lightMacroName )\
@@ -181,6 +148,7 @@ NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
 
 void LightGrid::updateClustersInfos()
 {
-    clustersInfos.Scale = nyaVec3f( float( CLUSTER_X ), float( CLUSTER_Y ), float( CLUSTER_Z ) ) / ( aabbMax - aabbMin );
-    clustersInfos.Bias = -clustersInfos.Scale * aabbMin;
+    sceneInfosBuffer.ClustersScale = nyaVec3f( float( CLUSTER_X ), float( CLUSTER_Y ), float( CLUSTER_Z ) ) / ( sceneInfosBuffer.SceneAABBMax - sceneInfosBuffer.SceneAABBMin );
+    sceneInfosBuffer.ClustersInverseScale = 1.0f / sceneInfosBuffer.ClustersScale;
+    sceneInfosBuffer.ClustersBias = -sceneInfosBuffer.ClustersScale * sceneInfosBuffer.SceneAABBMin;
 }

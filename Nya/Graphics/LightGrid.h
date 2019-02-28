@@ -22,9 +22,15 @@
 
 struct Buffer;
 struct Texture;
+struct PipelineState;
+
+using ResHandle_t = uint32_t;
 
 class RenderDevice;
 class CommandList;
+class RenderPipeline;
+class ShaderCache;
+class GraphicsAssetCache;
 
 #include <Framework/Light.h>
 #include <Shaders/Shared.h>
@@ -33,9 +39,23 @@ class CommandList;
 class LightGrid
 {
 public:
-    struct ClustersInfos {
-        nyaVec3f   Scale;
-        nyaVec3f   Bias;
+    struct SceneInfosBuffer {
+        nyaVec3f ClustersScale;
+        uint32_t __PADDING__;
+        nyaVec3f ClustersInverseScale;
+        uint32_t __PADDING2__;
+        nyaVec3f ClustersBias;
+        uint32_t __PADDING3__;
+        nyaVec3f SceneAABBMin;
+        uint32_t __PADDING4__;
+        nyaVec3f SceneAABBMax;
+        uint32_t __PADDING5__;
+    };
+    
+    struct PassData {
+        ResHandle_t lightsClusters;
+        ResHandle_t lightsClustersInfosBuffer;
+        ResHandle_t lightsBuffer;
     };
 
 public:
@@ -44,16 +64,12 @@ public:
                             LightGrid& operator = ( LightGrid& ) = default;
                             ~LightGrid();
 
-    void                    create( RenderDevice* renderDevice );
     void                    destroy( RenderDevice* renderDevice );
 
-    void                    updateClusters( CommandList* cmdList );
+    PassData                updateClusters( RenderPipeline* renderPipeline );
+    void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     void                    setSceneBounds( const nyaVec3f& aabbMax, const nyaVec3f& aabbMin );
-
-    Buffer*                 getLightsBuffer() const;
-    Texture*                getLightsClusters() const;
-    const ClustersInfos&    getClustersInfos() const;
 
     DirectionalLightData*   allocateDirectionalLightData( const DirectionalLightData&& lightData );
     PointLightData*         allocatePointLightData( const PointLightData&& lightData );
@@ -61,12 +77,8 @@ public:
 private:
     BaseAllocator*          memoryAllocator;
 
-    Buffer*                 lightsBuffer;
-    Texture*                clustersTexture;
-    ClustersInfos           clustersInfos;
-
-    nyaVec3f                aabbMin;
-    nyaVec3f                aabbMax;
+    PipelineState*          lightCullingPso;
+    SceneInfosBuffer        sceneInfosBuffer;
 
     uint32_t                PointLightCount;
     uint32_t                DirectionalLightCount;

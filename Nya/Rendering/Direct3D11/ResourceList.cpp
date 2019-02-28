@@ -124,6 +124,7 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
         if ( buffer.stageBind & eShaderStage::SHADER_STAGE_COMPUTE ) {
             resList.uavBuffers[buffer.bindPoint] = buffer.resource->bufferUAVObject;
+            resList.uavBuffersBindCount++;
         }
     }
 
@@ -132,6 +133,17 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
 void CommandList::bindResourceList( ResourceList* resourceList )
 {
+    // For extra-safety, unbind SRV resources prior to UAV bindings
+    if ( resourceList->uavBuffersBindCount != 0 ) {
+        static constexpr ID3D11ShaderResourceView* NO_SRV[14] = { ( ID3D11ShaderResourceView* )nullptr };
+
+        NativeCommandList->deferredContext->VSSetShaderResources( 8, 14, NO_SRV );
+        NativeCommandList->deferredContext->HSSetShaderResources( 8, 14, NO_SRV );
+        NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, NO_SRV );
+        NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, NO_SRV );
+        NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, NO_SRV );
+    }
+
     NativeCommandList->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
 
     NativeCommandList->deferredContext->VSSetSamplers( 0, 16, resourceList->samplers.vertexStage );

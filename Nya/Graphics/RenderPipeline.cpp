@@ -491,9 +491,12 @@ void RenderPipelineResources::allocateBuffer( RenderDevice* renderDevice, const 
         }
     } break;
 
-    case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D: {
+    case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_1D:
+    case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D:
+    case BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D: {
         for ( int i = 0; i < uavTex2dAllocatedCount; i++ ) {
-            if ( uavTex2dBufferDesc[i].height == description.height
+            if ( uavTex2dBufferDesc[i].type == description.type
+                && uavTex2dBufferDesc[i].height == description.height
                 && uavTex2dBufferDesc[i].width == description.width
                 && uavTex2dBufferDesc[i].depth == description.depth
                 && uavTex2dBufferDesc[i].mipCount == description.mipCount
@@ -629,6 +632,7 @@ RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     , passGroupStartIndexes{ 0u }
     , passGroupCount( 0 )
     , graphicsProfiler( nullptr )
+    , activeViewport{ 0 }
     , hasViewportChanged( false )
     , lastFrameRenderTarget( nullptr )
 {
@@ -648,6 +652,10 @@ void RenderPipeline::destroy( RenderDevice* renderDevice )
     if ( graphicsProfiler != nullptr ) {
         graphicsProfiler->destroy( renderDevice );
         nya::core::free<GraphicsProfiler>( memoryAllocator, graphicsProfiler );
+    }
+
+    if ( lastFrameRenderTarget != nullptr ) {
+        renderDevice->destroyRenderTarget( lastFrameRenderTarget );
     }
 }
 
@@ -744,7 +752,6 @@ void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t 
 void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* camera )
 {
     hasViewportChanged = ( activeViewport != viewport );
-
     activeViewport = viewport;
 
     renderPipelineBuilder.setPipelineViewport( viewport );

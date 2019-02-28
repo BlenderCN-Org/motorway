@@ -10,7 +10,7 @@
 
 #include <Framework/Material.h>
 
-LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsClusters, Buffer* lightsBuffer, const LightGrid::ClustersInfos& clustersInfos, ResHandle_t output )
+LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t output )
 {
     struct PassData  {
         ResHandle_t input;
@@ -24,6 +24,8 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
         ResHandle_t cameraBuffer;
         ResHandle_t instanceBuffer;
         ResHandle_t clustersBuffer;
+        ResHandle_t lightsBuffer;
+        ResHandle_t sceneInfosBuffer;
         ResHandle_t vectorDataBuffer;
 
 #if NYA_DEVBUILD
@@ -36,13 +38,6 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
         float StartVector;
         float VectorPerInstance;
         uint32_t __PADDING__[2];
-    };
-
-    struct ClustersBuffer {
-        nyaVec3f ClustersScale;
-        float    ViewportWidth;
-        nyaVec3f ClustersBias;
-        float    ViewportHeight;
     };
 
     PassData& passData = renderPipeline->addRenderPass<PassData>(
@@ -82,11 +77,9 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
 
             passData.instanceBuffer = renderPipelineBuilder.allocateBuffer( instanceBufferDesc, SHADER_STAGE_VERTEX );
 
-            BufferDesc clustersBufferDesc;
-            clustersBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
-            clustersBufferDesc.size = sizeof( ClustersBuffer );
-
-            passData.clustersBuffer = renderPipelineBuilder.allocateBuffer( clustersBufferDesc, SHADER_STAGE_PIXEL );
+            passData.clustersBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsClusters );
+            passData.lightsBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsBuffer );
+            passData.sceneInfosBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsClustersInfosBuffer );
 
             BufferDesc cameraBufferDesc;
             cameraBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
@@ -133,8 +126,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* clustersBuffer = renderPipelineResources.getBuffer( passData.clustersBuffer );
+            Buffer* sceneInfosBuffer = renderPipelineResources.getBuffer( passData.sceneInfosBuffer );
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
+            Buffer* lightsBuffer = renderPipelineResources.getBuffer( passData.lightsBuffer );
 
 #if NYA_DEVBUILD
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
@@ -145,7 +140,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
             resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, anisotropicSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
-            resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, clustersBuffer };
+            resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, sceneInfosBuffer };
             resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
             resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
 
@@ -172,12 +167,6 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
 
             cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
-            ClustersBuffer clustersBufferData;
-            clustersBufferData.ClustersBias = clustersInfos.Bias;
-            clustersBufferData.ClustersScale = clustersInfos.Scale;
-
-            cmdList->updateBuffer( clustersBuffer, &clustersBufferData, sizeof( ClustersBuffer ) );
-
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
@@ -187,10 +176,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lig
             passDesc.attachements[2] = { thinGBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
             passDesc.attachements[3] = { zBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH,{ 0, 0, 0, 0 } };
 
-            passDesc.attachements[4].texture = lightsClusters;
+            passDesc.attachements[4].buffer = clustersBuffer;
             passDesc.attachements[4].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[4].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[4].targetState = RenderPassDesc::IS_TEXTURE;
+            passDesc.attachements[4].targetState = RenderPassDesc::IS_UAV_TEXTURE;
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
             for ( const auto& drawCmd : drawCmdBucket ) {

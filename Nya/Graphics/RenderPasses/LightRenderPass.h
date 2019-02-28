@@ -35,4 +35,4 @@ struct LightPassOutput
     ResHandle_t velocityRenderTarget;
 };
 
-LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, Texture* lightsClusters, Buffer* lightsBuffer, const LightGrid::ClustersInfos& clustersInfos, ResHandle_t output );
+LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t output );
