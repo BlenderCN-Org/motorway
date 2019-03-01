@@ -78,6 +78,8 @@ public:
     const Buffer*               getVertexBuffer() const;
     const Buffer*               getIndiceBuffer() const;
 
+    const AABB&                 getMeshAABB() const;
+
 private:
     nyaString_t     name;
     AABB            aabb;

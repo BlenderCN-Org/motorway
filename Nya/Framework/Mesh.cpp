@@ -125,3 +125,8 @@ const Buffer* Mesh::getIndiceBuffer() const
 {
     return indiceBuffer;
 }
+
+const AABB& Mesh::getMeshAABB() const
+{
+    return aabb;
+}
