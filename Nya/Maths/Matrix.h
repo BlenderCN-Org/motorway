@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "Trigonometry.h"
 #include "Vector.h"
 
 template <typename Precision, int RowCount, int ColumnCount>
@@ -244,6 +245,28 @@ static constexpr Matrix<Precision, 4, 4> operator * ( const Matrix<Precision, 4,
         r[3][0] * l[0][1] + r[3][1] * l[1][1] + r[3][2] * l[2][1] + r[3][3] * l[3][1],
         r[3][0] * l[0][2] + r[3][1] * l[1][2] + r[3][2] * l[2][2] + r[3][3] * l[3][2],
         r[3][0] * l[0][3] + r[3][1] * l[1][3] + r[3][2] * l[2][3] + r[3][3] * l[3][3] );
+}
+
+namespace nya
+{
+    namespace maths
+    {
+        template<typename Precision>
+        static constexpr Vector<Precision, 3> ExtractTranslation( const Matrix<Precision, 4, 4>& l )
+        {
+            return Vector<Precision, 3>( l[3].x, l[3].y, l[3].z );
+        }
+
+        template<typename Precision>
+        static constexpr Vector<Precision, 3> ExtractScale( const Matrix<Precision, 4, 4>& l )
+        {
+            Precision xScale = Vector<Precision, 3>( l[0] ).length();
+            Precision yScale = Vector<Precision, 3>( l[1] ).length();
+            Precision zScale = Vector<Precision, 3>( l[2] ).length();
+
+            return Vector<Precision, 3>( xScale, yScale, zScale );
+        }
+    }
 }
 
 template <typename Precision, int RowCount, int ColumnCount>

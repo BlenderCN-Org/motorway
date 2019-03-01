@@ -69,9 +69,9 @@ void Transform::deserialize( FileSystemObject* stream )
 {
     stream->read( ( uint8_t* )&localModelMatrix[0][0], sizeof( nyaMat4x4f ) );
 
-    //nyaVec3f skewDecomposed;
-    //nyaVec4f perspectiveDecomposed;
-    //glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
+    localTranslation = ExtractTranslation( localModelMatrix );
+    localScale = ExtractScale( localModelMatrix );
+    //glm::decompose(  localRotation );
 
     isDirty = true;
 
@@ -100,9 +100,8 @@ void Transform::setLocalModelMatrix( const nyaMat4x4f& modelMat )
 {
     localModelMatrix = modelMat;
 
-    //nyaVec3f skewDecomposed;
-    //nyaVec4f perspectiveDecomposed;
-    //glm::decompose( localModelMatrix, localScale, localRotation, localTranslation, skewDecomposed, perspectiveDecomposed );
+    localTranslation = ExtractTranslation( localModelMatrix );
+    localScale = ExtractScale( localModelMatrix );
 }
 
 void Transform::setWorldTranslation( const nyaVec3f& newTranslation )
@@ -126,6 +125,9 @@ void Transform::setWorldScale( const nyaVec3f& newScale )
 void Transform::setWorldModelMatrix( const nyaMat4x4f& modelMat )
 {
     worldModelMatrix = modelMat;
+    
+    worldTranslation = ExtractTranslation( worldModelMatrix );
+    worldScale = ExtractScale( worldModelMatrix );
 
     //nyaVec3f skewDecomposed;
     //nyaVec4f perspectiveDecomposed;
@@ -134,7 +136,7 @@ void Transform::setWorldModelMatrix( const nyaMat4x4f& modelMat )
 
 void Transform::translate( const nyaVec3f& translation )
 {
-    worldTranslation += translation;
+    localTranslation += translation;
     isDirty = true;
 }
 
@@ -142,9 +144,8 @@ void Transform::propagateParentModelMatrix( const nyaMat4x4f& parentModelMatrix 
 {
     worldModelMatrix = localModelMatrix * parentModelMatrix;
 
-   /* nyaVec3f skewDecomposed;
-    nyaVec4f perspectiveDecomposed;
-    glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );*/
+    worldTranslation = ExtractTranslation( worldModelMatrix );
+    worldScale = ExtractScale( worldModelMatrix );
 }
 
 nyaMat4x4f* Transform::getWorldModelMatrix()
