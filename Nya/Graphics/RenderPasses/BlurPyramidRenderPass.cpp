@@ -12,6 +12,14 @@ static PipelineState*  g_KarisAveragePipelineStateObject = nullptr;
 static PipelineState*  g_UpsamplePipelineStateObject = nullptr;
 static PipelineState*  g_BrightPassPipelineStateObject = nullptr;
 
+// Round dimension to a lower even number (avoid padding on GPU and should speed-up (down/up)sampling)
+template<typename T>
+inline T RoundToEven( const T value )
+{
+    static_assert( std::is_integral<T>(), "T should be integral (or implement modulo operator)" );
+    return ( ( value % 2 == (T)0 ) ? value : ( value - (T)1 ) );
+}
+
 void LoadCachedResourcesBP( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
     PipelineStateDesc psoDesc = {};
@@ -52,6 +60,7 @@ void FreeCachedResourcesBP( RenderDevice* renderDevice )
     renderDevice->destroyPipelineState( g_KarisAveragePipelineStateObject );
     renderDevice->destroyPipelineState( g_UpsamplePipelineStateObject );
 }
+
 ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t input )
 {
     struct PassData {
@@ -126,8 +135,8 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             texDesc.format = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
             texDesc.depth = 1;
             texDesc.mipCount = 1;
-            texDesc.width = static_cast< uint32_t >( inputWidth * downsample );
-            texDesc.height = static_cast< uint32_t >( inputHeight * downsample );
+            texDesc.width = RoundToEven( static_cast< uint32_t >( inputWidth * downsample ) );
+            texDesc.height = RoundToEven( static_cast< uint32_t >( inputHeight * downsample ) );
 
             passData.output = renderPipelineBuilder.allocateRenderTarget( texDesc, eShaderStage::SHADER_STAGE_PIXEL );
 
@@ -157,7 +166,8 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             passDesc.attachements[1] = { renderTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
 
             const float downsample = ( 1.0f / downsampleFactor );
-            cmdList->setViewport( { 0, 0, static_cast< int >( inputWidth * downsample ), static_cast< int >( inputHeight * downsample ), 0.0f, 1.0f } );
+
+            cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
@@ -239,7 +249,7 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
             passDesc.attachements[0] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
             passDesc.attachements[1] = { renderTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
 
-            cmdList->setViewport( { 0, 0, static_cast< int >( inputWidth * inputInverseScaleFactor ), static_cast< int >( inputHeight * inputInverseScaleFactor ), 0.0f, 1.0f } );
+            cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
