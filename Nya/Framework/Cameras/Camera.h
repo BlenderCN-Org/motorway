@@ -40,6 +40,20 @@ struct CameraData
     nyaVec2f    viewportSize;
     nyaVec2f    inverseViewportSize;
 
+    uint32_t    msaaSamplerCount;
+    float       imageQuality;
+
+    union
+    {
+        struct {
+            uint8_t enableTAA : 1;
+
+            uint8_t : 0;
+        } flags;
+
+        uint64_t flagsData;
+    };
+
     // Shadow mapping rendering specifics
     nyaMat4x4f  depthProjectionMatrix;
     nyaMat4x4f  depthViewProjectionMatrix;

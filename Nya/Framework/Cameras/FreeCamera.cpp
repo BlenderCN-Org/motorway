@@ -232,3 +232,13 @@ const CameraData& FreeCamera::getData() const
 {
     return data;
 }
+
+void FreeCamera::setMSAASamplerCount( const uint32_t samplerCount )
+{
+    data.msaaSamplerCount = max( 1u, samplerCount );
+}
+
+void FreeCamera::setImageQuality( const float imageQuality )
+{
+    data.imageQuality = max( 0.1f, imageQuality );
+}

@@ -35,7 +35,7 @@ public:
     void            updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept;
 
     void            save( FileSystemObject* stream );
-    void            restore(  FileSystemObject* stream );
+    void            restore( FileSystemObject* stream );
 
     void            setProjectionMatrix( const float fieldOfView, const float screenWidth, float screenHeight, const float zNear = 0.01f );
 
@@ -52,6 +52,14 @@ public:
     nyaVec3f        getOrientation() const { return nyaVec3f( yaw, pitch, roll ); }
 
     const CameraData&     getData() const;
+
+    decltype( CameraData::flags )& FreeCamera::getUpdatableFlagset()
+    {
+        return data.flags;
+    }
+
+    void                  setMSAASamplerCount( const uint32_t samplerCount = 1 );
+    void                  setImageQuality( const float imageQuality = 1.0f );
 
 private:
     CameraData      data;
