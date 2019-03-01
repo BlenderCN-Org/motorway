@@ -33,6 +33,7 @@ RenderPipelineBuilder::RenderPipelineBuilder()
     , persitentBufferCount( 0 )
     , persitentRenderTargetCount( 0 )
     , pipelineSamplerCount( 1 )
+    , pipelineImageQuality( 1.0f )
 {
 
 }
@@ -144,11 +145,16 @@ void RenderPipelineBuilder::setMSAAQuality( const uint32_t samplerCount )
     pipelineSamplerCount = samplerCount;
 }
 
+void RenderPipelineBuilder::setImageQuality( const float imageQuality )
+{
+    pipelineImageQuality = imageQuality;
+}
+
 ResHandle_t RenderPipelineBuilder::allocateRenderTarget( TextureDescription& description, const uint32_t flags )
 {
     if ( flags & eRenderTargetFlags::USE_PIPELINE_DIMENSIONS ) {
-        description.width = pipelineViewport.Width;
-        description.height = pipelineViewport.Height;
+        description.width = static_cast<uint32_t>( pipelineViewport.Width * pipelineImageQuality );
+        description.height = static_cast<uint32_t>( pipelineViewport.Height * pipelineImageQuality );
     }
 
     if ( flags & eRenderTargetFlags::USE_PIPELINE_SAMPLER_COUNT ) {
@@ -188,8 +194,8 @@ ResHandle_t RenderPipelineBuilder::copyRenderTarget( const ResHandle_t resourceT
 ResHandle_t RenderPipelineBuilder::allocateBuffer( BufferDesc& description, const uint32_t shaderStageBinding, const uint32_t flags )
 {
     if ( flags & eRenderTargetFlags::USE_PIPELINE_DIMENSIONS ) {
-        description.width = pipelineViewport.Width;
-        description.height = pipelineViewport.Height;
+        description.width = static_cast<uint32_t>( pipelineViewport.Width * pipelineImageQuality );
+        description.height = static_cast<uint32_t>( pipelineViewport.Height * pipelineImageQuality );
     }
 
     buffers[bufferCount] = {
@@ -270,6 +276,7 @@ RenderPipelineResources::RenderPipelineResources()
     , samplerAllocatedCount( 0 )
     , allocatedPersistentBuffers{ nullptr }
     , allocatedPersistentRenderTargets{ nullptr }
+    , pipelineImageQuality( 1.0f )
 {
 
 }
@@ -331,6 +338,11 @@ void RenderPipelineResources::setPipelineViewport( const Viewport& viewport, con
 {
     activeCameraData = *cameraData;
     activeViewport = viewport;
+}
+
+void RenderPipelineResources::setImageQuality( const float imageQuality )
+{
+    pipelineImageQuality = imageQuality;
 }
 
 void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount )
@@ -764,6 +776,12 @@ void RenderPipeline::setViewport( const Viewport& viewport, const CameraData* ca
 void RenderPipeline::setMSAAQuality( const uint32_t samplerCount )
 {
     renderPipelineBuilder.setMSAAQuality( samplerCount );
+}
+
+void RenderPipeline::setImageQuality( const float imageQuality )
+{
+    renderPipelineBuilder.setImageQuality( imageQuality );
+    renderPipelineResources.setImageQuality( imageQuality );
 }
 
 void RenderPipeline::importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget )

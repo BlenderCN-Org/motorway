@@ -23,6 +23,7 @@
 
 #include <Framework/Cameras/FreeCamera.h>
 #include <Framework/Scene.h>
+#include <Framework/Mesh.h>
 
 #include <Maths/Helpers.h>
 #include <Maths/Transform.h>
@@ -76,10 +77,13 @@ FreeCamera*             g_FreeCamera;
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
 NYA_ENV_OPTION_LIST( WindowMode, WIN_MODE_OPTION_LIST )
 
-NYA_ENV_VAR( WindowWidth, 1280, int32_t ) // "Defines application window width [0..N]"
-NYA_ENV_VAR( WindowHeight, 720, int32_t ) // "Defines application window height [0..N]"
+NYA_ENV_VAR( ScreenSize, nyaVec2u( 1280, 720 ), nyaVec2u ) // "Defines application screen size [0..N]"
 NYA_ENV_VAR( WindowMode, WINDOWED, eWindowMode ) // Defines application window mode [Windowed/Fullscreen/Borderless]
 NYA_ENV_VAR( CameraFOV, 80.0f, float ) // "Camera FieldOfView (in degrees)"
+NYA_ENV_VAR( ImageQuality, 1.0f, float ) // "Image Quality Scale (in degrees) [0.1..N]"
+NYA_ENV_VAR( EnableVSync, false, bool ) // "Enable Vertical Synchronisation [false/true]"
+NYA_ENV_VAR( EnableTAA, false, bool ) // "Enable TemporalAntiAliasing [false/true]"
+NYA_ENV_VAR( MSAASamplerCount, 1, uint32_t ) // "MultiSampledAntiAliasing Sampler Count [1..8]"
 
 // Incomplete module declaration
 class TextRenderingModule
@@ -133,27 +137,36 @@ void TestStuff()
 
     // Retrieve pointer to camera instance from scene db
     g_FreeCamera = &g_SceneTest->FreeCameraDatabase[freeCameraId];
-    g_FreeCamera->setProjectionMatrix( CameraFOV, static_cast<float>( WindowWidth ), static_cast<float>( WindowHeight ) );
+    g_FreeCamera->setProjectionMatrix( CameraFOV, static_cast<float>( ScreenSize.x ), static_cast<float>( ScreenSize.y ) );
+    g_FreeCamera->setImageQuality( ImageQuality );
+    g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
+
+    // Toggle camera flags based on user settings
+    auto& cameraFlags = g_FreeCamera->getUpdatableFlagset();
+    cameraFlags.enableTAA = EnableTAA;
 
     auto& meshTest = g_SceneTest->allocateStaticGeometry();
-    auto& meshTransform = g_SceneTest->TransformDatabase[meshTest.transform];
-    meshTransform.translate( nyaVec3f( 0, -1, 0 ) );
 
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
 
-    for ( int i = 0; i < 128; i++ ) {
-        PointLightData pointLightData;
-        pointLightData.worldPosition = { 4.0f - i, 0, 4.0f - i };
-        pointLightData.radius = 0.50f;
-        pointLightData.lightPower = 1000.0f;
-        pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
+    auto& geometryTransform = g_SceneTest->TransformDatabase[meshTest.transform];
+    //geometryTransform.setLocalScale( 32 );
 
-        auto& pointLight = g_SceneTest->allocatePointLight();
-        pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
-           
-        auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
-        pointLightTransform.translate( pointLightData.worldPosition );
+    for ( int j = 0; j < 5; j++ ) {
+        for ( int i = 0; i < 6; i++ ) {
+            PointLightData pointLightData;
+            pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
+            pointLightData.radius = 0.5f;
+            pointLightData.lightPower = 100.0f;
+            pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
+
+            auto& pointLight = g_SceneTest->allocatePointLight();
+            pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+
+            auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
+            pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
+        }
     }
 
     DirectionalLightData sunLight = {};
@@ -169,7 +182,8 @@ void TestStuff()
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
     dirLight.directionalLight = g_LightGrid->allocateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
-    g_LightGrid->setSceneBounds( nyaVec3f( 16 ), nyaVec3f( -16 ) );
+    const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
+    g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
 }
 
 void InitializeIOSubsystems()
@@ -272,7 +286,7 @@ void InitializeRenderSubsystems()
     NYA_CLOG << "Initializing render subsystems..." << std::endl;
 
     // Create and initialize subsystems
-    g_DisplaySurface = nya::display::CreateDisplaySurface( g_GlobalAllocator, WindowWidth, WindowHeight );
+    g_DisplaySurface = nya::display::CreateDisplaySurface( g_GlobalAllocator, ScreenSize.x, ScreenSize.y );
     nya::display::SetCaption( g_DisplaySurface, PROJECT_NAME );
 
     g_RenderDevice = nya::core::allocate<RenderDevice>( g_GlobalAllocator, g_GlobalAllocator );
@@ -287,7 +301,7 @@ void InitializeRenderSubsystems()
     g_LightGrid->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
     g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
-    //g_RenderDevice->enableVerticalSynchronisation( true );
+    g_RenderDevice->enableVerticalSynchronisation( EnableVSync );
 }
 
 void InitializeAudioSubsystems()

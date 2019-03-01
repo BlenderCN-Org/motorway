@@ -87,6 +87,7 @@ public:
     void        addRenderPass();
     void        setPipelineViewport( const Viewport& viewport );
     void        setMSAAQuality( const uint32_t samplerCount = 1 );
+    void        setImageQuality( const float imageQuality = 1.0f );
 
     ResHandle_t allocateRenderTarget( TextureDescription& description, const uint32_t flags = 0 );
     ResHandle_t copyRenderTarget( const ResHandle_t resourceToCopy, const uint32_t copyFlags = 0 );
@@ -102,6 +103,7 @@ public:
 private:
     Viewport    pipelineViewport;
     uint32_t    pipelineSamplerCount;
+    float       pipelineImageQuality;
 
     struct {
         uint32_t renderTargets[48];
@@ -175,6 +177,7 @@ public:
     void                    unacquireResources();
 
     void                    setPipelineViewport( const Viewport& viewport, const CameraData* cameraData );
+    void                    setImageQuality( const float imageQuality = 1.0f );
 
     void                    dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount );
     void                    importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget );
@@ -255,7 +258,7 @@ private:
     DrawCmdBucket           drawCmdBuckets[4][8];
     CameraData              activeCameraData;
     Viewport                activeViewport;
-    uint32_t                msaaSamplerCount;
+    float                   pipelineImageQuality;
     float                   deltaTime;
 
     std::map<nyaStringHash_t, Buffer*>          persistentBuffers;
@@ -279,6 +282,10 @@ public:
     void    submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount );
     void    setViewport( const Viewport& viewport, const CameraData* camera = nullptr );
     void    setMSAAQuality( const uint32_t samplerCount = 1 );
+
+    // imageQuality = ( image Quality In Percent / 100.0f )
+    // (e.g. 1.0f = 100% image quality)
+    void    setImageQuality( const float imageQuality = 1.0f );
 
     void    importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget );
     void    importPersistentBuffer( const nyaStringHash_t resourceHashcode, Buffer* buffer );
