@@ -104,7 +104,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
             cmdList->bindPipelineState( lightCullingPso );
             
-            cmdList->dispatchCompute( MAX_POINT_LIGHT_COUNT / 16u, MAX_POINT_LIGHT_COUNT / 16u, 1u );
+            cmdList->dispatchCompute( MAX_POINT_LIGHT_COUNT / 16u, 1u, 1u );
         }
     );
 

@@ -81,6 +81,28 @@ namespace nya
             return ( lowerCaseString == NYA_STRING( "1" ) || lowerCaseString == NYA_STRING( "true" ) );
         }
 
+        static nyaVec2u StringTo2DVectorU( const nyaString_t& str )
+        {
+            if ( str.front() != '{' || str.back() != '}' ) {
+                return nyaVec2u();
+            }
+
+            nyaVec2u vec = {};
+
+            std::size_t offsetX = str.find_first_of( ',' ),
+                offsetY = str.find_last_of( ',' ),
+
+                vecEnd = str.find_last_of( '}' );
+
+            auto vecX = str.substr( 1, offsetX - 1 );
+            auto vecY = str.substr( offsetX + 1, vecEnd - offsetY - 1 );
+
+            vec.x = static_cast<uint32_t>( std::stoi( vecX ) );
+            vec.y = static_cast<uint32_t>( std::stoi( vecY ) );
+
+            return vec;
+        }
+
         static nyaVec2f StringTo2DVector( const nyaString_t& str )
         {
             if ( str.front() != '{' || str.back() != '}' ) {

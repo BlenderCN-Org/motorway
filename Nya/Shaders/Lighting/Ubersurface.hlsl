@@ -498,14 +498,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	while ( light_mask ) {
 		// Extract a light from the mask and disable that bit
 		uint i = firstbitlow( light_mask );
+		light_mask &= ~( 1 << i );
         
         // Do lighting
         float3 L;
 		PointLight light = g_PointLights[i];
         float3 pointLightIlluminance = GetPointLightIlluminance( light, surface, VertexStage.depth, L );        
-		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;
-		
-		light_mask &= ~( 1 << i );
+		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
     
     float2 prevPositionSS = ( VertexStage.previousPosition.xy / VertexStage.previousPosition.w ) * float2( 0.5f, -0.5f ) + 0.5f;

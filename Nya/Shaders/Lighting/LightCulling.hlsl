@@ -2,7 +2,7 @@
 #include <SceneInfos.hlsli>
 
 static const int NUM_THREADS_X = 16;
-static const int NUM_THREADS_Y = 16;
+static const int NUM_THREADS_Y = 1;
 static const int NUM_THREADS = ( NUM_THREADS_X * NUM_THREADS_Y );
 
 static const int CLUSTER_X = 32;
@@ -18,7 +18,7 @@ groupshared uint g_LightMasks[CLUSTER_Z][CLUSTER_Y][CLUSTER_X];
 [numthreads( NUM_THREADS_X, NUM_THREADS_Y, 1 )]
 void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_GroupThreadID, uint3 groupIdx : SV_GroupID )
 {
-    uint localIdxFlattened = localIdx.x + localIdx.y * 16;
+    uint localIdxFlattened = localIdx.x + localIdx.y * NUM_THREADS_X;
 	
 	// Initialize LDS memory
     if ( localIdxFlattened == 0 ) {
@@ -30,8 +30,6 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 			}
 		}
 	}
-	
-    GroupMemoryBarrierWithGroupSync();
 	
 	[unroll]
     for ( uint i = localIdxFlattened; i < MAX_POINT_LIGHT_COUNT; i += NUM_THREADS ) {
@@ -85,9 +83,9 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 	
     GroupMemoryBarrierWithGroupSync();
 	
-    // const uint startOffset = (groupIdx.x + groupIdx.y) * MAX_POINT_LIGHT_COUNT;
+    const uint startOffset = (groupIdx.x + groupIdx.y) * MAX_POINT_LIGHT_COUNT;
 	
-    // // Update the light index buffer
+    // Update the light index buffer
 	// [unroll]
     // for ( uint l = localIdxFlattened; l < CLUSTER_COUNT; l += NUM_THREADS ) {
 		// uint linearIdx = l; //( startOffset + l );
@@ -100,14 +98,14 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 		
 		// uint x = linearIdx;
 		
-		// g_LightClusters[uint3( z, y, x )] = g_LightMasks[z][y][x];
+		// g_LightClusters[uint3( x, y, z )] = g_LightMasks[z][y][x];
     // }
 
     if ( localIdxFlattened == 0 ) {
 		for ( int z = 0; z < CLUSTER_Z; ++z ) {
 			for ( int y = 0; y < CLUSTER_Y; ++y ) {
 				for ( int x = 0; x < CLUSTER_X; ++x ) {
-					g_LightClusters[uint3( z, y, x )] = g_LightMasks[z][y][x];
+					g_LightClusters[uint3( x, y, z )] = g_LightMasks[z][y][x];
 				}
 			}
 		}

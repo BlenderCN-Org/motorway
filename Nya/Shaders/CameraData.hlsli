@@ -12,6 +12,9 @@ cbuffer ActiveCameraBuffer : register( b0 )
     int         g_CameraFrameIndex; // Camera frame index (not renderer frame index!)
     float2      g_ScreenSize;
     float2      g_InverseScreenSize;
+    uint        g_MSAASamplerCount;
+    float       g_ImageQuality;
+    uint2       g_CameraFlags;
     float4x4	g_DepthProjectionMatrix;
     float4x4	g_DepthViewProjectionMatrix;
     float4      g_CascadeOffsets[4];
