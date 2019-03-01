@@ -920,13 +920,13 @@ static constexpr Vector<Precision, ScalarCount> operator / ( const Vector<Precis
 template <typename Precision, int ScalarCount>
 static constexpr bool operator < ( const Vector<Precision, ScalarCount>& l, const Vector<Precision, ScalarCount>& r )
 {
-    return l.length() < r.length();
+    return l.lengthSquared() < r.lengthSquared();
 }
 
 template <typename Precision, int ScalarCount>
 static constexpr bool operator > ( const Vector<Precision, ScalarCount>& l, const Vector<Precision, ScalarCount>& r )
 {
-    return l.length() > r.length();
+    return l.lengthSquared() > r.lengthSquared();
 }
 
 #include "Vector.inl"
