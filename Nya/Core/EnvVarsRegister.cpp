@@ -77,6 +77,9 @@ void EnvironmentVariables::readValue( Variable& variable, const nyaString_t& inp
     case NYA_STRING_HASH( "bool" ):
         *( bool* )variable.Value = ( inputValue == NYA_STRING( "True" ) );
         break;
+    case NYA_STRING_HASH( "nyaVec2u" ):
+        *( nyaVec2u* )variable.Value = nya::core::StringTo2DVectorU( inputValue );
+        break;
     default: {
         auto it = ENV_VAR_TYPES().find( variable.Type );
 
@@ -144,6 +147,10 @@ void EnvironmentVariables::serialize( FileSystemObject* file )
         case NYA_STRING_HASH( "bool" ):
             varLine.append( *( bool* )varInfos.Value ? "True" : "False" );
             break;
+        case NYA_STRING_HASH( "nyaVec2u" ): {
+            const nyaVec2u& vec = *( nyaVec2u* )varInfos.Value;
+            varLine.append( "{" + std::to_string( vec.x ) + "," + std::to_string( vec.y ) + "}" );
+        } break;
         default:
             auto it = ENV_VAR_TYPES().find( varInfos.Type );
 

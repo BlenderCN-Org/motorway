@@ -106,5 +106,3 @@ NYA_STRING_HASH( "e"#name ),\
 #define NYA_DEV_VAR_PERSISTENT( name, desc, defaultValue, type ) static type name = defaultValue;
 #define NYA_DEV_VAR( name, desc, defaultValue, type ) static type name = defaultValue;
 #endif
-
-//#define NYA_IMPORT_VAR_PTR( name, type ) type* name = EnvironmentVariables::getVariable<type>( NYA_STRING_HASH( #name ) );
