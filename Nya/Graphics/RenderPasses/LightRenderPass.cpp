@@ -9,6 +9,17 @@
 #include <Rendering/ImageFormat.h>
 
 #include <Framework/Material.h>
+#include <Core/EnvVarsRegister.h>
+
+#define TEXTURE_FILTERING_OPTION_LIST( option )\
+    option( BILINEAR )\
+    option( TRILINEAR )\
+    option( ANISOTROPIC_8 )\
+    option( ANISOTROPIC_16 )
+
+NYA_ENV_OPTION_LIST( TextureFiltering, TEXTURE_FILTERING_OPTION_LIST )
+
+NYA_ENV_VAR( TextureFiltering, BILINEAR, eTextureFiltering ) // "Defines texture filtering quality [Bilinear/Trilinear/Anisotropic (8)/Anisotropic (16)]"
 
 LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t output )
 {
@@ -112,13 +123,31 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
 
-            SamplerDesc anisotropicSamplerDesc = {};
-            anisotropicSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            anisotropicSamplerDesc.addressV = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            anisotropicSamplerDesc.addressW = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
-            anisotropicSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_16;
+            SamplerDesc materialSamplerDesc = {};
+            materialSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            materialSamplerDesc.addressV = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
+            materialSamplerDesc.addressW = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_WRAP;
 
-            passData.anisotropicSampler = renderPipelineBuilder.allocateSampler( anisotropicSamplerDesc );
+            switch ( TextureFiltering ) {
+            case eTextureFiltering::ANISOTROPIC_16:
+                materialSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_16;
+                break;
+
+            case eTextureFiltering::ANISOTROPIC_8:
+                materialSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_8;
+                break;
+
+            case eTextureFiltering::TRILINEAR:
+                materialSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_TRILINEAR;
+                break;
+
+            default:
+            case eTextureFiltering::BILINEAR:
+                materialSamplerDesc.filter = nya::rendering::eSamplerFilter::SAMPLER_FILTER_BILINEAR;
+                break;
+            }
+
+            passData.anisotropicSampler = renderPipelineBuilder.allocateSampler( materialSamplerDesc );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
