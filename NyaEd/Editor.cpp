@@ -180,7 +180,7 @@ void TestStuff()
     sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
-    dirLight.directionalLight = g_LightGrid->allocateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
+    dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
