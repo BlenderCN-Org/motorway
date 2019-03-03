@@ -33,5 +33,6 @@ namespace nya
         nyaMat4x4f  MakeScaleMat( const nyaVec3f& scale, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
     
         nyaMat4x4f  MakeLookAtMat( const nyaVec3f& eye, const nyaVec3f& center, const nyaVec3f& up );
+        nyaMat4x4f  MakeOrtho( const float left, const float right, const float bottom, const float top, const float zNear, const float zFar );
     }
 }

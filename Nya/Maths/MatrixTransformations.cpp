@@ -91,5 +91,18 @@ namespace nya
 
             return lookAtMat;
         }
+        
+        nyaMat4x4f MakeOrtho( const float left, const float right, const float bottom, const float top, const float zNear, const float zFar )
+        {
+            nyaMat4x4f matrix = nyaMat4x4f::Identity;
+            matrix._00 = 2.0f / ( right - left );
+            matrix._11 = 2.0f / ( top - bottom );
+            matrix._22 = 1.0f / ( zFar - zNear );
+            matrix._30 = -( right + left ) / ( right - left );
+            matrix._31 = -( top + bottom ) / ( top - bottom );
+            matrix._32 = -zNear / ( zFar - zNear );
+
+            return matrix;
+        }
     }
 }
