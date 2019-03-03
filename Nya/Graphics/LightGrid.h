@@ -70,9 +70,11 @@ public:
     void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     void                    setSceneBounds( const nyaVec3f& aabbMax, const nyaVec3f& aabbMin );
-
-    DirectionalLightData*   allocateDirectionalLightData( const DirectionalLightData&& lightData );
+  
     PointLightData*         allocatePointLightData( const PointLightData&& lightData );
+
+    DirectionalLightData*         updateDirectionalLightData( const DirectionalLightData&& lightData );
+    const DirectionalLightData*   getDirectionalLightData() const;
 
 private:
     BaseAllocator*          memoryAllocator;
@@ -81,11 +83,10 @@ private:
     SceneInfosBuffer        sceneInfosBuffer;
 
     uint32_t                PointLightCount;
-    uint32_t                DirectionalLightCount;
 
     struct {
         PointLightData          PointLights[MAX_POINT_LIGHT_COUNT];
-        DirectionalLightData    DirectionalLights[MAX_DIRECTIONAL_LIGHT_COUNT];
+        DirectionalLightData    DirectionalLight;
     } lights;
 
 private:

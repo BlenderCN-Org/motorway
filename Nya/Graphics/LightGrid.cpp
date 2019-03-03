@@ -42,7 +42,6 @@ LightGrid::LightGrid( BaseAllocator* allocator )
     , lightCullingPso( nullptr )
     , sceneInfosBuffer{ 0 }
     , PointLightCount( 0 )
-    , DirectionalLightCount( 0 )
     , lights{}
 {
 
@@ -141,10 +140,20 @@ lightType##Data* LightGrid::allocate##lightType##Data( const lightType##Data&& l
     return &light;\
 }
 
-NYA_IMPL_LIGHT_ALLOC( DirectionalLight, DIRECTIONAL_LIGHT )
 NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
 
 #undef NYA_IMPL_LIGHT_ALLOC
+
+DirectionalLightData* LightGrid::updateDirectionalLightData( const DirectionalLightData&& lightData )
+{
+    lights.DirectionalLight = std::move( lightData );
+    return &lights.DirectionalLight;
+}
+
+const DirectionalLightData* LightGrid::getDirectionalLightData() const
+{
+    return &lights.DirectionalLight;
+}
 
 void LightGrid::updateClustersInfos()
 {
