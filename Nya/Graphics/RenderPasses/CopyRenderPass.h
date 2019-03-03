@@ -31,4 +31,6 @@ void LoadCachedResourcesCP( RenderDevice* renderDevice, ShaderCache* shaderCache
 void FreeCachedResourcesCP( RenderDevice* renderDevice );
 
 ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputRenderTarget );
+ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputRenderTarget, const uint32_t outputWidth, const uint32_t outputHeight );
+
 void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputRenderTarget );

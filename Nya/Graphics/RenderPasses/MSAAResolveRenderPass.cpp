@@ -108,7 +108,7 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
             ResolveConstantBuffer resolveBufferData;
             resolveBufferData.FilterSize = 2.0f;
             resolveBufferData.SampleRadius = static_cast<int32_t>( ( resolveBufferData.FilterSize / 2.0f ) + 0.499f );
-            resolveBufferData.InputTextureDimension = cameraData->viewportSize;
+            resolveBufferData.InputTextureDimension = ( cameraData->viewportSize * cameraData->imageQuality );
             cmdList->updateBuffer( resolveBuffer, &resolveBufferData, sizeof( ResolveConstantBuffer ) );
 
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );

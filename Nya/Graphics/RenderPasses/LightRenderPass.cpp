@@ -21,13 +21,14 @@ NYA_ENV_OPTION_LIST( TextureFiltering, TEXTURE_FILTERING_OPTION_LIST )
 
 NYA_ENV_VAR( TextureFiltering, BILINEAR, eTextureFiltering ) // "Defines texture filtering quality [Bilinear/Trilinear/Anisotropic (8)/Anisotropic (16)]"
 
-LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t output )
+LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t sunShadowMap, ResHandle_t output )
 {
     struct PassData  {
         ResHandle_t input;
         ResHandle_t zBuffer;
         ResHandle_t velocityRenderTarget;
         ResHandle_t thinGBuffer;
+        ResHandle_t sunShadowMap;
 
         ResHandle_t bilinearSampler;
         ResHandle_t anisotropicSampler;
@@ -56,6 +57,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
             // Render Targets
             passData.input = renderPipelineBuilder.readRenderTarget( output );
+            passData.sunShadowMap = renderPipelineBuilder.readRenderTarget( sunShadowMap );
 
             TextureDescription velocityRenderTargetDesc = {};
             velocityRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
@@ -190,13 +192,18 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
             cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
 
-            InstanceBuffer instanceBufferData;
-            instanceBufferData.StartVector = 0;
-            instanceBufferData.VectorPerInstance = 4;
-
-            cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
-
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
+
+            nyaVec2f scaledViewportSize = cameraData->viewportSize * cameraData->imageQuality;
+            Viewport vp;
+            vp.X = 0;
+            vp.Y = 0;
+            vp.Width = static_cast<int>( scaledViewportSize.x );
+            vp.Height = static_cast<int>( scaledViewportSize.y );
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
+            cmdList->setViewport( vp );
+
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPassDesc passDesc = {};
@@ -211,6 +218,13 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             passDesc.attachements[4].targetState = RenderPassDesc::IS_UAV_TEXTURE;
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
+
+            InstanceBuffer instanceBufferData;
+            instanceBufferData.StartVector = drawCmdBucket.instanceDataStartOffset;
+            instanceBufferData.VectorPerInstance = drawCmdBucket.vectorPerInstance;
+
+            cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+
             for ( const auto& drawCmd : drawCmdBucket ) {
                 drawCmd.infos.material->bind( cmdList, passDesc );
 

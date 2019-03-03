@@ -114,7 +114,7 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
     return passData.output;
 }
 
-ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_t input, const uint32_t inputWidth, const uint32_t inputHeight, const bool useKarisAverage = false,  const uint32_t downsampleFactor = 2u )
+ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_t input, const uint32_t inputWidth, const uint32_t inputHeight, const bool useKarisAverage = false, const uint32_t downsampleFactor = 2u )
 {
     struct PassData {
         ResHandle_t input;

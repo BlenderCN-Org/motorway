@@ -87,6 +87,7 @@ public:
     const nyaString_t&          getName() const;
 
     void                        bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
+    void                        bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
 
 #if NYA_DEVBUILD
     const EditorBuffer&         getEditorBuffer() const;
@@ -99,6 +100,10 @@ private:
     PipelineState*              defaultPipelineState;
     Texture*                    defaultTextureSet[12];
     int32_t                     defaultTextureSetCount;
+
+    PipelineState*              depthOnlyPipelineState;
+    Texture*                    depthOnlyTextureSet[3];
+    int32_t                     depthOnlyTextureSetCount;
 
     EditorBuffer                editableMaterialData;
 

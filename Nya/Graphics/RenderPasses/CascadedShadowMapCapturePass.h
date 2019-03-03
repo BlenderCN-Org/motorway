@@ -23,16 +23,4 @@
 class RenderPipeline;
 using ResHandle_t = uint32_t;
 
-struct Texture;
-struct Buffer;
-
-#include <Graphics/LightGrid.h>
-
-struct LightPassOutput
-{
-    ResHandle_t lightRenderTarget;
-    ResHandle_t depthRenderTarget;
-    ResHandle_t velocityRenderTarget;
-};
-
-LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t sunShadowMap, ResHandle_t output );
+ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline );

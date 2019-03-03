@@ -83,15 +83,15 @@ struct DrawCommandKey
     {
         struct
         {
-            uint32_t materialSortKey; // material sort key (contains states and pipeline setup infos as a bitfield)
+            Layer layer : 2;
+            uint8_t viewportLayer : 3;
+            uint8_t viewportId : 3; // viewport dispatch index (should be managed by the builder)
 
             uint16_t depth; // half float depth for distance sorting
             SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
             uint8_t __PLACEHOLDER__ : 6;
 
-            Layer layer : 2;
-            uint8_t viewportLayer : 3;
-            uint8_t viewportId : 3; // viewport dispatch index (should be managed by the builder)
+            uint32_t materialSortKey; // material sort key (contains states and pipeline setup infos as a bitfield)
         } bitfield;
         uint64_t value;
     };

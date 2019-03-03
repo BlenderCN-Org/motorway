@@ -41,7 +41,7 @@ public:
                         ~DrawCommandBuilder();
         
     void                addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
-    void                addCamera( const CameraData* cameraData );
+    void                addCamera( CameraData* cameraData );
 
     void                buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
 
@@ -52,7 +52,7 @@ private:
     };
 
 private:
-    const CameraData**  cameras;
+    CameraData**        cameras;
     MeshInstance*       meshes;
 
     uint32_t            cameraCount;

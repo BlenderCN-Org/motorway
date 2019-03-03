@@ -114,6 +114,16 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
 
             const CameraData* camera = renderPipelineResources.getMainCamera();
 
+            nyaVec2f scaledViewportSize = camera->viewportSize * camera->imageQuality;
+            Viewport vp;
+            vp.X = 0;
+            vp.Y = 0;
+            vp.Width = static_cast<int>( scaledViewportSize.x );
+            vp.Height = static_cast<int>( scaledViewportSize.y );
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
+            cmdList->setViewport( vp );
+
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             cmdList->updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
 

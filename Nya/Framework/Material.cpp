@@ -80,6 +80,9 @@ Material::Material( const nyaString_t& materialName )
     , defaultPipelineState( nullptr )
     , defaultTextureSet{ nullptr }
     , defaultTextureSetCount( 0 )
+    , depthOnlyPipelineState( nullptr )
+    , depthOnlyTextureSet{ nullptr }
+    , depthOnlyTextureSetCount( 0 )
     , sortKey( 0u )
 {
 
@@ -89,33 +92,39 @@ Material::~Material()
 {
     name.clear();
     defaultPipelineState = nullptr;
+    depthOnlyPipelineState = nullptr;
     sortKey = 0u;
 }
 
-void GetShaderStage( const eShadingModel shadingModel, std::string& standardVertexStage, std::string& standardPixelStage, std::string& probePixelStage )
+void GetShaderStage( const eShadingModel shadingModel, std::string& standardVertexStage, std::string& standardPixelStage, std::string& probePixelStage, std::string& depthVertexStage, std::string& depthPixelStage )
 {
     switch ( shadingModel ) {
     case eShadingModel::SHADING_MODEL_STANDARD:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD";
         probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD+NYA_PROBE_CAPTURE";
+        depthVertexStage = "Lighting/UberDepthOnly";
+        depthPixelStage = "Lighting/UberDepthOnly";
         break;
 
     default:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface";
         probePixelStage = "Lighting/Ubersurface+NYA_PROBE_CAPTURE";
+        depthVertexStage = "Lighting/UberDepthOnly";
+        depthPixelStage = "Lighting/UberDepthOnly";
         break;
     };
 }
 
 void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 {
-    std::string compiledVertexStage, compiledPixelStage, compiledProbePixelStage;
-    GetShaderStage( sortKeyInfos.shadingModel, compiledVertexStage, compiledPixelStage, compiledProbePixelStage );
+    std::string compiledVertexStage, compiledPixelStage, compiledProbePixelStage, compiledDepthVertexStage, compiledDepthPixelStage;
+    GetShaderStage( sortKeyInfos.shadingModel, compiledVertexStage, compiledPixelStage, compiledProbePixelStage, compiledDepthVertexStage, compiledDepthPixelStage );
 
     if ( sortKeyInfos.scaleUVByModelScale ) {
         compiledVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
+        compiledDepthVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
     }
 
     if ( sortKeyInfos.useLodAlphaBlending ) {
@@ -130,7 +139,9 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         compiledPixelStage.append( "+NYA_CAST_SHADOW" );
     }
 
+    // Default PSO
     PipelineStateDesc defaultPipelineStateDesc = {};
+
     defaultPipelineStateDesc.vertexShader = shaderCache->getOrUploadStage( compiledVertexStage, eShaderStage::SHADER_STAGE_VERTEX );
     defaultPipelineStateDesc.pixelShader = shaderCache->getOrUploadStage( compiledPixelStage, eShaderStage::SHADER_STAGE_PIXEL );
     defaultPipelineStateDesc.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -159,11 +170,32 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     }
 
     defaultPipelineState = renderDevice->createPipelineState( defaultPipelineStateDesc );
+
+    // Depth only PSO
+    PipelineStateDesc depthPipelineStateDesc = {};
+
+    depthPipelineStateDesc.vertexShader = shaderCache->getOrUploadStage( compiledDepthVertexStage, eShaderStage::SHADER_STAGE_VERTEX );
+    depthPipelineStateDesc.pixelShader = shaderCache->getOrUploadStage( compiledDepthPixelStage, eShaderStage::SHADER_STAGE_PIXEL );
+    depthPipelineStateDesc.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    depthPipelineStateDesc.rasterizerState.fillMode = eFillMode::FILL_MODE_SOLID;
+    depthPipelineStateDesc.rasterizerState.cullMode = ( sortKeyInfos.isDoubleFace ) ? eCullMode::CULL_MODE_NONE : eCullMode::CULL_MODE_FRONT;
+    depthPipelineStateDesc.rasterizerState.useTriangleCCW = true;
+    depthPipelineStateDesc.depthStencilState.enableDepthTest = true;
+    depthPipelineStateDesc.depthStencilState.enableDepthWrite = true;
+    depthPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_GEQUAL;
+    depthPipelineStateDesc.inputLayout[0] = { 0, eImageFormat::IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
+    depthPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
+    depthPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
+    depthPipelineStateDesc.blendState.enableAlphaToCoverage = sortKeyInfos.useAlphaToCoverage;
+
+    depthOnlyPipelineState = renderDevice->createPipelineState( depthPipelineStateDesc );
+
 }
 
 void Material::destroy( RenderDevice* renderDevice )
 {
     renderDevice->destroyPipelineState( defaultPipelineState );
+    renderDevice->destroyPipelineState( depthOnlyPipelineState );
 }
 
 void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAssetCache )
@@ -366,6 +398,23 @@ void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) cons
         renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
         renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
         renderPassDesc.attachements[textureBindIndex].texture = defaultTextureSet[textureIdx];
+
+        textureBindIndex++;
+    }
+}
+
+void Material::bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+{
+    cmdList->bindPipelineState( depthOnlyPipelineState );
+
+    // 0 -> Output RenderTarget
+    int32_t textureBindIndex = 1;
+
+    for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
+        renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
+        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
+        renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
+        renderPassDesc.attachements[textureBindIndex].texture = depthOnlyTextureSet[textureIdx];
 
         textureBindIndex++;
     }

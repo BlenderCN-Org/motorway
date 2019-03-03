@@ -263,6 +263,9 @@ private:
 
     std::map<nyaStringHash_t, Buffer*>          persistentBuffers;
     std::map<nyaStringHash_t, RenderTarget*>    persistentRenderTarget;
+
+private:
+    void                    updateVectorBuffer( const DrawCmd& cmd, size_t& instanceBufferOffset );
 };
 
 class RenderPipeline
@@ -328,6 +331,7 @@ private:
 
     Viewport                            activeViewport;
     bool                                hasViewportChanged;
+    float                               pipelineImageQuality;
 
     // Persistent Resources
     RenderTarget*                       lastFrameRenderTarget;

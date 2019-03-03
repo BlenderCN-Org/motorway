@@ -507,12 +507,14 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
     
+    float2 screenSize = g_ScreenSize * g_ImageQuality;
+    
     float2 prevPositionSS = ( VertexStage.previousPosition.xy / VertexStage.previousPosition.w ) * float2( 0.5f, -0.5f ) + 0.5f;
-    prevPositionSS *= g_ScreenSize;
+    prevPositionSS *= screenSize;
    
     Velocity = ( VertexStage.position.xy - prevPositionSS );
     Velocity -= g_CameraJitteringOffset;
-    Velocity /= g_ScreenSize;
+    Velocity /= screenSize;
     
     // Write output to buffer(s)
     const float2 EncodedNormals = EncodeNormals( surface.N );

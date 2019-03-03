@@ -194,8 +194,8 @@ ResHandle_t RenderPipelineBuilder::copyRenderTarget( const ResHandle_t resourceT
 ResHandle_t RenderPipelineBuilder::allocateBuffer( BufferDesc& description, const uint32_t shaderStageBinding, const uint32_t flags )
 {
     if ( flags & eRenderTargetFlags::USE_PIPELINE_DIMENSIONS ) {
-        description.width = static_cast<uint32_t>( pipelineViewport.Width * pipelineImageQuality );
-        description.height = static_cast<uint32_t>( pipelineViewport.Height * pipelineImageQuality );
+        description.width = pipelineViewport.Width;
+        description.height = pipelineViewport.Height;
     }
 
     buffers[bufferCount] = {
@@ -345,6 +345,30 @@ void RenderPipelineResources::setImageQuality( const float imageQuality )
     pipelineImageQuality = imageQuality;
 }
 
+// Copy instance data to shared buffer
+void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& instanceBufferOffset )
+{
+    switch ( cmd.key.bitfield.layer ) {
+    case DrawCommandKey::LAYER_DEPTH: {
+        const size_t instancesDataSize = ( sizeof( nyaMat4x4f ) + sizeof( nyaMat4x4f ) ) * cmd.infos.instanceCount;
+
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, cmd.infos.modelMatrix, sizeof( nyaMat4x4f ) );
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer], sizeof( nyaMat4x4f ) );
+
+        instanceBufferOffset += instancesDataSize;
+    } break;
+
+    case DrawCommandKey::LAYER_WORLD:
+    default: {
+        const size_t instancesDataSize = sizeof( nyaMat4x4f ) * cmd.infos.instanceCount;
+
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, cmd.infos.modelMatrix, instancesDataSize );
+
+        instanceBufferOffset += instancesDataSize;
+    } break;
+    }
+}
+
 void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount )
 {
     if ( drawCmdCount == 0 ) {
@@ -358,35 +382,43 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
 
     drawCmdBuckets[layer][viewportLayer].beginAddr = ( drawCmds + 0 );
 
-    size_t instanceBufferOffset = 0;
+    size_t instanceBufferOffset = 0ull;
 
-    // Copy instance data to shared buffer
-    const size_t instancesDataSize = sizeof( nyaMat4x4f ) * drawCmds[0].infos.instanceCount;
-    memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[0].infos.modelMatrix, instancesDataSize );
-    instanceBufferOffset += instancesDataSize;
+    updateVectorBuffer( drawCmds[0], instanceBufferOffset );
 
     DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
+    previousBucket->instanceDataStartOffset = 0.0f;
+
+    if ( drawCmds[0].key.bitfield.layer == DrawCommandKey::LAYER_DEPTH ) {
+        previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) * 2 / sizeof( nyaVec4f ) );
+    } else {
+        previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
+    }
 
     for ( size_t drawCmdIdx = 1; drawCmdIdx < drawCmdCount; drawCmdIdx++ ) {
         const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
 
-        // Copy instance data to shared buffer
-        const size_t instancesDataSize = sizeof( nyaMat4x4f ) * drawCmds[drawCmdIdx].infos.instanceCount;
-        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, drawCmds[drawCmdIdx].infos.modelMatrix, instancesDataSize );
-        instanceBufferOffset += instancesDataSize;
-
         if ( layer != drawCmdKey.layer || viewportLayer != drawCmdKey.viewportLayer ) {
             previousBucket->endAddr = ( drawCmds + drawCmdIdx );
+
             auto& bucket = drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
             bucket.beginAddr = ( drawCmds + drawCmdIdx );
-            bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
-            bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset );
+
+            if ( drawCmdKey.layer == DrawCommandKey::LAYER_DEPTH ) {
+                bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) * 2 / sizeof( nyaVec4f ) );
+            } else {
+                bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
+            }
+
+            bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset / sizeof( nyaVec4f ) );
 
             layer = drawCmdKey.layer;
             viewportLayer = drawCmdKey.viewportLayer;
 
             previousBucket = &drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
         }
+
+        updateVectorBuffer( drawCmds[drawCmdIdx], instanceBufferOffset );
     }
 
     previousBucket->endAddr = ( drawCmds + drawCmdCount );
@@ -646,6 +678,7 @@ RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     , graphicsProfiler( nullptr )
     , activeViewport{ 0 }
     , hasViewportChanged( false )
+    , pipelineImageQuality( 1.0f )
     , lastFrameRenderTarget( nullptr )
 {
     renderPipelineResources.create( allocator );
@@ -698,8 +731,8 @@ void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime 
         TextureDescription lastFrameDesc = {};
         lastFrameDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
         lastFrameDesc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
-        lastFrameDesc.width = activeViewport.Width;
-        lastFrameDesc.height = activeViewport.Height;
+        lastFrameDesc.width = static_cast<uint32_t>( activeViewport.Width * pipelineImageQuality );
+        lastFrameDesc.height = static_cast<uint32_t>( activeViewport.Height * pipelineImageQuality );
         lastFrameDesc.depth = 1;
         lastFrameDesc.mipCount = 1;
         lastFrameDesc.samplerCount = 1;
@@ -782,6 +815,8 @@ void RenderPipeline::setImageQuality( const float imageQuality )
 {
     renderPipelineBuilder.setImageQuality( imageQuality );
     renderPipelineResources.setImageQuality( imageQuality );
+
+    pipelineImageQuality = imageQuality;
 }
 
 void RenderPipeline::importPersistentRenderTarget( const nyaStringHash_t resourceHashcode, RenderTarget* renderTarget )

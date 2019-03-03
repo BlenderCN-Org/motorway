@@ -34,45 +34,11 @@
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
-WorldRenderer::WorldRenderer( BaseAllocator* allocator )
-    : renderPipelineCount( 0u )
-    , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
-    , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
-    , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
-    , automaticExposureModule( nya::core::allocate<AutomaticExposureModule>( allocator ) )
-    , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8, allocator ) )
-{
-
-}
-
-WorldRenderer::~WorldRenderer()
-{
-
-}
-
-void WorldRenderer::destroy( RenderDevice* renderDevice )
-{
-    for ( uint32_t i = 0; i < 8; i++ ) {
-        renderPipelines[i].destroy( renderDevice );
-    }
-
-    // Free render modules resources
-    textRenderModule->destroy( renderDevice );
-    skyRenderModule->destroy( renderDevice );
-    automaticExposureModule->destroy( renderDevice );
-
-    FreeCachedResourcesCP( renderDevice );
-    FreeCachedResourcesBP( renderDevice );
-    FreeCachedResourcesFP( renderDevice );
-    FreeCachedResourcesPP( renderDevice );
-    FreeCachedResourcesMRP( renderDevice );
-}
-
 void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
 {
     NYA_PROFILE_FUNCTION
 
-    static constexpr size_t RADIXSORT_BITS = 11;
+        static constexpr size_t RADIXSORT_BITS = 11;
     static constexpr size_t RADIXSORT_HISTOGRAM_SIZE = ( 1 << RADIXSORT_BITS );
     static constexpr size_t RADIXSORT_BIT_MASK = ( RADIXSORT_HISTOGRAM_SIZE - 1 );
 
@@ -130,6 +96,40 @@ done:
     if ( ( pass & 1 ) != 0 ) {
         memcpy( _keys, _tempKeys, size * sizeof( DrawCmd ) );
     }
+}
+
+WorldRenderer::WorldRenderer( BaseAllocator* allocator )
+    : renderPipelineCount( 0u )
+    , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
+    , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
+    , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
+    , automaticExposureModule( nya::core::allocate<AutomaticExposureModule>( allocator ) )
+    , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8, allocator ) )
+{
+
+}
+
+WorldRenderer::~WorldRenderer()
+{
+
+}
+
+void WorldRenderer::destroy( RenderDevice* renderDevice )
+{
+    for ( uint32_t i = 0; i < 8; i++ ) {
+        renderPipelines[i].destroy( renderDevice );
+    }
+
+    // Free render modules resources
+    textRenderModule->destroy( renderDevice );
+    skyRenderModule->destroy( renderDevice );
+    automaticExposureModule->destroy( renderDevice );
+
+    FreeCachedResourcesCP( renderDevice );
+    FreeCachedResourcesBP( renderDevice );
+    FreeCachedResourcesFP( renderDevice );
+    FreeCachedResourcesPP( renderDevice );
+    FreeCachedResourcesMRP( renderDevice );
 }
 
 void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime )
