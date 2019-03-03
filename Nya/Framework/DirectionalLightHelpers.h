@@ -22,6 +22,8 @@
 
 #include <Shaders/ShadowMappingShared.h>
 
+#include <Maths/MatrixTransformations.h>
+
 #include "Cameras/Camera.h"
 #include "Light.h"
 
@@ -51,7 +53,7 @@ namespace
         MinDistance + 1.000f * MaxDistance
     };
 
-    static nyaVec3f TransformVec3( const nyaVec3f& vector, const glm::mat4& matrix )
+    static nyaVec3f TransformVec3( const nyaVec3f& vector, const nyaMat4x4f& matrix )
     {
         float x = ( vector.x * matrix[0].x ) + ( vector.y * matrix[1].x ) + ( vector.z * matrix[2].x ) + matrix[3].x;
         float y = ( vector.x * matrix[0].y ) + ( vector.y * matrix[1].y ) + ( vector.z * matrix[2].y ) + matrix[3].y;
@@ -66,7 +68,7 @@ namespace nya
 {
     namespace framework
     {
-        static glm::mat4 CSMCreateGlobalShadowMatrix( const nyaVec3f& lightDirNormalized, const glm::mat4& viewProjection )
+        static nyaMat4x4f CSMCreateGlobalShadowMatrix( const nyaVec3f& lightDirNormalized, const nyaMat4x4f& viewProjection )
         {
             // Get the 8 points of the view frustum in world space
             nyaVec3f frustumCorners[8] = {
@@ -80,7 +82,7 @@ namespace nya
                 nyaVec3f( -1.0f, -1.0f, +1.0f ),
             };
 
-            glm::mat4 invViewProjection = glm::inverse( viewProjection );
+            nyaMat4x4f invViewProjection = viewProjection.inverse();
 
             nyaVec3f frustumCenter( 0.0f );
             for ( uint64_t i = 0; i < 8; ++i ) {
@@ -97,12 +99,12 @@ namespace nya
             nyaVec3f shadowCameraPos = frustumCenter + lightDirNormalized * -0.5f;
 
             // Create a new orthographic camera for the shadow caster
-            glm::mat4 shadowCamera = glm::orthoLH( -0.5f, +0.5f, -0.5f, +0.5f, +0.0f, +1.0f );
-            glm::mat4 shadowLookAt = glm::lookAtLH( shadowCameraPos, frustumCenter, upDir );
-            glm::mat4 shadowMatrix = shadowCamera * shadowLookAt;
+            nyaMat4x4f shadowCamera = nya::maths::MakeOrtho( -0.5f, +0.5f, -0.5f, +0.5f, +0.0f, +1.0f );
+            nyaMat4x4f shadowLookAt = nya::maths::MakeLookAtMat( shadowCameraPos, frustumCenter, upDir );
+            nyaMat4x4f shadowMatrix = shadowCamera * shadowLookAt;
 
             // Use a 4x4 bias matrix for texel sampling
-            const glm::mat4 texScaleBias = glm::mat4( 
+            const nyaMat4x4f texScaleBias = nyaMat4x4f( 
                 +0.5f, +0.0f, +0.0f, +0.0f,
                 +0.0f, -0.5f, +0.0f, +0.0f,
                 +0.0f, +0.0f, +1.0f, +0.0f,
@@ -111,10 +113,8 @@ namespace nya
             return ( texScaleBias * shadowMatrix );
         }
 
-        void CSMComputeSliceData( DirectionalLight* light, const int cascadeIdx, CameraData& cameraData )
+        void CSMComputeSliceData( const DirectionalLightData* lightData, const int cascadeIdx, CameraData* cameraData )
         {
-            DirectionalLightData& lightData = light->getLightData();
-
             // Get the 8 points of the view frustum in world space
             nyaVec3f frustumCornersWS[8] = {
                 nyaVec3f( -1.0f,  1.0f, 0.0f ),
@@ -130,7 +130,7 @@ namespace nya
             float prevSplitDist = ( cascadeIdx == 0 ) ? MinDistance : CascadeSplits[cascadeIdx - 1];
             float splitDist = CascadeSplits[cascadeIdx];
 
-            auto inverseViewProjection = glm::inverse( cameraData.depthViewProjectionMatrix );
+            auto inverseViewProjection = cameraData->depthViewProjectionMatrix.inverse();
 
             for ( int i = 0; i < 8; ++i ) {
                 frustumCornersWS[i] = TransformVec3( frustumCornersWS[i], inverseViewProjection );
@@ -161,8 +161,8 @@ namespace nya
 
             float sphereRadius = 0.0f;
             for ( int i = 0; i < 8; ++i ) {
-                float dist = glm::length( frustumCornersWS[i] - frustumCenter );
-                sphereRadius = glm::max( sphereRadius, dist );
+                float dist = ( frustumCornersWS[i] - frustumCenter ).length();
+                sphereRadius = nya::maths::max( sphereRadius, dist );
             }
 
             sphereRadius = std::ceil( sphereRadius * 16.0f ) / 16.0f;
@@ -173,13 +173,13 @@ namespace nya
             nyaVec3f cascadeExtents = maxExtents - minExtents;
 
             // Get position of the shadow camera
-            nyaVec3f shadowCameraPos = frustumCenter + lightData.direction * -minExtents.z;
+            nyaVec3f shadowCameraPos = frustumCenter + lightData->direction * -minExtents.z;
 
             // Come up with a new orthographic camera for the shadow caster
-            glm::mat4 shadowCamera = glm::orthoLH( minExtents.x, maxExtents.x, minExtents.y,
+            nyaMat4x4f shadowCamera = nya::maths::MakeOrtho( minExtents.x, maxExtents.x, minExtents.y,
                 maxExtents.y, 0.0f, cascadeExtents.z );
-            glm::mat4 shadowLookAt = glm::lookAtLH( shadowCameraPos, frustumCenter, upDir );
-            glm::mat4 shadowMatrix = shadowCamera * shadowLookAt;
+            nyaMat4x4f shadowLookAt = nya::maths::MakeLookAtMat( shadowCameraPos, frustumCenter, upDir );
+            nyaMat4x4f shadowMatrix = shadowCamera * shadowLookAt;
 
             // Create the rounding matrix, by projecting the world-space origin and determining
             // the fractional offset in texel space
@@ -187,7 +187,7 @@ namespace nya
             shadowOrigin = TransformVec3( shadowOrigin, shadowMatrix );
             shadowOrigin = shadowOrigin * ( SHADOW_MAP_DIM / 2.0f );
 
-            nyaVec3f roundedOrigin = glm::round( shadowOrigin );
+            nyaVec3f roundedOrigin = nyaVec3f( roundf( shadowOrigin.x ), roundf( shadowOrigin.y ), roundf( shadowOrigin.z ) );
 
             nyaVec3f roundOffset = roundedOrigin - shadowOrigin;
             roundOffset = roundOffset * ( 2.0f / SHADOW_MAP_DIM );
@@ -198,11 +198,11 @@ namespace nya
             shadowCamera[3].z += roundOffset.z;
 
             shadowMatrix = shadowCamera * shadowLookAt;
-            cameraData.shadowViewMatrix[cascadeIdx] = glm::transpose( shadowMatrix );
+            cameraData->shadowViewMatrix[cascadeIdx] = shadowMatrix; // .transpose();
 
             // Apply the scale/offset matrix, which transforms from [-1,1]
             // post-projection space to [0,1] UV space
-            glm::mat4 texScaleBias( 0.5f, 0.0f, 0.0f, 0.0f,
+            nyaMat4x4f texScaleBias( 0.5f, 0.0f, 0.0f, 0.0f,
                 0.0f, -0.5f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
                 0.5f, 0.5f, 0.0f, 1.0f );
@@ -210,23 +210,23 @@ namespace nya
             shadowMatrix = texScaleBias * shadowMatrix;
 
             // Store the split distance in terms of view space depth
-            cameraData.cascadeSplitDistances[cascadeIdx] = nearClip + splitDist * clipRange;
+            cameraData->cascadeSplitDistances[cascadeIdx] = nearClip + splitDist * clipRange;
 
             // Calculate the position of the lower corner of the cascade partition, in the UV space
             // of the first cascade partition
-            glm::mat4 invCascadeMat = glm::inverse( shadowMatrix );
+            nyaMat4x4f invCascadeMat = shadowMatrix.inverse();
             nyaVec3f cascadeCorner = TransformVec3( nyaVec3f( 0.0f ), invCascadeMat );
-            cascadeCorner = TransformVec3( cascadeCorner, cameraData.globalShadowMatrix );
+            cascadeCorner = TransformVec3( cascadeCorner, cameraData->globalShadowMatrix );
 
             // Do the same for the upper corner
             nyaVec3f otherCorner = TransformVec3( nyaVec3f( 1.0f ), invCascadeMat );
-            otherCorner = TransformVec3( otherCorner, cameraData.globalShadowMatrix );
+            otherCorner = TransformVec3( otherCorner, cameraData->globalShadowMatrix );
 
             // Calculate the scale and offset
             nyaVec3f cascadeScale = nyaVec3f( 1.0f, 1.0f, 1.0f ) / ( otherCorner - cascadeCorner );
 
-            cameraData.cascadeOffsets[cascadeIdx] = nyaVec4f( -cascadeCorner, 0.0f );
-            cameraData.cascadeScales[cascadeIdx] = nyaVec4f( cascadeScale, 1.0f );
+            cameraData->cascadeOffsets[cascadeIdx] = nyaVec4f( -cascadeCorner, 0.0f );
+            cameraData->cascadeScales[cascadeIdx] = nyaVec4f( cascadeScale, 1.0f );
         }
     }
 }

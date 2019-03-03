@@ -166,8 +166,7 @@ void FreeCamera::restore( FileSystemObject* stream )
     stream->read( fov );
     stream->read( data.viewportSize );
 
-    auto fovDeg = degrees( fov );
-    setProjectionMatrix( fovDeg, data.viewportSize.x, data.viewportSize.y, nearPlane );
+    setProjectionMatrix( degrees( fov ), data.viewportSize.x, data.viewportSize.y, nearPlane );
 }
 
 void FreeCamera::setProjectionMatrix( const float fieldOfView, const float screenWidth, float screenHeight, const float zNear )
@@ -228,7 +227,7 @@ void FreeCamera::setOrientation( const float yaw, const float pitch, const float
     this->roll = roll;
 }
 
-const CameraData& FreeCamera::getData() const
+CameraData& FreeCamera::getData()
 {
     return data;
 }

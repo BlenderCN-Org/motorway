@@ -51,7 +51,7 @@ public:
     void            setOrientation( const float yaw, const float pitch, const float roll );
     nyaVec3f        getOrientation() const { return nyaVec3f( yaw, pitch, roll ); }
 
-    const CameraData&     getData() const;
+    CameraData&     getData();
 
     decltype( CameraData::flags )& FreeCamera::getUpdatableFlagset()
     {
