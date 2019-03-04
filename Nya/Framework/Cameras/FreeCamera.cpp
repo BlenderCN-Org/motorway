@@ -181,7 +181,7 @@ void FreeCamera::setProjectionMatrix( const float fieldOfView, const float scree
 
     data.projectionMatrix = MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = data.projectionMatrix.inverse();
-    data.depthProjectionMatrix = MakeFovProj( fov, aspectRatio, 1.0f, 512.0f );
+    data.depthProjectionMatrix = MakeFovProj( fov, aspectRatio, 1.0f, 120.0f );
 }
 
 void FreeCamera::updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept

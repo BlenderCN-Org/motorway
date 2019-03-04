@@ -139,6 +139,8 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     //    compiledPixelStage.append( "+NYA_CAST_SHADOW" );
     //}
 
+    compiledPixelStage.append( "+NYA_DEBUG_CSM_CASCADE" );
+    
     // Default PSO
     PipelineStateDesc defaultPipelineStateDesc = {};
 

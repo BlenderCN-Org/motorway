@@ -515,7 +515,7 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     // NOTE Do not add sky irradiance since we already have IBL as ambient term
     float3 skyIrradiance = float3( 0, 0, 0 );
     float3 sunIrradiance = float3( 1, 1, 1 ); //GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
-    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.r );
+    float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.rgb );
     
     return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }

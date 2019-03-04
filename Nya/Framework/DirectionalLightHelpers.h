@@ -36,7 +36,7 @@ namespace
     static constexpr float MaxDistance = 1.0f;
 
     static constexpr float nearClip = 1.0f;
-    static constexpr float farClip = 512.0f;
+    static constexpr float farClip = 120.0f;
     static constexpr float clipRange = farClip - nearClip;
 
     static constexpr float minZ = nearClip + MinDistance * clipRange;
@@ -176,8 +176,7 @@ namespace nya
             nyaVec3f shadowCameraPos = frustumCenter + lightData->direction * -minExtents.z;
 
             // Come up with a new orthographic camera for the shadow caster
-            nyaMat4x4f shadowCamera = nya::maths::MakeOrtho( minExtents.x, maxExtents.x, minExtents.y,
-                maxExtents.y, 0.0f, cascadeExtents.z );
+            nyaMat4x4f shadowCamera = nya::maths::MakeOrtho( minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, cascadeExtents.z );
             nyaMat4x4f shadowLookAt = nya::maths::MakeLookAtMat( shadowCameraPos, frustumCenter, upDir );
             nyaMat4x4f shadowMatrix = shadowCamera * shadowLookAt;
 
@@ -198,7 +197,7 @@ namespace nya
             shadowCamera[3].z += roundOffset.z;
 
             shadowMatrix = shadowCamera * shadowLookAt;
-            cameraData->shadowViewMatrix[cascadeIdx] = shadowMatrix; // .transpose();
+            cameraData->shadowViewMatrix[cascadeIdx] = shadowMatrix.transpose();
 
             // Apply the scale/offset matrix, which transforms from [-1,1]
             // post-projection space to [0,1] UV space
