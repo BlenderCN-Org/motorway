@@ -42,6 +42,15 @@ elseif ( "${NYA_GFX_API}" MATCHES "NYA_D3D11" )
     target_link_libraries( NyaEd d3d11 )
     target_link_libraries( NyaEd dxgi )
     target_link_libraries( NyaEd dxguid ) # Used by resource labels
+elseif ( "${NYA_GFX_API}" MATCHES "NYA_D3D12" )
+    find_package( DirectX REQUIRED )
+
+    set_target_properties( NyaEd PROPERTIES RELEASE_OUTPUT_NAME "NyaEdD3D12" )
+    set_target_properties( NyaEd PROPERTIES DEBUG_OUTPUT_NAME "NyaEdD3D12_debug" )
+
+    target_link_libraries( NyaEd d3d12 )
+    target_link_libraries( NyaEd dxgi )
+    target_link_libraries( NyaEd dxguid ) # Used by resource labels
 elseif ( "${NYA_GFX_API}" MATCHES "NYA_VULKAN" )
     find_package( Vulkan REQUIRED )
     
