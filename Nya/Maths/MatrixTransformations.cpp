@@ -94,13 +94,18 @@ namespace nya
         
         nyaMat4x4f MakeOrtho( const float left, const float right, const float bottom, const float top, const float zNear, const float zFar )
         {
+            float ReciprocalWidth = 1.0f / ( right - left );
+            float ReciprocalHeight = 1.0f / ( top - bottom );
+            float fRange = 1.0f / ( zFar - zNear );
+
             nyaMat4x4f matrix = nyaMat4x4f::Identity;
-            matrix._00 = 2.0f / ( right - left );
-            matrix._11 = 2.0f / ( top - bottom );
-            matrix._22 = 1.0f / ( zFar - zNear );
-            matrix._30 = -( right + left ) / ( right - left );
-            matrix._31 = -( top + bottom ) / ( top - bottom );
-            matrix._32 = -zNear / ( zFar - zNear );
+            matrix._00 = ReciprocalWidth + ReciprocalWidth;
+            matrix._11 = ReciprocalHeight + ReciprocalHeight;
+            matrix._22 = fRange;
+
+            matrix._30 = -( right + left ) * ReciprocalWidth;
+            matrix._31 = -( top + bottom ) * ReciprocalHeight;
+            matrix._32 = -fRange * zNear;
 
             return matrix;
         }
