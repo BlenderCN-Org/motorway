@@ -353,7 +353,7 @@ void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& in
         const size_t instancesDataSize = ( sizeof( nyaMat4x4f ) + sizeof( nyaMat4x4f ) ) * cmd.infos.instanceCount;
 
         memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, cmd.infos.modelMatrix, sizeof( nyaMat4x4f ) );
-        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer], sizeof( nyaMat4x4f ) );
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u], sizeof( nyaMat4x4f ) );
 
         instanceBufferOffset += instancesDataSize;
     } break;
