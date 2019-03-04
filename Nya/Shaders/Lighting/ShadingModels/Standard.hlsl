@@ -1,6 +1,6 @@
 #include <BRDF.hlsli>
 
-Texture2D g_DFGLUTStandard : register( t1 );
+Texture2D g_DFGLUTStandard : register( t2 );
 
 float3 DoShading( in float3 L, in LightSurfaceInfos surface )
 {

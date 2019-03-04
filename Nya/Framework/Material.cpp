@@ -131,13 +131,13 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         compiledPixelStage.append( "+NYA_USE_LOD_ALPHA_BLENDING" );
     }
 
-    if ( sortKeyInfos.receiveShadow ) {
-        compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
-    }
+    //if ( editableMaterialData.ReceiveShadow ) {
+    //    compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
+    //}
 
-    if ( sortKeyInfos.castShadow ) {
-        compiledPixelStage.append( "+NYA_CAST_SHADOW" );
-    }
+    //if ( editableMaterialData.CastShadow ) {
+    //    compiledPixelStage.append( "+NYA_CAST_SHADOW" );
+    //}
 
     // Default PSO
     PipelineStateDesc defaultPipelineStateDesc = {};
@@ -150,7 +150,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.rasterizerState.useTriangleCCW = true;
     defaultPipelineStateDesc.depthStencilState.enableDepthTest = true;
     defaultPipelineStateDesc.depthStencilState.enableDepthWrite = true;
-    defaultPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_GEQUAL;
+    defaultPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_GREATER;
     defaultPipelineStateDesc.inputLayout[0] = { 0, eImageFormat::IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
     defaultPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
     defaultPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
@@ -182,14 +182,12 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     depthPipelineStateDesc.rasterizerState.useTriangleCCW = true;
     depthPipelineStateDesc.depthStencilState.enableDepthTest = true;
     depthPipelineStateDesc.depthStencilState.enableDepthWrite = true;
-    depthPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_GEQUAL;
+    depthPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_LESS;
     depthPipelineStateDesc.inputLayout[0] = { 0, eImageFormat::IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
     depthPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
     depthPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
-    depthPipelineStateDesc.blendState.enableAlphaToCoverage = sortKeyInfos.useAlphaToCoverage;
-
+   
     depthOnlyPipelineState = renderDevice->createPipelineState( depthPipelineStateDesc );
-
 }
 
 void Material::destroy( RenderDevice* renderDevice )
@@ -391,7 +389,8 @@ void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) cons
 
     // 0..3 -> Output RenderTargets
     // 4 -> Clusters (3D Tex)
-    int32_t textureBindIndex = 5;
+    // 5 -> Sun ShadowMap
+    int32_t textureBindIndex = 6;
 
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
         renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;

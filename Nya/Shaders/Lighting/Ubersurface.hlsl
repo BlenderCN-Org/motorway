@@ -1,6 +1,7 @@
 #include <CameraData.hlsli>
 #include <LightsData.hlsli>
 #include <BRDF.hlsli>
+#include <ShadowMappingShared.h>
 
 Buffer<float4> g_InstanceVectorBuffer : register( t8 );
 cbuffer InstanceBuffer : register( b1 )
@@ -165,22 +166,23 @@ struct MaterialReadLayer
 #if NYA_EDITOR
 #include <MaterialShared.h>
 
-sampler g_BRDFInputsSampler : register( s1 );
+sampler					g_BRDFInputsSampler : register( s1 );
 
 // t0 => Light clusters
 // t1 => Shading Model BRDF DFG LUT
+// t2 => Sun CSM ShadowMap
 
-Texture2D g_TexBaseColor0 : register( t2 );
-Texture2D g_TexAlphaMask0 : register( t3 );
-Texture2D g_TexReflectance0 : register( t4 );
-Texture2D g_TexRoughness0 : register( t5 );
-Texture2D g_TexMetalness0 : register( t6 );
-Texture2D g_TexAmbientOcclusion0 : register( t7 );
-Texture2D g_TexNormal0 : register( t8 );
-Texture2D g_TexDisplacement0 : register( t9 );
-Texture2D g_TexEmissivity0 : register( t10 );
-Texture2D g_TexClearCoatNormal0 : register( t11 );
-Texture2D g_TexBlendMask0 : register( t12 );
+Texture2D g_TexBaseColor0 : register( t3 );
+Texture2D g_TexAlphaMask0 : register( t4 );
+Texture2D g_TexReflectance0 : register( t5 );
+Texture2D g_TexRoughness0 : register( t6 );
+Texture2D g_TexMetalness0 : register( t7 );
+Texture2D g_TexAmbientOcclusion0 : register( t8 );
+Texture2D g_TexNormal0 : register( t9 );
+Texture2D g_TexDisplacement0 : register( t10 );
+Texture2D g_TexEmissivity0 : register( t11 );
+Texture2D g_TexClearCoatNormal0 : register( t12 );
+Texture2D g_TexBlendMask0 : register( t13 );
 
 cbuffer MaterialEdition : register( b3 )
 {
@@ -291,6 +293,134 @@ float2 EncodeNormals( const in float3 n )
     return enc;
 }
 
+float2 ComputeReceiverPlaneDepthBias( float3 texCoordDX, float3 texCoordDY )
+{
+    float2 biasUV;
+    biasUV.x = texCoordDY.y * texCoordDX.z - texCoordDX.y * texCoordDY.z;
+    biasUV.y = texCoordDX.x * texCoordDY.z - texCoordDY.x * texCoordDX.z;
+    biasUV *= 1.0f / ( ( texCoordDX.x * texCoordDY.y ) - ( texCoordDX.y * texCoordDY.x ) );
+
+    return biasUV;
+}
+
+SamplerComparisonState 	g_ShadowMapSampler : register( s2 );
+Texture2D g_SunShadowMap : register( t1 );
+
+float SampleCascadedShadowMap( in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint cascadeIdx, in float depth, in float2 receiverPlaneDepthBias )
+{
+    float2 uv = base_uv + float2( u, v ) * shadowMapSizeInv;
+
+    float z = depth + dot( float2( u, v ) * shadowMapSizeInv, receiverPlaneDepthBias );
+
+    float2 shiftedCoordinates = uv.xy;
+    shiftedCoordinates.x = float( cascadeIdx ) / float(CSM_SLICE_COUNT);
+    shiftedCoordinates.x += ( uv.x / float(CSM_SLICE_COUNT) );
+    
+    return g_SunShadowMap.SampleCmpLevelZero( g_ShadowMapSampler, shiftedCoordinates.xy, z );
+}
+
+float SampleCascadedShadowMapOptimizedPCF( in float3 shadowPos, in float3 shadowPosDX, in float3 shadowPosDY, in uint cascadeIdx )
+{
+    static const float2 shadowMapSize = float2( CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS );
+
+    float lightDepth = shadowPos.z;
+    float2 texelSize = 1.0f / shadowMapSize;
+
+    float2 receiverPlaneDepthBias = ComputeReceiverPlaneDepthBias( shadowPosDX, shadowPosDY );
+
+    // Static depth biasing to make up for incorrect fractional sampling on the shadow map grid
+    float fractionalSamplingError = 2 * dot( float2( 1.0f, 1.0f ) * texelSize, abs( receiverPlaneDepthBias ) );
+    lightDepth -= min( fractionalSamplingError, 0.01f );
+
+    float2 uv = shadowPos.xy * shadowMapSize; // 1 unit - 1 texel
+    float2 shadowMapSizeInv = 1.0 / shadowMapSize;
+
+    float2 base_uv;
+    base_uv.x = floor( uv.x + 0.5 );
+    base_uv.y = floor( uv.y + 0.5 );
+
+    float s = ( uv.x + 0.5 - base_uv.x );
+    float t = ( uv.y + 0.5 - base_uv.y );
+
+    base_uv -= float2( 0.5, 0.5 );
+    base_uv *= shadowMapSizeInv;
+
+    float sum = 0;
+    float uw0 = ( 5 * s - 6 );
+    float uw1 = ( 11 * s - 28 );
+    float uw2 = -( 11 * s + 17 );
+    float uw3 = -( 5 * s + 1 );
+
+    float u0 = ( 4 * s - 5 ) / uw0 - 3;
+    float u1 = ( 4 * s - 16 ) / uw1 - 1;
+    float u2 = -( 7 * s + 5 ) / uw2 + 1;
+    float u3 = -s / uw3 + 3;
+
+    float vw0 = ( 5 * t - 6 );
+    float vw1 = ( 11 * t - 28 );
+    float vw2 = -( 11 * t + 17 );
+    float vw3 = -( 5 * t + 1 );
+
+    float v0 = ( 4 * t - 5 ) / vw0 - 3;
+    float v1 = ( 4 * t - 16 ) / vw1 - 1;
+    float v2 = -( 7 * t + 5 ) / vw2 + 1;
+    float v3 = -t / vw3 + 3;
+
+    sum += uw0 * vw0 * SampleCascadedShadowMap( base_uv, u0, v0, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw1 * vw0 * SampleCascadedShadowMap( base_uv, u1, v0, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw2 * vw0 * SampleCascadedShadowMap( base_uv, u2, v0, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw3 * vw0 * SampleCascadedShadowMap( base_uv, u3, v0, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+
+    sum += uw0 * vw1 * SampleCascadedShadowMap( base_uv, u0, v1, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw1 * vw1 * SampleCascadedShadowMap( base_uv, u1, v1, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw2 * vw1 * SampleCascadedShadowMap( base_uv, u2, v1, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw3 * vw1 * SampleCascadedShadowMap( base_uv, u3, v1, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+
+    sum += uw0 * vw2 * SampleCascadedShadowMap( base_uv, u0, v2, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw1 * vw2 * SampleCascadedShadowMap( base_uv, u1, v2, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw2 * vw2 * SampleCascadedShadowMap( base_uv, u2, v2, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw3 * vw2 * SampleCascadedShadowMap( base_uv, u3, v2, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+
+    sum += uw0 * vw3 * SampleCascadedShadowMap( base_uv, u0, v3, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw1 * vw3 * SampleCascadedShadowMap( base_uv, u1, v3, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw2 * vw3 * SampleCascadedShadowMap( base_uv, u2, v3, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+    sum += uw3 * vw3 * SampleCascadedShadowMap( base_uv, u3, v3, shadowMapSizeInv, cascadeIdx, lightDepth, receiverPlaneDepthBias );
+
+    return sum * 1.0f / 2704;
+}
+
+float3 GetCascadedShadowMapShadowPosOffset( in float nDotL, in float3 normal )
+{
+    static const float texelSize = 2.0f / CSM_SHADOW_MAP_DIMENSIONS;
+    float nmlOffsetScale = saturate( 1.0f - nDotL );
+    return texelSize * 1.0f * nmlOffsetScale * normal;
+}
+
+float3 SampleShadowCascade( in DirectionalLight light, in float3 shadowPosition, in float3 shadowPosDX, in float3 shadowPosDY, in uint cascadeIdx )
+{
+    shadowPosition += g_CascadeOffsets[cascadeIdx].xyz;
+    shadowPosition *= g_CascadeScales[cascadeIdx].xyz;
+
+    shadowPosDX *= g_CascadeScales[cascadeIdx].xyz;
+    shadowPosDY *= g_CascadeScales[cascadeIdx].xyz;
+
+    float3 cascadeColor = 1.0f;
+	
+#if NYA_DEBUG_CSM_CASCADE
+	const float3 CascadeColors[4] =
+	{
+		float3( 1.0f, 0.0, 0.0f ),
+		float3( 0.0f, 1.0f, 0.0f ),
+		float3( 0.0f, 0.0f, 1.0f ),
+		float3( 1.0f, 1.0f, 0.0f )
+	};
+
+	cascadeColor = CascadeColors[cascadeIdx];
+#endif
+
+    return cascadeColor + SampleCascadedShadowMapOptimizedPCF( shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
+}
+
 float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )
 {
     float3 unormalizedL = light.PositionAndRadius.xyz - surface.PositionWorldSpace;
@@ -320,17 +450,49 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     float3 shadowVisibility = 1.0f;
     float3 surfaceTransmittance = float3( 0, 0, 0 );
     
-// #ifdef NYA_RECEIVE_SHADOW
-    // // Figure out which cascade to sample from
-    // uint cascadeIdx = ~0;
+    // Figure out which cascade to sample from
+    uint cascadeIdx = ~0;
 
-    // if ( depth <= ShadowSplitDistances.x ) cascadeIdx = 0;
-    // else if ( depth <= ShadowSplitDistances.y ) cascadeIdx = 1;
-    // else if ( depth <= ShadowSplitDistances.z ) cascadeIdx = 2;
-    // else if ( depth <= ShadowSplitDistances.w ) cascadeIdx = 3;
+    if ( depth <= g_ShadowSplitDistances.x ) cascadeIdx = 0;
+    else if ( depth <= g_ShadowSplitDistances.y ) cascadeIdx = 1;
+    else if ( depth <= g_ShadowSplitDistances.z ) cascadeIdx = 2;
+    else if ( depth <= g_ShadowSplitDistances.w ) cascadeIdx = 3;
+
+    [branch]
+    if ( cascadeIdx <= 3 ) {
+        float NoL = saturate( dot( surface.N, L ) );
+
+        // Apply offset
+        float3 offset = GetCascadedShadowMapShadowPosOffset( NoL, surface.N ) / abs( g_CascadeScales[cascadeIdx].z );
+
+        // Project into shadow space
+        float3 samplePos = surface.PositionWorldSpace + offset;
+        float3 shadowPosition = mul( float4( samplePos, 1.0f ), g_ShadowMatrixShared ).xyz;
+        float3 shadowPosDX = ddx_fine( shadowPosition );
+        float3 shadowPosDY = ddy_fine( shadowPosition );
+
+        shadowVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
+
+        // Make sure the value is within a valid range (avoid NaN)
+        shadowVisibility = saturate( shadowVisibility );
+
+        // Sample the next cascade, and blend between the two results to
+        // smooth the transition
+        float nextSplit = g_ShadowSplitDistances[cascadeIdx];
+        float splitSize = ( cascadeIdx == 0 ) ? nextSplit : nextSplit - g_ShadowSplitDistances[cascadeIdx - 1];
+        float fadeFactor = ( nextSplit - depth ) / splitSize;
+
+        [branch]
+        if ( fadeFactor <= CSM_SLICE_BLEND_THRESHOLD && cascadeIdx != CSM_SLICE_COUNT - 1 ) {
+            float3 nextSplitVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx + 1 );
+            float lerpAmt = smoothstep( 0.0f, CSM_SLICE_BLEND_THRESHOLD, fadeFactor );
+            shadowVisibility = lerp( nextSplitVisibility, shadowVisibility, lerpAmt );
+            shadowVisibility = saturate( shadowVisibility );
+        }
+    }
 
     // [branch]
-    // if ( cascadeIdx <= 3 ) {
+    // if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
         // float NoL = saturate( dot( surface.N, L ) );
 
         // // Apply offset
@@ -338,55 +500,21 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
 
         // // Project into shadow space
         // float3 samplePos = surface.PositionWorldSpace + offset;
-        // float3 shadowPosition = mul( float4( samplePos, 1.0f ), ShadowMatrixShared ).xyz;
-        // float3 shadowPosDX = ddx_fine( shadowPosition );
-        // float3 shadowPosDY = ddy_fine( shadowPosition );
+        // float4 shrinkedPos = float4(surface.PositionWorldSpace - 0.005 * surface.N, 1.0);
+        // float3 ssShadowPosition = mul( shrinkedPos, ShadowMatrixShared ).xyz;
+        // float3 ssShadowPosDX = ddx_fine( ssShadowPosition );
+        // float3 ssShadowPosDY = ddy_fine( ssShadowPosition );
 
-        // shadowVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
-
-        // // Make sure the value is within a valid range (avoid NaN)
-        // shadowVisibility = saturate( shadowVisibility );
-
-        // // Sample the next cascade, and blend between the two results to
-        // // smooth the transition
-        // float nextSplit = ShadowSplitDistances[cascadeIdx];
-        // float splitSize = cascadeIdx == 0 ? nextSplit : nextSplit - ShadowSplitDistances[cascadeIdx - 1];
-        // float fadeFactor = ( nextSplit - depth ) / splitSize;
-
-        // [branch]
-        // if ( fadeFactor <= CSM_SLICE_BLEND_THRESHOLD && cascadeIdx != CSM_SLICE_COUNT - 1 ) {
-            // float3 nextSplitVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx + 1 );
-            // float lerpAmt = smoothstep( 0.0f, CSM_SLICE_BLEND_THRESHOLD, fadeFactor );
-            // shadowVisibility = lerp( nextSplitVisibility, shadowVisibility, lerpAmt );
-            // shadowVisibility = saturate( shadowVisibility );
-        // }
-    // }
-
-    // // [branch]
-    // // if ( surface.SubsurfaceScatteringStrength > 0.0f ) { 
-        // // float NoL = saturate( dot( surface.N, L ) );
-
-        // // // Apply offset
-        // // float3 offset = GetCascadedShadowMapShadowPosOffset( NoL, surface.N ) / abs( CascadeScales[cascadeIdx].z );
-
-        // // // Project into shadow space
-        // // float3 samplePos = surface.PositionWorldSpace + offset;
-        // // float4 shrinkedPos = float4(surface.PositionWorldSpace - 0.005 * surface.N, 1.0);
-        // // float3 ssShadowPosition = mul( shrinkedPos, ShadowMatrixShared ).xyz;
-        // // float3 ssShadowPosDX = ddx_fine( ssShadowPosition );
-        // // float3 ssShadowPosDY = ddy_fine( ssShadowPosition );
-
-        // // float d1 = SampleShadowCascade( light, ssShadowPosition, ssShadowPosDX, ssShadowPosDY, cascadeIdx ).g; //SSSSSample(shadowMap, shadowPosition.xy / shadowPosition.w).r; // 'd1' has a range of 0..1
-        // // d1 = saturate( d1 );
+        // float d1 = SampleShadowCascade( light, ssShadowPosition, ssShadowPosDX, ssShadowPosDY, cascadeIdx ).g; //SSSSSample(shadowMap, shadowPosition.xy / shadowPosition.w).r; // 'd1' has a range of 0..1
+        // d1 = saturate( d1 );
         
-        // // surfaceTransmittance = SSSSTransmittance( surface.SubsurfaceScatteringStrength, 0.005f, surface.N, L, ( d1 * 128.0f ), ssShadowPosition.z );
-    // // }    
-// #endif
+        // surfaceTransmittance = SSSSTransmittance( surface.SubsurfaceScatteringStrength, 0.005f, surface.N, L, ( d1 * 128.0f ), ssShadowPosition.z );
+    // }    
 
     // Get Sun Irradiance
     // NOTE Do not add sky irradiance since we already have IBL as ambient term
     float3 skyIrradiance = float3( 0, 0, 0 );
-    float3 sunIrradiance = float3( 1, 1, 1 ); //GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy * 1.0 - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
+    float3 sunIrradiance = float3( 1, 1, 1 ); //GetSunAndSkyIrradiance( surface.PositionWorldSpace.xzy - g_EarthCenter, surface.N.xzy, g_SunDirection, skyIrradiance );
     float3 lightIlluminance = ( sunIrradiance * illuminance * shadowVisibility.r );
     
     return lightIlluminance + ( lightIlluminance * surfaceTransmittance );

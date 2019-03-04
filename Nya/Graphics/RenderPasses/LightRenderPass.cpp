@@ -11,6 +11,8 @@
 #include <Framework/Material.h>
 #include <Core/EnvVarsRegister.h>
 
+using namespace nya::rendering;
+
 #define TEXTURE_FILTERING_OPTION_LIST( option )\
     option( BILINEAR )\
     option( TRILINEAR )\
@@ -32,6 +34,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
         ResHandle_t bilinearSampler;
         ResHandle_t anisotropicSampler;
+        ResHandle_t shadowMapSampler;
 
         ResHandle_t cameraBuffer;
         ResHandle_t instanceBuffer;
@@ -150,10 +153,20 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             }
 
             passData.anisotropicSampler = renderPipelineBuilder.allocateSampler( materialSamplerDesc );
+
+            SamplerDesc shadowComparisonSamplerDesc;
+            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_COMPARISON_TRILINEAR;
+            shadowComparisonSamplerDesc.comparisonFunction = eComparisonFunction::COMPARISON_FUNCTION_LEQUAL;
+
+            passData.shadowMapSampler = renderPipelineBuilder.allocateSampler( shadowComparisonSamplerDesc );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Sampler* anisotropicSampler = renderPipelineResources.getSampler( passData.anisotropicSampler );
+            Sampler* shadowMapSampler = renderPipelineResources.getSampler( passData.shadowMapSampler );
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* clustersBuffer = renderPipelineResources.getBuffer( passData.clustersBuffer );
@@ -169,6 +182,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             ResourceListDesc resListDesc = {};
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, anisotropicSampler };
+            resListDesc.samplers[2] = { 2, SHADER_STAGE_PIXEL, shadowMapSampler };
             resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, sceneInfosBuffer };
@@ -187,6 +201,8 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             RenderTarget* zBufferTarget = renderPipelineResources.getRenderTarget( passData.zBuffer );
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.velocityRenderTarget );
             RenderTarget* thinGBufferTarget = renderPipelineResources.getRenderTarget( passData.thinGBuffer );
+
+            RenderTarget* sunShadowMapTarget = renderPipelineResources.getRenderTarget( passData.sunShadowMap );
 
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
@@ -216,6 +232,16 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             passDesc.attachements[4].stageBind = SHADER_STAGE_PIXEL;
             passDesc.attachements[4].bindMode = RenderPassDesc::READ;
             passDesc.attachements[4].targetState = RenderPassDesc::IS_UAV_TEXTURE;
+
+            passDesc.attachements[5] = { sunShadowMapTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+       
+            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
+            cmdList->useRenderPass( renderPass );
+            renderDevice->destroyRenderPass( renderPass );
+
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
+            passDesc.attachements[2].targetState = RenderPassDesc::DONT_CARE;
+            passDesc.attachements[3].targetState = RenderPassDesc::DONT_CARE;
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
 
