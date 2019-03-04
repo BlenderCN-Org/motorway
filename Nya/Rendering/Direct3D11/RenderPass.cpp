@@ -82,14 +82,14 @@ RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
 
         case RenderPassDesc::WRITE:
             renderPass->clearTarget[renderPass->rtvCount] = ( description.attachements[i].targetState != RenderPassDesc::DONT_CARE );
-            memcpy( renderPass->clearValue, description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
+            memcpy( renderPass->clearValue[renderPass->rtvCount], description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
 
             renderPass->renderTargetViews[renderPass->rtvCount++] = description.attachements[i].renderTarget->textureRenderTargetView;
             break;
 
         case RenderPassDesc::WRITE_DEPTH:
             renderPass->clearTarget[8] = ( description.attachements[i].targetState != RenderPassDesc::DONT_CARE );
-            memcpy( renderPass->clearValue, description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
+            memcpy( renderPass->clearValue[8], description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
 
             renderPass->depthStencilView = description.attachements[i].renderTarget->textureDepthRenderTargetView;
             break;
