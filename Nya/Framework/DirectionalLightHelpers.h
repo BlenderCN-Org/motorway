@@ -130,7 +130,7 @@ namespace nya
             float prevSplitDist = ( cascadeIdx == 0 ) ? MinDistance : CascadeSplits[cascadeIdx - 1];
             float splitDist = CascadeSplits[cascadeIdx];
 
-            auto inverseViewProjection = cameraData->depthViewProjectionMatrix.inverse();
+            auto inverseViewProjection = cameraData->depthViewProjectionMatrix.inverse().transpose();
 
             for ( int i = 0; i < 8; ++i ) {
                 frustumCornersWS[i] = TransformVec3( frustumCornersWS[i], inverseViewProjection );
@@ -182,10 +182,7 @@ namespace nya
 
             // Create the rounding matrix, by projecting the world-space origin and determining
             // the fractional offset in texel space
-            nyaVec3f shadowOrigin = nyaVec3f( 0.0f );
-            shadowOrigin = TransformVec3( shadowOrigin, shadowMatrix );
-            shadowOrigin = shadowOrigin * ( SHADOW_MAP_DIM / 2.0f );
-
+            nyaVec3f shadowOrigin = TransformVec3( nyaVec3f( 0.0f ), shadowMatrix ) * ( SHADOW_MAP_DIM / 2.0f );
             nyaVec3f roundedOrigin = nyaVec3f( roundf( shadowOrigin.x ), roundf( shadowOrigin.y ), roundf( shadowOrigin.z ) );
 
             nyaVec3f roundOffset = roundedOrigin - shadowOrigin;
@@ -201,7 +198,8 @@ namespace nya
 
             // Apply the scale/offset matrix, which transforms from [-1,1]
             // post-projection space to [0,1] UV space
-            nyaMat4x4f texScaleBias( 0.5f, 0.0f, 0.0f, 0.0f,
+            nyaMat4x4f texScaleBias( 
+                0.5f, 0.0f, 0.0f, 0.0f,
                 0.0f, -0.5f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
                 0.5f, 0.5f, 0.0f, 1.0f );
@@ -213,7 +211,7 @@ namespace nya
 
             // Calculate the position of the lower corner of the cascade partition, in the UV space
             // of the first cascade partition
-            nyaMat4x4f invCascadeMat = shadowMatrix.inverse();
+            nyaMat4x4f invCascadeMat = shadowMatrix.inverse().transpose();
             nyaVec3f cascadeCorner = TransformVec3( nyaVec3f( 0.0f ), invCascadeMat );
             cascadeCorner = TransformVec3( cascadeCorner, cameraData->globalShadowMatrix );
 
