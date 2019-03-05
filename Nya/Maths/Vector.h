@@ -561,7 +561,7 @@ struct Vector<Precision, 3>
 
     constexpr Precision length() const
     {
-        return nya::maths::sqrt( lengthSquared() );
+        return sqrt( lengthSquared() );
     }
 
     static constexpr Precision distanceSquared( const Vector<Precision, 3>& l, const Vector<Precision, 3>& r )

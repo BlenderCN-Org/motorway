@@ -59,6 +59,7 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : S
     output.previousPosition = mul( g_PreviousViewProjectionMatrix, float4( output.positionWS.xyz, 1.0f ) );
    
     float4 PositionVS = mul( g_ViewMatrix, float4( output.positionWS.xyz, 1.0f ) );
+	
     output.depth = ( PositionVS.z / PositionVS.w );
     output.normal = normalize( mul( ModelMatrix, float4( VertexBuffer.Normal, 0.0f ) ) ).xyz;
     output.uvCoord = uvCoordinates;
@@ -418,7 +419,7 @@ float3 SampleShadowCascade( in DirectionalLight light, in float3 shadowPosition,
 	cascadeColor = CascadeColors[cascadeIdx];
 #endif
 
-    return cascadeColor + SampleCascadedShadowMapOptimizedPCF( shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
+    return cascadeColor * SampleCascadedShadowMapOptimizedPCF( shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
 }
 
 float3 GetPointLightIlluminance( in PointLight light, in LightSurfaceInfos surface, in float depth, inout float3 L )

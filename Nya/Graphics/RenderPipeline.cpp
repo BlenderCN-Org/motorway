@@ -350,10 +350,12 @@ void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& in
 {
     switch ( cmd.key.bitfield.layer ) {
     case DrawCommandKey::LAYER_DEPTH: {
-        const size_t instancesDataSize = ( sizeof( nyaMat4x4f ) + sizeof( nyaMat4x4f ) ) * cmd.infos.instanceCount;
+        const size_t instancesDataSize = sizeof( nyaMat4x4f ) * cmd.infos.instanceCount;
+        
+        nyaMat4x4f mvp = *cmd.infos.modelMatrix * activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u];
 
-        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, cmd.infos.modelMatrix, sizeof( nyaMat4x4f ) );
-        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u], sizeof( nyaMat4x4f ) );
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, &mvp, sizeof( nyaMat4x4f ) );
+        //memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u], sizeof( nyaMat4x4f ) );
 
         instanceBufferOffset += instancesDataSize;
     } break;
@@ -389,12 +391,9 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
     DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
     previousBucket->instanceDataStartOffset = 0.0f;
 
-    if ( drawCmds[0].key.bitfield.layer == DrawCommandKey::LAYER_DEPTH ) {
-        previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) * 2 / sizeof( nyaVec4f ) );
-    } else {
-        previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
-    }
-
+ 
+    previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
+    
     for ( size_t drawCmdIdx = 1; drawCmdIdx < drawCmdCount; drawCmdIdx++ ) {
         const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
 
@@ -404,12 +403,8 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
             auto& bucket = drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
             bucket.beginAddr = ( drawCmds + drawCmdIdx );
 
-            if ( drawCmdKey.layer == DrawCommandKey::LAYER_DEPTH ) {
-                bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) * 2 / sizeof( nyaVec4f ) );
-            } else {
-                bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
-            }
-
+            bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
+          
             bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset / sizeof( nyaVec4f ) );
 
             layer = drawCmdKey.layer;

@@ -176,7 +176,7 @@ void TestStuff()
     const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
 
     sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
-    sunLight.sphericalCoordinates = nyaVec2f( 0.5f, 1.0f );
+    sunLight.sphericalCoordinates = nyaVec2f( 1.0f, 0.5f );
     sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
