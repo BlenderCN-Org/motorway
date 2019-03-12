@@ -52,7 +52,7 @@ void RenderPipelineBuilder::cullRenderPasses( RenderPipelineRenderPass* renderPa
 
         bool cullPass = true;
 
-        if ( passInfos.renderTargetCount == static_cast< uint32_t >( -1 ) ) {
+        if ( passInfos.isUncullable ) {
             cullPass = false;
         } else {
             for ( uint32_t j = 0; j < passInfos.renderTargetCount; j++ ) {
@@ -85,7 +85,7 @@ void RenderPipelineBuilder::useAsyncCompute( const bool state )
 
 void RenderPipelineBuilder::setUncullablePass()
 {
-    passRefs[renderPassCount].renderTargetCount = static_cast< uint32_t >( -1 );
+    passRefs[renderPassCount].isUncullable = true;
 }
 
 void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineResources& resources )
@@ -131,6 +131,7 @@ void RenderPipelineBuilder::compile( RenderDevice* renderDevice, RenderPipelineR
 void RenderPipelineBuilder::addRenderPass()
 {
     renderPassCount++;
+    passRefs[renderPassCount].isUncullable = false;
     passRefs[renderPassCount].renderTargetCount = 0;
     passRefs[renderPassCount].buffersCount = 0;
 }
@@ -352,11 +353,9 @@ void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& in
     case DrawCommandKey::LAYER_DEPTH: {
         const size_t instancesDataSize = sizeof( nyaMat4x4f ) * cmd.infos.instanceCount;
         
-        nyaMat4x4f mvp = *cmd.infos.modelMatrix * activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u];
-
-        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, &mvp, sizeof( nyaMat4x4f ) );
-        //memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset + sizeof( nyaMat4x4f ), &activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u], sizeof( nyaMat4x4f ) );
-
+        nyaMat4x4f modelViewProjection = activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u] * *cmd.infos.modelMatrix;
+        memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, &modelViewProjection, sizeof( nyaMat4x4f ) );
+         
         instanceBufferOffset += instancesDataSize;
     } break;
 
@@ -374,7 +373,7 @@ void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& in
 void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t drawCmdCount )
 {
     if ( drawCmdCount == 0 ) {
-        return;
+        return; 
     }
 
     const auto& firstDrawCmdKey = drawCmds[0].key.bitfield;
@@ -390,21 +389,17 @@ void RenderPipelineResources::dispatchToBuckets( DrawCmd* drawCmds, const size_t
 
     DrawCmdBucket* previousBucket = &drawCmdBuckets[layer][viewportLayer];
     previousBucket->instanceDataStartOffset = 0.0f;
-
- 
     previousBucket->vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
     
     for ( size_t drawCmdIdx = 1; drawCmdIdx < drawCmdCount; drawCmdIdx++ ) {
         const auto& drawCmdKey = drawCmds[drawCmdIdx].key.bitfield;
 
         if ( layer != drawCmdKey.layer || viewportLayer != drawCmdKey.viewportLayer ) {
-            previousBucket->endAddr = ( drawCmds + drawCmdIdx );
+             previousBucket->endAddr = ( drawCmds + drawCmdIdx );
 
             auto& bucket = drawCmdBuckets[drawCmdKey.layer][drawCmdKey.viewportLayer];
             bucket.beginAddr = ( drawCmds + drawCmdIdx );
-
             bucket.vectorPerInstance = static_cast< float >( sizeof( nyaMat4x4f ) / sizeof( nyaVec4f ) );
-          
             bucket.instanceDataStartOffset = static_cast< float >( instanceBufferOffset / sizeof( nyaVec4f ) );
 
             layer = drawCmdKey.layer;

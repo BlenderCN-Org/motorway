@@ -59,36 +59,42 @@ public:
     };
 
 public:
-                            LightGrid( BaseAllocator* allocator );
-                            LightGrid( LightGrid& ) = default;
-                            LightGrid& operator = ( LightGrid& ) = default;
-                            ~LightGrid();
+                                    LightGrid( BaseAllocator* allocator );
+                                    LightGrid( LightGrid& ) = default;
+                                    LightGrid& operator = ( LightGrid& ) = default;
+                                    ~LightGrid();
 
-    void                    destroy( RenderDevice* renderDevice );
+    void                            destroy( RenderDevice* renderDevice );
 
-    PassData                updateClusters( RenderPipeline* renderPipeline );
-    void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
+    PassData                        updateClusters( RenderPipeline* renderPipeline );
+    void                            loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
-    void                    setSceneBounds( const nyaVec3f& aabbMax, const nyaVec3f& aabbMin );
+    void                            setSceneBounds( const nyaVec3f& aabbMax, const nyaVec3f& aabbMin );
   
-    PointLightData*         allocatePointLightData( const PointLightData&& lightData );
+    PointLightData*                 allocatePointLightData( const PointLightData&& lightData );
+    IBLProbeData*                   allocateLocalIBLProbeData( const IBLProbeData&& probeData );
 
-    DirectionalLightData*         updateDirectionalLightData( const DirectionalLightData&& lightData );
-    const DirectionalLightData*   getDirectionalLightData() const;
+    DirectionalLightData*           updateDirectionalLightData( const DirectionalLightData&& lightData );
+    IBLProbeData*                   updateGlobalIBLProbeData( const IBLProbeData&& probeData );
+
+    const DirectionalLightData*     getDirectionalLightData() const;
+    const IBLProbeData*             getGlobalIBLProbeData() const;
 
 private:
-    BaseAllocator*          memoryAllocator;
+    BaseAllocator*                  memoryAllocator;
 
-    PipelineState*          lightCullingPso;
-    SceneInfosBuffer        sceneInfosBuffer;
+    PipelineState*                  lightCullingPso;
+    SceneInfosBuffer                sceneInfosBuffer;
 
-    uint32_t                PointLightCount;
+    uint32_t                        pointLightCount;
+    uint32_t                        localIBLProbeCount;
 
     struct {
-        PointLightData          PointLights[MAX_POINT_LIGHT_COUNT];
-        DirectionalLightData    DirectionalLight;
+        PointLightData              PointLights[MAX_POINT_LIGHT_COUNT];
+        IBLProbeData                IBLProbes[MAX_IBL_PROBE_COUNT];
+        DirectionalLightData        DirectionalLight;
     } lights;
 
 private:
-    void                        updateClustersInfos();
+    void                            updateClustersInfos();
 };

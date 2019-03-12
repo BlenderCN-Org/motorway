@@ -62,36 +62,45 @@ RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
     renderPass->computeStage.srvCount = 0u;
 
     for ( int i = 0; i < 16; i++ ) {
-        switch ( description.attachements[i].bindMode ) {
+        const auto& attachment = description.attachements[i];
+
+        switch ( attachment.bindMode ) {
         case RenderPassDesc::READ:
         {
             Texture* texture = nullptr;
             
-            if ( description.attachements[i].targetState == RenderPassDesc::IS_TEXTURE )
-                texture = description.attachements[i].texture;
-            else if ( description.attachements[i].targetState == RenderPassDesc::IS_UAV_TEXTURE )
-                texture = description.attachements[i].buffer->bufferTexture;
+            if ( attachment.targetState == RenderPassDesc::IS_TEXTURE )
+                texture = attachment.texture;
+            else if ( attachment.targetState == RenderPassDesc::IS_UAV_TEXTURE )
+                texture = attachment.buffer->bufferTexture;
             else
-                texture = description.attachements[i].renderTarget->texture;
+                texture = attachment.renderTarget->texture;
 
-            if ( description.attachements[i].stageBind & eShaderStage::SHADER_STAGE_PIXEL )
+            if ( attachment.stageBind & eShaderStage::SHADER_STAGE_PIXEL )
                 renderPass->pixelStage.shaderResourceView[renderPass->pixelStage.srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
-            if ( description.attachements[i].stageBind & eShaderStage::SHADER_STAGE_COMPUTE )
+            if ( attachment.stageBind & eShaderStage::SHADER_STAGE_COMPUTE )
                 renderPass->computeStage.shaderResourceView[renderPass->computeStage.srvCount++] = ( texture == nullptr ) ? nullptr : texture->shaderResourceView;
         } break;
 
         case RenderPassDesc::WRITE:
-            renderPass->clearTarget[renderPass->rtvCount] = ( description.attachements[i].targetState != RenderPassDesc::DONT_CARE );
-            memcpy( renderPass->clearValue[renderPass->rtvCount], description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
+            renderPass->clearTarget[renderPass->rtvCount] = ( attachment.targetState != RenderPassDesc::DONT_CARE );
+            memcpy( renderPass->clearValue[renderPass->rtvCount], attachment.clearValue, sizeof( FLOAT ) * 4 );
 
-            renderPass->renderTargetViews[renderPass->rtvCount++] = description.attachements[i].renderTarget->textureRenderTargetView;
+            if ( attachment.layerIndex != 0 )
+                renderPass->renderTargetViews[renderPass->rtvCount++] = ( attachment.mipIndex != 0 ) 
+                    ? attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.layerIndex][attachment.mipIndex]
+                    : attachment.renderTarget->textureRenderTargetViewPerSlice[attachment.layerIndex];
+            else
+                renderPass->renderTargetViews[renderPass->rtvCount++] = ( attachment.mipIndex != 0 )
+                    ? attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[0][attachment.mipIndex]
+                    : attachment.renderTarget->textureRenderTargetView;
             break;
 
         case RenderPassDesc::WRITE_DEPTH:
-            renderPass->clearTarget[8] = ( description.attachements[i].targetState != RenderPassDesc::DONT_CARE );
-            memcpy( renderPass->clearValue[8], description.attachements[i].clearValue, sizeof( FLOAT ) * 4 );
+            renderPass->clearTarget[8] = ( attachment.targetState != RenderPassDesc::DONT_CARE );
+            memcpy( renderPass->clearValue[8], attachment.clearValue, sizeof( FLOAT ) * 4 );
 
-            renderPass->depthStencilView = description.attachements[i].renderTarget->textureDepthRenderTargetView;
+            renderPass->depthStencilView = attachment.renderTarget->textureDepthRenderTargetView;
             break;
 
         default:

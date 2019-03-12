@@ -38,12 +38,13 @@ public:
                                 ~BrunetonSkyRenderModule();
 
 
-    MutableResHandle_t          renderSky( RenderPipeline* renderPipeline, bool renderSunDisk = true );
+    MutableResHandle_t          renderSky( RenderPipeline* renderPipeline, const bool renderSunDisk = true, const bool useAutomaticExposure = true );
     void                        destroy( RenderDevice* renderDevice );
     void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
 private:
     PipelineState*              skyRenderPso;
+    PipelineState*              skyRenderNoSunFixedExposurePso;
 
     Texture*                    transmittanceTexture;
     Texture*                    scatteringTexture;
@@ -55,8 +56,8 @@ private:
 
     struct {
         nyaVec3f               EarthCenter;
-        float                   SunSizeX;
+        float                  SunSizeX;
         nyaVec3f               SunDirection;
-        float                   SunSizeY;
+        float                  SunSizeY;
     } parameters;
 };

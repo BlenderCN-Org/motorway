@@ -50,19 +50,20 @@ struct RectangleLight
     uint    IsTubeLight;
 };
 
-struct EnvironmentProbe
+struct IBLProbe
 {
-    float4 PositionAndRadiusWorldSpace;
+    float4 PositionAndRadius;
     float4x4 InverseModelMatrix;
+    uint Index;
     
     uint Flags; // IsCaptured; IsDynamic; IsFallbackProbe; UnusedFlags (1 byte per flag) 
     uint CaptureFrequencyPadded; // Frequency (16bits) / Padding(16bits)
-    uint Index;
 };
 
 cbuffer LightsBuffer : register( b2 )
 {
     PointLight          g_PointLights[MAX_POINT_LIGHT_COUNT];
+    IBLProbe            g_IBLProbes[MAX_IBL_PROBE_COUNT];
     DirectionalLight    g_DirectionalLight;
 };
 #endif

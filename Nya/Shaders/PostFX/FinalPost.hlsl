@@ -68,7 +68,7 @@ RWTexture2D<float4>	g_OutputRenderTarget : register( u0 );
 [numthreads( 16, 16, 1 )]
 void EntryPointCS( uint2 id : SV_DispatchThreadID )
 {
-    static const float g_BloomStrength = 0.0008f;
+    static const float g_BloomStrength = 0.00001f;
        
     AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
     float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );

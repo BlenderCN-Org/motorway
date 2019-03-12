@@ -1,12 +1,7 @@
 #ifndef __BRDF_H__
 #define __BRDF_H__ 1
-static const float PI = 3.1415926535897932384626433f;
-static const float INV_PI = ( 1.0 / PI );
 
-inline float Square( in float var )
-{
-    return ( var * var );
-}
+#include <MathsHelpers.hlsli>
 
 float3 Fresnel_Schlick( in float3 f0, in float f90, in float u )
 {

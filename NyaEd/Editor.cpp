@@ -19,6 +19,7 @@
 #include <Graphics/ShaderCache.h>
 #include <Graphics/WorldRenderer.h>
 #include <Graphics/GraphicsAssetCache.h>
+#include <Graphics/LightGrid.h>
 #include <Graphics/DrawCommandBuilder.h>
 
 #include <Framework/Cameras/FreeCamera.h>
@@ -30,6 +31,7 @@
 #include <Maths/Vector.h>
 #include <Maths/Quaternion.h>
 #include <Maths/CoordinatesSystems.h>
+#include <Maths/MatrixTransformations.h>
 
 #include <FileSystem/VirtualFileSystem.h>
 #include <FileSystem/FileSystemNative.h>
@@ -42,11 +44,7 @@
 #include <Core/EnvVarsRegister.h>
 #include <Core/FramerateCounter.h>
 
-#include <Core/Threading/SpinLock.h>
-
 #include "DefaultInputConfig.h"
-
-#include <Graphics/LightGrid.h>
 
 static constexpr nyaChar_t* const PROJECT_NAME = ( nyaChar_t* const )NYA_STRING( "NyaEd" );
 
@@ -133,11 +131,13 @@ void RegisterInputContexts()
 void TestStuff()
 {
     NYA_CLOG << "Initializing stuff..." << std::endl;
+
     auto freeCameraId = g_SceneTest->FreeCameraDatabase.allocate();
 
     // Retrieve pointer to camera instance from scene db
     g_FreeCamera = &g_SceneTest->FreeCameraDatabase[freeCameraId];
     g_FreeCamera->setProjectionMatrix( CameraFOV, static_cast<float>( ScreenSize.x ), static_cast<float>( ScreenSize.y ) );
+    
     g_FreeCamera->setImageQuality( ImageQuality );
     g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
 
@@ -151,7 +151,11 @@ void TestStuff()
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
 
     auto& geometryTransform = g_SceneTest->TransformDatabase[meshTest.transform];
-    //geometryTransform.setLocalScale( 32 );
+
+    auto& planeTest = g_SceneTest->allocateStaticGeometry();
+
+    auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
+    geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
 
     for ( int j = 0; j < 5; j++ ) {
         for ( int i = 0; i < 6; i++ ) {
@@ -176,12 +180,30 @@ void TestStuff()
     const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
 
     sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
-    sunLight.sphericalCoordinates = nyaVec2f( 1.0f, 0.5f );
+    sunLight.sphericalCoordinates = nyaVec2f( 0.50f, 0.5f );
     sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
     dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
+    IBLProbeData globalProbe = {};
+    globalProbe.worldPosition = { 0, 6, 0 };
+    globalProbe.isFallbackProbe = true;
+
+    auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
+    globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
+
+    /*  IBLProbeData localProbe = {};
+    localProbe.worldPosition = { 4, 4, 0 };
+    localProbe.radius = 14.0f;
+    localProbe.isFallbackProbe = false;
+
+    nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+    localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+
+    auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+    localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+*/
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
 }
@@ -391,11 +413,11 @@ void MainLoop()
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
             std::string fpsString = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
             
-            g_WorldRenderer->textRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
-            g_WorldRenderer->textRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
+            g_WorldRenderer->TextRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
+            g_WorldRenderer->TextRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
        
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
-            g_WorldRenderer->textRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
+            g_WorldRenderer->TextRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
 
             g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
             g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );

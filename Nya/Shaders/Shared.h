@@ -20,17 +20,15 @@
 #ifndef __SHARED_H__
 #define __SHARED_H__ 1
 
-#define MAX_POINT_LIGHT_COUNT               256
+// Lights Constants
+#define MAX_POINT_LIGHT_COUNT               32
 #define MAX_SPOT_LIGHT_COUNT                256
 #define MAX_DIRECTIONAL_LIGHT_COUNT         1
 
-#define MAX_SPHERE_LIGHT_COUNT              8
-#define MAX_DISC_LIGHT_COUNT                8
-#define MAX_RECTANGLE_LIGHT_COUNT           16
+#define MAX_LOCAL_IBL_PROBE_COUNT   31
+#define MAX_GLOBAL_IBL_PROBE_COUNT  1
 
-#define MAX_LOCAL_ENVIRONMENT_PROBE_COUNT   31
-#define MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT  1
-
-#define MAX_ENVIRONMENT_PROBE_COUNT         ( MAX_LOCAL_ENVIRONMENT_PROBE_COUNT + MAX_GLOBAL_ENVIRONMENT_PROBE_COUNT )
+#define MAX_IBL_PROBE_COUNT                 ( MAX_LOCAL_IBL_PROBE_COUNT + MAX_GLOBAL_IBL_PROBE_COUNT )
+#define IBL_PROBE_DIMENSION                 256
 
 #endif

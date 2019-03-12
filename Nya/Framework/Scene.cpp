@@ -27,6 +27,10 @@
 #include "Cameras/FreeCamera.h"
 #include "Light.h"
 
+#include <Core/EnvVarsRegister.h>
+
+NYA_ENV_VAR( DisplayDebugIBLProbe, true, bool ) // [Debug] Display IBL Probe as reflective Sphere in the scene [True/False]
+
 Scene::Scene( BaseAllocator* allocator, const std::string& sceneName )
     : name( sceneName )
     , memoryAllocator( allocator )
@@ -34,6 +38,7 @@ Scene::Scene( BaseAllocator* allocator, const std::string& sceneName )
     , pointLightCount( 0u )
     , spotLightCount( 0u )
     , dirLightCount( 0u )
+    , iblProbeCount( 0u )
 {
     // TODO Test!!
     TransformDatabase.components = nya::core::allocateArray<Transform>( allocator, 8192 );
@@ -51,6 +56,8 @@ Scene::~Scene()
     name.clear();
 
     nya::core::freeArray( memoryAllocator, TransformDatabase.components );
+    nya::core::freeArray( memoryAllocator, RenderableMeshDatabase.components );
+    nya::core::freeArray( memoryAllocator, FreeCameraDatabase.components );
 }
 
 void Scene::setSceneName( const std::string& sceneName )
@@ -105,7 +112,27 @@ void Scene::updateLogic( const float deltaTime )
 
 void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 {
-    NYA_PROFILE( __FUNCTION__ )
+    NYA_PROFILE_FUNCTION
+
+
+#if NYA_DEVBUILD
+        //if ( DisplayDebugIBLProbe ) {
+        for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
+            auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
+
+            drawCmdBuilder.addSphereToRender( iblProbe->worldPosition, 1.0f );
+        }
+    //}
+#endif
+
+    for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
+        auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
+
+        if ( !iblProbe->isCaptured ) {
+            drawCmdBuilder.addIBLProbeToCapture( iblProbe );
+            iblProbe->isCaptured = true;
+        }
+    }
 
     for ( uint32_t staticGeomIdx = 0; staticGeomIdx < staticGeometryCount; staticGeomIdx++ ) {
         auto& geometry = staticGeometry[staticGeomIdx];
@@ -156,6 +183,15 @@ Scene::Light& Scene::allocateDirectionalLight()
     auto& light = dirLight[dirLightCount++];
     light.transform = TransformDatabase.allocate();
     light.directionalLight = nullptr;
+
+    return light;
+}
+
+Scene::Light& Scene::allocateIBLProbe()
+{
+    auto& light = iblProbes[iblProbeCount++];
+    light.transform = TransformDatabase.allocate();
+    light.iblProbe = nullptr;
 
     return light;
 }

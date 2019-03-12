@@ -376,6 +376,8 @@ struct RenderPassDesc
         BindMode        bindMode;
         State           targetState;
         float           clearValue[4];
+        uint32_t        layerIndex;
+        uint32_t        mipIndex;
     } attachements[8 + 16];
 };
 

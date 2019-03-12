@@ -71,8 +71,12 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
     float3 transmittance;
     float3 radiance = GetSkyRadiance( float3( g_WorldPosition.xz * 0.05f, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
 
+#if NYA_FIXED_EXPOSURE
+    float4 color = float4( 1.0 - exp( -radiance / 0.10f ), 1.0f );
+#else
     AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
     float4 color = float4( 1.0 - exp( -radiance / ( currentExposure.EngineLuminanceFactor * 0.10f ) ), 1.0f );
+#endif
 
 #if NYA_RENDER_SUN_DISC
     [branch]

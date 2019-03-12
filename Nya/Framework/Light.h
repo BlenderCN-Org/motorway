@@ -84,13 +84,14 @@ struct RectangleLightData
 // Directional Light
 struct DirectionalLightData
 {
-    nyaVec3f   colorRGB;
+    nyaVec3f    colorRGB;
     float       angularRadius;
 
-    nyaVec3f   direction;
+    nyaVec3f    direction;
     float       illuminanceInLux;
 
-    nyaVec2f   sphericalCoordinates;
+    nyaVec2f    sphericalCoordinates;
+
     float       intensityInLux;
     bool        isSunLight;
     bool        enableShadow;
@@ -98,22 +99,19 @@ struct DirectionalLightData
     bool        __PADDING__;
 };
 
-// Environment Probe
-struct EnvironmentProbeData
+// IBL Probe
+struct IBLProbeData
 {
-    nyaVec3f   worldPosition;
+    nyaVec3f    worldPosition;
     float       radius;
 
-    nyaMat4x4f   inverseModelMatrix;
+    nyaMat4x4f  inverseModelMatrix;
 
+    uint32_t    ProbeIndex; // Array index
+
+    uint16_t    CaptureFrequency; // Defines the span of time during which the probe is captured and convoluted
     bool        isCaptured;
     bool        isDynamic;
     bool        isFallbackProbe; // Should be used as a fallback in case no env probe is available? (this flag discards probe's world position/radius)
-    uint8_t     __PADDING__;
-
-    uint16_t        CaptureFrequency; // Defines the span of time during which the probe is captured and convoluted
-    uint16_t        __PADDING2__; // Defines the span of time during which the probe is captured and convoluted
-
-    uint32_t        __PADDING_3__[3] = { ( unsigned int )~0, ( unsigned int )0, ( unsigned int )~0 };
-    uint32_t        ProbeIndex; // Array index 
+    uint8_t     __PADDING__[4];
 };

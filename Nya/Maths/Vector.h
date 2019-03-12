@@ -24,7 +24,6 @@ namespace nya
 {
     namespace maths
     {
-
         template< typename T >
         constexpr T sqrt( const T x );
     }
@@ -927,6 +926,23 @@ template <typename Precision, int ScalarCount>
 static constexpr bool operator > ( const Vector<Precision, ScalarCount>& l, const Vector<Precision, ScalarCount>& r )
 {
     return l.lengthSquared() > r.lengthSquared();
+}
+
+namespace nya
+{
+    namespace maths
+    {
+        template <typename Precision, int ScalarCount>
+        static constexpr Precision GetBiggestScalar (const Vector<Precision, ScalarCount>& r )
+        {
+            Precision biggestScalar = r[0];
+
+            for ( int i = 1; i < ScalarCount; i++ )
+                biggestScalar = max( biggestScalar, r[i] );
+
+            return biggestScalar;
+        }
+    }
 }
 
 #include "Vector.inl"

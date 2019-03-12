@@ -23,7 +23,7 @@ NYA_ENV_OPTION_LIST( TextureFiltering, TEXTURE_FILTERING_OPTION_LIST )
 
 NYA_ENV_VAR( TextureFiltering, BILINEAR, eTextureFiltering ) // "Defines texture filtering quality [Bilinear/Trilinear/Anisotropic (8)/Anisotropic (16)]"
 
-LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t sunShadowMap, ResHandle_t output )
+LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightGrid::PassData& lightClustersInfos, ResHandle_t sunShadowMap, ResHandle_t output, const bool isCapturingProbe )
 {
     struct PassData  {
         ResHandle_t input;
@@ -31,6 +31,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
         ResHandle_t velocityRenderTarget;
         ResHandle_t thinGBuffer;
         ResHandle_t sunShadowMap;
+
+        ResHandle_t iblDiffuseArray;
+        ResHandle_t iblSpecularArray;
+        ResHandle_t iblCapturedArray;
 
         ResHandle_t bilinearSampler;
         ResHandle_t anisotropicSampler;
@@ -61,6 +65,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             // Render Targets
             passData.input = renderPipelineBuilder.readRenderTarget( output );
             passData.sunShadowMap = renderPipelineBuilder.readRenderTarget( sunShadowMap );
+
+            passData.iblCapturedArray = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "IBL/CapturedProbesArray" ) );
+            passData.iblDiffuseArray = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "IBL/DiffuseProbesArray" ) );
+            passData.iblSpecularArray = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "IBL/SpecularProbesArray" ) );
 
             TextureDescription velocityRenderTargetDesc = {};
             velocityRenderTargetDesc.dimension = TextureDescription::DIMENSION_TEXTURE_2D;
@@ -155,9 +163,9 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             passData.anisotropicSampler = renderPipelineBuilder.allocateSampler( materialSamplerDesc );
 
             SamplerDesc shadowComparisonSamplerDesc;
-            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
-            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
-            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_BORDER;
+            shadowComparisonSamplerDesc.addressU = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            shadowComparisonSamplerDesc.addressV = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
+            shadowComparisonSamplerDesc.addressW = eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
             shadowComparisonSamplerDesc.filter = eSamplerFilter::SAMPLER_FILTER_COMPARISON_TRILINEAR;
             shadowComparisonSamplerDesc.comparisonFunction = eComparisonFunction::COMPARISON_FUNCTION_LEQUAL;
 
@@ -204,6 +212,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             RenderTarget* sunShadowMapTarget = renderPipelineResources.getRenderTarget( passData.sunShadowMap );
 
+            RenderTarget* iblCapturedArray = renderPipelineResources.getPersitentRenderTarget( passData.iblCapturedArray );
+            RenderTarget* iblDiffuseArray = renderPipelineResources.getPersitentRenderTarget( passData.iblDiffuseArray );
+            RenderTarget* iblSpecularArray = renderPipelineResources.getPersitentRenderTarget( passData.iblSpecularArray );
+
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
             cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
@@ -234,6 +246,9 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             passDesc.attachements[4].targetState = RenderPassDesc::IS_UAV_TEXTURE;
 
             passDesc.attachements[5] = { sunShadowMapTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[6] = { iblDiffuseArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[7] = { iblSpecularArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            //passDesc.attachements[8] = { iblCapturedArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
        
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
@@ -252,7 +267,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
-                drawCmd.infos.material->bind( cmdList, passDesc );
+                if ( !isCapturingProbe )
+                    drawCmd.infos.material->bind( cmdList, passDesc );
+                else
+                    drawCmd.infos.material->bindProbeCapture( cmdList, passDesc );
 
 #if NYA_DEVBUILD
                 const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();

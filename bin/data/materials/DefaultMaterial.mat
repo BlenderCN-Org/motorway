@@ -9,7 +9,7 @@ IsDoubleFace: False
 EnableAlphaBlend: False
 CastShadow: True
 ReceiveShadow: True
-ScaleUVByModelScale: True
+ScaleUVByModelScale: False
 
 Layer 
 {
@@ -21,9 +21,9 @@ Layer
     Metalness: 0.000000
     AmbientOcclusion: None
     Normal: None
-    Roughness: 1.0
+    Roughness: 0.0
     Emissivity: 0.000000
 
     Offset: { 0, 0 }
-    Scale: { 8, 8 }
+    Scale: { 1, 1 }
 }

@@ -87,6 +87,7 @@ public:
     const nyaString_t&          getName() const;
 
     void                        bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
+    void                        bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
     void                        bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
 
 #if NYA_DEVBUILD
@@ -98,6 +99,7 @@ private:
     int32_t                     builderVersion;
 
     PipelineState*              defaultPipelineState;
+    PipelineState*              probeCapturePipelineState;
     Texture*                    defaultTextureSet[12];
     int32_t                     defaultTextureSetCount;
 
@@ -130,5 +132,6 @@ private:
     };
 
 private:
+    void                        bindDefaultTextureSet( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
     void                        getShadingModelResources( GraphicsAssetCache* graphicsAssetCache );
 };

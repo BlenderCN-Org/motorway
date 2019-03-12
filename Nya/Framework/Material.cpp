@@ -78,6 +78,7 @@ Material::Material( const nyaString_t& materialName )
     : name( materialName )
     , builderVersion( 0 )
     , defaultPipelineState( nullptr )
+    , probeCapturePipelineState( nullptr )
     , defaultTextureSet{ nullptr }
     , defaultTextureSetCount( 0 )
     , depthOnlyPipelineState( nullptr )
@@ -92,6 +93,7 @@ Material::~Material()
 {
     name.clear();
     defaultPipelineState = nullptr;
+    probeCapturePipelineState = nullptr;
     depthOnlyPipelineState = nullptr;
     sortKey = 0u;
 }
@@ -131,15 +133,15 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         compiledPixelStage.append( "+NYA_USE_LOD_ALPHA_BLENDING" );
     }
 
-    //if ( editableMaterialData.ReceiveShadow ) {
-    //    compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
-    //}
+    if ( editableMaterialData.ReceiveShadow ) {
+        compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
+    }
 
-    //if ( editableMaterialData.CastShadow ) {
-    //    compiledPixelStage.append( "+NYA_CAST_SHADOW" );
-    //}
+    if ( editableMaterialData.CastShadow ) {
+        compiledPixelStage.append( "+NYA_CAST_SHADOW" );
+    }
 
-    compiledPixelStage.append( "+NYA_DEBUG_CSM_CASCADE" );
+    //compiledPixelStage.append( "+NYA_DEBUG_CSM_CASCADE" );
     
     // Default PSO
     PipelineStateDesc defaultPipelineStateDesc = {};
@@ -173,6 +175,10 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
     defaultPipelineState = renderDevice->createPipelineState( defaultPipelineStateDesc );
 
+    // Probe Capture PSO
+    defaultPipelineStateDesc.pixelShader = shaderCache->getOrUploadStage( compiledProbePixelStage, eShaderStage::SHADER_STAGE_PIXEL );
+    probeCapturePipelineState = renderDevice->createPipelineState( defaultPipelineStateDesc );
+
     // Depth only PSO
     PipelineStateDesc depthPipelineStateDesc = {};
 
@@ -195,6 +201,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 void Material::destroy( RenderDevice* renderDevice )
 {
     renderDevice->destroyPipelineState( defaultPipelineState );
+    renderDevice->destroyPipelineState( probeCapturePipelineState );
     renderDevice->destroyPipelineState( depthOnlyPipelineState );
 }
 
@@ -388,20 +395,13 @@ const nyaString_t& Material::getName() const
 void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
 {
     cmdList->bindPipelineState( defaultPipelineState );
+    bindDefaultTextureSet( cmdList, renderPassDesc );
+}
 
-    // 0..3 -> Output RenderTargets
-    // 4 -> Clusters (3D Tex)
-    // 5 -> Sun ShadowMap
-    int32_t textureBindIndex = 6;
-
-    for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
-        renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
-        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
-        renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
-        renderPassDesc.attachements[textureBindIndex].texture = defaultTextureSet[textureIdx];
-
-        textureBindIndex++;
-    }
+void Material::bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+{
+    cmdList->bindPipelineState( probeCapturePipelineState );
+    bindDefaultTextureSet( cmdList, renderPassDesc );
 }
 
 void Material::bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
@@ -427,6 +427,24 @@ const Material::EditorBuffer& Material::getEditorBuffer() const
     return editableMaterialData;
 }
 #endif
+
+void Material::bindDefaultTextureSet( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+{
+    // 0..3 -> Output RenderTargets
+    // 4 -> Clusters (3D Tex)
+    // 5 -> Sun ShadowMap
+    // 6..8 -> IBL Probes (Diffuse/Specular/Captured (HDR))
+    int32_t textureBindIndex = 8;
+
+    for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
+        renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
+        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
+        renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
+        renderPassDesc.attachements[textureBindIndex].texture = defaultTextureSet[textureIdx];
+
+        textureBindIndex++;
+    }
+}
 
 void Material::getShadingModelResources( GraphicsAssetCache* graphicsAssetCache )
 {

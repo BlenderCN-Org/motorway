@@ -25,25 +25,42 @@ class WorldRenderer;
 class Mesh;
 class VertexArrayObject;
 class LightGrid;
+class PoolAllocator;
+class StackAllocator;
 
 struct CameraData;
+struct IBLProbeData;
 
-template <typename Precision, int RowCount, int ColumnCount>
-struct Matrix;
-using nyaMat4x4f = Matrix<float, 4, 4>;
+#include <stack>
+#include <Maths/Vector.h>
+#include <Maths/Matrix.h>
+
+enum eProbeCaptureStep : uint16_t
+{
+    FACE_X_PLUS = 0,
+    FACE_X_MINUS,
+
+    FACE_Y_PLUS,
+    FACE_Y_MINUS,
+
+    FACE_Z_PLUS,
+    FACE_Z_MINUS,
+};
 
 class DrawCommandBuilder
 {
 public:
-                        DrawCommandBuilder( BaseAllocator* allocator );
-                        DrawCommandBuilder( DrawCommandBuilder& ) = delete;
-                        DrawCommandBuilder& operator = ( DrawCommandBuilder& ) = delete;
-                        ~DrawCommandBuilder();
+                                DrawCommandBuilder( BaseAllocator* allocator );
+                                DrawCommandBuilder( DrawCommandBuilder& ) = delete;
+                                DrawCommandBuilder& operator = ( DrawCommandBuilder& ) = delete;
+                                ~DrawCommandBuilder();
         
-    void                addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
-    void                addCamera( CameraData* cameraData );
-
-    void                buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
+    void                        addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
+    void                        addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius );
+    void                        addCamera( CameraData* cameraData );
+    void                        addIBLProbeToCapture( const IBLProbeData* probeData );
+    
+    void                        buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
 
 private:
     struct MeshInstance {
@@ -51,13 +68,61 @@ private:
         const nyaMat4x4f*   modelMatrix;
     };
 
-private:
-    CameraData**        cameras;
-    MeshInstance*       meshes;
+    struct IBLProbeCaptureCommand {
+        union {
+            // Higher bytes contains probe index (from the lowest to the highest one available in the queue)
+            // Lower bytes contains face to render (not used in queue sort)
+            struct {
+                uint32_t            EnvProbeArrayIndex;
+                eProbeCaptureStep   Step;
+                uint16_t            __PADDING__;
+            } CommandInfos;
 
-    uint32_t            cameraCount;
-    uint32_t            meshCount;
+            int64_t ProbeKey;
+        };
+
+        const IBLProbeData*   Probe;
+
+        inline bool operator < ( const IBLProbeCaptureCommand& cmd ) {
+            return ProbeKey < cmd.ProbeKey;
+        }
+    };
+
+    struct IBLProbeConvolutionCommand {
+        union {
+            // Higher bytes contains probe index (from the lowest to the highest one available in the queue)
+            // Lower bytes contains mip index (with padding)
+            struct {
+                uint32_t            EnvProbeArrayIndex;
+                eProbeCaptureStep   Step;
+                uint16_t            MipIndex;
+            } CommandInfos;
+
+            int64_t ProbeKey;
+        };
+
+        const IBLProbeData* Probe;
+
+        inline bool operator < ( const IBLProbeConvolutionCommand& cmd ) {
+            return ProbeKey < cmd.ProbeKey;
+        }
+    };
 
 private:
-    void                resetEntityCounters();
+    BaseAllocator*                          memoryAllocator;
+
+    PoolAllocator*                          cameras;
+    PoolAllocator*                          meshes;
+    PoolAllocator*                          spheresToRender;
+    nyaMat4x4f sphereToRender[8192];
+
+    StackAllocator*                         probeCaptureCmdAllocator;
+    StackAllocator*                         probeConvolutionCmdAllocator;
+
+    std::stack<IBLProbeCaptureCommand*>     probeCaptureCmds;
+    std::stack<IBLProbeConvolutionCommand*> probeConvolutionCmds;
+
+private:
+    void                        resetEntityCounters();
+    void                        buildMeshDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx, const uint8_t layer, const uint8_t viewportLayer );
 };

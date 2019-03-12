@@ -110,6 +110,7 @@ private:
         uint32_t renderTargetCount;
         uint32_t buffers[48];
         uint32_t buffersCount;
+        bool     isUncullable;
     } passRefs[48];
     int32_t     renderPassCount;
 

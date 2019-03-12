@@ -24,12 +24,14 @@ class RenderDevice;
 class PoolAllocator;
 class Material;
 class VertexArrayObject;
+class ProbeCaptureModule;
 class AutomaticExposureModule;
 class BrunetonSkyRenderModule;
 class TextRenderingModule;
 class ShaderCache;
 class RenderPipeline;
 class GraphicsAssetCache;
+class PrimitiveCache;
 
 struct CameraData;
 struct Viewport;
@@ -75,8 +77,8 @@ struct DrawCommandKey
 
     enum SortOrder : uint8_t
     {
-        SORT_FRONT_TO_BACK = 0,
-        SORT_BACK_TO_FRONT
+        SORT_BACK_TO_FRONT = 0,
+        SORT_FRONT_TO_BACK
     };
 
     union
@@ -128,27 +130,30 @@ struct DrawCmd
 class WorldRenderer
 {
 public:
-                            WorldRenderer( BaseAllocator* allocator );
-                            WorldRenderer( WorldRenderer& ) = delete;
-                            WorldRenderer& operator = ( WorldRenderer& ) = delete;
-                            ~WorldRenderer();
+                                WorldRenderer( BaseAllocator* allocator );
+                                WorldRenderer( WorldRenderer& ) = delete;
+                                WorldRenderer& operator = ( WorldRenderer& ) = delete;
+                                ~WorldRenderer();
 
-    void                    destroy( RenderDevice* renderDevice );
+    void                        destroy( RenderDevice* renderDevice );
 
-    void                    drawWorld( RenderDevice* renderDevice, const float deltaTime );
-    DrawCmd&                allocateDrawCmd();
+    void                        drawWorld( RenderDevice* renderDevice, const float deltaTime );
+    DrawCmd&                    allocateDrawCmd();
+    DrawCmd&                    allocateSpherePrimitiveDrawCmd();
 
-    void                    loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
+    void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
-    RenderPipeline&         allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
+    RenderPipeline&             allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
 
-    TextRenderingModule*        textRenderModule;
-    BrunetonSkyRenderModule*    skyRenderModule;
+    TextRenderingModule*        TextRenderModule;
+    BrunetonSkyRenderModule*    SkyRenderModule;
     AutomaticExposureModule*    automaticExposureModule;
+    ProbeCaptureModule*         probeCaptureModule;
 
 private:
-    PoolAllocator*          drawCmdAllocator;
+    PrimitiveCache*             primitiveCache;
+    PoolAllocator*              drawCmdAllocator;
 
-    uint32_t                renderPipelineCount;
-    RenderPipeline*         renderPipelines;
+    uint32_t                    renderPipelineCount;
+    RenderPipeline*             renderPipelines;
 };

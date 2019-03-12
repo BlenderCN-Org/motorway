@@ -41,7 +41,8 @@ LightGrid::LightGrid( BaseAllocator* allocator )
     : memoryAllocator( allocator )
     , lightCullingPso( nullptr )
     , sceneInfosBuffer{ 0 }
-    , PointLightCount( 0 )
+    , pointLightCount( 0 )
+    , localIBLProbeCount( 0 )
     , lights{}
 {
 
@@ -76,7 +77,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
             BufferDesc bufferDesc = {};
             bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D;
-            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32_UINT;
+            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32G32_UINT;
             bufferDesc.width = CLUSTER_X;
             bufferDesc.height = CLUSTER_Y;
             bufferDesc.depth = CLUSTER_Z;
@@ -126,23 +127,35 @@ void LightGrid::setSceneBounds( const nyaVec3f& sceneAABBMax, const nyaVec3f& sc
     updateClustersInfos();
 }
 
-#define NYA_IMPL_LIGHT_ALLOC( lightType, lightMacroName )\
-lightType##Data* LightGrid::allocate##lightType##Data( const lightType##Data&& lightData )\
-{\
-    if ( lightType##Count >= MAX_##lightMacroName##_COUNT ) {\
-        NYA_CERR << "Too many " << #lightType << "! (max is set to " << MAX_##lightMacroName##_COUNT << ")" << std::endl;\
-        return nullptr;\
-    }\
-\
-    lightType##Data& light = lights.lightType##s[lightType##Count++];\
-    light = std::move( lightData );\
-\
-    return &light;\
+PointLightData* LightGrid::allocatePointLightData( const PointLightData&& lightData )
+{
+    if ( localIBLProbeCount >= MAX_POINT_LIGHT_COUNT ) {
+        NYA_CERR << "Too many Point Lights! (max is set to " << MAX_POINT_LIGHT_COUNT << ")" << std::endl;
+        return nullptr;
+    }
+
+    PointLightData& light = lights.PointLights[pointLightCount++]; \
+    light = std::move( lightData );
+
+    return &light;
 }
 
-NYA_IMPL_LIGHT_ALLOC( PointLight, POINT_LIGHT )
+IBLProbeData* LightGrid::allocateLocalIBLProbeData( const IBLProbeData&& probeData )
+{
+    if ( localIBLProbeCount >= MAX_LOCAL_IBL_PROBE_COUNT ) {
+        NYA_CERR << "Too many Local IBL Probes! (max is set to " << MAX_LOCAL_IBL_PROBE_COUNT << ")" << std::endl;
+        return nullptr;
+    }
 
-#undef NYA_IMPL_LIGHT_ALLOC
+    // NOTE Offset probe array index (first probe should be the global IBL probe)
+    const uint16_t probeIndex = ( 1u + localIBLProbeCount++ );
+
+    IBLProbeData& light = lights.IBLProbes[probeIndex];
+    light = std::move( probeData );
+    light.ProbeIndex = probeIndex;
+
+    return &light;
+}
 
 DirectionalLightData* LightGrid::updateDirectionalLightData( const DirectionalLightData&& lightData )
 {
@@ -150,9 +163,22 @@ DirectionalLightData* LightGrid::updateDirectionalLightData( const DirectionalLi
     return &lights.DirectionalLight;
 }
 
+IBLProbeData* LightGrid::updateGlobalIBLProbeData( const IBLProbeData&& probeData )
+{
+    lights.IBLProbes[0] = std::move( probeData );
+    lights.IBLProbes[0].ProbeIndex = 0u;
+
+    return &lights.IBLProbes[0];
+}
+
 const DirectionalLightData* LightGrid::getDirectionalLightData() const
 {
     return &lights.DirectionalLight;
+}
+
+const IBLProbeData* LightGrid::getGlobalIBLProbeData() const
+{
+    return &lights.IBLProbes[0];
 }
 
 void LightGrid::updateClustersInfos()

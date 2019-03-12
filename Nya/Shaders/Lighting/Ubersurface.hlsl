@@ -67,6 +67,9 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : S
 	return output;
 }
 
+// PixelShader
+#include <SceneInfos.hlsli>
+
 float3 accurateSRGBToLinear( in float3 sRGBCol )
 {
     float3 linearRGBLo = sRGBCol / 12.92;
@@ -95,9 +98,6 @@ float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, o
     return float3x3( T, B, N );
 }
 
-// PixelShader
-#include <SceneInfos.hlsli>
-
 struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
@@ -105,7 +105,7 @@ struct PixelStageData
     float3  Buffer2         : SV_TARGET2; // Thin GBuffer: RG: Normal (Spheremap encoded) / B: Roughness
 };
 
-Texture3D<uint> g_Clusters : register( t0 );
+Texture3D<uint2> g_Clusters : register( t0 );
 
 struct LightSurfaceInfos
 {
@@ -170,20 +170,21 @@ struct MaterialReadLayer
 sampler					g_BRDFInputsSampler : register( s1 );
 
 // t0 => Light clusters
-// t1 => Shading Model BRDF DFG LUT
-// t2 => Sun CSM ShadowMap
+// t1 => Sun CSM ShadowMap
+// t2..4 => IBL Probes Array (Diffuse/Specular/Captured (HDR))
+// t5 => Shading Model BRDF DFG LUT
 
-Texture2D g_TexBaseColor0 : register( t3 );
-Texture2D g_TexAlphaMask0 : register( t4 );
-Texture2D g_TexReflectance0 : register( t5 );
-Texture2D g_TexRoughness0 : register( t6 );
-Texture2D g_TexMetalness0 : register( t7 );
-Texture2D g_TexAmbientOcclusion0 : register( t8 );
-Texture2D g_TexNormal0 : register( t9 );
-Texture2D g_TexDisplacement0 : register( t10 );
-Texture2D g_TexEmissivity0 : register( t11 );
-Texture2D g_TexClearCoatNormal0 : register( t12 );
-Texture2D g_TexBlendMask0 : register( t13 );
+Texture2D g_TexBaseColor0 : register( t5 );
+Texture2D g_TexAlphaMask0 : register( t6 );
+Texture2D g_TexReflectance0 : register( t7 );
+Texture2D g_TexRoughness0 : register( t8 );
+Texture2D g_TexMetalness0 : register( t9 );
+Texture2D g_TexAmbientOcclusion0 : register( t10 );
+Texture2D g_TexNormal0 : register( t11 );
+Texture2D g_TexDisplacement0 : register( t12 );
+Texture2D g_TexEmissivity0 : register( t13 );
+Texture2D g_TexClearCoatNormal0 : register( t14 );
+Texture2D g_TexBlendMask0 : register( t15 );
 
 cbuffer MaterialEdition : register( b3 )
 {
@@ -282,6 +283,10 @@ NYA_READ_LAYER( 0 )
 
 #if NYA_BRDF_STANDARD
 #include "ShadingModels/Standard.hlsl"
+#elif NYA_BRDF_CLEAR_COAT
+#include "ShadingModels/ClearCoat.hlsl"
+#elif NYA_BRDF_EMISSIVE
+#include "ShadingModels/Emissive.hlsl"
 #else
 #include "ShadingModels/Debug.hlsl"
 #endif    
@@ -304,8 +309,12 @@ float2 ComputeReceiverPlaneDepthBias( float3 texCoordDX, float3 texCoordDY )
     return biasUV;
 }
 
+sampler                 g_BilinearSampler : register( s0 );
 SamplerComparisonState 	g_ShadowMapSampler : register( s2 );
-Texture2D g_SunShadowMap : register( t1 );
+
+Texture2D               g_SunShadowMap : register( t1 );
+TextureCubeArray        g_EnvProbeDiffuseArray : register( t2 );
+TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
 
 float SampleCascadedShadowMap( in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint cascadeIdx, in float depth, in float2 receiverPlaneDepthBias )
 {
@@ -322,7 +331,7 @@ float SampleCascadedShadowMap( in float2 base_uv, in float u, in float v, in flo
 
 float SampleCascadedShadowMapOptimizedPCF( in float3 shadowPos, in float3 shadowPosDX, in float3 shadowPosDY, in uint cascadeIdx )
 {
-    static const float2 shadowMapSize = float2( CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS );
+    static const float2 shadowMapSize = float2( CSM_SHADOW_MAP_DIMENSIONS * CSM_SLICE_COUNT, CSM_SHADOW_MAP_DIMENSIONS );
 
     float lightDepth = shadowPos.z;
     float2 texelSize = 1.0f / shadowMapSize;
@@ -474,9 +483,6 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
 
         shadowVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
 
-        // Make sure the value is within a valid range (avoid NaN)
-        shadowVisibility = saturate( shadowVisibility );
-
         // Sample the next cascade, and blend between the two results to
         // smooth the transition
         float nextSplit = g_ShadowSplitDistances[cascadeIdx];
@@ -589,13 +595,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         VertexStage.positionWS.xyz,
 
         // LinearRoughness
-        max( 0.01f, ( layer.Reflectance * layer.Reflectance ) ),
+        max( 0.01f, ( layer.Roughness * layer.Roughness ) ),
 
         // Reflection Vector
         R,
 
         // Disney BRDF LinearRoughness
-        ( 0.5f + layer.Reflectance / 2.0f ),
+        ( 0.5f + layer.Roughness / 2.0f ),
 
         // Clear Coat Normal
         layer.Normal,
@@ -610,7 +616,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         0.0f,
         0u // Explicit Padding
     };
-
+    
     // Outputs
     float4 LightContribution = float4( 0, 0, 0, 1 );
     float2 Velocity = float2( 0, 0 );
@@ -622,12 +628,13 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
     // Compute cluster and fetch its light mask
 	int4 coord = int4( VertexStage.positionWS.xyz * g_ClustersScale + g_ClustersBias, 0 );
-	uint light_mask = g_Clusters.Load( coord );
+	uint2 light_mask = g_Clusters.Load( coord );
     
-	while ( light_mask ) {
+    // Iterate point lights
+	while ( light_mask.r ) {
 		// Extract a light from the mask and disable that bit
-		uint i = firstbitlow( light_mask );
-		light_mask &= ~( 1 << i );
+		uint i = firstbitlow( light_mask.r );
+		light_mask.r &= ~( 1 << i );
         
         // Do lighting
         float3 L;
@@ -635,6 +642,96 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         float3 pointLightIlluminance = GetPointLightIlluminance( light, surface, VertexStage.depth, L );        
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
+    
+#if NYA_BRDF_STANDARD
+    // Reflections / IBL
+    
+    // Rebuild the function
+    // L . D . ( f0.Gv.(1-Fc) + Gv.Fc ) . cosTheta / (4 . NdotL . NdotV )
+    static const float DFG_TEXTURE_SIZE =  512.0f;
+    static const int LD_MIP_COUNT = 7;
+
+    float dfgNoV = max( surface.NoV, 0.5f / DFG_TEXTURE_SIZE );
+    float3 dfgLUTSample = g_DFGLUTStandard.SampleLevel( g_BilinearSampler, float2( dfgNoV, surface.Roughness ), 0 );
+    
+    float diffF = dfgLUTSample.z;
+    float2 preDFG = dfgLUTSample.xy;
+    float3 dominantN = getDiffuseDominantDir( surface.N, V, dfgNoV, surface.Roughness );
+    float3 dominantR = getSpecularDominantDir( surface.N, surface.R, surface.Roughness );
+
+    float mipLevel = linearRoughnessToMipLevel( surface.LinearRoughness, LD_MIP_COUNT );
+
+    float3 diffuseSum = g_EnvProbeDiffuseArray.Sample( g_BilinearSampler, float4( dominantN, 0 ) ).rgb;
+    float3 specularSum = g_EnvProbeSpecularArray.SampleLevel( g_BilinearSampler, float4( dominantR, 0 ), mipLevel ).rgb;
+    
+    float4 localEnvProbeSumDiff = float4( 0, 0, 0, 0 );
+    float4 localEnvProbeSumSpec = float4( 0, 0, 0, 0 );
+    
+    // Iterate IBL probes
+	while ( light_mask.g ) {
+		// Extract a light from the mask and disable that bit
+		uint i = firstbitlow( light_mask.g );
+		light_mask.g &= ~( 1 << i );
+       
+        // NOTE Offset probe index since the first probe should always be the global ibl probe
+        IBLProbe probe = g_IBLProbes[i + 1];
+        
+        float3 clipSpacePos = mul( float4( VertexStage.positionWS.xyz, 1.0f ), probe.InverseModelMatrix );
+        float3 uvw = clipSpacePos.xyz*float3( 0.5f, -0.5f, 0.5f ) + 0.5f;
+
+        [branch]
+        if ( !any( uvw - saturate( uvw ) ) ) {
+            // Perform parallax correction of reflection ray (R) into OBB:
+            float3 RayLS = mul( dominantR, ( float3x3 )probe.InverseModelMatrix );
+            float3 FirstPlaneIntersect = ( float3( 1, 1, 1 ) - clipSpacePos ) / RayLS;
+            float3 SecondPlaneIntersect = ( -float3( 1, 1, 1 ) - clipSpacePos ) / RayLS;
+            float3 FurthestPlane = max( FirstPlaneIntersect, SecondPlaneIntersect );
+            float Distance = min( FurthestPlane.x, min( FurthestPlane.y, FurthestPlane.z ) );
+            float3 IntersectPositionWS = VertexStage.positionWS.xyz + dominantR * Distance;
+            float3 R_parallaxCorrected = IntersectPositionWS - probe.PositionAndRadius.xyz;
+
+            float distRough = computeDistanceBaseRoughness(
+                length( VertexStage.positionWS.xyz - IntersectPositionWS ),
+                length( probe.PositionAndRadius.xyz - IntersectPositionWS ),
+                surface.LinearRoughness 
+            );
+
+            // Recompute mip for parallax corrected environment probes
+            float mip = 1.0 - 1.2 * log2( distRough );
+            mip = LD_MIP_COUNT - 1.0 - mip;
+
+            float4 envMapDiff = g_EnvProbeDiffuseArray.Sample( g_BilinearSampler, float4( dominantN, probe.Index ) );
+            float4 envMapSpec = g_EnvProbeSpecularArray.SampleLevel( g_BilinearSampler, float4( R_parallaxCorrected, probe.Index ), mip );
+
+            float edgeBlend = 1 - pow( saturate( max( abs( clipSpacePos.x ), max( abs( clipSpacePos.y ), abs( clipSpacePos.z ) ) ) ), 8 );
+
+            envMapDiff.a = edgeBlend;                       
+            envMapSpec.a = edgeBlend;
+
+            // Perform probe blending
+            localEnvProbeSumDiff.rgb = ( 1 - localEnvProbeSumDiff.a ) * ( envMapDiff.a * envMapDiff.rgb ) + localEnvProbeSumDiff.rgb;
+            localEnvProbeSumDiff.a = envMapDiff.a + ( 1 - envMapDiff.a ) * localEnvProbeSumDiff.a;
+
+            localEnvProbeSumSpec.rgb = ( 1 - localEnvProbeSumSpec.a ) * ( envMapSpec.a * envMapSpec.rgb ) + localEnvProbeSumSpec.rgb;
+            localEnvProbeSumSpec.a = envMapSpec.a + ( 1 - envMapSpec.a ) * localEnvProbeSumSpec.a;
+
+            // If the accumulation reached 1, we skip the rest of the probes
+            [branch]
+            if ( localEnvProbeSumDiff.a >= 1.0f ) {
+                break;
+            }
+        }
+    }
+    
+    diffuseSum = lerp( diffuseSum, localEnvProbeSumDiff.rgb, localEnvProbeSumDiff.a );
+    specularSum = lerp( specularSum, localEnvProbeSumSpec.rgb, localEnvProbeSumSpec.a );
+
+    // Compute final terms
+    diffuseSum = ( diffuseSum * diffF ) * surface.Albedo;
+    specularSum = ( specularSum * ( surface.FresnelColor * preDFG.x + surface.F90 * preDFG.y ) ) * computeSpecOcclusion( surface.NoV, surface.AmbientOcclusion, surface.LinearRoughness ); // LD.(f0.Gv.(1 - Fc) + Gv.Fc.f90)
+    
+    LightContribution.rgb += ( diffuseSum.rgb + specularSum.rgb );
+#endif
     
     float2 screenSize = g_ScreenSize * g_ImageQuality;
     

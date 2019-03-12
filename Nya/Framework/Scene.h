@@ -29,7 +29,7 @@ class FreeCamera;
 struct PointLightData;
 struct SpotLightData;
 struct DirectionalLightData;
-struct EnvironmentProbeData;
+struct IBLProbeData;
 
 struct RenderableMesh
 {
@@ -93,7 +93,7 @@ public:
             PointLightData*         pointLight;
             SpotLightData*          spotLight;
             DirectionalLightData*   directionalLight;
-            EnvironmentProbeData*   environmentProbe;
+            IBLProbeData*           iblProbe;
         };
     };
 
@@ -124,6 +124,7 @@ public:
     Light&                  allocatePointLight();
     Light&                  allocateSpotLight();
     Light&                  allocateDirectionalLight();
+    Light&                  allocateIBLProbe();
 
 private:
     std::string             name;
@@ -140,4 +141,7 @@ private:
 
     Light                   dirLight[1];
     uint32_t                dirLightCount;
+
+    Light                   iblProbes[32];
+    uint32_t                iblProbeCount;
 };

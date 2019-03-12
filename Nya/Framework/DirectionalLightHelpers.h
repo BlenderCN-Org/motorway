@@ -35,8 +35,8 @@ namespace
     static constexpr float MinDistance = 0.0f;
     static constexpr float MaxDistance = 1.0f;
 
-    static constexpr float nearClip = 1.0f;
-    static constexpr float farClip = 120.0f;
+    static constexpr float nearClip = 0.25f; // 250f;
+    static constexpr float farClip = 250.0f;
     static constexpr float clipRange = farClip - nearClip;
 
     static constexpr float minZ = nearClip + MinDistance * clipRange;
@@ -47,8 +47,8 @@ namespace
 
     // Compute the split distances based on the partitioning mode
     static constexpr float CascadeSplits[4] = {
-        MinDistance + 0.100f * MaxDistance,
-        MinDistance + 0.250f * MaxDistance,
+        MinDistance + 0.050f * MaxDistance,
+        MinDistance + 0.150f * MaxDistance,
         MinDistance + 0.500f * MaxDistance,
         MinDistance + 1.000f * MaxDistance
     };
@@ -82,7 +82,7 @@ namespace nya
                 nyaVec3f( -1.0f, -1.0f, +1.0f ),
             };
 
-            nyaMat4x4f invViewProjection = viewProjection.inverse();
+            nyaMat4x4f invViewProjection = viewProjection.inverse().transpose();
 
             nyaVec3f frustumCenter( 0.0f );
             for ( uint64_t i = 0; i < 8; ++i ) {
@@ -130,7 +130,7 @@ namespace nya
             float prevSplitDist = ( cascadeIdx == 0 ) ? MinDistance : CascadeSplits[cascadeIdx - 1];
             float splitDist = CascadeSplits[cascadeIdx];
 
-            auto inverseViewProjection = cameraData->depthViewProjectionMatrix.inverse().transpose();
+            auto inverseViewProjection = cameraData->depthProjectionMatrix.inverse().transpose();
 
             for ( int i = 0; i < 8; ++i ) {
                 frustumCornersWS[i] = TransformVec3( frustumCornersWS[i], inverseViewProjection );
@@ -173,7 +173,7 @@ namespace nya
             nyaVec3f cascadeExtents = maxExtents - minExtents;
 
             // Get position of the shadow camera
-            nyaVec3f shadowCameraPos = frustumCenter + lightData->direction * -minExtents.z;
+            nyaVec3f shadowCameraPos = frustumCenter + lightData->direction.normalize() * -minExtents.z;
 
             // Come up with a new orthographic camera for the shadow caster
             nyaMat4x4f shadowCamera = nya::maths::MakeOrtho( minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, cascadeExtents.z );

@@ -261,7 +261,7 @@ compile_shader_CS( "Error" )
 
 # Atmosphere
 compile_shader_VS( "Atmosphere/BrunetonSky" )
-compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC" ] )
+compile_shader_PS( "Atmosphere/BrunetonSky", [ "NYA_RENDER_SUN_DISC", "NYA_FIXED_EXPOSURE" ] )
 
 # AutoExposure
 compile_shader_CS( "AutoExposure/BinCompute" )
@@ -273,6 +273,10 @@ compile_shader_CS( "PostFX/FinalPost" )
 compile_shader_PS( "PostFX/Downsample", [ "NYA_USE_KARIS_AVERAGE" ] )
 compile_shader_PS( "PostFX/Upsample", [ "NYA_NO_ACCUMULATION" ] )
 compile_shader_PS( "PostFX/BrightPass" )
+
+# Editor
+compile_shader_VS( "Editor/IBLProbeConvolution" )
+compile_shader_PS( "Editor/IBLProbeConvolution" )
 
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
@@ -292,4 +296,5 @@ compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
 compile_shader_VS( "Lighting/UberDepthOnly", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
 compile_shader_PS( "Lighting/UberDepthOnly" )
 compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
-
+compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_CLEAR_COAT", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
+compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_EMISSIVE", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )

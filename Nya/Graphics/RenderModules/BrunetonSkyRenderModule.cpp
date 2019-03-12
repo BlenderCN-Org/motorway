@@ -54,7 +54,7 @@ BrunetonSkyRenderModule::~BrunetonSkyRenderModule()
     irradianceTexture = nullptr;
 }
 
-MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPipeline, bool renderSunDisk )
+MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPipeline, const bool renderSunDisk, const bool useAutomaticExposure )
 {
     struct PassData {
         MutableResHandle_t  output;
@@ -95,7 +95,8 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
 
-            passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
+            if ( useAutomaticExposure )
+                passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             // Resource List
@@ -134,7 +135,8 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             resListDesc.constantBuffers[0] = { 1, SHADER_STAGE_PIXEL, skyBuffer };
             resListDesc.constantBuffers[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
 
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_PIXEL, autoExposureBuffer };
+            if ( useAutomaticExposure )
+                resListDesc.buffers[0] = { 0, SHADER_STAGE_PIXEL, autoExposureBuffer };
 
             resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
             resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, bilinearSampler };
@@ -168,7 +170,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             cmdList->useRenderPass( renderPass );
 
             // Pipeline State
-            cmdList->bindPipelineState( skyRenderPso );
+            cmdList->bindPipelineState( ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso );
 
             cmdList->draw( 3 );
 
@@ -182,6 +184,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
 void BrunetonSkyRenderModule::destroy( RenderDevice* renderDevice )
 {
     renderDevice->destroyPipelineState( skyRenderPso );
+    renderDevice->destroyPipelineState( skyRenderNoSunFixedExposurePso );
 }
 
 void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
@@ -197,6 +200,9 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.rasterizerState.useTriangleCCW = false;
 
     skyRenderPso = renderDevice->createPipelineState( psoDesc );
+
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_FIXED_EXPOSURE", SHADER_STAGE_PIXEL );
+    skyRenderNoSunFixedExposurePso = renderDevice->createPipelineState( psoDesc );
 
     // Load precomputed table and shaders
     transmittanceTexture = graphicsAssetCache->getTexture( ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME );

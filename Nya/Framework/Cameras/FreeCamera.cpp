@@ -123,7 +123,7 @@ void FreeCamera::update( const float frameTime )
     data.depthViewProjectionMatrix = data.depthProjectionMatrix * data.viewMatrix;
     data.viewProjectionMatrix = data.projectionMatrix * data.viewMatrix;
 
-    if ( true ) {
+    if ( data.flags.enableTAA ) {
         const uint32_t samplingIndex = ( data.cameraFrameNumber % 16 );
 
         static constexpr float TAAJitteringScale = 0.01f;
@@ -181,7 +181,7 @@ void FreeCamera::setProjectionMatrix( const float fieldOfView, const float scree
 
     data.projectionMatrix = MakeInfReversedZProj( fov, aspectRatio, nearPlane );
     data.inverseProjectionMatrix = data.projectionMatrix.inverse();
-    data.depthProjectionMatrix = MakeFovProj( fov, aspectRatio, 1.0f, 120.0f );
+    data.depthProjectionMatrix = MakeFovProj( fov, aspectRatio, 0.250f, 250.0f );
 }
 
 void FreeCamera::updateMouse( const float frameTime, const double mouseDeltaX, const double mouseDeltaY ) noexcept

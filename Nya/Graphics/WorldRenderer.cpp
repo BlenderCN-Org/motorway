@@ -31,6 +31,9 @@
 #include "RenderPasses/BlurPyramidRenderPass.h"
 #include "RenderPasses/CopyRenderPass.h"
 #include "RenderPasses/MSAAResolveRenderPass.h"
+#include "RenderModules/ProbeCaptureModule.h"
+
+#include "PrimitiveCache.h"
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
@@ -38,7 +41,7 @@ void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
 {
     NYA_PROFILE_FUNCTION
 
-        static constexpr size_t RADIXSORT_BITS = 11;
+    static constexpr size_t RADIXSORT_BITS = 11;
     static constexpr size_t RADIXSORT_HISTOGRAM_SIZE = ( 1 << RADIXSORT_BITS );
     static constexpr size_t RADIXSORT_BIT_MASK = ( RADIXSORT_HISTOGRAM_SIZE - 1 );
 
@@ -99,11 +102,13 @@ done:
 }
 
 WorldRenderer::WorldRenderer( BaseAllocator* allocator )
-    : renderPipelineCount( 0u )
+    : primitiveCache( nya::core::allocate<PrimitiveCache>( allocator, allocator ) )
+    , renderPipelineCount( 0u )
     , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
-    , textRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
-    , skyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
+    , TextRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
+    , SkyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
     , automaticExposureModule( nya::core::allocate<AutomaticExposureModule>( allocator ) )
+    , probeCaptureModule( nya::core::allocate<ProbeCaptureModule>( allocator ) )
     , renderPipelines( nya::core::allocateArray<RenderPipeline>( allocator, 8, allocator ) )
 {
 
@@ -120,10 +125,13 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
         renderPipelines[i].destroy( renderDevice );
     }
 
+    primitiveCache->destroy( renderDevice );
+
     // Free render modules resources
-    textRenderModule->destroy( renderDevice );
-    skyRenderModule->destroy( renderDevice );
+    TextRenderModule->destroy( renderDevice );
+    SkyRenderModule->destroy( renderDevice );
     automaticExposureModule->destroy( renderDevice );
+    probeCaptureModule->destroy( renderDevice );
 
     FreeCachedResourcesCP( renderDevice );
     FreeCachedResourcesBP( renderDevice );
@@ -152,7 +160,7 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
         const char* profilingString = renderPipelines[pipelineIdx].getProfilingSummary();
 
         if ( profilingString != nullptr ) {
-            textRenderModule->addOutlinedText( profilingString, 0.35f, 10.0f + 200.0f * pipelineIdx, 96.0f );
+            TextRenderModule->addOutlinedText( profilingString, 0.35f, 10.0f + 200.0f * pipelineIdx, 96.0f );
         }
 #endif
     }
@@ -167,18 +175,37 @@ DrawCmd& WorldRenderer::allocateDrawCmd()
     return *nya::core::allocate<DrawCmd>( drawCmdAllocator );
 }
 
+DrawCmd& WorldRenderer::allocateSpherePrimitiveDrawCmd()
+{
+    DrawCmd& cmd = allocateDrawCmd();
+
+    const auto& spherePrimitive = primitiveCache->getSpherePrimitive();
+
+    DrawCommandInfos& infos = cmd.infos;
+    infos.vertexBuffer = spherePrimitive.vertexBuffer;
+    infos.indiceBuffer = spherePrimitive.indiceBuffer;
+    infos.indiceBufferOffset = spherePrimitive.indiceBufferOffset;
+    infos.indiceBufferCount = spherePrimitive.indiceCount;
+    infos.alphaDitheringValue = 1.0f;
+
+    return cmd;
+}
+
 void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     // Load render modules resources (cached pipeline states, LUTs, precomputed data tables, etc.)
-    skyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
-    textRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    SkyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    TextRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     automaticExposureModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    probeCaptureModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
 
     LoadCachedResourcesFP( renderDevice, shaderCache );
     LoadCachedResourcesPP( renderDevice, shaderCache );
     LoadCachedResourcesBP( renderDevice, shaderCache );
     LoadCachedResourcesCP( renderDevice, shaderCache );
     LoadCachedResourcesMRP( renderDevice, shaderCache );
+
+    primitiveCache->createPrimitivesBuffer( renderDevice );
 
 #if NYA_DEVBUILD
     for ( int i = 0; i < 8; i++ ) {

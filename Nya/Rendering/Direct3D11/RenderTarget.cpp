@@ -160,7 +160,7 @@ RenderTarget* RenderDevice::createRenderTarget1D( const TextureDescription& desc
 {
     RenderTarget* renderTarget = nya::core::allocate<RenderTarget>( memoryAllocator );
     renderTarget->texture = ( initialTexture != nullptr ) ? initialTexture : createTexture1D( description );
-    
+
     ID3D11Device* nativeDevice = renderContext->nativeDevice;
 
     DXGI_FORMAT nativeTextureFormat = static_cast< DXGI_FORMAT >( description.format );
@@ -272,14 +272,26 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
     renderTarget->texture->shaderResourceView->GetDesc( &srvDesc );
 
     // Retrieve mip/array size for rtv deletion
-    int mipCount = 1, sliceCount = 1;
+    int mipCount = 1, arraySize = 1;
     switch ( srvDesc.ViewDimension ) {
-    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
-    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
-    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
-        mipCount = srvDesc.Texture1DArray.MipLevels;
-        sliceCount = srvDesc.Texture1DArray.ArraySize;
+    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE1DARRAY: {
+        D3D11_TEXTURE1D_DESC texDesc;
+        renderTarget->texture->texture1D->GetDesc( &texDesc );
+
+        arraySize = texDesc.ArraySize;
+        mipCount = texDesc.MipLevels;
         break;
+    }
+
+    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
+    case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2DARRAY: {
+        D3D11_TEXTURE2D_DESC texDesc;
+        renderTarget->texture->texture2D->GetDesc( &texDesc );
+
+        arraySize = texDesc.ArraySize;
+        mipCount = texDesc.MipLevels;
+        break;
+    }
 
     case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE1D:
     case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D:
@@ -289,16 +301,16 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
         break;
 
     case D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-        sliceCount = srvDesc.Texture2DMSArray.ArraySize;
+        arraySize = srvDesc.Texture2DMSArray.ArraySize;
         break;
     }
 
     // Iterate and destroy rtv
-    for ( int sliceIdx = 0; sliceIdx < sliceCount; sliceIdx++ ) {
-        renderTarget->textureRenderTargetViewPerSlice[sliceIdx]->Release();
+    for ( int arrayIdx = 0; arrayIdx < arraySize; arrayIdx++ ) {
+        renderTarget->textureRenderTargetViewPerSlice[arrayIdx]->Release();
 
         for ( int mipIdx = 0; mipIdx < mipCount; mipIdx++ ) {
-            renderTarget->textureRenderTargetViewPerSliceAndMipLevel[sliceIdx][mipIdx]->Release();
+            renderTarget->textureRenderTargetViewPerSliceAndMipLevel[arrayIdx][mipIdx]->Release();
         }
     }
 
