@@ -42,7 +42,7 @@ void PrimitiveCache::createPrimitivesBuffer( RenderDevice* renderDevice )
     BufferDesc sphereVboDesc = {};
     sphereVboDesc.type = BufferDesc::VERTEX_BUFFER;
     sphereVboDesc.size = spherePrimitiveData.vertices.size() * sizeof( float );
-    sphereVboDesc.stride = 5 * sizeof( float );
+    sphereVboDesc.stride = 8 * sizeof( float );
 
     BufferDesc sphereIboDesc = {};
     sphereIboDesc.type = BufferDesc::INDICE_BUFFER;

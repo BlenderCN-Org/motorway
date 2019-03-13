@@ -116,13 +116,13 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 
 
 #if NYA_DEVBUILD
-        //if ( DisplayDebugIBLProbe ) {
+    if ( DisplayDebugIBLProbe ) {
         for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
             auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
 
-            drawCmdBuilder.addSphereToRender( iblProbe->worldPosition, 1.0f );
+            drawCmdBuilder.addSphereToRender( iblProbe->worldPosition, 2.0f );
         }
-    //}
+    }
 #endif
 
     for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {

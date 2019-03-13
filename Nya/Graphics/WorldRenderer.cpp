@@ -150,6 +150,12 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
     DrawCmd tmpDrawCmds[MAX_DRAW_CMD_COUNT];
     RadixSort( drawCmds, tmpDrawCmds, drawCmdCount );
 
+    if ( renderPipelineCount > 1 ) {
+        for ( size_t i = 0; i < drawCmdCount; i++ ) {
+
+        }
+    }
+
     // Execute pipelines linearly
     // TODO Could it be parallelized?
     for ( uint32_t pipelineIdx = 0; pipelineIdx < renderPipelineCount; pipelineIdx++ ) {

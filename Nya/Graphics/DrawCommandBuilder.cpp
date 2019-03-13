@@ -165,7 +165,7 @@ void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const ny
 void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius )
 {
     auto sphereMatrix = nya::core::allocate<nyaMat4x4f>( spheresToRender );
-    *sphereMatrix = nya::maths::MakeTranslationMat( sphereCenter ) * nya::maths::MakeScaleMat( sphereRadius );
+    *sphereMatrix =nya::maths::MakeScaleMat( sphereRadius ) * nya::maths::MakeTranslationMat( sphereCenter ) ;
 }
 
 void DrawCommandBuilder::addCamera( CameraData* cameraData )
@@ -432,19 +432,19 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
     nyaMat4x4f* sphereToRenderArray = static_cast<nyaMat4x4f*>( spheresToRender->getBaseAddress() );
     const size_t sphereCount = spheresToRender->getAllocationCount();
     for ( uint32_t sphereIdx = 0; sphereIdx < sphereCount; sphereIdx++ ) {
-        sphereToRender[sphereIdx] = sphereToRenderArray[sphereIdx];
-
-        DrawCmd& drawCmd = worldRenderer->allocateSpherePrimitiveDrawCmd();
-        drawCmd.infos.material = shitTest;
-        drawCmd.infos.instanceCount = 1;
-        drawCmd.infos.modelMatrix = &sphereToRender[sphereIdx];
-
-        auto& key = drawCmd.key.bitfield;
-        key.materialSortKey = shitTest->getSortKey();
-        key.depth = DepthToBits( 0.0f );
-        key.sortOrder = DrawCommandKey::SORT_BACK_TO_FRONT;
-        key.layer = static_cast<DrawCommandKey::Layer>( layer );
-        key.viewportLayer = viewportLayer;
-        key.viewportId = cameraIdx;
+        sphereToRender[sphereIdx] = sphereToRenderArray[sphereIdx].transpose();
     }
+
+    DrawCmd& drawCmd = worldRenderer->allocateSpherePrimitiveDrawCmd();
+    drawCmd.infos.material = shitTest;
+    drawCmd.infos.instanceCount = sphereCount;
+    drawCmd.infos.modelMatrix = sphereToRender;
+
+    auto& key = drawCmd.key.bitfield;
+    key.materialSortKey = ~0u;
+    key.depth = DepthToBits( 0.0f );
+    key.sortOrder = DrawCommandKey::SORT_FRONT_TO_BACK;
+    key.layer = static_cast< DrawCommandKey::Layer >( layer );
+    key.viewportLayer = viewportLayer;
+    key.viewportId = cameraIdx;
 }

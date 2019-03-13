@@ -43,6 +43,10 @@ PrimitiveData nya::maths::CreateSpherePrimitive( const uint32_t stacks, const ui
             primitive.vertices.push_back( y );
             primitive.vertices.push_back( z );
 
+            primitive.vertices.push_back( 0 );
+            primitive.vertices.push_back( 1 );
+            primitive.vertices.push_back( 0 );
+
             float u = ( float )slice / ( float )slices;
             float v = ( float )stack / ( float )stacks;
 

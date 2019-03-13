@@ -77,23 +77,23 @@ struct DrawCommandKey
 
     enum SortOrder : uint8_t
     {
-        SORT_BACK_TO_FRONT = 0,
-        SORT_FRONT_TO_BACK
+        SORT_FRONT_TO_BACK = 0,
+        SORT_BACK_TO_FRONT
     };
 
     union
     {
         struct
         {
-            Layer layer : 2;
-            uint8_t viewportLayer : 3;
-            uint8_t viewportId : 3; // viewport dispatch index (should be managed by the builder)
+            uint32_t materialSortKey; // material sort key (contains states and pipeline setup infos as a bitfield)
 
             uint16_t depth; // half float depth for distance sorting
-            SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
             uint8_t __PLACEHOLDER__ : 6;
+            SortOrder sortOrder : 2; // front to back or back to front (opaque or transparent)
 
-            uint32_t materialSortKey; // material sort key (contains states and pipeline setup infos as a bitfield)
+            uint8_t viewportLayer : 3;
+            Layer layer : 2;
+            uint8_t viewportId : 3; // viewport dispatch index (should be managed by the builder)
         } bitfield;
         uint64_t value;
     };
