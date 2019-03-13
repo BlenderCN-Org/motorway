@@ -18,7 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #    
 
-import sys, string, os, argparse, platform, codecs, itertools, MurmurHash
+import sys, string, os, argparse, platform, codecs, itertools, MurmurHash, multiprocessing
 
 from pathlib import Path
 from subprocess import Popen
@@ -31,9 +31,9 @@ compiled_shader_folder = "../bin/data/shaders/"
 compileD3D11 = False
 compileSPIRV = False
 compileWaitOutput = False
-
 glslang_exe = 'glslangValidator'
 spirvcross_exe = 'spirv-cross'
+current_task_count = 0
 
 if platform.system() == 'Windows':
     glslang_exe = glslang_exe + '.exe'
@@ -157,7 +157,26 @@ def get_sprv_sm( type ):
         'PS': 'frag',
         'CS': 'comp'
     }.get( type, 'vs_5_0' )
-      
+    
+def popenAndCall(popenArgs):
+    global current_task_count
+    cpu_thread_count = multiprocessing.cpu_count()
+    
+    def runInThread(popenArgs):
+        global current_task_count
+        proc = Popen(popenArgs)
+        proc.wait()
+        current_task_count = current_task_count - 1
+        return
+        
+    while current_task_count > cpu_thread_count:
+        pass
+        
+    thread = Thread(target=runInThread, args=(popenArgs,))
+    current_task_count = current_task_count + 1
+    thread.start()
+    return thread
+    
 def compile_permutation_d3d11( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):
     cmd_args_list = build_flag_list( permutation )
     
@@ -168,8 +187,8 @@ def compile_permutation_d3d11( shader_name, filename, entry_point, extension, sh
     else:
         cmdLine = cmdLine + " /O1"
         
-    Popen( cmdLine, shell = True ) #.wait()
- 
+    popenAndCall( ( cmdLine ) )
+    
 def compile_permutation_spirv( shader_name, filename, entry_point, extension, shading_model, permutation = [] ):  
     # GLSLang args are '-' delimited
     flag_list_glsl = build_flag_list_GLSL( permutation )
@@ -183,7 +202,7 @@ def compile_permutation_spirv( shader_name, filename, entry_point, extension, sh
     # SPIRV (VK) > GLSL
     # GLSL > SPIRV (GLSL)
     cmdLine = glslang_exe + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
-    Popen( cmdLine, shell = True )
+    popenAndCall( ( cmdLine ) )
     # subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename + extension + ".vk --output ./tmp/" + filename + extension + ".glsl" )
     # subprocess.run( glslang_exe + " -S " + shading_model + " -G -o " + compiled_shader_folder + filename + extension + ".gl ./tmp/" + filename + extension + ".glsl" )
     
