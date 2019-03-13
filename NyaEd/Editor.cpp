@@ -193,7 +193,7 @@ void TestStuff()
     auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
-    /*  IBLProbeData localProbe = {};
+    IBLProbeData localProbe = {};
     localProbe.worldPosition = { 4, 4, 0 };
     localProbe.radius = 14.0f;
     localProbe.isFallbackProbe = false;
@@ -203,7 +203,7 @@ void TestStuff()
 
     auto& localProbeNode = g_SceneTest->allocateIBLProbe();
     localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
-*/
+
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
 }

@@ -109,6 +109,14 @@ void GetShaderStage( const eShadingModel shadingModel, std::string& standardVert
         depthPixelStage = "Lighting/UberDepthOnly";
         break;
 
+    case eShadingModel::SHADING_MODEL_CLEAR_COAT:
+        standardVertexStage = "Lighting/Ubersurface";
+        standardPixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_CLEAR_COAT";
+        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_CLEAR_COAT+NYA_PROBE_CAPTURE";
+        depthVertexStage = "Lighting/UberDepthOnly";
+        depthPixelStage = "Lighting/UberDepthOnly";
+        break;
+
     default:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface";
@@ -141,8 +149,6 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         compiledPixelStage.append( "+NYA_CAST_SHADOW" );
     }
 
-    //compiledPixelStage.append( "+NYA_DEBUG_CSM_CASCADE" );
-    
     // Default PSO
     PipelineStateDesc defaultPipelineStateDesc = {};
 
@@ -449,6 +455,7 @@ void Material::bindDefaultTextureSet( CommandList* cmdList, RenderPassDesc& rend
 void Material::getShadingModelResources( GraphicsAssetCache* graphicsAssetCache )
 {
     switch ( sortKeyInfos.shadingModel ) {
+    case eShadingModel::SHADING_MODEL_CLEAR_COAT:
     case eShadingModel::SHADING_MODEL_STANDARD: {
         // Load BRDF DFG LUT
         defaultTextureSet[0] = graphicsAssetCache->getTexture( NYA_STRING( "GameData/textures/DFG_LUT_Standard.dds" ) );
