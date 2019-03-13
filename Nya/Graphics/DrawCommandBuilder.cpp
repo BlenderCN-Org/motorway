@@ -1,21 +1,21 @@
 /*
-    Project Motorway Source Code
-    Copyright (C) 2018 Prévost Baptiste
+Project Motorway Source Code
+Copyright (C) 2018 Prévost Baptiste
 
-    This file is part of Project Motorway source code.
+This file is part of Project Motorway source code.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "Shared.h"
@@ -165,7 +165,7 @@ void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const ny
 void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius )
 {
     auto sphereMatrix = nya::core::allocate<nyaMat4x4f>( spheresToRender );
-    *sphereMatrix =nya::maths::MakeScaleMat( sphereRadius ) * nya::maths::MakeTranslationMat( sphereCenter ) ;
+    *sphereMatrix = nya::maths::MakeScaleMat( sphereRadius ) * nya::maths::MakeTranslationMat( sphereCenter );
 }
 
 void DrawCommandBuilder::addCamera( CameraData* cameraData )
@@ -200,7 +200,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 {
     NYA_PROFILE_FUNCTION
 
-    uint32_t cameraIdx = 0;
+        uint32_t cameraIdx = 0;
     CameraData** cameraArray = static_cast<CameraData**>( cameras->getBaseAddress() );
     const size_t cameraCount = cameras->getAllocationCount();
 
@@ -291,7 +291,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
         probeCamera.viewportSize = { IBL_PROBE_DIMENSION, IBL_PROBE_DIMENSION };
         probeCamera.imageQuality = 1.0f;
         probeCamera.msaaSamplerCount = 1;
-        
+
         RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0, IBL_PROBE_DIMENSION, IBL_PROBE_DIMENSION, 0.0f, 1.0f }, &probeCamera );
         worldRenderer->probeCaptureModule->importResourcesToPipeline( &renderPipeline );
 
@@ -349,7 +349,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
         RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0, IBL_PROBE_DIMENSION, IBL_PROBE_DIMENSION, 0.0f, 1.0f }, nullptr );
         worldRenderer->probeCaptureModule->importResourcesToPipeline( &renderPipeline );
-        
+
         renderPipeline.beginPassGroup();
         {
             worldRenderer->probeCaptureModule->convoluteProbeFace( &renderPipeline, cmd->CommandInfos.EnvProbeArrayIndex, cmd->CommandInfos.Step, cmd->CommandInfos.MipIndex );
@@ -382,7 +382,6 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
         const MeshInstance& meshInstance = meshesArray[meshIdx];
 
         const nyaVec3f instancePosition = nya::maths::ExtractTranslation( *meshInstance.modelMatrix );
-
         const float instanceScale = nya::maths::GetBiggestScalar( nya::maths::ExtractScale( *meshInstance.modelMatrix ) );
 
         const float distanceToCamera = nyaVec3f::distanceSquared( camera->worldPosition, instancePosition );
@@ -437,7 +436,7 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
 
     DrawCmd& drawCmd = worldRenderer->allocateSpherePrimitiveDrawCmd();
     drawCmd.infos.material = shitTest;
-    drawCmd.infos.instanceCount = sphereCount;
+    drawCmd.infos.instanceCount = static_cast<uint32_t>( sphereCount );
     drawCmd.infos.modelMatrix = sphereToRender;
 
     auto& key = drawCmd.key.bitfield;
