@@ -43,9 +43,10 @@ PrimitiveData nya::maths::CreateSpherePrimitive( const uint32_t stacks, const ui
             primitive.vertices.push_back( y );
             primitive.vertices.push_back( z );
 
-            primitive.vertices.push_back( 0 );
-            primitive.vertices.push_back( 1 );
-            primitive.vertices.push_back( 0 );
+            float pointInverseLength = 1.0f / nyaVec3f( x, y, z ).length();
+            primitive.vertices.push_back( x * pointInverseLength );
+            primitive.vertices.push_back( y * pointInverseLength );
+            primitive.vertices.push_back( z * pointInverseLength );
 
             float u = ( float )slice / ( float )slices;
             float v = ( float )stack / ( float )stacks;
@@ -77,10 +78,10 @@ PrimitiveData nya::maths::CreateQuadPrimitive()
     PrimitiveData primitive;
 
     primitive.vertices = {
-        -1.0f, -1.0f, 1.0f,     +0.0f, +0.0f,
-        +1.0f, -1.0f, 1.0f,     +1.0f, +0.0f,
-        +1.0f, +1.0f, 1.0f,     +1.0f, +1.0f,
-        -1.0f, +1.0f, 1.0f,     +0.0f, +1.0f,
+        -1.0f, -1.0f, 1.0f,     0.0f, 0.0f, 1.0f,     +0.0f, +0.0f,
+        +1.0f, -1.0f, 1.0f,     0.0f, 0.0f, 1.0f,     +1.0f, +0.0f,
+        +1.0f, +1.0f, 1.0f,     0.0f, 0.0f, 1.0f,     +1.0f, +1.0f,
+        -1.0f, +1.0f, 1.0f,     0.0f, 0.0f, 1.0f,     +0.0f, +1.0f,
     };
 
     primitive.indices = {
