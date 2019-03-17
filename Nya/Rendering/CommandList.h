@@ -76,7 +76,6 @@ public:
     void                bindVertexBuffer( const Buffer* buffer, const unsigned int bindIndex = 0 );
     void                bindIndiceBuffer( const Buffer* buffer );
 
-    void                clearRenderTarget( RenderTarget* renderTarget, const float clearColor[4] );
     void                bindPipelineState( PipelineState* pipelineState );
     void                bindResourceList( ResourceList* resourceList );
 
@@ -98,10 +97,6 @@ public:
     void                beginQuery( QueryPool* queryPool, const unsigned int queryIndex );
     void                endQuery( QueryPool* queryPool, const unsigned int queryIndex );
     void                writeTimestamp( QueryPool* queryPool, const unsigned int queryIndex );
-
-    // NOTE Texture must have been created with the flag 'allowCPUWrite' set
-    // NOTE widthSize = texture width * texture format size (in bytes)
-    void                updateTexture3D( Texture* texture, const void* data, const size_t texelSize, const size_t width, const size_t height, const size_t depth );
 
 private:
     BaseAllocator*      memoryAllocator;

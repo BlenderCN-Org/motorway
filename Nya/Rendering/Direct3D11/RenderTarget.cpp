@@ -27,31 +27,9 @@
 #include "CommandList.h"
 
 #include "Texture.h"
+#include "RenderTarget.h"
 
 #include <d3d11.h>
-
-struct RenderTarget
-{
-    Texture* texture;
-
-    union
-    {
-        ID3D11RenderTargetView*     textureRenderTargetView;
-        ID3D11DepthStencilView*     textureDepthRenderTargetView;
-    };
-
-    union
-    {
-        ID3D11RenderTargetView**  textureRenderTargetViewPerSlice;
-        ID3D11DepthStencilView**  textureDepthStencilViewPerSlice;
-    };
-
-    union
-    {
-        ID3D11RenderTargetView*** textureRenderTargetViewPerSliceAndMipLevel;
-        ID3D11DepthStencilView*** textureDepthStencilViewPerSliceAndMipLevel;
-    };
-};
 
 ID3D11RenderTargetView* CreateRenderTargetView( ID3D11Device* device, ID3D11Resource* texResource, const D3D11_RTV_DIMENSION dimension, const DXGI_FORMAT format )
 {
@@ -318,10 +296,5 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
     destroyTexture( renderTarget->texture );
 
     nya::core::free( memoryAllocator, renderTarget );
-}
-
-void CommandList::clearRenderTarget( RenderTarget* renderTarget, const float clearColor[4] )
-{
-    NativeCommandList->deferredContext->ClearRenderTargetView( renderTarget->textureRenderTargetView, clearColor );
 }
 #endif
