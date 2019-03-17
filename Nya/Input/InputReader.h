@@ -23,9 +23,9 @@ namespace nya
 {
     namespace input
     {
-        enum eInputLayout;
-        enum eInputKey;
-        enum eInputAxis;
+        enum eInputLayout : uint32_t;
+        enum eInputKey : uint32_t;
+        enum eInputAxis : uint32_t;
     }
 }
 

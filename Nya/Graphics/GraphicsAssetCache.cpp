@@ -364,8 +364,8 @@ Mesh* GraphicsAssetCache::getMesh( const nyaChar_t* assetName, const bool forceR
     meshInstance->create( renderDevice, vertexBufferDesc, indiceBufferDesc, loadData.vertices.data(), loadData.indices.data() );
     
     // TODO Custom Distance Definition (define per model LoD distance?)
-    constexpr float LOD_DISTANCE[4] = { 50.0f, 100.0f, 256.0f, 512.0f };
-    for ( int i = 0; i < 4; i++ )
+    constexpr float LOD_DISTANCE[4] = { 250.0f, 500.0f, 1000.0f, 2048.0f };
+    for ( int i = 0; i < 1; i++ )
         meshInstance->addLevelOfDetail( i, LOD_DISTANCE[i] );
 
     // Build each LevelOfDetail

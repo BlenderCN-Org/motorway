@@ -23,7 +23,7 @@ namespace nya
 {
     namespace display
     {
-        enum eDisplayMode;
+        enum eDisplayMode : uint32_t;
     }
 }
 class BaseAllocator;

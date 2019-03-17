@@ -2,13 +2,8 @@
 #include <LightsData.hlsli>
 #include <BRDF.hlsli>
 #include <ShadowMappingShared.h>
-
-Buffer<float4> g_InstanceVectorBuffer : register( t8 );
-cbuffer InstanceBuffer : register( b1 )
-{
-    float   g_StartVector;
-    float   g_VectorPerInstance;
-};
+#include <PhotometricHelpers.hlsli>
+#include <InstanceData.hlsli>
 
 struct VertexBufferData
 {
@@ -26,18 +21,6 @@ struct VertexStageData
     float depth         : DEPTH;
     float2 uvCoord      : TEXCOORD0;
 };
-
-float4x4 GetInstanceModelMatrix( const uint instanceIdx )
-{
-    uint modelMatrixVectorOffset = g_StartVector + instanceIdx * g_VectorPerInstance + 0;
-    
-    float4 r0 = g_InstanceVectorBuffer.Load( modelMatrixVectorOffset + 0 );
-    float4 r1 = g_InstanceVectorBuffer.Load( modelMatrixVectorOffset + 1 );
-    float4 r2 = g_InstanceVectorBuffer.Load( modelMatrixVectorOffset + 2 );
-    float4 r3 = g_InstanceVectorBuffer.Load( modelMatrixVectorOffset + 3 );
-    
-    return float4x4( r0, r1, r2, r3 );
-}
 
 VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : SV_InstanceID )
 {
@@ -70,42 +53,12 @@ VertexStageData EntryPointVS( VertexBufferData VertexBuffer, uint InstanceId : S
 // PixelShader
 #include <SceneInfos.hlsli>
 
-float3 accurateSRGBToLinear( in float3 sRGBCol )
-{
-    float3 linearRGBLo = sRGBCol / 12.92;
-
-    // Ignore X3571, incoming vector will always be superior to 0
-    float3 linearRGBHi = pow( abs( ( sRGBCol + 0.055 ) / 1.055 ), 2.4 );
-
-    float3 linearRGB = ( sRGBCol <= 0.04045 ) ? linearRGBLo : linearRGBHi;
-
-    return linearRGB;
-}
-
-float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, out float3 T, out float3 B )
-{
-    // ddx_coarse can be faster than ddx, but could result in artifacts. Haven't observed any artifacts yet.
-    float3 dp1 = ddx_coarse( P );
-    float3 dp2 = ddy_coarse( P );
-    float2 duv1 = ddx_coarse( UV );
-    float2 duv2 = ddy_coarse( UV );
-
-    float3x3 M = float3x3( dp1, dp2, cross( dp1, dp2 ) );
-    float2x3 inverseM = float2x3( cross( M[1], M[2] ), cross( M[2], M[0] ) );
-    T = normalize( mul( float2( duv1.x, duv2.x ), inverseM ) );
-    B = normalize( mul( float2( duv1.y, duv2.y ), inverseM ) );
-
-    return float3x3( T, B, N );
-}
-
 struct PixelStageData
 {
     float4  Buffer0         : SV_TARGET0; // Shaded Surfaces Color
     float2  Buffer1         : SV_TARGET1; // Velocity (Opaque RenderList ONLY)
     float3  Buffer2         : SV_TARGET2; // Thin GBuffer: RG: Normal (Spheremap encoded) / B: Roughness
 };
-
-Texture3D<uint2> g_Clusters : register( t0 );
 
 struct LightSurfaceInfos
 {
@@ -133,7 +86,7 @@ struct LightSurfaceInfos
     float   ClearCoat;
     float   ClearCoatGlossiness;
     float   SubsurfaceScatteringStrength; // 0..1 range
-    uint    PADDING;
+    float   Emissivity;
 };
 
 struct MaterialReadLayer
@@ -164,10 +117,17 @@ struct MaterialReadLayer
     float   SSStrength;
 };
 
+sampler                 g_BilinearSampler : register( s0 );
+sampler					g_BRDFInputsSampler : register( s1 );
+SamplerComparisonState 	g_ShadowMapSampler : register( s2 );
+
+Texture3D<uint2>        g_Clusters : register( t0 );
+Texture2D               g_SunShadowMap : register( t1 );
+TextureCubeArray        g_EnvProbeDiffuseArray : register( t2 );
+TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
+
 #if NYA_EDITOR
 #include <MaterialShared.h>
-
-sampler					g_BRDFInputsSampler : register( s1 );
 
 // t0 => Light clusters
 // t1 => Sun CSM ShadowMap
@@ -259,8 +219,14 @@ MaterialReadLayer ReadLayer##layerIdx( in VertexStageData VertexStage, in float3
     } else {\
         layer.Normal = N;\
     }\
-	layer.SecondaryNormal = float3( 0, 1, 0 );\
-    layer.AlphaMask = 1.0f;\
+    needNormalMapUnpack = ( g_Layers[layerIdx].SecondaryNormal.Type == INPUT_TYPE_TEXTURE && g_Layers[layerIdx].SecondaryNormal.SamplingMode == SAMPLING_MODE_TANGENT_SPACE );\
+    if ( needNormalMapUnpack ) {\
+        float4 sampledTexture = g_TexClearCoatNormal##layerIdx.Sample( g_BRDFInputsSampler, uvCoords );\
+        layer.SecondaryNormal = normalize( ( sampledTexture.rgb * g_Layers[layerIdx].NormalMapStrength ) * 2.0f - 1.0f );\
+    } else {\
+        layer.SecondaryNormal = N;\
+    }\
+    layer.AlphaMask = ReadInput1D( g_Layers[layerIdx].AlphaMask, g_TexAlphaMask##layerIdx, g_BRDFInputsSampler, uvCoords, 1.0f );\
     \
 	layer.Refraction = g_Layers[layerIdx].Refraction;\
     layer.RefractionIor = g_Layers[layerIdx].RefractionIor;\
@@ -291,6 +257,24 @@ NYA_READ_LAYER( 0 )
 #include "ShadingModels/Debug.hlsl"
 #endif    
 
+static const int LD_MIP_COUNT = 7;
+
+float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, out float3 T, out float3 B )
+{
+    // ddx_coarse can be faster than ddx, but could result in artifacts. Haven't observed any artifacts yet.
+    float3 dp1 = ddx_coarse( P );
+    float3 dp2 = ddy_coarse( P );
+    float2 duv1 = ddx_coarse( UV );
+    float2 duv2 = ddy_coarse( UV );
+
+    float3x3 M = float3x3( dp1, dp2, cross( dp1, dp2 ) );
+    float2x3 inverseM = float2x3( cross( M[1], M[2] ), cross( M[2], M[0] ) );
+    T = normalize( mul( float2( duv1.x, duv2.x ), inverseM ) );
+    B = normalize( mul( float2( duv1.y, duv2.y ), inverseM ) );
+
+    return float3x3( T, B, N );
+}
+
 float2 EncodeNormals( const in float3 n )
 {
     float2 enc = normalize(n.xy) * (sqrt(-n.z*0.5+0.5));
@@ -308,13 +292,6 @@ float2 ComputeReceiverPlaneDepthBias( float3 texCoordDX, float3 texCoordDY )
 
     return biasUV;
 }
-
-sampler                 g_BilinearSampler : register( s0 );
-SamplerComparisonState 	g_ShadowMapSampler : register( s2 );
-
-Texture2D               g_SunShadowMap : register( t1 );
-TextureCubeArray        g_EnvProbeDiffuseArray : register( t2 );
-TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
 
 float SampleCascadedShadowMap( in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint cascadeIdx, in float depth, in float2 receiverPlaneDepthBias )
 {
@@ -527,6 +504,20 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
     return lightIlluminance + ( lightIlluminance * surfaceTransmittance );
 }
 
+float2 ComputeVelocity( VertexStageData VertexStage )
+{
+    float2 screenSize = g_ScreenSize * g_ImageQuality;
+    
+    float2 prevPositionSS = ( VertexStage.previousPosition.xy / VertexStage.previousPosition.w ) * float2( 0.5f, -0.5f ) + 0.5f;
+    prevPositionSS *= screenSize;
+   
+    float2 Velocity = ( VertexStage.position.xy - prevPositionSS );
+    Velocity -= g_CameraJitteringOffset;
+    Velocity /= screenSize;
+    
+    return Velocity;
+}
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
 #if NYA_USE_LOD_ALPHA_BLENDING
@@ -557,8 +548,34 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 #endif
     
 	bool needNormalMapUnpack = false, needSecondaryNormalMapUnpack = false;
-	
-#if NYA_EDITOR
+
+#if NYA_DEBUG_IBL_PROBE
+#define NYA_EARLY_EXIT 1
+    float3 dominantR = getSpecularDominantDir( N, R, 0.0f );
+    float mipLevel = linearRoughnessToMipLevel( 0.0f, LD_MIP_COUNT );
+    
+    PixelStageData output;
+    
+    // Compute cluster and fetch its light mask
+	int4 coord = int4( VertexStage.positionWS.xyz * g_ClustersScale + g_ClustersBias, 0 );
+	uint2 light_mask = g_Clusters.Load( coord );
+    
+    // TODO Cheap way to get the nearest probe within the current cluster (not sure if it's accurate and reliable?)
+    uint i = firstbitlow( light_mask.g );
+    IBLProbe probe = g_IBLProbes[i + 1];
+    float4 bufferOutput = g_EnvProbeSpecularArray.SampleLevel( g_BilinearSampler, float4( dominantR, probe.Index ), mipLevel );
+    
+#if NYA_ENCODE_RGBD
+    output.Buffer0 = EncodeRGBD( bufferOutput.rgb );
+#else
+    output.Buffer0 = bufferOutput;
+#endif
+
+    output.Buffer1 = ComputeVelocity( VertexStage );
+    output.Buffer2 = float3( EncodeNormals( N ), 0.0f );
+    
+    return output;
+#elif NYA_EDITOR
 	MaterialReadLayer layer = ReadLayer0( VertexStage, N, V, TBNMatrix, needNormalMapUnpack, needSecondaryNormalMapUnpack );
 #else
 	MaterialReadLayer layer;
@@ -568,8 +585,10 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	layer.Reflectance = 1.0f;
 	layer.AmbientOcclusion = 1.0f;
 	layer.Normal = N;
+	layer.Emissivity = 0.0f;
 #endif
 
+#ifndef NYA_EARLY_EXIT
 	if ( needNormalMapUnpack ) {
         layer.Normal = normalize( mul( layer.Normal, TBNMatrix ) );
     }
@@ -610,16 +629,15 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
         // FIX Use clamp instead of saturate (clamp dot product between epsilon and 1)
         clamp( dot( layer.Normal, V ), 1e-5f, 1.0f ),
 
-        0.0f,
-        0.0f,
+        layer.ClearCoat,
+        layer.ClearCoatGlossiness,
 
-        0.0f,
-        0u // Explicit Padding
+        layer.SSStrength,
+        layer.Emissivity
     };
     
     // Outputs
     float4 LightContribution = float4( 0, 0, 0, 1 );
-    float2 Velocity = float2( 0, 0 );
     
     // Add explicit sun/moon light contribution
     float3 L;
@@ -643,14 +661,15 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
     
+    LightContribution.rgb += ( LightContribution.rgb * surface.Emissivity );
+    
+#ifndef PA_PROBE_CAPTURE
 #if NYA_BRDF_STANDARD
     // Reflections / IBL
+    static const float DFG_TEXTURE_SIZE =  512.0f;
     
     // Rebuild the function
     // L . D . ( f0.Gv.(1-Fc) + Gv.Fc ) . cosTheta / (4 . NdotL . NdotV )
-    static const float DFG_TEXTURE_SIZE =  512.0f;
-    static const int LD_MIP_COUNT = 7;
-
     float dfgNoV = max( surface.NoV, 0.5f / DFG_TEXTURE_SIZE );
     float3 dfgLUTSample = g_DFGLUTStandard.SampleLevel( g_BilinearSampler, float2( dfgNoV, surface.Roughness ), 0 );
     
@@ -732,23 +751,20 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
     LightContribution.rgb += ( diffuseSum.rgb + specularSum.rgb );
 #endif
-    
-    float2 screenSize = g_ScreenSize * g_ImageQuality;
-    
-    float2 prevPositionSS = ( VertexStage.previousPosition.xy / VertexStage.previousPosition.w ) * float2( 0.5f, -0.5f ) + 0.5f;
-    prevPositionSS *= screenSize;
+#endif
    
-    Velocity = ( VertexStage.position.xy - prevPositionSS );
-    Velocity -= g_CameraJitteringOffset;
-    Velocity /= screenSize;
-    
     // Write output to buffer(s)
-    const float2 EncodedNormals = EncodeNormals( surface.N );
-    
     PixelStageData output;
+    
+#if NYA_ENCODE_RGBD
+    output.Buffer0 = EncodeRGBD( LightContribution.rgb );
+#else
     output.Buffer0 = LightContribution;
-    output.Buffer1 = Velocity;
-    output.Buffer2 = float3( EncodedNormals, surface.Roughness );
+#endif
+
+    output.Buffer1 = ComputeVelocity( VertexStage );
+    output.Buffer2 = float3( EncodeNormals( surface.N ), surface.Roughness );
 
     return output;
+#endif // NYA_EARLY_EXIT
 }

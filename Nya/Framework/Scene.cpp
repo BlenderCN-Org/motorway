@@ -114,13 +114,17 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 {
     NYA_PROFILE_FUNCTION
 
-
 #if NYA_DEVBUILD
     if ( DisplayDebugIBLProbe ) {
         for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
             auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
+            
+            // Skip global probe
+            if ( iblProbe->isFallbackProbe ) {
+                continue;
+            }
 
-            drawCmdBuilder.addSphereToRender( iblProbe->worldPosition, 2.0f );
+            drawCmdBuilder.addSphereToRender( iblProbe->worldPosition, 1.50f, drawCmdBuilder.MaterialDebugIBLProbe );
         }
     }
 #endif

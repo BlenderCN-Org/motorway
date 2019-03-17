@@ -1,4 +1,5 @@
 #include <MathsHelpers.hlsli>
+#include <PhotometricHelpers.hlsli>
 
 TextureCubeArray g_IBLProbeArray : register( t0 );
 
@@ -81,7 +82,7 @@ float4 integrateDiffuseCube( in float3 N )
         importanceSampleCosDir( eta, N, L, NdotL, pdf );
 
         if ( NdotL > 0 ) {
-            accBrdf += g_IBLProbeArray.SampleLevel( g_BilinearSampler, float4( L, probeIndex ), 0 ).rgb;
+            accBrdf += DecodeRGBD( g_IBLProbeArray.SampleLevel( g_BilinearSampler, float4( L, probeIndex ), 0 ) );
         }
     }
 
@@ -179,9 +180,9 @@ float3 IntegrateCubeLDOnly( in float3 V, in float3 N, in float roughness )
                 mipLevel = clamp( 0.5 * log2( omegaS / omegaP ), 0, mipCount );
             }
 
-            float4 Li = g_IBLProbeArray.SampleLevel( g_BilinearSampler, float4( L, probeIndex ), mipLevel );
+            float3 Li = DecodeRGBD( g_IBLProbeArray.SampleLevel( g_BilinearSampler, float4( L, probeIndex ), mipLevel ) );
 
-            accBrdf += Li.rgb * NdotL;
+            accBrdf += Li * NdotL;
             accBrdfWeight += NdotL;
         }
     }

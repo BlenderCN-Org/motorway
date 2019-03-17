@@ -151,7 +151,11 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
                     cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
                     cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                    cmdList->drawIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.indiceBufferOffset );
+                    cmdList->drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+
+                    // Update vector buffer offset
+                    instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
+                    cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
                     renderDevice->destroyRenderPass( renderPass );
                 }

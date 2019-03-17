@@ -27,7 +27,7 @@
 // Generate a strongly typed enum lazily (create the enum, enum to string convertion, hashcode to enum convertion, stream operator overload, etc.)
 //      optionList: an user defined macro holding each enum member name (e.g. #define optionList( operator ) operator( ENUM_MEMBER_1 ) operator( ENUM_MEMBER_2 ))
 #define NYA_LAZY_ENUM( optionList )\
-enum e##optionList : int32_t\
+enum e##optionList : uint32_t\
 {\
     optionList( NYA_GEN_ENUM_ENTRY )\
     optionList##_COUNT\

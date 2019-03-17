@@ -1,19 +1,19 @@
-Name: "Default World Material"
+Name: "Default HUD Material"
 Version: 1
 
-ShadingModel: SHADING_MODEL_STANDARD
-WriteVelocity: True
-EnableAlphaTest: False
+ShadingModel: SHADING_MODEL_HUD_STANDARD
+WriteVelocity: False
+EnableAlphaTest: True
 EnableAlphaToCoverage: False
 IsDoubleFace: False
-EnableAlphaBlend: False
-CastShadow: True
-ReceiveShadow: True
+EnableAlphaBlend: True
+CastShadow: False
+ReceiveShadow: False
 ScaleUVByModelScale: False
 
 Layer 
 {
-    BaseColor: { 0.42, 0.42, 0.42 } ;"GameData/textures/default.dds"
+    BaseColor: "GameData/textures/default.dds"
     AlphaMask: None
     Reflectance: 1.00
     Refraction: 0.000000

@@ -28,6 +28,7 @@ class ProbeCaptureModule;
 class AutomaticExposureModule;
 class BrunetonSkyRenderModule;
 class TextRenderingModule;
+class LineRenderingModule;
 class ShaderCache;
 class RenderPipeline;
 class GraphicsAssetCache;
@@ -139,12 +140,15 @@ public:
 
     void                        drawWorld( RenderDevice* renderDevice, const float deltaTime );
     DrawCmd&                    allocateDrawCmd();
+
     DrawCmd&                    allocateSpherePrimitiveDrawCmd();
+    DrawCmd&                    allocateRectanglePrimitiveDrawCmd();
 
     void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     RenderPipeline&             allocateRenderPipeline( const Viewport& viewport, const CameraData* camera = nullptr );
 
+    LineRenderingModule*        LineRenderModule;
     TextRenderingModule*        TextRenderModule;
     BrunetonSkyRenderModule*    SkyRenderModule;
     AutomaticExposureModule*    automaticExposureModule;

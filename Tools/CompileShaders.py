@@ -300,20 +300,27 @@ compile_shader_PS( "Editor/IBLProbeConvolution" )
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
 compile_shader_PS( "CopyTexture" )
+compile_shader_VS( "LineRendering" )
+compile_shader_PS( "LineRendering" )
 
 compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X2", "NYA_USE_TAA" ] )
 compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X4", "NYA_USE_TAA" ] )
 compile_shader_PS( "MSAAResolve", [ "NYA_MSAA_X8", "NYA_USE_TAA" ] )
 
+# HUD
+compile_shader_VS( "HUD/Primitive" )
+compile_shader_PS( "HUD/Primitive" )
+
 # UI
 compile_shader_VS( "UI/SDFTextRendering" )
 compile_shader_PS( "UI/SDFTextRendering" )
 
-# Lighting
-compile_shader_CS( "Lighting/LightCulling" )
-compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
-compile_shader_VS( "Lighting/UberDepthOnly", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
-compile_shader_PS( "Lighting/UberDepthOnly" )
-compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
-compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_CLEAR_COAT", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
-compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_EMISSIVE", "NYA_PROBE_CAPTURE", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
+# # Lighting
+# compile_shader_CS( "Lighting/LightCulling" )
+# compile_shader_VS( "Lighting/Ubersurface", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
+# compile_shader_VS( "Lighting/UberDepthOnly", [ "NYA_SCALE_UV_BY_MODEL_SCALE" ] )
+# compile_shader_PS( "Lighting/UberDepthOnly" )
+# compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_STANDARD", "NYA_PROBE_CAPTURE", "NYA_ENCODE_RGBD", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
+# compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_CLEAR_COAT", "NYA_PROBE_CAPTURE", "NYA_ENCODE_RGBD", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
+# compile_shader_PS( "Lighting/Ubersurface", [ "NYA_EDITOR", "NYA_TERRAIN", "NYA_BRDF_EMISSIVE", "NYA_PROBE_CAPTURE", "NYA_ENCODE_RGBD", "NYA_USE_LOD_ALPHA_BLENDING", "NYA_USE_NORMAL_MAPPING", "NYA_RECEIVE_SHADOW", "NYA_CAST_SHADOW", "NYA_DEBUG_CSM_CASCADE" ] )
+# compile_shader_PS( "Lighting/Ubersurface", [ "NYA_DEBUG_IBL_PROBE", "NYA_ENCODE_RGBD" ] )

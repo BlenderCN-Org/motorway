@@ -22,6 +22,9 @@
 #include <Graphics/LightGrid.h>
 #include <Graphics/DrawCommandBuilder.h>
 
+#include <Graphics/RenderModules/TextRenderingModule.h>
+#include <Graphics/RenderModules/LineRenderingModule.h>
+
 #include <Framework/Cameras/FreeCamera.h>
 #include <Framework/Scene.h>
 #include <Framework/Mesh.h>
@@ -71,6 +74,8 @@ LightGrid*              g_LightGrid;
 Scene*                  g_SceneTest;
 FreeCamera*             g_FreeCamera;
 
+#include <Framework/GUI/Panel.h>
+
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
 NYA_ENV_OPTION_LIST( WindowMode, WIN_MODE_OPTION_LIST )
@@ -82,13 +87,6 @@ NYA_ENV_VAR( ImageQuality, 1.0f, float ) // "Image Quality Scale (in degrees) [0
 NYA_ENV_VAR( EnableVSync, false, bool ) // "Enable Vertical Synchronisation [false/true]"
 NYA_ENV_VAR( EnableTAA, false, bool ) // "Enable TemporalAntiAliasing [false/true]"
 NYA_ENV_VAR( MSAASamplerCount, 1, uint32_t ) // "MultiSampledAntiAliasing Sampler Count [1..8]"
-
-// Incomplete module declaration
-class TextRenderingModule
-{
-public:
-    void addOutlinedText( const char* text, float size, float x, float y, const nyaVec4f& textColor = nyaVec4f( 1, 1, 1, 1 ), const float outlineThickness = 0.80f );
-};
 
 void RegisterInputContexts()
 {
@@ -128,6 +126,7 @@ void RegisterInputContexts()
     }, 0 );
 }
 
+GUIPanel panelTest;
 void TestStuff()
 {
     NYA_CLOG << "Initializing stuff..." << std::endl;
@@ -150,14 +149,13 @@ void TestStuff()
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
 
-    auto& geometryTransform = g_SceneTest->TransformDatabase[meshTest.transform];
-
     auto& planeTest = g_SceneTest->allocateStaticGeometry();
 
     auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
+    auto& geometryTransform = g_SceneTest->TransformDatabase[planeTest.transform];
     geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
 
-    for ( int j = 0; j < 5; j++ ) {
+    /*for ( int j = 0; j < 5; j++ ) {
         for ( int i = 0; i < 6; i++ ) {
             PointLightData pointLightData;
             pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
@@ -171,7 +169,7 @@ void TestStuff()
             auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
             pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
         }
-    }
+    }*/
 
     DirectionalLightData sunLight = {};
     sunLight.isSunLight = true;
@@ -194,8 +192,8 @@ void TestStuff()
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
     IBLProbeData localProbe = {};
-    localProbe.worldPosition = { 4, 4, 0 };
-    localProbe.radius = 14.0f;
+    localProbe.worldPosition = { 0, 8, -2 };
+    localProbe.radius = 6.0f;
     localProbe.isFallbackProbe = false;
 
     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
@@ -206,6 +204,14 @@ void TestStuff()
 
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
+
+    panelTest.Position.x = 1280/2.0f;
+    panelTest.Position.y = 720/2.0f;
+
+    panelTest.Size.x = 128;
+    panelTest.Size.y = 128;
+
+    panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 }
 
 void InitializeIOSubsystems()
@@ -324,6 +330,10 @@ void InitializeRenderSubsystems()
     g_WorldRenderer->loadCachedResources( g_RenderDevice, g_ShaderCache, g_GraphicsAssetCache );
 
     g_RenderDevice->enableVerticalSynchronisation( EnableVSync );
+
+#if NYA_DEVBUILD
+    g_DrawCommandBuilder->loadDebugResources( g_GraphicsAssetCache );
+#endif
 }
 
 void InitializeAudioSubsystems()
@@ -415,7 +425,12 @@ void MainLoop()
             
             g_WorldRenderer->TextRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
             g_WorldRenderer->TextRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
-       
+            
+            g_WorldRenderer->LineRenderModule->addLine( nyaVec3f( 0, 0, 1 ), nyaVec3f( 64, 0, 1 ), 1.0f, nyaVec4f( 1, 0, 0, 1 ) );
+            g_WorldRenderer->LineRenderModule->addLine( nyaVec3f( 0, 0, 1 ), nyaVec3f( 64, 64, 1 ), 1.0f, nyaVec4f( 0, 1, 0, 1 ) );
+
+            panelTest.collectDrawCmds( *g_DrawCommandBuilder );
+
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
             g_WorldRenderer->TextRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
 
@@ -434,7 +449,8 @@ void Shutdown()
     g_LightGrid->destroy( g_RenderDevice );
     g_WorldRenderer->destroy( g_RenderDevice );
     g_GraphicsAssetCache->destroy();
-    
+
+    nya::core::free( g_GlobalAllocator, g_DrawCommandBuilder );
     nya::core::free( g_GlobalAllocator, g_SceneTest );
     nya::core::free( g_GlobalAllocator, g_GraphicsAssetCache );
     nya::core::free( g_GlobalAllocator, g_WorldRenderer );

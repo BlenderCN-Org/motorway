@@ -53,15 +53,41 @@ void PrimitiveCache::createPrimitivesBuffer( RenderDevice* renderDevice )
     spherePrimitive.indiceBufferOffset = 0u;
     spherePrimitive.vertexBuffer = renderDevice->createBuffer( sphereVboDesc, spherePrimitiveData.vertices.data() );
     spherePrimitive.indiceBuffer = renderDevice->createBuffer( sphereIboDesc, spherePrimitiveData.indices.data() );
+
+
+    PrimitiveData rectanglePrimitiveData = nya::maths::CreateQuadPrimitive();
+
+    BufferDesc rectangleVboDesc = {};
+    rectangleVboDesc.type = BufferDesc::VERTEX_BUFFER;
+    rectangleVboDesc.size = rectanglePrimitiveData.vertices.size() * sizeof( float );
+    rectangleVboDesc.stride = 8 * sizeof( float );
+
+    BufferDesc rectangleIboDesc = {};
+    rectangleIboDesc.type = BufferDesc::INDICE_BUFFER;
+    rectangleIboDesc.size = rectanglePrimitiveData.indices.size() * sizeof( uint32_t );
+    rectangleIboDesc.stride = sizeof( uint32_t );
+
+    rectanglePrimitive.indiceCount = static_cast< uint32_t >( rectanglePrimitiveData.indices.size() );
+    rectanglePrimitive.indiceBufferOffset = 0u;
+    rectanglePrimitive.vertexBuffer = renderDevice->createBuffer( rectangleVboDesc, rectanglePrimitiveData.vertices.data() );
+    rectanglePrimitive.indiceBuffer = renderDevice->createBuffer( rectangleIboDesc, rectanglePrimitiveData.indices.data() );
 }
 
 void PrimitiveCache::destroy( RenderDevice* renderDevice )
 {
     renderDevice->destroyBuffer( spherePrimitive.vertexBuffer );
     renderDevice->destroyBuffer( spherePrimitive.indiceBuffer );
+
+    renderDevice->destroyBuffer( rectanglePrimitive.vertexBuffer );
+    renderDevice->destroyBuffer( rectanglePrimitive.indiceBuffer );
 }
 
 const PrimitiveCache::Primitive& PrimitiveCache::getSpherePrimitive() const
 {
     return spherePrimitive;
+}
+
+const PrimitiveCache::Primitive& PrimitiveCache::getRectanglePrimitive() const
+{
+    return rectanglePrimitive;
 }

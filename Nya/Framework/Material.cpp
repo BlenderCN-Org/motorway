@@ -77,6 +77,7 @@ void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint
 Material::Material( const nyaString_t& materialName )
     : name( materialName )
     , builderVersion( 0 )
+    , stageCustomFlagset( "" )
     , defaultPipelineState( nullptr )
     , probeCapturePipelineState( nullptr )
     , defaultTextureSet{ nullptr }
@@ -86,12 +87,13 @@ Material::Material( const nyaString_t& materialName )
     , depthOnlyTextureSetCount( 0 )
     , sortKey( 0u )
 {
-
+    sortKeyInfos.shadingModel = eShadingModel::SHADING_MODEL_NONE;
 }
 
 Material::~Material()
 {
     name.clear();
+    stageCustomFlagset.clear();
     defaultPipelineState = nullptr;
     probeCapturePipelineState = nullptr;
     depthOnlyPipelineState = nullptr;
@@ -104,7 +106,7 @@ void GetShaderStage( const eShadingModel shadingModel, std::string& standardVert
     case eShadingModel::SHADING_MODEL_STANDARD:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD";
-        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD+NYA_PROBE_CAPTURE";
+        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_STANDARD+NYA_PROBE_CAPTURE+NYA_ENCODE_RGBD";
         depthVertexStage = "Lighting/UberDepthOnly";
         depthPixelStage = "Lighting/UberDepthOnly";
         break;
@@ -112,15 +114,24 @@ void GetShaderStage( const eShadingModel shadingModel, std::string& standardVert
     case eShadingModel::SHADING_MODEL_CLEAR_COAT:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_CLEAR_COAT";
-        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_CLEAR_COAT+NYA_PROBE_CAPTURE";
+        probePixelStage = "Lighting/Ubersurface+NYA_EDITOR+NYA_BRDF_CLEAR_COAT+NYA_PROBE_CAPTURE+NYA_ENCODE_RGBD";
         depthVertexStage = "Lighting/UberDepthOnly";
         depthPixelStage = "Lighting/UberDepthOnly";
         break;
 
+    case eShadingModel::SHADING_MODEL_HUD_STANDARD:
+        standardVertexStage = "HUD/Primitive";
+        standardPixelStage = "HUD/Primitive";
+        probePixelStage = "Error";
+        depthVertexStage = "Lighting/UberDepthOnly";
+        depthPixelStage = "Lighting/UberDepthOnly";
+        break;
+
+    case eShadingModel::SHADING_MODEL_NONE:
     default:
         standardVertexStage = "Lighting/Ubersurface";
         standardPixelStage = "Lighting/Ubersurface";
-        probePixelStage = "Lighting/Ubersurface+NYA_PROBE_CAPTURE";
+        probePixelStage = "Lighting/Ubersurface+NYA_PROBE_CAPTURE+NYA_ENCODE_RGBD";
         depthVertexStage = "Lighting/UberDepthOnly";
         depthPixelStage = "Lighting/UberDepthOnly";
         break;
@@ -132,21 +143,25 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     std::string compiledVertexStage, compiledPixelStage, compiledProbePixelStage, compiledDepthVertexStage, compiledDepthPixelStage;
     GetShaderStage( sortKeyInfos.shadingModel, compiledVertexStage, compiledPixelStage, compiledProbePixelStage, compiledDepthVertexStage, compiledDepthPixelStage );
 
-    if ( sortKeyInfos.scaleUVByModelScale ) {
-        compiledVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
-        compiledDepthVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
-    }
+    if ( !stageCustomFlagset.empty() ) {
+        compiledPixelStage.append( stageCustomFlagset );
+    } else {
+        if ( sortKeyInfos.scaleUVByModelScale ) {
+            compiledVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
+            compiledDepthVertexStage.append( "+NYA_SCALE_UV_BY_MODEL_SCALE" );
+        }
 
-    if ( sortKeyInfos.useLodAlphaBlending ) {
-        compiledPixelStage.append( "+NYA_USE_LOD_ALPHA_BLENDING" );
-    }
+       /* if ( sortKeyInfos.useLodAlphaBlending ) {
+            compiledPixelStage.append( "+NYA_USE_LOD_ALPHA_BLENDING" );
+        }*/
 
-    if ( editableMaterialData.ReceiveShadow ) {
-        compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
-    }
+        if ( editableMaterialData.ReceiveShadow ) {
+            compiledPixelStage.append( "+NYA_RECEIVE_SHADOW" );
+        }
 
-    if ( editableMaterialData.CastShadow ) {
-        compiledPixelStage.append( "+NYA_CAST_SHADOW" );
+        if ( editableMaterialData.CastShadow ) {
+            compiledPixelStage.append( "+NYA_CAST_SHADOW" );
+        }
     }
 
     // Default PSO
@@ -156,7 +171,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.pixelShader = shaderCache->getOrUploadStage( compiledPixelStage, eShaderStage::SHADER_STAGE_PIXEL );
     defaultPipelineStateDesc.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     defaultPipelineStateDesc.rasterizerState.fillMode = eFillMode::FILL_MODE_SOLID;
-    defaultPipelineStateDesc.rasterizerState.cullMode = ( sortKeyInfos.isDoubleFace ) ? eCullMode::CULL_MODE_NONE : eCullMode::CULL_MODE_FRONT;
+    defaultPipelineStateDesc.rasterizerState.cullMode = ( editableMaterialData.IsDoubleFace ) ? eCullMode::CULL_MODE_NONE : eCullMode::CULL_MODE_FRONT;
     defaultPipelineStateDesc.rasterizerState.useTriangleCCW = true;
     defaultPipelineStateDesc.depthStencilState.enableDepthTest = true;
     defaultPipelineStateDesc.depthStencilState.enableDepthWrite = true;
@@ -164,8 +179,8 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.inputLayout[0] = { 0, eImageFormat::IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
     defaultPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
     defaultPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
-
-    if ( sortKeyInfos.isAlphaBlended || sortKeyInfos.useAlphaToCoverage ) {
+     
+    if ( editableMaterialData.EnableAlphaBlend || editableMaterialData.AlphaToCoverage ) {
         defaultPipelineStateDesc.blendState.blendConfColor.operation = eBlendOperation::BLEND_OPERATION_ADD;
         defaultPipelineStateDesc.blendState.blendConfColor.source = eBlendSource::BLEND_SOURCE_SRC_ALPHA;
         defaultPipelineStateDesc.blendState.blendConfColor.dest = eBlendSource::BLEND_SOURCE_INV_SRC_ALPHA;
@@ -174,9 +189,9 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         defaultPipelineStateDesc.blendState.blendConfAlpha.source = eBlendSource::BLEND_SOURCE_INV_DEST_ALPHA;
         defaultPipelineStateDesc.blendState.blendConfAlpha.dest = eBlendSource::BLEND_SOURCE_ONE;
 
-        defaultPipelineStateDesc.blendState.enableBlend = sortKeyInfos.isAlphaBlended;
+        defaultPipelineStateDesc.blendState.enableBlend = editableMaterialData.EnableAlphaBlend;
         defaultPipelineStateDesc.blendState.sampleMask = ~0;
-        defaultPipelineStateDesc.blendState.enableAlphaToCoverage = sortKeyInfos.useAlphaToCoverage;
+        defaultPipelineStateDesc.blendState.enableAlphaToCoverage = editableMaterialData.AlphaToCoverage;
     }
 
     defaultPipelineState = renderDevice->createPipelineState( defaultPipelineStateDesc );
@@ -425,6 +440,11 @@ void Material::bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDe
 
         textureBindIndex++;
     }
+}
+
+void Material::setCustomFlagset( const std::string& customFlagset )
+{
+    stageCustomFlagset = customFlagset;
 }
 
 #if NYA_DEVBUILD

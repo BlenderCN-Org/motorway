@@ -27,11 +27,14 @@ class VertexArrayObject;
 class LightGrid;
 class PoolAllocator;
 class StackAllocator;
+class Material;
+class GraphicsAssetCache;
 
 struct CameraData;
 struct IBLProbeData;
 
 #include <stack>
+
 #include <Maths/Vector.h>
 #include <Maths/Matrix.h>
 
@@ -49,17 +52,28 @@ enum eProbeCaptureStep : uint16_t
 
 class DrawCommandBuilder
 {
+// TODO Cleaner way to store debug/devbuild specific resources?
+#if NYA_DEVBUILD
+public:
+    Material*                   MaterialDebugIBLProbe;
+#endif
+
 public:
                                 DrawCommandBuilder( BaseAllocator* allocator );
                                 DrawCommandBuilder( DrawCommandBuilder& ) = delete;
                                 DrawCommandBuilder& operator = ( DrawCommandBuilder& ) = delete;
                                 ~DrawCommandBuilder();
-        
+
+#if NYA_DEVBUILD
+    void                        loadDebugResources( GraphicsAssetCache* graphicsAssetCache );
+#endif
+
     void                        addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
-    void                        addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius );
+    void                        addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius, Material* material );
     void                        addCamera( CameraData* cameraData );
     void                        addIBLProbeToCapture( const IBLProbeData* probeData );
-    
+    void                        addHUDRectangle( const nyaVec2f& positionScreenSpace, const nyaVec2f& dimensionScreenSpace, const float rotationInRadians, Material* material );
+
     void                        buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
 
 private:
@@ -108,13 +122,21 @@ private:
         }
     };
 
+    struct PrimitiveInstance {
+        nyaMat4x4f      modelMatrix;
+        Material*       material;
+    };
+
 private:
     BaseAllocator*                          memoryAllocator;
 
     PoolAllocator*                          cameras;
     PoolAllocator*                          meshes;
     PoolAllocator*                          spheresToRender;
-    nyaMat4x4f sphereToRender[8192];
+    nyaMat4x4f                              sphereToRender[8192];
+
+    PoolAllocator*                          primitivesToRender;
+    nyaMat4x4f                              primitivesModelMatricess[8192];
 
     StackAllocator*                         probeCaptureCmdAllocator;
     StackAllocator*                         probeConvolutionCmdAllocator;
@@ -125,4 +147,5 @@ private:
 private:
     void                        resetEntityCounters();
     void                        buildMeshDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx, const uint8_t layer, const uint8_t viewportLayer );
+    void                        buildHUDDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx );
 };

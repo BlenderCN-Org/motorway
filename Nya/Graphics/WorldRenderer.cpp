@@ -26,6 +26,7 @@
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderModules/TextRenderingModule.h"
 #include "RenderModules/AutomaticExposureRenderModule.h"
+#include "RenderModules/LineRenderingModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
 #include "RenderPasses/BlurPyramidRenderPass.h"
@@ -105,6 +106,7 @@ WorldRenderer::WorldRenderer( BaseAllocator* allocator )
     : primitiveCache( nya::core::allocate<PrimitiveCache>( allocator, allocator ) )
     , renderPipelineCount( 0u )
     , drawCmdAllocator( nya::core::allocate<PoolAllocator>( allocator, sizeof( DrawCmd ), 4, sizeof( DrawCmd ) * MAX_DRAW_CMD_COUNT, allocator->allocate( sizeof( DrawCmd ) * 8192 ) ) )
+    , LineRenderModule( nya::core::allocate<LineRenderingModule>( allocator ) )
     , TextRenderModule( nya::core::allocate<TextRenderingModule>( allocator ) )
     , SkyRenderModule( nya::core::allocate<BrunetonSkyRenderModule>( allocator ) )
     , automaticExposureModule( nya::core::allocate<AutomaticExposureModule>( allocator ) )
@@ -128,6 +130,7 @@ void WorldRenderer::destroy( RenderDevice* renderDevice )
     primitiveCache->destroy( renderDevice );
 
     // Free render modules resources
+    LineRenderModule->destroy( renderDevice );
     TextRenderModule->destroy( renderDevice );
     SkyRenderModule->destroy( renderDevice );
     automaticExposureModule->destroy( renderDevice );
@@ -197,10 +200,27 @@ DrawCmd& WorldRenderer::allocateSpherePrimitiveDrawCmd()
     return cmd;
 }
 
+DrawCmd& WorldRenderer::allocateRectanglePrimitiveDrawCmd()
+{
+    DrawCmd& cmd = allocateDrawCmd();
+
+    const auto& spherePrimitive = primitiveCache->getRectanglePrimitive();
+
+    DrawCommandInfos& infos = cmd.infos;
+    infos.vertexBuffer = spherePrimitive.vertexBuffer;
+    infos.indiceBuffer = spherePrimitive.indiceBuffer;
+    infos.indiceBufferOffset = spherePrimitive.indiceBufferOffset;
+    infos.indiceBufferCount = spherePrimitive.indiceCount;
+    infos.alphaDitheringValue = 1.0f;
+
+    return cmd;
+}
+
 void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     // Load render modules resources (cached pipeline states, LUTs, precomputed data tables, etc.)
     SkyRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
+    LineRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     TextRenderModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     automaticExposureModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );
     probeCaptureModule->loadCachedResources( renderDevice, shaderCache, graphicsAssetCache );

@@ -38,11 +38,11 @@ namespace nya
     namespace graphics
     {
 #define ShadingModel( model )\
+        model( SHADING_MODEL_NONE )\
         model( SHADING_MODEL_STANDARD )\
         model( SHADING_MODEL_HUD_STANDARD )\
         model( SHADING_MODEL_EMISSIVE )\
-        model( SHADING_MODEL_CLEAR_COAT )\
-        model( SHADING_MODEL_TERRAIN_STANDARD )
+        model( SHADING_MODEL_CLEAR_COAT )
 
         NYA_LAZY_ENUM( ShadingModel );
 #undef ShadingModel
@@ -90,6 +90,11 @@ public:
     void                        bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
     void                        bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
 
+    // NOTE -This function should only be used in case of override/debug materials
+    //      -This function implicitly drops regular flagset (based on sortkey infos)
+    //      -Flagset should be formated like a regular permutation flag (e.g.: "+FLAG_1+FLAG_2")
+    void                        setCustomFlagset( const std::string& customFlagset );
+
 #if NYA_DEVBUILD
     const EditorBuffer&         getEditorBuffer() const;
 #endif
@@ -97,6 +102,8 @@ public:
 private:
     nyaString_t                 name;
     int32_t                     builderVersion;
+
+    std::string                 stageCustomFlagset;
 
     PipelineState*              defaultPipelineState;
     PipelineState*              probeCapturePipelineState;

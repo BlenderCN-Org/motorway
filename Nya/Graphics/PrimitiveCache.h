@@ -43,9 +43,11 @@ public:
     void                    destroy( RenderDevice* renderDevice );
 
     const Primitive&        getSpherePrimitive() const;
+    const Primitive&        getRectanglePrimitive() const;
 
 private:
     BaseAllocator*          memoryAllocator;
 
     Primitive               spherePrimitive;
+    Primitive               rectanglePrimitive;
 };

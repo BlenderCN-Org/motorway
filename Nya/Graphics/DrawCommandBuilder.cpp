@@ -30,15 +30,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "WorldRenderer.h"
 #include "RenderPipeline.h"
 #include "LightGrid.h"
+#include "GraphicsAssetCache.h"
 
 #include <Rendering/RenderDevice.h>
 
 #include "RenderModules/BrunetonSkyRenderModule.h"
 #include "RenderModules/AutomaticExposureRenderModule.h"
 #include "RenderModules/ProbeCaptureModule.h"
+#include "RenderModules/LineRenderingModule.h"
 #include "RenderModules/TextRenderingModule.h"
 #include "RenderPasses/PresentRenderPass.h"
 #include "RenderPasses/LightRenderPass.h"
+#include "RenderPasses/HUDRenderPass.h"
 #include "RenderPasses/CopyRenderPass.h"
 #include "RenderPasses/FinalPostFxRenderPass.h"
 #include "RenderPasses/BlurPyramidRenderPass.h"
@@ -141,7 +144,8 @@ DrawCommandBuilder::DrawCommandBuilder( BaseAllocator* allocator )
 {
     cameras = nya::core::allocate<PoolAllocator>( allocator, sizeof( CameraData* ), 4, 8 * sizeof( CameraData* ), allocator->allocate( 8 * sizeof( CameraData* ) ) );
     meshes = nya::core::allocate<PoolAllocator>( allocator, sizeof( MeshInstance ), 4, 4096 * sizeof( MeshInstance ), allocator->allocate( 4096 * sizeof( MeshInstance ) ) );
-    spheresToRender = nya::core::allocate<PoolAllocator>( allocator, sizeof( nyaMat4x4f ), 4, 4096 * sizeof( nyaMat4x4f ), allocator->allocate( 4096 * sizeof( nyaMat4x4f ) ) );
+    spheresToRender = nya::core::allocate<PoolAllocator>( allocator, sizeof( PrimitiveInstance ), 4, 4096 * sizeof( PrimitiveInstance ), allocator->allocate( 4096 * sizeof( PrimitiveInstance ) ) );
+    primitivesToRender = nya::core::allocate<PoolAllocator>( allocator, sizeof( PrimitiveInstance ), 4, 4096 * sizeof( PrimitiveInstance ), allocator->allocate( 4096 * sizeof( PrimitiveInstance ) ) );
 
     probeCaptureCmdAllocator = nya::core::allocate<StackAllocator>( allocator, 16 * 6 * sizeof( IBLProbeCaptureCommand ), allocator->allocate( 16 * 6 * sizeof( IBLProbeCaptureCommand ) ) );
     probeConvolutionCmdAllocator = nya::core::allocate<StackAllocator>( allocator, 16 * 8 * 6 * sizeof( IBLProbeConvolutionCommand ), allocator->allocate( 16 * 8 * 6 * sizeof( IBLProbeConvolutionCommand ) ) );
@@ -151,9 +155,22 @@ DrawCommandBuilder::~DrawCommandBuilder()
 {
     nya::core::free( memoryAllocator, cameras );
     nya::core::free( memoryAllocator, meshes );
+    nya::core::free( memoryAllocator, spheresToRender );
+    nya::core::free( memoryAllocator, primitivesToRender );
     nya::core::free( memoryAllocator, probeCaptureCmdAllocator );
     nya::core::free( memoryAllocator, probeConvolutionCmdAllocator );
+
+#if NYA_DEVBUILD
+    MaterialDebugIBLProbe = nullptr;
+#endif
 }
+
+#if NYA_DEVBUILD
+void DrawCommandBuilder::loadDebugResources( GraphicsAssetCache* graphicsAssetCache )
+{
+    MaterialDebugIBLProbe = graphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/Debug/IBLProbe.mat" ) );
+}
+#endif
 
 void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix )
 {
@@ -162,10 +179,11 @@ void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const ny
     mesh->modelMatrix = modelMatrix;
 }
 
-void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius )
+void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius, Material* material )
 {
-    auto sphereMatrix = nya::core::allocate<nyaMat4x4f>( spheresToRender );
-    *sphereMatrix = nya::maths::MakeScaleMat( sphereRadius ) * nya::maths::MakeTranslationMat( sphereCenter );
+    auto sphereMatrix = nya::core::allocate<PrimitiveInstance>( spheresToRender );
+    sphereMatrix->modelMatrix = nya::maths::MakeTranslationMat( sphereCenter ) *  nya::maths::MakeScaleMat( sphereRadius );
+    sphereMatrix->material = material;
 }
 
 void DrawCommandBuilder::addCamera( CameraData* cameraData )
@@ -196,11 +214,26 @@ void DrawCommandBuilder::addIBLProbeToCapture( const IBLProbeData* probeData )
     }
 }
 
+void DrawCommandBuilder::addHUDRectangle( const nyaVec2f& positionScreenSpace, const nyaVec2f& dimensionScreenSpace, const float rotationInRadians, Material* material )
+{
+    nyaMat4x4f mat1 = nya::maths::MakeTranslationMat( nyaVec3f( positionScreenSpace, 0.0f ) );
+
+    nyaMat4x4f mat2 = nya::maths::MakeTranslationMat( nyaVec3f( 0.5f * dimensionScreenSpace.x, 0.5f * dimensionScreenSpace.y, 0.0f ), mat1 );
+    nyaMat4x4f mat3 = nya::maths::MakeRotationMatrix( rotationInRadians, nyaVec3f( 0.0f, 0.0f, 1.0f ), mat2 );
+    nyaMat4x4f mat4 = nya::maths::MakeTranslationMat( nyaVec3f( -0.5f * dimensionScreenSpace.x, -0.5f * dimensionScreenSpace.y, 0.0f ), mat3 );
+
+    nyaMat4x4f mat5 = nya::maths::MakeScaleMat( nyaVec3f( dimensionScreenSpace, 1.0f ), mat4 );
+
+    auto primInstance = nya::core::allocate<PrimitiveInstance>( primitivesToRender );
+    primInstance->modelMatrix = mat5;
+    primInstance->material = material;
+}
+
 void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid )
 {
     NYA_PROFILE_FUNCTION
 
-        uint32_t cameraIdx = 0;
+    uint32_t cameraIdx = 0;
     CameraData** cameraArray = static_cast<CameraData**>( cameras->getBaseAddress() );
     const size_t cameraCount = cameras->getAllocationCount();
 
@@ -235,8 +268,10 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
             auto blurPyramid = AddBlurPyramidRenderPass( &renderPipeline, resolvedTarget, static_cast<uint32_t>( camera->viewportSize.x ), static_cast<uint32_t>( camera->viewportSize.y ) );
 
             // NOTE UI Rendering should be done in linear space! (once async compute is implemented, UI rendering will be parallelized with PostFx)
-            auto hudRenderTarget = worldRenderer->TextRenderModule->renderText( &renderPipeline, resolvedTarget );
-
+            auto hudRenderTarget = AddHUDRenderPass( &renderPipeline, resolvedTarget );
+            hudRenderTarget = worldRenderer->TextRenderModule->renderText( &renderPipeline, hudRenderTarget );
+            hudRenderTarget = worldRenderer->LineRenderModule->addLineRenderPass( &renderPipeline, hudRenderTarget );
+            
             auto postFxRenderTarget = AddFinalPostFxRenderPass( &renderPipeline, resolvedTarget, blurPyramid );
             AddPresentRenderPass( &renderPipeline, postFxRenderTarget );
         }
@@ -264,6 +299,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
         // Cull static mesh instances (world viewport)
         buildMeshDrawCmds( worldRenderer, camera, static_cast< uint8_t >( cameraIdx ), DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
+        buildHUDDrawCmds( worldRenderer, camera, static_cast< uint8_t >( cameraIdx ) );
     }
 
     if ( !probeCaptureCmds.empty() ) {
@@ -271,7 +307,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
         // Tweak probe field of view to avoid visible seams
         const float ENV_PROBE_FOV = 2.0f * atanf( IBL_PROBE_DIMENSION / ( IBL_PROBE_DIMENSION - 0.5f ) );
-        constexpr float ENV_PROBE_ASPECT_RATIO = 1.0f;
+        constexpr float ENV_PROBE_ASPECT_RATIO = ( IBL_PROBE_DIMENSION / static_cast<float>( IBL_PROBE_DIMENSION ) );
 
         CameraData probeCamera = {};
         probeCamera.worldPosition = cmd->Probe->worldPosition;
@@ -369,13 +405,11 @@ void DrawCommandBuilder::resetEntityCounters()
     cameras->clear();
     meshes->clear();
     spheresToRender->clear();
+    primitivesToRender->clear();
 }
 
 void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx, const uint8_t layer, const uint8_t viewportLayer )
 {
-    // TEST TEST TEST
-    Material* shitTest = nullptr;
-
     MeshInstance* meshesArray = static_cast<MeshInstance*>( meshes->getBaseAddress() );
     const size_t meshCount = meshes->getAllocationCount();
     for ( uint32_t meshIdx = 0; meshIdx < meshCount; meshIdx++ ) {
@@ -409,9 +443,6 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
                 key.viewportLayer = viewportLayer;
                 key.viewportId = cameraIdx;
 
-                // TEST TEST TEST
-                shitTest = subMesh.material;
-
                 DrawCommandInfos& infos = drawCmd.infos;
                 infos.material = subMesh.material;
                 infos.vertexBuffer = vertexBuffer;
@@ -425,25 +456,49 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
         }
     }
 
-    // TEST TEST TEST
-    if ( shitTest == nullptr ) return;
-
-    nyaMat4x4f* sphereToRenderArray = static_cast<nyaMat4x4f*>( spheresToRender->getBaseAddress() );
+    PrimitiveInstance* sphereToRenderArray = static_cast<PrimitiveInstance*>( spheresToRender->getBaseAddress() );
     const size_t sphereCount = spheresToRender->getAllocationCount();
+
     for ( uint32_t sphereIdx = 0; sphereIdx < sphereCount; sphereIdx++ ) {
-        sphereToRender[sphereIdx] = sphereToRenderArray[sphereIdx].transpose();
+        sphereToRender[sphereIdx] = sphereToRenderArray[sphereIdx].modelMatrix.transpose();
+
+        const nyaVec3f instancePosition = nya::maths::ExtractTranslation( sphereToRender[sphereIdx] );
+        const float distanceToCamera = nyaVec3f::distanceSquared( camera->worldPosition, instancePosition );
+
+        DrawCmd& drawCmd = worldRenderer->allocateSpherePrimitiveDrawCmd();
+        drawCmd.infos.material = sphereToRenderArray[sphereIdx].material;
+        drawCmd.infos.instanceCount = static_cast<uint32_t>( 1u );
+        drawCmd.infos.modelMatrix = &sphereToRender[sphereIdx];
+
+        auto& key = drawCmd.key.bitfield;
+        key.materialSortKey = sphereToRenderArray[sphereIdx].material->getSortKey();
+        key.depth = DepthToBits( distanceToCamera );
+        key.sortOrder = DrawCommandKey::SORT_FRONT_TO_BACK;
+        key.layer = static_cast< DrawCommandKey::Layer >( layer );
+        key.viewportLayer = viewportLayer;
+        key.viewportId = cameraIdx;
     }
+}
 
-    DrawCmd& drawCmd = worldRenderer->allocateSpherePrimitiveDrawCmd();
-    drawCmd.infos.material = shitTest;
-    drawCmd.infos.instanceCount = static_cast<uint32_t>( sphereCount );
-    drawCmd.infos.modelMatrix = sphereToRender;
+void DrawCommandBuilder::buildHUDDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx )
+{
+    PrimitiveInstance* primitivesToRenderArray = static_cast<PrimitiveInstance*>( primitivesToRender->getBaseAddress() );
+    const size_t primitiveCount = primitivesToRender->getAllocationCount();
 
-    auto& key = drawCmd.key.bitfield;
-    key.materialSortKey = ~0u;
-    key.depth = DepthToBits( 0.0f );
-    key.sortOrder = DrawCommandKey::SORT_FRONT_TO_BACK;
-    key.layer = static_cast< DrawCommandKey::Layer >( layer );
-    key.viewportLayer = viewportLayer;
-    key.viewportId = cameraIdx;
+    for ( uint32_t primIdx = 0; primIdx < primitiveCount; primIdx++ ) {
+        primitivesModelMatricess[primIdx] = primitivesToRenderArray[primIdx].modelMatrix.transpose();
+
+        DrawCmd& drawCmd = worldRenderer->allocateRectanglePrimitiveDrawCmd();
+        drawCmd.infos.material = primitivesToRenderArray[primIdx].material;
+        drawCmd.infos.instanceCount = static_cast< uint32_t >( 1u );
+        drawCmd.infos.modelMatrix = &primitivesModelMatricess[primIdx];
+
+        auto& key = drawCmd.key.bitfield;
+        key.materialSortKey = primitivesToRenderArray[primIdx].material->getSortKey();
+        key.depth = DepthToBits( 0.0f );
+        key.sortOrder = DrawCommandKey::SORT_BACK_TO_FRONT;
+        key.layer = DrawCommandKey::Layer::LAYER_HUD;
+        key.viewportLayer = DrawCommandKey::HUDViewportLayer::HUD_VIEWPORT_LAYER_DEFAULT;
+        key.viewportId = cameraIdx;
+    }
 }
