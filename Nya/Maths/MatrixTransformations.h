@@ -30,6 +30,7 @@ namespace nya
         nyaMat4x4f  MakeFovProj( const float fovY_radians, const float aspectWbyH, float zNear, float zFar );
 
         nyaMat4x4f  MakeTranslationMat( const nyaVec3f& translation, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
+        nyaMat4x4f  MakeRotationMatrix( const float rotation_radians, const nyaVec3f& axis, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
         nyaMat4x4f  MakeScaleMat( const nyaVec3f& scale, const nyaMat4x4f& matrix = nyaMat4x4f::Identity );
     
         nyaMat4x4f  MakeLookAtMat( const nyaVec3f& eye, const nyaVec3f& center, const nyaVec3f& up );

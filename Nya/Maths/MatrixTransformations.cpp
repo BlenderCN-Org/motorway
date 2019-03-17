@@ -57,6 +57,35 @@ namespace nya
 
             return translationMatrix;
         }
+        
+        nyaMat4x4f MakeRotationMatrix( const float rotation_radians, const nyaVec3f& axis, const nyaMat4x4f& matrix )
+        {
+            float cos_angle = cos( rotation_radians );
+            float sin_angle = sin( rotation_radians );
+
+            nyaVec3f axisNormalized = axis.normalize();
+            nyaVec3f tmp( axisNormalized * ( 1.0f - cos_angle ) );
+
+            nyaMat4x4f rotationMatrix( matrix );
+            rotationMatrix._00 = cos_angle + tmp[0] * axisNormalized[0];
+            rotationMatrix._01 = tmp[0] * axisNormalized[1] + sin_angle * axisNormalized[2];
+            rotationMatrix._02 = tmp[0] * axisNormalized[2] - sin_angle * axisNormalized[1];
+
+            rotationMatrix._10 = tmp[1] * axisNormalized[0] - sin_angle * axisNormalized[2];
+            rotationMatrix._11 = cos_angle + tmp[1] * axisNormalized[1];
+            rotationMatrix._12 = tmp[1] * axisNormalized[2] + sin_angle * axisNormalized[0];
+
+            rotationMatrix._20 = tmp[2] * axisNormalized[0] + sin_angle * axisNormalized[1];
+            rotationMatrix._21 = tmp[2] * axisNormalized[1] - sin_angle * axisNormalized[0];
+            rotationMatrix._22 = cos_angle + tmp[2] * axisNormalized[2];
+
+            nyaMat4x4f Result;
+            Result[0] = matrix[0] * rotationMatrix[0][0] + matrix[1] * rotationMatrix[0][1] + matrix[2] * rotationMatrix[0][2];
+            Result[1] = matrix[0] * rotationMatrix[1][0] + matrix[1] * rotationMatrix[1][1] + matrix[2] * rotationMatrix[1][2];
+            Result[2] = matrix[0] * rotationMatrix[2][0] + matrix[1] * rotationMatrix[2][1] + matrix[2] * rotationMatrix[2][2];
+            Result[3] = matrix[3];
+            return Result;
+        }
 
         nyaMat4x4f MakeScaleMat( const nyaVec3f& scale, const nyaMat4x4f& matrix )
         {

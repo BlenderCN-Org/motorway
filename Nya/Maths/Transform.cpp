@@ -71,7 +71,7 @@ void Transform::deserialize( FileSystemObject* stream )
 
     localTranslation = ExtractTranslation( localModelMatrix );
     localScale = ExtractScale( localModelMatrix );
-    //glm::decompose(  localRotation );
+    localRotation = nyaQuatf( ExtractRotation( localModelMatrix, localScale ) );
 
     isDirty = true;
 
@@ -102,6 +102,7 @@ void Transform::setLocalModelMatrix( const nyaMat4x4f& modelMat )
 
     localTranslation = ExtractTranslation( localModelMatrix );
     localScale = ExtractScale( localModelMatrix );
+    localRotation = nyaQuatf( ExtractRotation( localModelMatrix, localScale ) );
 }
 
 void Transform::setWorldTranslation( const nyaVec3f& newTranslation )
@@ -128,10 +129,7 @@ void Transform::setWorldModelMatrix( const nyaMat4x4f& modelMat )
     
     worldTranslation = ExtractTranslation( worldModelMatrix );
     worldScale = ExtractScale( worldModelMatrix );
-
-    //nyaVec3f skewDecomposed;
-    //nyaVec4f perspectiveDecomposed;
-    //glm::decompose( worldModelMatrix, worldScale, worldRotation, worldTranslation, skewDecomposed, perspectiveDecomposed );
+    worldRotation = nyaQuatf( ExtractRotation( worldModelMatrix, worldScale ) );
 }
 
 void Transform::translate( const nyaVec3f& translation )
@@ -146,6 +144,7 @@ void Transform::propagateParentModelMatrix( const nyaMat4x4f& parentModelMatrix 
 
     worldTranslation = ExtractTranslation( worldModelMatrix );
     worldScale = ExtractScale( worldModelMatrix );
+    worldRotation = nyaQuatf( ExtractRotation( worldModelMatrix, worldScale ) );
 }
 
 nyaMat4x4f* Transform::getWorldModelMatrix()

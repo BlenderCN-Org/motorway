@@ -266,6 +266,25 @@ namespace nya
 
             return Vector<Precision, 3>( xScale, yScale, zScale );
         }
+
+        template<typename Precision>
+        static constexpr Matrix<Precision,4,4> ExtractRotation( const Matrix<Precision, 4, 4>& l, const Vector<Precision, 3>& scale )
+        {
+            Matrix<Precision, 4, 4> rotationMatrix = Matrix<Precision, 4, 4>::Identity;
+            rotationMatrix._00 = l._00 / scale.x;
+            rotationMatrix._10 = l._10 / scale.x;
+            rotationMatrix._20 = l._20 / scale.x;
+
+            rotationMatrix._01 = l._01 / scale.y;
+            rotationMatrix._11 = l._11 / scale.y;
+            rotationMatrix._21 = l._21 / scale.y;
+
+            rotationMatrix._02 = l._02 / scale.z;
+            rotationMatrix._12 = l._12 / scale.z;
+            rotationMatrix._22 = l._22 / scale.z;
+
+            return rotationMatrix;
+        }
     }
 }
 

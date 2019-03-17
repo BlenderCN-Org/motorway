@@ -87,5 +87,11 @@ namespace nya
         {
             return x * ( 1.0f - a ) + y * a;
         }
+
+        template<typename T>
+        constexpr T sign( const T x )
+        {
+            return ( x >= 0.0f ) ? +1.0f : -1.0f;
+        }
     }
 }
