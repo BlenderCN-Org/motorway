@@ -22,6 +22,7 @@
 #if NYA_D3D11
 #include <Rendering/RenderDevice.h>
 #include "RenderDevice.h"
+#include "RenderPass.h"
 
 #include <Rendering/CommandList.h>
 #include "CommandList.h"
@@ -31,27 +32,6 @@
 #include "Buffer.h"
 
 #include <Core/Allocators/PoolAllocator.h>
-
-#include <d3d11.h>
-
-struct RenderPass
-{
-    ID3D11RenderTargetView* renderTargetViews[8];
-    ID3D11DepthStencilView* depthStencilView;
-
-    FLOAT clearValue[8+1][4];
-    bool clearTarget[8+1];
-    UINT rtvCount;
-
-    struct SRVStageBind
-    {
-        ID3D11ShaderResourceView* shaderResourceView[16];
-        UINT srvCount;
-    };
-
-    SRVStageBind    pixelStage;
-    SRVStageBind    computeStage;
-};
 
 RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
 {

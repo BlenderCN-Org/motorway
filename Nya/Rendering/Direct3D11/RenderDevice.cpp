@@ -27,6 +27,7 @@
 #include "CommandList.h"
 #include "ResourceList.h"
 #include "RenderTarget.h"
+#include "RenderPass.h"
 
 #include <Display/DisplayMode.h>
 #include <Display/DisplaySurface.h>
@@ -245,10 +246,10 @@ void RenderDevice::create( DisplaySurface* surface )
 
     renderContext->renderPassAllocator = nya::core::allocate<PoolAllocator>( 
         memoryAllocator, 
-        sizeof( ResourceList ), 
+        sizeof( RenderPass ),
         4, 
-        sizeof( ResourceList ) * 48, 
-        memoryAllocator->allocate( sizeof( ResourceList ) * 48 )
+        sizeof( RenderPass ) * 48,
+        memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
     );
 
     // Unbind backbuffer
