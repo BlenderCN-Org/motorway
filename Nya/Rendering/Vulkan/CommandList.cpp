@@ -32,17 +32,13 @@ CommandList::~CommandList()
 
 void CommandList::begin()
 {
-    VkCommandBufferInheritanceInfo vkCmdBufferInheritanceInfos = {};
-    vkCmdBufferInheritanceInfos.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-    vkCmdBufferInheritanceInfos.pNext = nullptr;
+    VkCommandBufferBeginInfo cmdBufferInfos = {};
+    cmdBufferInfos.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBufferInfos.pNext = nullptr;
+    cmdBufferInfos.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    cmdBufferInfos.pInheritanceInfo = nullptr;
 
-    VkCommandBufferBeginInfo vkCmdBufferInfos = {};
-    vkCmdBufferInfos.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    vkCmdBufferInfos.pNext = nullptr;
-    vkCmdBufferInfos.flags = 0;
-    vkCmdBufferInfos.pInheritanceInfo = &vkCmdBufferInheritanceInfos;
-
-    vkBeginCommandBuffer( NativeCommandList->cmdBuffer, &vkCmdBufferInfos );
+    vkBeginCommandBuffer( NativeCommandList->cmdBuffer, &cmdBufferInfos );
 }
 
 void CommandList::end()
@@ -72,6 +68,8 @@ void CommandList::dispatchCompute( const unsigned int threadCountX, const unsign
 
 void CommandList::setViewport( const Viewport& viewport )
 {
+    NativeCommandList->currentViewport = viewport;
+
     VkViewport vkViewport;
     vkViewport.x = static_cast<float>( viewport.X );
     vkViewport.y = static_cast<float>( viewport.Y );
@@ -85,6 +83,6 @@ void CommandList::setViewport( const Viewport& viewport )
 
 void CommandList::getViewport( Viewport& viewport )
 {
-
+    viewport = NativeCommandList->currentViewport;
 }
 #endif

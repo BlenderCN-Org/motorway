@@ -20,11 +20,18 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkShaderModule_T;
+struct Texture;
+struct VkImageView_T;
 
-struct Shader
+struct RenderTarget
 {
-    VkShaderModule_T*                   shaderModule;
-    VkShaderStageFlagBits               shaderStage;
+    Texture*            texture;
+    VkImageView_T*      textureRenderTargetView;
+    VkImageView_T**     textureRenderTargetViewPerSlice;
+    VkImageView_T***    textureRenderTargetViewPerSliceAndMipLevel;
+
+    // NOTE Keep these for image views release
+    int                 arraySize;
+    int                 mipCount;
 };
 #endif

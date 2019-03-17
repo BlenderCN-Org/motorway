@@ -23,12 +23,6 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
-#include "RenderDevice.h"
-#include "CommandList.h"
-
-#include <Display/DisplayMode.h>
-#include <Display/DisplaySurface.h>
-
 #if NYA_WIN
 #include <Display/DisplaySurfaceWin32.h>
 
@@ -41,9 +35,29 @@
 #define NYA_VK_SURF_EXT VK_KHR_XCB_SURFACE_EXTENSION_NAME
 #endif
 
+#include "RenderDevice.h"
+
+#include "CommandList.h"
+#include "ResourceList.h"
+#include "RenderPass.h"
+
+#include <Core/Allocators/PoolAllocator.h>
+
+#include <Display/DisplayMode.h>
+#include <Display/DisplaySurface.h>
+
+#include <Maths/Helpers.h>
+
 #include <vulkan/vulkan.h>
 
 using namespace nya::rendering;
+using namespace nya::maths;
+
+#define NYA_GET_INSTANCE_PROC_ADDR( inst, entrypoint )\
+        auto entrypoint = (PFN_vk##entrypoint)vkGetInstanceProcAddr( inst, "vk" #entrypoint );\
+        if ( entrypoint == nullptr ) {\
+            NYA_CERR << "vkGetInstanceProcAddr failed to find vk" << #entrypoint << std::endl; \
+        }
 
 bool IsInstanceExtensionAvailable( const nyaStringHash_t* extensions, const uint32_t extensionCount, const nyaStringHash_t extensionHashcode )
 {
@@ -85,7 +99,6 @@ VkResult CreateVkInstance( VkInstance& instance )
     instanceInfo.pApplicationInfo = &appInfo;
 
 #if NYA_DEVBUILD
-#ifndef NYA_NO_DEBUG_DEVICE
     constexpr char* validationLayers[1] = {
         "VK_LAYER_LUNARG_standard_validation"
     };
@@ -93,15 +106,91 @@ VkResult CreateVkInstance( VkInstance& instance )
     instanceInfo.enabledLayerCount = 1u;
     instanceInfo.ppEnabledLayerNames = validationLayers;
 #endif
-#endif
 
     return vkCreateInstance( &instanceInfo, 0, &instance );
+}
+
+#if NYA_DEVBUILD
+static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData )
+{
+    NYA_COUT << "[Vulkan] ";
+
+    if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT )
+        NYA_COUT << "[LOG] ";
+    else if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT )
+        NYA_COUT << "[INFO] ";
+    else if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT )
+        NYA_COUT << "[WARN] ";
+    else if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT )
+        NYA_COUT << "[ERROR] ";
+
+    NYA_COUT << pCallbackData->pMessageIdName << " : " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+#endif
+
+VkPresentModeKHR chooseSwapPresentMode( const std::vector<VkPresentModeKHR>& availablePresentModes )
+{
+    VkPresentModeKHR bestMode = VK_PRESENT_MODE_FIFO_KHR;
+
+    for ( const auto& availablePresentMode : availablePresentModes ) {
+        if ( availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR ) {
+            return availablePresentMode;
+        } else if ( availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR ) {
+            bestMode = availablePresentMode;
+        }
+    }
+
+    return bestMode;
+}
+
+bool IsDeviceExtAvailable( RenderContext* renderContext, const nyaStringHash_t extNameHashcode )
+{
+    if ( renderContext->deviceExtensionList.empty() ) {
+        uint32_t devExtCount = 0;
+        vkEnumerateDeviceExtensionProperties( renderContext->physicalDevice, nullptr, &devExtCount, nullptr );
+
+        if ( devExtCount == 0 ) {
+            return false;
+        }
+
+        renderContext->deviceExtensionList.resize( devExtCount );
+        vkEnumerateDeviceExtensionProperties( renderContext->physicalDevice, nullptr, &devExtCount, &renderContext->deviceExtensionList[0] );
+
+        NYA_CLOG << "Found " << devExtCount << " device extension(s)" << std::endl;
+    }
+
+    for ( auto& extension : renderContext->deviceExtensionList ) {
+        auto hashcode = nya::core::CRC32( extension.extensionName );
+
+        if ( hashcode == extNameHashcode ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+VkExtent2D chooseSwapExtent( const VkSurfaceCapabilitiesKHR& capabilities )
+{
+    if ( capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max() ) {
+        return capabilities.currentExtent;
+    } else {
+        VkExtent2D actualExtent = { 640, 480 };
+
+        actualExtent.width = max( capabilities.minImageExtent.width, min( capabilities.maxImageExtent.width, actualExtent.width ) );
+        actualExtent.height = max( capabilities.minImageExtent.height, min( capabilities.maxImageExtent.height, actualExtent.height ) );
+
+        return actualExtent;
+    }
 }
 
 RenderContext::RenderContext()
     : instance( nullptr )
     , physicalDevice( nullptr )
     , device( nullptr )
+    , renderPassAllocator( nullptr )
 {
 
 }
@@ -117,6 +206,9 @@ RenderContext::~RenderContext()
 
 RenderDevice::~RenderDevice()
 {
+    nya::core::freeArray<ResourceList>( memoryAllocator, renderContext->resListPool );
+
+    nya::core::free( memoryAllocator, renderContext->renderPassAllocator );
     nya::core::free( memoryAllocator, renderContext );
 }
 
@@ -234,6 +326,237 @@ void RenderDevice::create( DisplaySurface* surface )
     }
 
     NYA_CLOG << "Selected: Device[" << bestDeviceIdx << "]" << std::endl;
+    const VkPhysicalDevice physicalDevice = devList[bestDeviceIdx];
+    renderContext->physicalDevice = physicalDevice;
+
+    // Create display surface
+    NYA_ASSERT( !IsDeviceExtAvailable( renderContext, NYA_STRING_HASH( VK_KHR_SWAPCHAIN_EXTENSION_NAME ) ), "Missing extension: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+
+    VkSurfaceKHR displaySurf = nullptr;
+
+#if NYA_WIN
+    auto nativeDispSurf = surface->nativeDisplaySurface;
+
+    VkWin32SurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    createInfo.hinstance = nativeDispSurf->Instance;
+    createInfo.hwnd = nativeDispSurf->Handle;
+    auto CreateWin32SurfaceKHR = ( PFN_vkCreateWin32SurfaceKHR )vkGetInstanceProcAddr( vulkanInstance, "vkCreateWin32SurfaceKHR" );
+    VkResult surfCreateResult = CreateWin32SurfaceKHR( vulkanInstance, &createInfo, nullptr, &displaySurf );
+
+    NYA_ASSERT( ( surfCreateResult != VK_SUCCESS ), "Failed to create display surface! (error code: %i)", surfCreateResult );
+#endif
+
+    NYA_GET_INSTANCE_PROC_ADDR( vulkanInstance, GetPhysicalDeviceSurfaceSupportKHR );
+
+#if NYA_DEVBUILD
+    NYA_GET_INSTANCE_PROC_ADDR( vulkanInstance, CreateDebugUtilsMessengerEXT );
+
+    VkDebugUtilsMessengerCreateInfoEXT dbgMessengerCreateInfos = {};
+    dbgMessengerCreateInfos.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    dbgMessengerCreateInfos.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    dbgMessengerCreateInfos.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    dbgMessengerCreateInfos.pfnUserCallback = VkDebugCallback;
+    VkResult dbgMessengerCreateResult = CreateDebugUtilsMessengerEXT( vulkanInstance, &dbgMessengerCreateInfos, nullptr, &renderContext->debugCallback );
+
+    NYA_ASSERT( ( dbgMessengerCreateResult != VK_SUCCESS ), "Failed to create debug callback! (error code: %i)", dbgMessengerCreateResult );
+#else
+    NYA_CLOG << "Debug Layer is disabled (build was compiled with NYA_NO_DEBUG_DEVICE)" << std::endl;
+#endif
+
+    std::vector<VkBool32> presentSupport( bestQueueCount );
+    for ( uint32_t i = 0; i < bestQueueCount; i++ ) {
+        GetPhysicalDeviceSurfaceSupportKHR( physicalDevice, i, displaySurf, &presentSupport[i] );
+    }
+
+    std::vector<VkQueueFamilyProperties> queueList( bestQueueCount );
+    vkGetPhysicalDeviceQueueFamilyProperties( physicalDevice, &bestQueueCount, &queueList[0] );
+
+    uint32_t computeQueueFamilyIndex = UINT32_MAX;
+    uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+    uint32_t presentQueueFamilyIndex = UINT32_MAX;
+    for ( uint32_t i = 0; i < queueList.size(); i++ ) {
+        if ( queueList[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ) {
+            if ( graphicsQueueFamilyIndex == UINT32_MAX ) {
+                graphicsQueueFamilyIndex = i;
+            }
+
+            if ( presentSupport[i] == VK_TRUE ) {
+                graphicsQueueFamilyIndex = i;
+                presentQueueFamilyIndex = i;
+            }
+        } else if ( queueList[i].queueFlags & VK_QUEUE_COMPUTE_BIT ) {
+            if ( computeQueueFamilyIndex == UINT32_MAX ) {
+                computeQueueFamilyIndex = i;
+            }
+        }
+    }
+
+    if ( presentQueueFamilyIndex == UINT32_MAX ) {
+        // If didn't find a queue that supports both graphics and present, then
+        // find a separate present queue.
+        for ( uint32_t i = 0; i < queueList.size(); i++ ) {
+            if ( presentSupport[i] == VK_TRUE ) {
+                presentQueueFamilyIndex = i;
+                break;
+            }
+        }
+    }
+
+    NYA_ASSERT( ( graphicsQueueFamilyIndex == UINT32_MAX || presentQueueFamilyIndex == UINT32_MAX ), "Could not find both graphics queue, present queue or graphics/present queue" );
+
+    // Create queues
+    constexpr float queuePrios = 1.0f;
+
+    std::vector<VkDeviceQueueCreateInfo> queues;
+
+    const VkDeviceQueueCreateInfo graphicsQueueInfo = {
+        VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        nullptr,
+        0,
+        graphicsQueueFamilyIndex,
+        1,
+        &queuePrios,
+    };
+
+    queues.push_back( graphicsQueueInfo );
+
+    if ( computeQueueFamilyIndex != UINT32_MAX ) {
+        const VkDeviceQueueCreateInfo computeQueueInfo = {
+            VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            nullptr,
+            0,
+            computeQueueFamilyIndex,
+            1,
+            &queuePrios,
+        };
+
+        queues.push_back( computeQueueInfo );
+    }
+
+    constexpr char* const DEVICE_EXTENSIONS[1] = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+
+    VkDeviceCreateInfo deviceCreationInfos = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    deviceCreationInfos.pNext = nullptr;
+    deviceCreationInfos.flags = 0;
+    deviceCreationInfos.queueCreateInfoCount = static_cast<uint32_t>( queues.size() );
+    deviceCreationInfos.pQueueCreateInfos = queues.data();
+    deviceCreationInfos.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
+    deviceCreationInfos.enabledExtensionCount = 1;
+
+    VkDevice device;
+    VkResult deviceCreationResult = vkCreateDevice( physicalDevice, &deviceCreationInfos, nullptr, &device );
+    NYA_ASSERT( ( deviceCreationResult != VK_SUCCESS ), "Device creation failed! (error code: %i)", deviceCreationResult );
+
+    vkGetDeviceQueue( device, graphicsQueueFamilyIndex, 0, &renderContext->graphicsQueue );
+    vkGetDeviceQueue( device, presentQueueFamilyIndex, 0, &renderContext->presentQueue );
+    vkGetDeviceQueue( device, ( computeQueueFamilyIndex == UINT32_MAX ) ? graphicsQueueFamilyIndex : computeQueueFamilyIndex, 0, &renderContext->computeQueue );
+
+    uint32_t surfFormatsCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR( physicalDevice, displaySurf, &surfFormatsCount, 0 );
+    NYA_CLOG << "Found " << surfFormatsCount << " surface format(s)" << std::endl;
+
+    std::vector<VkSurfaceFormatKHR> formatList( surfFormatsCount );
+    vkGetPhysicalDeviceSurfaceFormatsKHR( physicalDevice, displaySurf, &surfFormatsCount, formatList.data() );
+
+    // Select surface format
+    // TODO Let the user pick the format? (if the user has a fancy display)
+    VkSurfaceFormatKHR selectedFormat;
+    for ( auto& format : formatList ) {
+        if ( format.format != VK_FORMAT_UNDEFINED ) {
+            NYA_CLOG << "Selected Format: " << format.format << " (colorspace: " << format.colorSpace << ")" << std::endl;
+            selectedFormat = format;
+            break;
+        }
+    }
+
+    VkSurfaceCapabilitiesKHR surfCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR( physicalDevice, displaySurf, &surfCapabilities );
+
+    // Create swapchain
+    VkSwapchainCreateInfoKHR swapChainCreation = {};
+    swapChainCreation.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapChainCreation.pNext = nullptr;
+    swapChainCreation.surface = displaySurf;
+
+    uint32_t imageCount = surfCapabilities.minImageCount + 1;
+    if ( surfCapabilities.maxImageCount > 0
+        && imageCount > surfCapabilities.maxImageCount ) {
+        imageCount = surfCapabilities.maxImageCount;
+    }
+
+    auto extent = chooseSwapExtent( surfCapabilities );
+    swapChainCreation.minImageCount = imageCount;
+    swapChainCreation.imageFormat = selectedFormat.format;
+    swapChainCreation.imageColorSpace = selectedFormat.colorSpace;
+    swapChainCreation.imageExtent = extent;
+    swapChainCreation.imageArrayLayers = 1;
+    swapChainCreation.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    vkGetDeviceQueue( device, graphicsQueueFamilyIndex, 0, &renderContext->graphicsQueue );
+    vkGetDeviceQueue( device, presentQueueFamilyIndex, 0, &renderContext->presentQueue );
+
+    uint32_t queueIndices[2] = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
+    if ( graphicsQueueFamilyIndex != presentQueueFamilyIndex ) {
+        swapChainCreation.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapChainCreation.queueFamilyIndexCount = 2;
+        swapChainCreation.pQueueFamilyIndices = queueIndices;
+    } else {
+        swapChainCreation.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR( physicalDevice, displaySurf, &presentModeCount, nullptr );
+
+    std::vector<VkPresentModeKHR> presentModes;
+    if ( presentModeCount != 0 ) {
+        presentModes.resize( presentModeCount );
+        vkGetPhysicalDeviceSurfacePresentModesKHR( physicalDevice, displaySurf, &presentModeCount, presentModes.data() );
+    }
+
+    swapChainCreation.preTransform = surfCapabilities.currentTransform;
+    swapChainCreation.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapChainCreation.presentMode = chooseSwapPresentMode( presentModes );
+    swapChainCreation.clipped = VK_TRUE;
+
+    swapChainCreation.oldSwapchain = VK_NULL_HANDLE;
+
+    VkSwapchainKHR swapChain = {};
+    VkResult swapChainCreationResult = vkCreateSwapchainKHR( device, &swapChainCreation, nullptr, &swapChain );
+    NYA_ASSERT( ( swapChainCreationResult != VK_SUCCESS ), "Failed to create swapchain! (error code: %i)", swapChainCreationResult );
+
+    vkGetSwapchainImagesKHR( device, swapChain, &imageCount, nullptr );
+    renderContext->swapChainImages.resize( imageCount );
+    vkGetSwapchainImagesKHR( device, swapChain, &imageCount, renderContext->swapChainImages.data() );
+
+    // Set RenderContext pointers
+    renderContext->instance = vulkanInstance;
+    renderContext->device = device;
+    renderContext->displaySurface = displaySurf;
+    renderContext->swapChain = swapChain;
+    renderContext->displaySurface = displaySurf;
+    renderContext->swapChainExtent = extent;
+    renderContext->swapChainFormat = selectedFormat.format;
+
+    renderContext->computeQueueIndex = computeQueueFamilyIndex;
+    renderContext->graphicsQueueIndex = graphicsQueueFamilyIndex;
+    renderContext->presentQueueIndex = presentQueueFamilyIndex;
+
+    renderContext->resListPool = nya::core::allocateArray<ResourceList>( memoryAllocator, 64 );
+    renderContext->resListPoolCapacity = 64;
+    renderContext->resListPoolIndex = 0;
+    
+    renderContext->renderPassAllocator = nya::core::allocate<PoolAllocator>( 
+        memoryAllocator, 
+        sizeof( RenderPass ), 
+        4, 
+        sizeof( RenderPass ) * 48,
+        memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
+    );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )
@@ -248,17 +571,21 @@ RenderTarget* RenderDevice::getSwapchainBuffer()
 
 CommandList& RenderDevice::allocateGraphicsCommandList() const
 {
-  
+    return CommandList( nullptr );
 }
 
 CommandList& RenderDevice::allocateComputeCommandList() const
 {
-
+    return CommandList( nullptr );
 }
 
 void RenderDevice::submitCommandList( CommandList* commandList )
 {
-
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = nullptr;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandList->NativeCommandList->cmdBuffer;
 }
 
 void RenderDevice::present()

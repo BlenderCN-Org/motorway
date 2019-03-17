@@ -21,11 +21,11 @@
 
 #if NYA_VULKAN
 #include <Rendering/RenderDevice.h>
+#include "RenderDevice.h"
 
 #include "Sampler.h"
 
 #include "ComparisonFunctions.h"
-#include "RenderDevice.h"
 
 #include <vulkan/vulkan.h>
 
@@ -87,6 +87,7 @@ Sampler* RenderDevice::createSampler( const SamplerDesc& description )
         || description.filter == eSamplerFilter::SAMPLER_FILTER_ANISOTROPIC_8
         || description.filter == eSamplerFilter::SAMPLER_FILTER_COMPARISON_ANISOTROPIC_8
         || description.filter == eSamplerFilter::SAMPLER_FILTER_COMPARISON_ANISOTROPIC_16 );
+
     const bool useComparisonFunction = ( description.comparisonFunction != eComparisonFunction::COMPARISON_FUNCTION_ALWAYS );
 
     // Build object descriptor
@@ -108,8 +109,16 @@ Sampler* RenderDevice::createSampler( const SamplerDesc& description )
     samplerInfo.minLod = static_cast<float>( description.minLOD );
     samplerInfo.maxLod = static_cast<float>( description.maxLOD );
 
+    VkSampler samplerObject;
+
+    VkResult operationResult = vkCreateSampler( renderContext->device, &samplerInfo, nullptr, &samplerObject );
+    if ( operationResult != VK_SUCCESS ) {
+        NYA_CERR << "Sampler creation failed! (error code: " << operationResult << ")" << std::endl;
+        return nullptr;
+    }
+
     Sampler* sampler = nya::core::allocate<Sampler>( memoryAllocator );
-    vkCreateSampler( renderContext->device, &samplerInfo, nullptr, &sampler->samplerState );
+    sampler->samplerState = samplerObject;
 
     return sampler;
 }

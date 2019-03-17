@@ -20,17 +20,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
 #if NYA_VULKAN
+class PoolAllocator;
+
 struct VkInstance_T;
 struct VkPhysicalDevice_T;
 struct VkDevice_T;
-struct RenderTarget;
+struct VkExtensionProperties;
+struct VkImage_T;
+struct VkQueue_T;
+struct VkDebugUtilsMessengerEXT_T;
+struct VkSurfaceKHR_T;
+struct VkSwapchainKHR_T;
+struct VkExtent2D;
+
+enum VkPresentModeKHR;
+enum VkFormat;
 
 #include <vector>
+#include <vulkan/vulkan.h>
 
 struct RenderContext
 {
-                            RenderContext();
-                            ~RenderContext();
+                                        RenderContext();
+                                        ~RenderContext();
 
     nyaStringHash_t*                    instanceExtensionHashes;
     uint32_t                            instanceExtensionCount;
@@ -38,22 +50,34 @@ struct RenderContext
     VkInstance_T*                       instance;
     VkPhysicalDevice_T*                 physicalDevice;
     VkDevice_T*                         device;
-    VkSurfaceKHR                        displaySurface;
-    VkSwapchainKHR                      swapChain;
+    VkSurfaceKHR_T*                     displaySurface;
+    VkSwapchainKHR_T*                   swapChain;
     VkPresentModeKHR                    presentMode;
-  /*  uint32_t                            physicalDeviceQueueCount;
+    uint32_t                            physicalDeviceQueueCount;
     std::vector<VkExtensionProperties>  deviceExtensionList;
 
-    VkQueue                             graphicsQueue;
-    VkQueue                             computeQueue;
-    VkQueue                             presentQueue;
+#if NYA_DEVBUILD
+    VkDebugUtilsMessengerEXT_T*         debugCallback;
+#endif
+
+    VkQueue_T*                          graphicsQueue;
+    VkQueue_T*                          computeQueue;
+    VkQueue_T*                          presentQueue;
 
     uint32_t                            graphicsQueueIndex;
     uint32_t                            computeQueueIndex;
     uint32_t                            presentQueueIndex;
 
-    std::vector<VkImage>                swapChainImages;
+    std::vector<VkImage_T*>             swapChainImages;
     VkExtent2D                          swapChainExtent;
-    VkFormat                            swapChainFormat;*/
+    VkFormat                            swapChainFormat;
+
+    VkDescriptorPool                    descriptorPool;
+
+    ResourceList*                       resListPool;
+    size_t                              resListPoolIndex;
+    size_t                              resListPoolCapacity;
+
+    PoolAllocator*                      renderPassAllocator;
 };
 #endif

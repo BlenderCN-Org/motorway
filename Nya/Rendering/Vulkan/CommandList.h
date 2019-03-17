@@ -20,10 +20,13 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkCommandBuffer_T; // typedef VkCommandBuffer_T* VkCommandBuffer
+struct VkCommandBuffer_T;
+enum VkPipelineBindPoint;
 
 struct NativeCommandList
 {
-    VkCommandBuffer_T* cmdBuffer;
+    VkCommandBuffer_T*  cmdBuffer;
+    Viewport            currentViewport;
+    VkPipelineBindPoint resourcesBindPoint;
 };
 #endif

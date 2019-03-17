@@ -20,11 +20,18 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkShaderModule_T;
+struct VkRenderPass_T;
+struct VkFramebuffer_T;
+struct VkImageView_T;
 
-struct Shader
+struct RenderPass
 {
-    VkShaderModule_T*                   shaderModule;
-    VkShaderStageFlagBits               shaderStage;
+    VkRenderPass_T*     renderPass;
+    VkFramebuffer_T*    framebuffer;
+    VkClearValue        clearValues[24];
+    VkImageView_T*      imageViews[24];
+    uint32_t            attachmentCount;
+    uint32_t            width;
+    uint32_t            height;
 };
 #endif

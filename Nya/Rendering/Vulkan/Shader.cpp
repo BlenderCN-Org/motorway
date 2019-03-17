@@ -36,12 +36,15 @@ static constexpr VkShaderStageFlagBits VK_SHADER_STAGE[eShaderStage::SHADER_STAG
 
 Shader* RenderDevice::createShader( const eShaderStage stage, const void* bytecode, const size_t bytecodeSize )
 {
+    Shader* shader = nya::core::allocate<Shader>( memoryAllocator ); 
+
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0u;
     createInfo.codeSize = bytecodeSize;
     createInfo.pCode = reinterpret_cast< const uint32_t* >( bytecode );
 
-    // Create shader module
     VkShaderModule shaderModule;
     VkResult operationResult = vkCreateShaderModule( renderContext->device, &createInfo, nullptr, &shaderModule );
     if ( operationResult != VK_SUCCESS ) {
@@ -49,24 +52,26 @@ Shader* RenderDevice::createShader( const eShaderStage stage, const void* byteco
         return nullptr;
     }
 
-    // Create stage infos (not used yet)
+    shader->shaderModule = shaderModule;
+    shader->shaderStage = VK_SHADER_STAGE[stage];
+
+/*
+    // TODO Move this to pipeline state creation
     VkPipelineShaderStageCreateInfo shaderStageInfos = {};
     shaderStageInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageInfos.pNext = nullptr;
+    shaderStageInfos.flags = 0u;
     shaderStageInfos.stage = VK_SHADER_STAGE[stage];
     shaderStageInfos.module = shaderModule;
     shaderStageInfos.pName = "main";
-
-    // Create native object
-    Shader* shader = nya::core::allocate<Shader>( memoryAllocator );
-    shader->nativeShaderModule = shaderModule;
-    shader->nativeStageInfos = shaderStageInfos;
+    shaderStageInfos.pSpecializationInfo = nullptr;*/
 
     return shader;
 }
 
 void RenderDevice::destroyShader( Shader* shader )
 {
-    vkDestroyShaderModule( renderContext->device, shader->nativeShaderModule, nullptr );
+    vkDestroyShaderModule( renderContext->device, shader->shaderModule, nullptr );
     nya::core::free( memoryAllocator, shader );
 }
 #endif

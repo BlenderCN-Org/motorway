@@ -20,11 +20,14 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkShaderModule_T;
+struct VkDescriptorSet_T;
+struct VkPipelineLayout_T;
+struct VkDescriptorSetLayout_T;
 
-struct Shader
+struct ResourceList
 {
-    VkShaderModule_T*                   shaderModule;
-    VkShaderStageFlagBits               shaderStage;
+    VkPipelineLayout_T*         pipelineLayout;
+    VkDescriptorSetLayout_T*    descriptorSetLayout;
+    VkDescriptorSet_T*          descriptorSet;
 };
 #endif

@@ -57,5 +57,7 @@ elseif ( "${NYA_GFX_API}" MATCHES "NYA_VULKAN" )
     set_target_properties( NyaEd PROPERTIES RELEASE_OUTPUT_NAME "NyaEdVk" )
     set_target_properties( NyaEd PROPERTIES DEBUG_OUTPUT_NAME "NyaEdVk_debug" )
 
+    include_directories( ${Vulkan_INCLUDE_DIR} )
+
     target_link_libraries( NyaEd Vulkan::Vulkan )
 endif( "${NYA_GFX_API}" MATCHES "NYA_GL460" )

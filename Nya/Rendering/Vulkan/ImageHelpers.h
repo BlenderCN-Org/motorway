@@ -148,4 +148,54 @@ static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
     VK_FORMAT_BC7_UNORM_BLOCK,
     VK_FORMAT_BC7_SRGB_BLOCK
 };
+
+VkImageViewType GetViewType( const TextureDescription& description )
+{
+    switch ( description.dimension ) {
+    case TextureDescription::DIMENSION_TEXTURE_1D:
+        return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_1D );
+
+    case TextureDescription::DIMENSION_TEXTURE_2D:
+    {
+        if ( description.flags.isCubeMap == 1 ) {
+            return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE );
+        } else {
+            return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_2D );
+        }
+    } break;
+
+    case TextureDescription::DIMENSION_TEXTURE_3D:
+    {
+        return  VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
+    }
+
+    default:
+        return VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
+    }
+}
+
+VkImageView CreateImageView( VkDevice device, const TextureDescription& description, const VkImage image, const uint32_t sliceIndex = 0u, const uint32_t sliceCount = ~0u, const uint32_t mipIndex = 0u, const uint32_t mipCount = ~0u )
+{
+    VkImageViewCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0u;
+    createInfo.image = image;
+    createInfo.viewType = GetViewType( description );
+    createInfo.format = VK_IMAGE_FORMAT[description.format];
+    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.subresourceRange.aspectMask = ( ( description.flags.isDepthResource ) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT );
+    createInfo.subresourceRange.baseMipLevel = mipIndex;
+    createInfo.subresourceRange.levelCount = ( ( mipCount == ~0u ) ? description.mipCount : mipCount );
+    createInfo.subresourceRange.baseArrayLayer = sliceIndex;
+    createInfo.subresourceRange.layerCount = ( ( sliceCount == ~0u ) ? description.arraySize : sliceCount );
+
+    VkImageView imageView;
+    vkCreateImageView( device, &createInfo, nullptr, &imageView );
+
+    return imageView;
+}
 #endif

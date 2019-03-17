@@ -20,11 +20,17 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkShaderModule_T;
+struct VkImage_T;
+struct VkImageView_T;
+struct VkDeviceMemory_T;
 
-struct Shader
+struct Texture
 {
-    VkShaderModule_T*                   shaderModule;
-    VkShaderStageFlagBits               shaderStage;
+    VkImage_T*          image;
+    VkImageView_T*      imageView;
+    VkDeviceMemory_T*   imageMemory;
+
+    // Used for RTV/SRV binding
+    VkFormat            imageFormat;
 };
 #endif

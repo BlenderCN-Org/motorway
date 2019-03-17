@@ -1,10 +1,10 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkSampler;
+struct VkSampler_T;
 
 struct Sampler
 {
-    VkSampler samplerState;
+    VkSampler_T*    samplerState;
 };
 #endif
