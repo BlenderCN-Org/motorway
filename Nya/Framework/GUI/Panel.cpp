@@ -17,18 +17,28 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <Shared.h>
+#include "Panel.h"
 
-#pragma once
+#include <Graphics/DrawCommandBuilder.h>
 
-class Window
+GUIPanel::GUIPanel()
+    : GUIWidget()
+    , IsDraggable( false )
+    , IsResizable( false )
+    , IsScrollable( false )
 {
-public:
-                            Window( BaseAllocator* allocator, const std::string& caption = "Default Window" );
-                            Window( Window& window ) = default;
-                            Window& operator = ( Window& window ) = default;
-                            ~Window();
 
-private:
-    BaseAllocator*          memoryAllocator;
-    std::string             windowCaption;
-};
+}
+
+GUIPanel::~GUIPanel()
+{
+    IsDraggable = false;
+    IsResizable = false;
+    IsScrollable = false;
+}
+
+void GUIPanel::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
+{
+    drawCmdBuilder.addHUDRectangle( Position, Size, 0.0f, PanelMaterial );
+}

@@ -17,17 +17,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <Shared.h>
-#include "Window.h"
 
-Window::Window( BaseAllocator* allocator, const std::string& caption )
-    : memoryAllocator( allocator )
-    , windowCaption( caption )
+#pragma once
+
+#include <Maths/Vector.h>
+
+class GUIWidget
 {
+public:
+    nyaVec2f    Position;
+    nyaVec2f    Size;
 
-}
-
-Window::~Window()
-{
-
-}
+public:
+                GUIWidget();
+                GUIWidget( GUIWidget& widget ) = default;
+                GUIWidget& operator = ( GUIWidget& widget ) = default;
+                ~GUIWidget();
+};
