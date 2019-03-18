@@ -1,0 +1,29 @@
+Name: "IBL Debug Probe Material"
+Version: 1
+
+ShadingModel: SHADING_MODEL_STANDARD
+WriteVelocity: True
+EnableAlphaTest: False
+EnableAlphaToCoverage: False
+IsDoubleFace: False
+EnableAlphaBlend: False
+CastShadow: True
+ReceiveShadow: False
+ScaleUVByModelScale: False
+
+Layer 
+{
+    BaseColor: 1.00
+    AlphaMask: None
+    Reflectance: 1.00
+    Refraction: 0.000000
+    RefractionIor: 0.000000
+    Metalness: 1.000000
+    AmbientOcclusion: None
+    Normal: None
+    Roughness: 0.0
+    Emissivity: 0.000000
+
+    Offset: { 0, 0 }
+    Scale: { 1, 1 }
+}
