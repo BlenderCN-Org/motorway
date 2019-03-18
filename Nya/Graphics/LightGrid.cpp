@@ -33,9 +33,9 @@
 
 using namespace nya::maths;
 
-static constexpr int CLUSTER_X = 32;
+static constexpr int CLUSTER_X = 16;
 static constexpr int CLUSTER_Y = 8;
-static constexpr int CLUSTER_Z = 32;
+static constexpr int CLUSTER_Z = 24;
 
 LightGrid::LightGrid( BaseAllocator* allocator )
     : memoryAllocator( allocator )
@@ -104,7 +104,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
             cmdList->bindPipelineState( lightCullingPso );
             
-            cmdList->dispatchCompute( MAX_POINT_LIGHT_COUNT / 16u, 1u, 1u );
+            cmdList->dispatchCompute( 2, 2, 2 );
         }
     );
 
