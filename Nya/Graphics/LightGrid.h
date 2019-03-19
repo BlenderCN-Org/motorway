@@ -56,6 +56,7 @@ public:
         ResHandle_t lightsClusters;
         ResHandle_t lightsClustersInfosBuffer;
         ResHandle_t lightsBuffer;
+        ResHandle_t itemList;
     };
 
 public:

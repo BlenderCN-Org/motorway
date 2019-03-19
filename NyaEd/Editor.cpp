@@ -155,7 +155,7 @@ void TestStuff()
     auto& geometryTransform = g_SceneTest->TransformDatabase[planeTest.transform];
     geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
 
-    /*for ( int j = 0; j < 5; j++ ) {
+    for ( int j = 0; j < 5; j++ ) {
         for ( int i = 0; i < 6; i++ ) {
             PointLightData pointLightData;
             pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
@@ -169,7 +169,7 @@ void TestStuff()
             auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
             pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
         }
-    }*/
+    }
 
     DirectionalLightData sunLight = {};
     sunLight.isSunLight = true;
@@ -185,7 +185,7 @@ void TestStuff()
     dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
     IBLProbeData globalProbe = {};
-    globalProbe.worldPosition = { 0, 6, 0 };
+    globalProbe.worldPosition = { 2, 6, 2 };
     globalProbe.isFallbackProbe = true;
 
     auto& globalProbeNode = g_SceneTest->allocateIBLProbe();

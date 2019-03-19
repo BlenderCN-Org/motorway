@@ -44,6 +44,8 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
         ResHandle_t instanceBuffer;
         ResHandle_t clustersBuffer;
         ResHandle_t lightsBuffer;
+        ResHandle_t itemListBuffer;
+
         ResHandle_t sceneInfosBuffer;
         ResHandle_t vectorDataBuffer;
 
@@ -104,6 +106,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             passData.clustersBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsClusters );
             passData.lightsBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsBuffer );
             passData.sceneInfosBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.lightsClustersInfosBuffer );
+            passData.itemListBuffer = renderPipelineBuilder.readBuffer( lightClustersInfos.itemList );
 
             BufferDesc cameraBufferDesc;
             cameraBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
@@ -182,6 +185,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
             Buffer* lightsBuffer = renderPipelineResources.getBuffer( passData.lightsBuffer );
+            Buffer* itemListBuffer = renderPipelineResources.getBuffer( passData.itemListBuffer );
 
 #if NYA_DEVBUILD
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
@@ -196,6 +200,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, sceneInfosBuffer };
             resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
             resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
+            resListDesc.buffers[1] = { 1, SHADER_STAGE_PIXEL, itemListBuffer };
 
 #if NYA_DEVBUILD
             resListDesc.constantBuffers[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, materialEditorBuffer };

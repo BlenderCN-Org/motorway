@@ -125,6 +125,7 @@ Texture3D<uint2>        g_Clusters : register( t0 );
 Texture2D               g_SunShadowMap : register( t1 );
 TextureCubeArray        g_EnvProbeDiffuseArray : register( t2 );
 TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
+Buffer<uint> g_ItemList : register( t9 );
 
 #if NYA_EDITOR
 #include <MaterialShared.h>
@@ -137,8 +138,9 @@ TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
 Texture2D g_TexBaseColor0 : register( t5 );
 Texture2D g_TexAlphaMask0 : register( t6 );
 Texture2D g_TexReflectance0 : register( t7 );
-Texture2D g_TexRoughness0 : register( t8 );
-Texture2D g_TexMetalness0 : register( t9 );
+
+Texture2D g_TexRoughness0 : register( t16 );
+Texture2D g_TexMetalness0 : register( t8 );
 Texture2D g_TexAmbientOcclusion0 : register( t10 );
 Texture2D g_TexNormal0 : register( t11 );
 Texture2D g_TexDisplacement0 : register( t12 );
@@ -460,6 +462,8 @@ float3 GetDirectionalLightIlluminance( in DirectionalLight light, in LightSurfac
 
         shadowVisibility = SampleShadowCascade( light, shadowPosition, shadowPosDX, shadowPosDY, cascadeIdx );
 
+		shadowVisibility = saturate(shadowVisibility);
+		
         // Sample the next cascade, and blend between the two results to
         // smooth the transition
         float nextSplit = g_ShadowSplitDistances[cascadeIdx];
@@ -518,6 +522,11 @@ float2 ComputeVelocity( VertexStageData VertexStage )
     return Velocity;
 }
 
+uint3 UnpackUint_12_12_8( in uint coords )
+{
+    return uint3( coords & 0xFFF, ( coords >> 12 ) & 0xFFF, ( coords >> 24 ) & 0xFF );
+}
+
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
 {
 #if NYA_USE_LOD_ALPHA_BLENDING
@@ -549,33 +558,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     
 	bool needNormalMapUnpack = false, needSecondaryNormalMapUnpack = false;
 
-#if NYA_DEBUG_IBL_PROBE
-#define NYA_EARLY_EXIT 1
-    float3 dominantR = getSpecularDominantDir( N, R, 0.0f );
-    float mipLevel = linearRoughnessToMipLevel( 0.0f, LD_MIP_COUNT );
-    
-    PixelStageData output;
-    
-    // Compute cluster and fetch its light mask
-	int4 coord = int4( VertexStage.positionWS.xyz * g_ClustersScale + g_ClustersBias, 0 );
-	uint2 light_mask = g_Clusters.Load( coord );
-    
-    // TODO Cheap way to get the nearest probe within the current cluster (not sure if it's accurate and reliable?)
-    uint i = firstbitlow( light_mask.g );
-    IBLProbe probe = g_IBLProbes[i + 1];
-    float4 bufferOutput = g_EnvProbeSpecularArray.SampleLevel( g_BilinearSampler, float4( dominantR, probe.Index ), mipLevel );
-    
-#if NYA_ENCODE_RGBD
-    output.Buffer0 = EncodeRGBD( bufferOutput.rgb );
-#else
-    output.Buffer0 = bufferOutput;
-#endif
-
-    output.Buffer1 = ComputeVelocity( VertexStage );
-    output.Buffer2 = float3( EncodeNormals( N ), 0.0f );
-    
-    return output;
-#elif NYA_EDITOR
+#if NYA_EDITOR
 	MaterialReadLayer layer = ReadLayer0( VertexStage, N, V, TBNMatrix, needNormalMapUnpack, needSecondaryNormalMapUnpack );
 #else
 	MaterialReadLayer layer;
@@ -588,7 +571,6 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	layer.Emissivity = 0.0f;
 #endif
 
-#ifndef NYA_EARLY_EXIT
 	if ( needNormalMapUnpack ) {
         layer.Normal = normalize( mul( layer.Normal, TBNMatrix ) );
     }
@@ -647,22 +629,21 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     // Compute cluster and fetch its light mask
 	int4 coord = int4( VertexStage.positionWS.xyz * g_ClustersScale + g_ClustersBias, 0 );
 	uint2 light_mask = g_Clusters.Load( coord );
-    
+    uint3 entityCount = UnpackUint_12_12_8( light_mask.g );
+	
     // Iterate point lights
-	while ( light_mask.r ) {
-		// Extract a light from the mask and disable that bit
-		uint i = firstbitlow( light_mask.r );
-		light_mask.r &= ~( 1 << i );
-        
+	for ( uint i = 0; i < entityCount.r; i++ ) {
         // Do lighting
         float3 L;
-		PointLight light = g_PointLights[i];
+		PointLight light = g_PointLights[g_ItemList[light_mask.r + i]];
         float3 pointLightIlluminance = GetPointLightIlluminance( light, surface, VertexStage.depth, L );        
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
-    
-    LightContribution.rgb += ( LightContribution.rgb * surface.Emissivity );
-    
+    light_mask.r += entityCount.r;
+    light_mask.r += entityCount.g;
+	
+    LightContribution.rgb += ( LightContribution.rgb * surface.Emissivity );   
+	
 #ifndef PA_PROBE_CAPTURE
 #if NYA_BRDF_STANDARD
     // Reflections / IBL
@@ -687,13 +668,9 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     float4 localEnvProbeSumSpec = float4( 0, 0, 0, 0 );
     
     // Iterate IBL probes
-	while ( light_mask.g ) {
-		// Extract a light from the mask and disable that bit
-		uint i = firstbitlow( light_mask.g );
-		light_mask.g &= ~( 1 << i );
-       
+	for ( uint i = 0; i < entityCount.b; i++ ) {
         // NOTE Offset probe index since the first probe should always be the global ibl probe
-        IBLProbe probe = g_IBLProbes[i + 1];
+        IBLProbe probe = g_IBLProbes[g_ItemList[light_mask.r + i] + 1];
         
         float3 clipSpacePos = mul( float4( VertexStage.positionWS.xyz, 1.0f ), probe.InverseModelMatrix );
         float3 uvw = clipSpacePos.xyz*float3( 0.5f, -0.5f, 0.5f ) + 0.5f;
@@ -766,5 +743,4 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
     output.Buffer2 = float3( EncodeNormals( surface.N ), surface.Roughness );
 
     return output;
-#endif // NYA_EARLY_EXIT
 }

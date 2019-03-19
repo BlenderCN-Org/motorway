@@ -81,13 +81,22 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
             bufferDesc.width = CLUSTER_X;
             bufferDesc.height = CLUSTER_Y;
             bufferDesc.depth = CLUSTER_Z;
-            bufferDesc.mipCount = 1;
+            bufferDesc.mipCount = 1u;
 
             passData.lightsClusters = renderPipelineBuilder.allocateBuffer( bufferDesc, SHADER_STAGE_COMPUTE );
+
+            bufferDesc = {};
+            bufferDesc.type = BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER;
+            bufferDesc.viewFormat = eImageFormat::IMAGE_FORMAT_R32_UINT;
+            bufferDesc.size = sizeof( uint32_t ) * CLUSTER_X * CLUSTER_Y * CLUSTER_Z * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT );
+            bufferDesc.stride = static_cast<uint32_t>( bufferDesc.size / sizeof( uint32_t ) );
+            
+            passData.itemList = renderPipelineBuilder.allocateBuffer( bufferDesc, SHADER_STAGE_COMPUTE );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             Buffer* lightsClusters = renderPipelineResources.getBuffer( passData.lightsClusters );
-            
+            Buffer* itemList = renderPipelineResources.getBuffer( passData.itemList );
+
             Buffer* lightsBuffer = renderPipelineResources.getBuffer( passData.lightsBuffer );
             cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
 
@@ -96,6 +105,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
             ResourceListDesc resListDesc = {};
             resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, lightsClusters };
+            resListDesc.uavBuffers[1] = { 1, SHADER_STAGE_COMPUTE, itemList };
             resListDesc.constantBuffers[0] = { 2, SHADER_STAGE_COMPUTE, lightsBuffer };
             resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_COMPUTE, lightsClustersInfos };
 
@@ -104,7 +114,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
             cmdList->bindPipelineState( lightCullingPso );
             
-            cmdList->dispatchCompute( 2, 2, 2 );
+            cmdList->dispatchCompute( 4, 4, 4 );
         }
     );
 
