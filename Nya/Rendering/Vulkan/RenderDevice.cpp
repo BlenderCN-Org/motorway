@@ -73,7 +73,7 @@ bool IsInstanceExtensionAvailable( const nyaStringHash_t* extensions, const uint
 
 VkResult CreateVkInstance( VkInstance& instance )
 {
-    constexpr char* const EXTENSIONS[3] = {
+    constexpr const char* EXTENSIONS[3] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
         NYA_VK_SURF_EXT,
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME
@@ -85,11 +85,12 @@ VkResult CreateVkInstance( VkInstance& instance )
         "NyaEd",
         VK_MAKE_VERSION( 1, 0, 0 ),
         "Nya",
-        VK_MAKE_VERSION( 1, 0, 0 ),
+        VK_MAKE_VERSION( 0, 0, 2 ),
         VK_API_VERSION_1_0,
     };
 
-    VkInstanceCreateInfo instanceInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+    VkInstanceCreateInfo instanceInfo;
+    instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pNext = nullptr;
     instanceInfo.flags = 0;
     instanceInfo.pApplicationInfo = &appInfo;
@@ -100,7 +101,7 @@ VkResult CreateVkInstance( VkInstance& instance )
     instanceInfo.pApplicationInfo = &appInfo;
 
 #if NYA_DEVBUILD
-    constexpr char* validationLayers[1] = {
+    constexpr const char* validationLayers[1] = {
         "VK_LAYER_LUNARG_standard_validation"
     };
 
@@ -108,13 +109,14 @@ VkResult CreateVkInstance( VkInstance& instance )
     instanceInfo.ppEnabledLayerNames = validationLayers;
 #endif
 
-    return vkCreateInstance( &instanceInfo, 0, &instance );
+    return vkCreateInstance( &instanceInfo, nullptr, &instance );
 }
 
 #if NYA_DEVBUILD
 static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData )
 {
-    NYA_COUT << "[Vulkan] ";
+    NYA_UNUSED_VARIABLE( messageType );
+    NYA_UNUSED_VARIABLE( pUserData );
 
     if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT )
         NYA_COUT << "[LOG] ";
@@ -125,7 +127,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback( VkDebugUtilsMessageSeveri
     else if ( messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT )
         NYA_COUT << "[ERROR] ";
 
-    NYA_COUT << pCallbackData->pMessageIdName << " : " << pCallbackData->pMessage << std::endl;
+    NYA_COUT << NYA_FILENAME << ":" << __LINE__ << " >> " << pCallbackData->pMessageIdName << " : " << pCallbackData->pMessage << std::endl;
 
     return VK_FALSE;
 }
@@ -217,6 +219,8 @@ void RenderDevice::create( DisplaySurface* surface )
 {
     NYA_CLOG << "Creating RenderDevice (Vulkan)" << std::endl;
 
+    renderContext = nya::core::allocate<RenderContext>( memoryAllocator );
+
     VkExtensionProperties* instanceExtensionList;
     vkEnumerateInstanceExtensionProperties( nullptr, &renderContext->instanceExtensionCount, nullptr );
 
@@ -231,18 +235,18 @@ void RenderDevice::create( DisplaySurface* surface )
 
     NYA_CLOG << "Found " << renderContext->instanceExtensionCount << " instance extension(s)" << std::endl;
 
-    NYA_ASSERT( !IsInstanceExtensionAvailable( renderContext->instanceExtensionHashes, renderContext->instanceExtensionCount, NYA_STRING_HASH( VK_KHR_SURFACE_EXTENSION_NAME ) ),
+    NYA_ASSERT( IsInstanceExtensionAvailable( renderContext->instanceExtensionHashes, renderContext->instanceExtensionCount, NYA_STRING_HASH( VK_KHR_SURFACE_EXTENSION_NAME ) ),
         "Missing extension '%s'!",
         VK_KHR_SURFACE_EXTENSION_NAME );
 
-    NYA_ASSERT( !IsInstanceExtensionAvailable( renderContext->instanceExtensionHashes, renderContext->instanceExtensionCount, NYA_STRING_HASH( NYA_VK_SURF_EXT ) ),
+    NYA_ASSERT( IsInstanceExtensionAvailable( renderContext->instanceExtensionHashes, renderContext->instanceExtensionCount, NYA_STRING_HASH( NYA_VK_SURF_EXT ) ),
         "Missing extension '%s'!",
         NYA_VK_SURF_EXT );
 
     // Create Vulkan Instance
     VkInstance vulkanInstance;
     VkResult instCreationResult = CreateVkInstance( vulkanInstance );
-    NYA_ASSERT( instCreationResult != VK_SUCCESS, "Failed to create Vulkan instance! (error code %i)", instCreationResult );
+    NYA_ASSERT( instCreationResult == VK_SUCCESS, "Failed to create Vulkan instance! (error code %i)", instCreationResult );
     
     // Enumerate and select a physical device
     NYA_CLOG << "Created Vulkan Instance! Enumerating devices..." << std::endl;
@@ -331,7 +335,7 @@ void RenderDevice::create( DisplaySurface* surface )
     renderContext->physicalDevice = physicalDevice;
 
     // Create display surface
-    NYA_ASSERT( !IsDeviceExtAvailable( renderContext, NYA_STRING_HASH( VK_KHR_SWAPCHAIN_EXTENSION_NAME ) ), "Missing extension: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+    NYA_ASSERT( IsDeviceExtAvailable( renderContext, NYA_STRING_HASH( VK_KHR_SWAPCHAIN_EXTENSION_NAME ) ), "Missing extension: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME );
 
     VkSurfaceKHR displaySurf = nullptr;
 
@@ -347,7 +351,20 @@ void RenderDevice::create( DisplaySurface* surface )
     auto CreateWin32SurfaceKHR = ( PFN_vkCreateWin32SurfaceKHR )vkGetInstanceProcAddr( vulkanInstance, "vkCreateWin32SurfaceKHR" );
     VkResult surfCreateResult = CreateWin32SurfaceKHR( vulkanInstance, &createInfo, nullptr, &displaySurf );
 
-    NYA_ASSERT( ( surfCreateResult != VK_SUCCESS ), "Failed to create display surface! (error code: %i)", surfCreateResult );
+    NYA_ASSERT( ( surfCreateResult == VK_SUCCESS ), "Failed to create display surface! (error code: %i)", surfCreateResult );
+#elif NYA_UNIX
+    auto nativeDispSurf = surface->nativeDisplaySurface;
+
+    VkXcbSurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    createInfo.window = nativeDispSurf->WindowInstance;
+    createInfo.connection = nativeDispSurf->Connection;
+    auto CreateXcbSurfaceKHR = ( PFN_vkCreateXcbSurfaceKHR )vkGetInstanceProcAddr( vulkanInstance, "vkCreateXcbSurfaceKHR" );
+    VkResult surfCreateResult = CreateXcbSurfaceKHR( vulkanInstance, &createInfo, nullptr, &displaySurf );
+
+    NYA_ASSERT( ( surfCreateResult == VK_SUCCESS ), "Failed to create display surface! (error code: %i)", surfCreateResult );
 #endif
 
     NYA_GET_INSTANCE_PROC_ADDR( vulkanInstance, GetPhysicalDeviceSurfaceSupportKHR );
@@ -362,7 +379,7 @@ void RenderDevice::create( DisplaySurface* surface )
     dbgMessengerCreateInfos.pfnUserCallback = VkDebugCallback;
     VkResult dbgMessengerCreateResult = CreateDebugUtilsMessengerEXT( vulkanInstance, &dbgMessengerCreateInfos, nullptr, &renderContext->debugCallback );
 
-    NYA_ASSERT( ( dbgMessengerCreateResult != VK_SUCCESS ), "Failed to create debug callback! (error code: %i)", dbgMessengerCreateResult );
+    NYA_ASSERT( ( dbgMessengerCreateResult == VK_SUCCESS ), "Failed to create debug callback! (error code: %i)", dbgMessengerCreateResult );
 #else
     NYA_CLOG << "Debug Layer is disabled (build was compiled with NYA_NO_DEBUG_DEVICE)" << std::endl;
 #endif
@@ -406,7 +423,7 @@ void RenderDevice::create( DisplaySurface* surface )
         }
     }
 
-    NYA_ASSERT( ( graphicsQueueFamilyIndex == UINT32_MAX || presentQueueFamilyIndex == UINT32_MAX ),
+    NYA_ASSERT( ( graphicsQueueFamilyIndex != UINT32_MAX && presentQueueFamilyIndex != UINT32_MAX ),
                 "Could not find both graphics queue, present queue or graphics/present queue (graphicsQueueFamilyIndex %i, presentQueueFamilyIndex %i)",
                 graphicsQueueFamilyIndex, presentQueueFamilyIndex );
 
@@ -453,7 +470,7 @@ void RenderDevice::create( DisplaySurface* surface )
 
     VkDevice device;
     VkResult deviceCreationResult = vkCreateDevice( physicalDevice, &deviceCreationInfos, nullptr, &device );
-    NYA_ASSERT( ( deviceCreationResult != VK_SUCCESS ), "Device creation failed! (error code: %i)", deviceCreationResult );
+    NYA_ASSERT( ( deviceCreationResult == VK_SUCCESS ), "Device creation failed! (error code: %i)", deviceCreationResult );
 
     vkGetDeviceQueue( device, graphicsQueueFamilyIndex, 0, &renderContext->graphicsQueue );
     vkGetDeviceQueue( device, presentQueueFamilyIndex, 0, &renderContext->presentQueue );
@@ -530,7 +547,7 @@ void RenderDevice::create( DisplaySurface* surface )
 
     VkSwapchainKHR swapChain = {};
     VkResult swapChainCreationResult = vkCreateSwapchainKHR( device, &swapChainCreation, nullptr, &swapChain );
-    NYA_ASSERT( ( swapChainCreationResult != VK_SUCCESS ), "Failed to create swapchain! (error code: %i)", swapChainCreationResult );
+    NYA_ASSERT( ( swapChainCreationResult == VK_SUCCESS ), "Failed to create swapchain! (error code: %i)", swapChainCreationResult );
 
     vkGetSwapchainImagesKHR( device, swapChain, &imageCount, nullptr );
     renderContext->swapChainImages.resize( imageCount );

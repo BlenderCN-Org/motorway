@@ -63,3 +63,5 @@ using nyaStringHash32_t  = std::uint32_t;
 #if defined( NYA_MSVC ) || defined( NYA_GCC )
 #define NYA_RESTRICT __restrict
 #endif
+
+#define NYA_UNUSED_VARIABLE( x ) (void)x

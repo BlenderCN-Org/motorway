@@ -61,6 +61,7 @@ void DumpStackBacktrace();
     va_end( argList );
 
     printf( "Nya GameEngine: Assertion Failed!" );
+    printf( "\n%s\n", buffer );
 
 #if NYA_DEVBUILD
     DumpStackBacktrace();

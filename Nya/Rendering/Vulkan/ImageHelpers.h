@@ -149,7 +149,7 @@ static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
     VK_FORMAT_BC7_SRGB_BLOCK
 };
 
-VkImageViewType GetViewType( const TextureDescription& description )
+static VkImageViewType GetViewType( const TextureDescription& description )
 {
     switch ( description.dimension ) {
     case TextureDescription::DIMENSION_TEXTURE_1D:
@@ -174,7 +174,7 @@ VkImageViewType GetViewType( const TextureDescription& description )
     }
 }
 
-VkImageView CreateImageView( VkDevice device, const TextureDescription& description, const VkImage image, const uint32_t sliceIndex = 0u, const uint32_t sliceCount = ~0u, const uint32_t mipIndex = 0u, const uint32_t mipCount = ~0u )
+static VkImageView CreateImageView( VkDevice device, const TextureDescription& description, const VkImage image, const uint32_t sliceIndex = 0u, const uint32_t sliceCount = ~0u, const uint32_t mipIndex = 0u, const uint32_t mipCount = ~0u )
 {
     VkImageViewCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

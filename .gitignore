@@ -320,7 +320,7 @@ bin/dev/*
 lib/*
 */imgui.ini
 
-bin/NyaEd
+bin/NyaEd*
 bin/*.dll
 bin/*.exe
 bin/data/shaders/*
