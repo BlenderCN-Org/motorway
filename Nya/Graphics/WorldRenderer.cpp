@@ -168,11 +168,13 @@ void WorldRenderer::drawWorld( RenderDevice* renderDevice, const float deltaTime
         renderPipelines[pipelineIdx].execute( renderDevice, deltaTime );
 
 #if NYA_DEVBUILD
+#ifndef NYA_NULL_RENDERER
         const char* profilingString = renderPipelines[pipelineIdx].getProfilingSummary();
 
         if ( profilingString != nullptr ) {
             TextRenderModule->addOutlinedText( profilingString, 0.35f, 10.0f + 200.0f * pipelineIdx, 96.0f );
         }
+#endif
 #endif
     }
 
@@ -236,9 +238,11 @@ void WorldRenderer::loadCachedResources( RenderDevice* renderDevice, ShaderCache
     primitiveCache->createPrimitivesBuffer( renderDevice );
 
 #if NYA_DEVBUILD
+#ifndef NYA_NULL_RENDERER
     for ( int i = 0; i < 8; i++ ) {
         renderPipelines[i].enableProfiling( renderDevice );
     }
+#endif
 #endif
 }
 

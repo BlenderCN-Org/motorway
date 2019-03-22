@@ -46,12 +46,12 @@ public:
     const std::string&              getProfilingSummaryString() const;
 
 private:
-    static constexpr unsigned int   RESULT_RETRIVAL_FRAME_LAG = 5;
+    static constexpr int            RESULT_RETRIVAL_FRAME_LAG = 5;
     static constexpr int            MAX_PROFILE_SECTION_COUNT = 128;
     static constexpr int            TOTAL_QUERY_COUNT = MAX_PROFILE_SECTION_COUNT * RESULT_RETRIVAL_FRAME_LAG;
 
 private:
-    uint64_t                        frameIndex;
+    int64_t                         frameIndex;
 
     QueryPool*                      timestampQueryPool;
     std::queue<uint32_t>            recordedSectionIndexes;

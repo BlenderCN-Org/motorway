@@ -75,7 +75,7 @@ struct Hash128
 nyaString_t GetHashcodeDigest64( const uint64_t hashcode64 )
 {
     static constexpr size_t HASHCODE_SIZE = sizeof( uint64_t ) << 1;
-    static constexpr nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
+    static constexpr const nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
     
     nyaString_t digest( HASHCODE_SIZE, NYA_STRING( '0' ) );
     for ( size_t i = 0, j = ( HASHCODE_SIZE - 1 ) * 4; i < HASHCODE_SIZE; ++i, j -= 4 ) {
@@ -89,7 +89,7 @@ nyaString_t GetHashcodeDigest128( const Hash128& hashcode128 )
 {
     static constexpr size_t HASHCODE_SIZE = sizeof( Hash128 ) << 1;
     static constexpr size_t HALF_HASHCODE_SIZE = ( HASHCODE_SIZE / 2 );
-    static constexpr nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
+    static constexpr const nyaChar_t* LUT = NYA_STRING( "0123456789abcdef" );
     nyaString_t digest( HASHCODE_SIZE, NYA_STRING( '0' ) );
     for ( size_t i = 0, j = ( HASHCODE_SIZE - 1 ) * 4; i < HASHCODE_SIZE; ++i, j -= 4 ) {
         // NOTE Somehow, MSVC tries to unroll the loop but doesn't write the correct index (the div
@@ -173,15 +173,14 @@ Shader* ShaderCache::getOrUploadStage( const std::string& shaderFilename, const 
     const auto shaderHashcode = file->getHashcode();
 
     auto it = cachedStages.find( shaderHashcode );
-    if ( it != cachedStages.end() && !forceReload ) {
-        file->close();
-        return it->second;
-    }
-
-    auto shader = cachedStages[shaderHashcode];
     if ( it != cachedStages.end() ) {
-        // If asked for force reloading, destroy previously cached shader instance
-        renderDevice->destroyShader( it->second );
+        if ( !forceReload ) {
+            file->close();
+            return it->second;
+        } else {
+            // If asked for force reloading, destroy previously cached shader instance
+            renderDevice->destroyShader( it->second );
+        }
     }
 
     // Load precompiled shader

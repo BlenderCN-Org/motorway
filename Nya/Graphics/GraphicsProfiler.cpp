@@ -65,7 +65,7 @@ void GraphicsProfiler::onFrame( RenderDevice* renderDevice )
 
     frameIndex++;
 
-    if ( ( frameIndex - RESULT_RETRIVAL_FRAME_LAG ) >= 0u ) {
+    if ( ( frameIndex - RESULT_RETRIVAL_FRAME_LAG ) >= 0 ) {
         auto retrievedQueryCount = getSectionsResult( renderDevice );
 
         // Move on the next frame if at least one result is available

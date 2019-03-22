@@ -663,15 +663,15 @@ bool RenderPipelineResources::isPersistentBufferAvailable( const nyaStringHash_t
 
 RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     : memoryAllocator( allocator )
-    , renderPasses{ 0 }
+    , renderPasses{ { { 0 }, nullptr, "RenderPass" } }
     , renderPassCount( 0 )
     , passGroupStartIndexes{ 0u }
     , passGroupCount( 0 )
-    , graphicsProfiler( nullptr )
-    , activeViewport{ 0 }
+    , activeViewport{ 0, 0, 0, 0, 0.0f, 0.0f }
     , hasViewportChanged( false )
     , pipelineImageQuality( 1.0f )
     , lastFrameRenderTarget( nullptr )
+    , graphicsProfiler( nullptr )
 {
     renderPipelineResources.create( allocator );
 }
@@ -704,7 +704,7 @@ void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
 
 void RenderPipeline::beginPassGroup()
 {
-    passGroupStartIndexes[passGroupCount++] = renderPassCount;
+    passGroupStartIndexes[passGroupCount++] = static_cast<uint32_t>( renderPassCount );
 }
 
 void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime )
@@ -747,24 +747,18 @@ void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime 
     cmdList.begin();
     cmdList.setViewport( activeViewport );
 
-#if NYA_DEVBUILD
-    if ( graphicsProfiler != nullptr ) {
-        NYA_BEGIN_PROFILE_SCOPE( "RenderPasses Execution" );
-            for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
-                NYA_BEGIN_PROFILE_SCOPE( renderPasses[passIdx].name );
-                    graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
-                        renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
-                    graphicsProfiler->endSection( &cmdList );
-                NYA_END_PROFILE_SCOPE()
-            }
-        NYA_END_PROFILE_SCOPE()
-
-        graphicsProfiler->onFrame( renderDevice );
-    } else {
+#if NYA_DEVBUILD && !defined( NYA_NULL_RENDERER )
+    NYA_BEGIN_PROFILE_SCOPE( "RenderPasses Execution" );
         for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
-            renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+            NYA_BEGIN_PROFILE_SCOPE( renderPasses[passIdx].name );
+                graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
+                    renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+                graphicsProfiler->endSection( &cmdList );
+            NYA_END_PROFILE_SCOPE()
         }
-    }
+    NYA_END_PROFILE_SCOPE()
+
+    graphicsProfiler->onFrame( renderDevice );
 #else
     for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
         renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );

@@ -60,9 +60,17 @@ def resolve_includes( filename, include_path ):
     datafile = codecs.open(filename, "r",encoding='utf-8', errors='ignore')
         
     output_content = ""
-    
+    guards_lvl = 0
+
     for line in datafile:
-        if '#include' in line:
+        if '__cplusplus' in line:
+            guards_lvl = guards_lvl + 1
+        elif '#ifdef' in line and guards_lvl > 0:
+            guards_lvl = guards_lvl + 1
+        elif '#endif' in line and guards_lvl > 0:
+            guards_lvl = guards_lvl - 1
+        
+        if '#include' in line and guards_lvl <= 0:
             token, file = line.split( ' ' )
             
             is_absolute_include = False
@@ -164,7 +172,7 @@ def popenAndCall(popenArgs):
     
     def runInThread(popenArgs):
         global current_task_count
-        proc = Popen(popenArgs)
+        proc = Popen(popenArgs, shell=True)
         proc.wait()
         current_task_count = current_task_count - 1
         return
@@ -198,13 +206,8 @@ def compile_permutation_spirv( shader_name, filename, entry_point, extension, sh
     with open( "./tmp/" + filename + ".unroll", 'w') as outfile:
         outfile.write( resolved_file )
 
-    # HLSL > SPIRV (VK)
-    # SPIRV (VK) > GLSL
-    # GLSL > SPIRV (GLSL)
-    cmdLine = glslang_exe + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
+    cmdLine = glslang_exe + " -I" + shader_folder + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
     popenAndCall( ( cmdLine ) )
-    # subprocess.run( spirvcross_exe + " --combined-samplers-inherit-bindings --version 450 " + compiled_shader_folder + filename + extension + ".vk --output ./tmp/" + filename + extension + ".glsl" )
-    # subprocess.run( glslang_exe + " -S " + shading_model + " -G -o " + compiled_shader_folder + filename + extension + ".gl ./tmp/" + filename + extension + ".glsl" )
     
 def compile_shader( shader_name, type, flags = [] ):
     flagset = generate_combination_list( flags )

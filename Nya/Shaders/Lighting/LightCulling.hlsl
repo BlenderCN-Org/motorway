@@ -138,7 +138,7 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 		dx += dy;
 	            			
 		if ( dx < squaredRadius ) {
-			g_ClusterItems[localItemListOffset + threadListOffset] = i;
+			g_ClusterItems[localItemListOffset + threadListOffset] = j;
             threadListOffset++;
 		}
 	}
