@@ -62,7 +62,7 @@ static bool operator != ( const Viewport& l, const Viewport& r )
 class CommandList
 {
 public:
-    NativeCommandList*  NativeCommandList;
+    NativeCommandList*  CommandListObject;
 
 public:
                         CommandList( BaseAllocator* allocator );

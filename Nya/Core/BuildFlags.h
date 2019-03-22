@@ -74,7 +74,7 @@
 #define NYA_COMPILER "Visual Studio 2012 (11.0)"
 #endif
 #elif NYA_GCC
-#if defined(__GNUC__) && (__GNUC___ > 5 || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1))
+#if defined(__GNUC__) && (__GNUC__ > 5 || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1))
 #define NYA_COMPILER "gcc 5.1"
 #endif
 #else
@@ -87,7 +87,8 @@
 #define NYA_VERSION_TYPE "PROD_BUILD"
 #endif
 
-#define NYA_VERSION "0.01-" NYA_VERSION_TYPE
+#define NYA_VERSION "0.02-" NYA_VERSION_TYPE
 #define NYA_BUILD NYA_BUILD_PLATFORM "-" NYA_BUILD_PROC "-" NYA_GFX_BACKEND "-"\
                     NYA_BUILD_TYPE "-" NYA_VERSION
-#define NYA_BUILD_DATE __DATE__ " " __TIME__
+
+static constexpr const char* const NYA_BUILD_DATE = __DATE__ " " __TIME__;

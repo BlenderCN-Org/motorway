@@ -183,6 +183,6 @@ void CommandList::useRenderPass( RenderPass* renderPass )
     renderPassInfo.clearValueCount = 24;
     renderPassInfo.pClearValues = renderPass->clearValues;
 
-    vkCmdBeginRenderPass( NativeCommandList->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
+    vkCmdBeginRenderPass( CommandListObject->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
 }
 #endif

@@ -438,17 +438,17 @@ void CommandList::bindVertexBuffer( const Buffer* buffer, const unsigned int bin
 {
     constexpr UINT OFFSETS = 0;
 
-    NativeCommandList->deferredContext->IASetVertexBuffers( bindIndex, 1, &buffer->bufferObject, &buffer->bufferStride, &OFFSETS );
+    CommandListObject->deferredContext->IASetVertexBuffers( bindIndex, 1, &buffer->bufferObject, &buffer->bufferStride, &OFFSETS );
 }
 
 void CommandList::bindIndiceBuffer( const Buffer* buffer )
 {
-    NativeCommandList->deferredContext->IASetIndexBuffer( buffer->bufferObject, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0u );
+    CommandListObject->deferredContext->IASetIndexBuffer( buffer->bufferObject, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0u );
 }
 
 void CommandList::updateBuffer( Buffer* buffer, const void* data, const size_t dataSize )
 {
-    ID3D11DeviceContext* nativeDeviceContext = NativeCommandList->deferredContext;
+    ID3D11DeviceContext* nativeDeviceContext = CommandListObject->deferredContext;
 
     D3D11_MAPPED_SUBRESOURCE mappedSubResource;
     HRESULT operationResult = nativeDeviceContext->Map( buffer->bufferObject, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource );
@@ -465,11 +465,11 @@ void CommandList::updateBuffer( Buffer* buffer, const void* data, const size_t d
 
 void CommandList::copyStructureCount( Buffer* srcBuffer, Buffer* dstBuffer, const unsigned int offset )
 {
-    NativeCommandList->deferredContext->CopyStructureCount( dstBuffer->bufferObject, offset, srcBuffer->bufferUAVObject );
+    CommandListObject->deferredContext->CopyStructureCount( dstBuffer->bufferObject, offset, srcBuffer->bufferUAVObject );
 }
 
 void CommandList::drawInstancedIndirect( const Buffer* drawArgsBuffer, const unsigned int bufferDataOffset )
 {
-    NativeCommandList->deferredContext->DrawInstancedIndirect( drawArgsBuffer->bufferObject, bufferDataOffset );
+    CommandListObject->deferredContext->DrawInstancedIndirect( drawArgsBuffer->bufferObject, bufferDataOffset );
 }
 #endif

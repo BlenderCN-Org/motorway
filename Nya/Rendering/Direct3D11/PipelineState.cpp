@@ -270,7 +270,7 @@ void CommandList::bindPipelineState( PipelineState* pipelineState )
 {
     constexpr FLOAT BLEND_FACTORS[4] = { 1.0F, 1.0F, 1.0F, 1.0F };
 
-    ID3D11DeviceContext* deviceContext = NativeCommandList->deferredContext;
+    ID3D11DeviceContext* deviceContext = CommandListObject->deferredContext;
 
     deviceContext->IASetPrimitiveTopology( pipelineState->primitiveTopology );
     deviceContext->IASetInputLayout( pipelineState->inputLayout );

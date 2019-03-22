@@ -21,7 +21,8 @@
 
 #if NYA_VULKAN
 struct VkCommandBuffer_T;
-enum VkPipelineBindPoint;
+
+#include <vulkan/vulkan.h>
 
 struct NativeCommandList
 {

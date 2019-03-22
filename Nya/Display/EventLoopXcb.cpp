@@ -32,7 +32,7 @@ void nya::display::PollSystemEventsImpl( NativeDisplaySurface* surface, InputRea
     while( event != nullptr ) {
         switch ( event->response_type & 0x7F ) {
         case XCB_CLIENT_MESSAGE: {
-            xcb_client_message_event_t* clientMessage = (xcb_client_message_event_t *)event;
+            xcb_client_message_event_t* clientMessage = reinterpret_cast<xcb_client_message_event_t *>( event );
 
             if( clientMessage->window != surface->WindowInstance ) {
                 break;
@@ -45,13 +45,13 @@ void nya::display::PollSystemEventsImpl( NativeDisplaySurface* surface, InputRea
         }
 
         case XCB_EXPOSE: {
-            xcb_client_message_event_t clientMessage = { 0 };
+            xcb_client_message_event_t clientMessage;
             clientMessage.response_type = XCB_CLIENT_MESSAGE;
             clientMessage.format = 32;
             clientMessage.window = surface->WindowInstance;
             clientMessage.type = XCB_ATOM_NOTICE;
 
-            xcb_send_event( surface->Connection, 0, surface->WindowInstance, 0, (char *)&clientMessage);
+            xcb_send_event( surface->Connection, 0, surface->WindowInstance, 0, reinterpret_cast< const char * >( &clientMessage ) );
             break;
         }
 
@@ -60,7 +60,7 @@ void nya::display::PollSystemEventsImpl( NativeDisplaySurface* surface, InputRea
         case XCB_BUTTON_RELEASE:
         case XCB_BUTTON_PRESS:
         case XCB_MOTION_NOTIFY:
-            ProcessInputEventImpl( inputReader, event );
+            nya::input::ProcessInputEventImpl( inputReader, event );
             break;
 
         case XCB_ENTER_NOTIFY:

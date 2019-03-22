@@ -27,7 +27,7 @@
 #include <intrin.h>
 #include <VersionHelpers.h>
 
-void nya::core::RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory )
+void nya::core::RetrieveWorkingDirectory( nyaString_t& workingDirectory )
 {
     workingDirectory.reserve( NYA_MAX_PATH );
 
@@ -39,7 +39,7 @@ void nya::core::RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory )
     workingDirectory.append( NYA_STRING( "\\" ) );
 }
 
-void nya::core::RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory )
+void nya::core::RetrieveHomeDirectory( nyaString_t& homeDirectory )
 {
     PWSTR myDocuments;
 
@@ -50,7 +50,7 @@ void nya::core::RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory )
     }
 }
 
-void nya::core::RetrieveSavedGamesDirectoryImpl( nyaString_t& savedGamesDirectory )
+void nya::core::RetrieveSavedGamesDirectory( nyaString_t& savedGamesDirectory )
 {
     PWSTR mySavedGames;
 
@@ -61,7 +61,7 @@ void nya::core::RetrieveSavedGamesDirectoryImpl( nyaString_t& savedGamesDirector
     }
 }
 
-void nya::core::RetrieveCPUNameImpl( nyaString_t& cpuName )
+void nya::core::RetrieveCPUName( nyaString_t& cpuName )
 {
     nyaString_t cpuInfosName;
     int cpuInfos[4] = { 0, 0, 0, 0 };
@@ -86,7 +86,7 @@ void nya::core::RetrieveCPUNameImpl( nyaString_t& cpuName )
     cpuName = cpuInfosName;
 }
 
-int32_t nya::core::GetCPUCoreCountImpl()
+int32_t nya::core::GetCPUCoreCount()
 {
     SYSTEM_INFO systemInfo = {};
     GetSystemInfo( &systemInfo );
@@ -94,7 +94,7 @@ int32_t nya::core::GetCPUCoreCountImpl()
     return systemInfo.dwNumberOfProcessors;
 }
 
-void nya::core::RetrieveOSNameImpl( nyaString_t& osName )
+void nya::core::RetrieveOSName( nyaString_t& osName )
 {
     if ( IsWindows10OrGreater() ) {
         osName = NYA_STRING( "Windows 10" );
@@ -125,7 +125,7 @@ void nya::core::RetrieveOSNameImpl( nyaString_t& osName )
     }
 }
 
-std::size_t nya::core::GetTotalRAMSizeImpl()
+std::size_t nya::core::GetTotalRAMSizeAsMB()
 {
     MEMORYSTATUSEX memoryStatusEx = {};
     memoryStatusEx.dwLength = sizeof( memoryStatusEx );

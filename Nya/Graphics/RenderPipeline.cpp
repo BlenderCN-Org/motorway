@@ -24,6 +24,8 @@
 
 #include <Rendering/ImageFormat.h>
 
+#include <string.h>
+
 RenderPipelineBuilder::RenderPipelineBuilder()
     : passRefs{ {0} }
     , renderPassCount( -1 )

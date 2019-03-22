@@ -40,7 +40,7 @@
 using namespace nya::graphics;
 using namespace nya::rendering;
 
-void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetCache* graphicsAssetCache, MaterialEditionInput& materialComponent, Texture** textureSet, int& textureCount )
+void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const int32_t layerIndex, const uint32_t inputTextureBindIndex, GraphicsAssetCache* graphicsAssetCache, MaterialEditionInput& materialComponent, Texture** textureSet, int& textureCount )
 {
     auto valueHashcode = nya::core::CRC32( materialInputLine.c_str() );
     const bool isNone = ( valueHashcode == NYA_STRING_HASH( "None" ) ) || materialInputLine.empty();
@@ -67,7 +67,7 @@ void ReadEditableMaterialInput( const nyaString_t& materialInputLine, const uint
 
         textureSet[inputTextureBindIndex] = materialComponent.InputTexture;
 
-        textureCount = nya::maths::max( inputTextureBindIndex, static_cast<uint32_t>( textureCount ) ) + 1u;
+        textureCount = nya::maths::max( static_cast<int32_t>( inputTextureBindIndex ), textureCount ) + 1;
     } else {
         materialComponent.InputType = MaterialEditionInput::COLOR_1D;
         materialComponent.Input1D = std::stof( materialInputLine );
@@ -190,7 +190,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         defaultPipelineStateDesc.blendState.blendConfAlpha.dest = eBlendSource::BLEND_SOURCE_ONE;
 
         defaultPipelineStateDesc.blendState.enableBlend = editableMaterialData.EnableAlphaBlend;
-        defaultPipelineStateDesc.blendState.sampleMask = ~0;
+        defaultPipelineStateDesc.blendState.sampleMask = ~0u;
         defaultPipelineStateDesc.blendState.enableAlphaToCoverage = editableMaterialData.AlphaToCoverage;
     }
 
@@ -248,7 +248,7 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
 
         // Remove user comments before reading the keypair value
         if ( commentSeparator != nyaString_t::npos ) {
-            streamLine.erase( streamLine.begin() + commentSeparator, streamLine.end() );
+            streamLine.erase( streamLine.begin() + static_cast<long>( commentSeparator ), streamLine.end() );
         }
 
         // Skip commented out and empty lines
@@ -376,24 +376,24 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
             case NYA_STRING_HASH( "Layer" ):
                 if ( currentLayerIndex < MAX_LAYER_COUNT ) {
                     currentLayerIndex++;
-                    slotBaseIndex = 1 + ( 10 * currentLayerIndex ) + currentLayerIndex;
+                    slotBaseIndex = static_cast<uint32_t>( 1 + ( 10 * currentLayerIndex ) + currentLayerIndex );
                 }
                 break;
             }
         }
     }
 
-    editableMaterialData.LayerCount = ( currentLayerIndex + 1 );
+    editableMaterialData.LayerCount = static_cast<uint32_t>( currentLayerIndex + 1 );
 
     stream->close();
 }
 
-const uint32_t Material::getSortKey() const
+uint32_t Material::getSortKey() const
 {
     return sortKey;
 }
 
-const bool Material::isOpaque() const
+bool Material::isOpaque() const
 {
     return !sortKeyInfos.useTranslucidity;
 }
@@ -416,13 +416,13 @@ const nyaString_t& Material::getName() const
 void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
 {
     cmdList->bindPipelineState( defaultPipelineState );
-    bindDefaultTextureSet( cmdList, renderPassDesc );
+    bindDefaultTextureSet( renderPassDesc );
 }
 
 void Material::bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
 {
     cmdList->bindPipelineState( probeCapturePipelineState );
-    bindDefaultTextureSet( cmdList, renderPassDesc );
+    bindDefaultTextureSet( renderPassDesc );
 }
 
 void Material::bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
@@ -454,7 +454,7 @@ const Material::EditorBuffer& Material::getEditorBuffer() const
 }
 #endif
 
-void Material::bindDefaultTextureSet( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+void Material::bindDefaultTextureSet( RenderPassDesc& renderPassDesc ) const
 {
     // 0..3 -> Output RenderTargets
     // 4 -> Clusters (3D Tex)

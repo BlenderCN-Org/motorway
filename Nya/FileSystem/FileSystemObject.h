@@ -44,6 +44,7 @@ public:
     template<typename T>    void read( const T& variable ) { read( (uint8_t*)&variable, sizeof( T ) ); }
 
 public:
+    virtual                 ~FileSystemObject() { }
     virtual void            open( const int32_t mode = nya::core::eFileOpenMode::FILE_OPEN_MODE_READ ) = 0;
     virtual void            close() = 0;
     virtual bool            isOpen() = 0;

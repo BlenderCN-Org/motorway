@@ -22,6 +22,8 @@
 #include <string>
 #include <algorithm>
 
+#include "Types.h"
+
 namespace nya
 {
     namespace core

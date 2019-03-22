@@ -19,8 +19,6 @@
 */
 #pragma once
 
-#include <string>
-
 #if NYA_UNICODE
 using nyaChar_t = wchar_t;
 

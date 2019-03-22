@@ -23,18 +23,18 @@
 #include <fstream>
 #include <iostream>
 
-nyaString_t         g_ApplicationFileName;
-nyaOfStream_t       g_FileStream;
+static nyaString_t         g_ApplicationFileName;
+static nyaOfStream_t       g_FileStream;
 
-nyaStreamBuffer_t*  g_CoutBuffer;
-nyaStreamBuffer_t*  g_CerrBuffer;
-nyaStreamBuffer_t*  g_ClogBuffer;
+static nyaStreamBuffer_t*  g_CoutBuffer;
+static nyaStreamBuffer_t*  g_CerrBuffer;
+static nyaStreamBuffer_t*  g_ClogBuffer;
 
-bool                g_IsAvailable;
+static bool                g_IsAvailable;
 
 void nya::core::OpenLogFile( const nyaString_t& logFolder, const nyaString_t& applicationName )
 {
-    constexpr nyaChar_t* LOG_FILE_EXTENSION = ( nyaChar_t* const )NYA_STRING( ".log" );
+    constexpr const nyaChar_t* LOG_FILE_EXTENSION = static_cast<const nyaChar_t* const>( NYA_STRING( ".log" ) );
 
     nyaString_t fileName = ( logFolder + NYA_STRING( "/" ) + applicationName + LOG_FILE_EXTENSION );
 

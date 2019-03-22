@@ -17,22 +17,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
+#include <Shared.h>
 
-#ifdef NYA_UNIX
-namespace nya
+#ifndef NYA_XAUDIO2
+#include <Audio/AudioDevice.h>
+
+AudioDevice::~AudioDevice()
 {
-    namespace core
-    {
-        void        RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory );
-        void        RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory );
-        void        RetrieveSavedGamesDirectoryImpl( nyaString_t& savedGamesDirectory );
 
-        void        RetrieveCPUNameImpl( nyaString_t& cpuName );
-        int32_t     GetCPUCoreCountImpl();
+}
 
-        void        RetrieveOSNameImpl( nyaString_t& osName );
-        std::size_t GetTotalRAMSizeImpl();
-    }
+void AudioDevice::create()
+{
+    NYA_CLOG << "Creating audio context (Null)" << std::endl;
 }
 #endif

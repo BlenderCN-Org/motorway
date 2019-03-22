@@ -156,8 +156,8 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 void CommandList::bindResourceList( ResourceList* resourceList )
 {
     vkCmdBindDescriptorSets( 
-        NativeCommandList->cmdBuffer, 
-        NativeCommandList->resourcesBindPoint, 
+        CommandListObject->cmdBuffer, 
+        CommandListObject->resourcesBindPoint, 
         resourceList->pipelineLayout, 
         0u, 
         1u, 

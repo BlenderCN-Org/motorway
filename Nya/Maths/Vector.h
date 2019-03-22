@@ -20,12 +20,20 @@
 
 #pragma once
 
+#include <limits>
+#include <cmath>
+
+#include <Core/Assert.h>
+
 namespace nya
 {
     namespace maths
     {
         template< typename T >
         constexpr T sqrt( const T x );
+
+        template< typename T, typename R >
+        constexpr T max( const T a, const R b );
     }
 }
 
@@ -145,7 +153,7 @@ struct Vector<Precision, 1>
     {
         Vector r = *this / length();
 
-        return Vector<T, 1>( r.scalars[0] );
+        return Vector<Precision, 1>( r.scalars[0] );
     }
 
     static constexpr Precision dot( const Vector<Precision, 1>& l, const Vector<Precision, 1>& r )
@@ -938,7 +946,7 @@ namespace nya
             Precision biggestScalar = r[0];
 
             for ( int i = 1; i < ScalarCount; i++ )
-                biggestScalar = max( biggestScalar, r[i] );
+                biggestScalar = nya::maths::max( biggestScalar, r[i] );
 
             return biggestScalar;
         }

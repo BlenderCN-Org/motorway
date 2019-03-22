@@ -50,6 +50,6 @@ static constexpr double kLambdaR = 680.0;
 static constexpr double kLambdaG = 550.0;
 static constexpr double kLambdaB = 440.0;
 
-static constexpr nyaChar_t* ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME = ( nyaChar_t* const )NYA_STRING( "GameData/Textures/AtmosphereTransmittance.dds" );
-static constexpr nyaChar_t* ATMOSPHERE_SCATTERING_TEXTURE_NAME = ( nyaChar_t* const )NYA_STRING( "GameData/Textures/AtmosphereScattering.dds" );
-static constexpr nyaChar_t* ATMOSPHERE_IRRADIANCE_TEXTURE_NAME = ( nyaChar_t* const )NYA_STRING( "GameData/Textures/AtmosphereIrradiance.dds" );
+static constexpr const nyaChar_t* ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "GameData/Textures/AtmosphereTransmittance.dds" ) );
+static constexpr const nyaChar_t* ATMOSPHERE_SCATTERING_TEXTURE_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "GameData/Textures/AtmosphereScattering.dds" ) );
+static constexpr const nyaChar_t* ATMOSPHERE_IRRADIANCE_TEXTURE_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "GameData/Textures/AtmosphereIrradiance.dds" ) );

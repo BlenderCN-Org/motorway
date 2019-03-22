@@ -22,6 +22,8 @@
 struct AudioContext;
 struct AudioSource;
 
+class BaseAllocator;
+
 class AudioDevice
 {
 public:

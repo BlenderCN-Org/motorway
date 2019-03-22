@@ -22,13 +22,13 @@
 
 #include <map>
 
-class RenderDevice;
+#include <Rendering/RenderDevice.h>
+
 class FileSystemObject;
 class VirtualFileSystem;
+class BaseAllocator;
 
 struct Shader;
-
-enum eShaderStage;
 
 class ShaderCache
 {

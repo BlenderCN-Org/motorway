@@ -17,41 +17,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <Shared.h>
-#include "HeapTracker.h"
+#pragma once
 
-#include <new>
+#if NYA_VULKAN
 
-std::size_t g_GlobalHeapUsage = 0;
+struct VkQueryPool_T;
 
-void* ::operator new ( std::size_t size )
+struct QueryPool
 {
-    void* allocatedMemory = malloc( size );
-
-    g_GlobalHeapUsage += size;
-
-    return allocatedMemory;
-}
-
-void* ::operator new[] ( std::size_t size )
-{
-    void* allocatedMemory = malloc( size );
-
-    g_GlobalHeapUsage += size;
-
-    return allocatedMemory;
-}
-
-void ::operator delete ( void* allocatedMemory, std::size_t size ) noexcept
-{
-    free( allocatedMemory );
-
-    g_GlobalHeapUsage -= size;
-}
-
-void ::operator delete[] ( void* allocatedMemory, std::size_t size ) noexcept
-{
-    free( allocatedMemory );
-
-    g_GlobalHeapUsage -= size;
-}
+    VkQueryPool_T*  queryPool;
+    unsigned int    currentAllocableIndex;
+    unsigned int    capacity;
+};
+#endif

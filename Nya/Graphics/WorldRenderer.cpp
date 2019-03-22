@@ -36,6 +36,8 @@
 
 #include "PrimitiveCache.h"
 
+#include <string.h>
+
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
 void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )

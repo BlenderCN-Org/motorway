@@ -20,16 +20,17 @@
 #include <Shared.h>
 
 #ifdef NYA_UNIX
-#include "EnvironmentUnix.h"
+#include "Environment.h"
 
 #include <cpuid.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fstream>
 
 #include <sys/sysinfo.h>
 
-void nya::core::RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory )
+void nya::core::RetrieveWorkingDirectory( nyaString_t& workingDirectory )
 {
     workingDirectory.reserve( NYA_MAX_PATH );
     getcwd( &workingDirectory[0], NYA_MAX_PATH );
@@ -37,9 +38,9 @@ void nya::core::RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory )
     workingDirectory = nyaString_t( workingDirectory.c_str() );
 }
 
-void nya::core::RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory )
+void nya::core::RetrieveHomeDirectory( nyaString_t& homeDirectory )
 {
-    const fnChar_t* envVarHome = getenv( "XDG_DATA_HOME" );
+    const nyaChar_t* envVarHome = getenv( "XDG_DATA_HOME" );
 
     if ( envVarHome == nullptr ) {
         NYA_CWARN << "$XDG_DATA_HOME is undefined; using $HOME as fallback..." << std::endl;
@@ -50,12 +51,12 @@ void nya::core::RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory )
     homeDirectory = nyaString_t( envVarHome ) + "/";
 }
 
-void nya::core::RetrieveSavedGamesDirectoryImpl( nyaString_t& savedGamesDirectory )
+void nya::core::RetrieveSavedGamesDirectory( nyaString_t& savedGamesDirectory )
 {
 
 }
 
-void nya::core::RetrieveCPUNameImpl( nyaString_t& cpuName )
+void nya::core::RetrieveCPUName( nyaString_t& cpuName )
 {
     nyaString_t cpuInfosName;
     unsigned int cpuInfos[4] = { 0, 0, 0, 0 };
@@ -80,12 +81,12 @@ void nya::core::RetrieveCPUNameImpl( nyaString_t& cpuName )
     cpuName = cpuInfosName;
 }
 
-int32_t nya::core::GetCPUCoreCountImpl()
+int32_t nya::core::GetCPUCoreCount()
 {
-    return sysconf( _SC_NPROCESSORS_ONLN );
+    return static_cast<int32_t>( sysconf( _SC_NPROCESSORS_ONLN ) );
 }
 
-void nya::core::RetrieveOSNameImpl( nyaString_t& osName )
+void nya::core::RetrieveOSName( nyaString_t& osName )
 {
     std::string unixVersion = "Unix";
 
@@ -99,7 +100,7 @@ void nya::core::RetrieveOSNameImpl( nyaString_t& osName )
     osName = unixVersion;
 }
 
-std::size_t nya::core::GetTotalRAMSizeImpl()
+std::size_t nya::core::GetTotalRAMSizeAsMB()
 {
     struct sysinfo infos = {};
 

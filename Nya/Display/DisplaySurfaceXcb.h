@@ -23,6 +23,8 @@
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 
+class BaseAllocator;
+
 struct NativeDisplaySurface
 {
     xcb_connection_t*   Connection;
@@ -52,7 +54,7 @@ namespace nya
 {
     namespace display
     {
-        NativeDisplaySurface*   CreateDisplaySurfaceImpl( const uint32_t surfaceWidth, const uint32_t surfaceHeight );
+        NativeDisplaySurface*   CreateDisplaySurfaceImpl( BaseAllocator* allocator, const uint32_t surfaceWidth, const uint32_t surfaceHeight );
         void                    SetDisplaySurfaceCaptionImpl( NativeDisplaySurface* surface, const nyaString_t& caption = NYA_STRING( "Flan GameEngine" ) );
         void                    ToggleFullscreenImpl( NativeDisplaySurface* surface );
         void                    ToggleBorderlessImpl( NativeDisplaySurface* surface );

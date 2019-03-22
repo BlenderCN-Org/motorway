@@ -22,6 +22,9 @@
 
 #include <Maths/Helpers.h>
 
+#include <limits>
+#include <string.h>
+
 FramerateCounter::FramerateCounter()
     : MinFramePerSecond( std::numeric_limits<float>::max() )
     , MaxFramePerSecond( 0.0f )

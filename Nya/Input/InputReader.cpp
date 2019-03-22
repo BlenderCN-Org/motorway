@@ -29,6 +29,8 @@
 #include "InputReaderXcb.h"
 #endif
 
+#include <string.h>
+
 using namespace nya::input;
 
 InputReader::InputReader()

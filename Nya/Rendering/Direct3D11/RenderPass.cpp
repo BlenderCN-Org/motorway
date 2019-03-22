@@ -100,24 +100,24 @@ void CommandList::useRenderPass( RenderPass* renderPass )
 {
     for ( UINT i = 0; i < renderPass->rtvCount; i++ ) {
         if ( renderPass->clearTarget[i] ) {
-            NativeCommandList->deferredContext->ClearRenderTargetView( renderPass->renderTargetViews[i], renderPass->clearValue[i] );
+            CommandListObject->deferredContext->ClearRenderTargetView( renderPass->renderTargetViews[i], renderPass->clearValue[i] );
         }
     }
     
     if ( renderPass->clearTarget[8] ) {
-        NativeCommandList->deferredContext->ClearDepthStencilView( renderPass->depthStencilView, D3D11_CLEAR_DEPTH, renderPass->clearValue[8][0], 0x0 );
+        CommandListObject->deferredContext->ClearDepthStencilView( renderPass->depthStencilView, D3D11_CLEAR_DEPTH, renderPass->clearValue[8][0], 0x0 );
     }
     
     // TODO Avoid resource binding dependencies (skip explicit SRV unbind)?
     static constexpr ID3D11ShaderResourceView* NO_SRV[8] = { ( ID3D11ShaderResourceView* )nullptr };
 
-    NativeCommandList->deferredContext->PSSetShaderResources( 0, 8, NO_SRV );
-    NativeCommandList->deferredContext->CSSetShaderResources( 0, 8, NO_SRV );
+    CommandListObject->deferredContext->PSSetShaderResources( 0, 8, NO_SRV );
+    CommandListObject->deferredContext->CSSetShaderResources( 0, 8, NO_SRV );
 
-    NativeCommandList->deferredContext->OMSetRenderTargets( renderPass->rtvCount, renderPass->renderTargetViews, renderPass->depthStencilView );
+    CommandListObject->deferredContext->OMSetRenderTargets( renderPass->rtvCount, renderPass->renderTargetViews, renderPass->depthStencilView );
 
-    NativeCommandList->deferredContext->PSSetShaderResources( 0, 8, renderPass->pixelStage.shaderResourceView );
-    NativeCommandList->deferredContext->CSSetShaderResources( 0, 8, renderPass->computeStage.shaderResourceView );
+    CommandListObject->deferredContext->PSSetShaderResources( 0, 8, renderPass->pixelStage.shaderResourceView );
+    CommandListObject->deferredContext->CSSetShaderResources( 0, 8, renderPass->computeStage.shaderResourceView );
 
 
 }

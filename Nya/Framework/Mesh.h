@@ -71,7 +71,7 @@ public:
 
     const LevelOfDetail&        getLevelOfDetail( const float distance ) const;
     const LevelOfDetail&        getLevelOfDetailByIndex( const uint32_t lodIndex ) const;
-    const int                   getLevelOfDetailCount() const;
+    int                         getLevelOfDetailCount() const;
 
     void                        reset();
 

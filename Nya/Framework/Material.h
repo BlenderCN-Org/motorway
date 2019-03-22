@@ -69,8 +69,6 @@ public:
 
 public:
                                 Material( const nyaString_t& matName = NYA_STRING( "Material" ) );
-                                Material( Material& material ) = default;
-                                Material& operator = ( Material& material ) = default;
                                 ~Material();
 
     void                        create( RenderDevice* renderDevice, ShaderCache* shaderCache );
@@ -78,8 +76,8 @@ public:
 
     void                        load( FileSystemObject* stream, GraphicsAssetCache* graphicsAssetCache );
 
-    const uint32_t              getSortKey() const;
-    const bool                  isOpaque() const;
+    uint32_t                    getSortKey() const;
+    bool                        isOpaque() const;
 
     nyaStringHash_t             getHashcode() const;
 
@@ -139,6 +137,6 @@ private:
     };
 
 private:
-    void                        bindDefaultTextureSet( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
+    void                        bindDefaultTextureSet( RenderPassDesc& renderPassDesc ) const;
     void                        getShadingModelResources( GraphicsAssetCache* graphicsAssetCache );
 };

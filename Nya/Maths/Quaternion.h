@@ -102,23 +102,23 @@ struct Quaternion
         q3 = sqrt( q3 );
         if ( q0 >= q1 && q0 >= q2 && q0 >= q3 ) {
             q0 *= +1.0f;
-            q1 *= sign( r32 - r23 );
-            q2 *= sign( r13 - r31 );
-            q3 *= sign( r21 - r12 );
+            q1 *= nya::maths::sign( r32 - r23 );
+            q2 *= nya::maths::sign( r13 - r31 );
+            q3 *= nya::maths::sign( r21 - r12 );
         } else if ( q1 >= q0 && q1 >= q2 && q1 >= q3 ) {
-            q0 *= sign( r32 - r23 );
+            q0 *= nya::maths::sign( r32 - r23 );
             q1 *= +1.0f;
-            q2 *= sign( r21 + r12 );
-            q3 *= sign( r13 + r31 );
+            q2 *= nya::maths::sign( r21 + r12 );
+            q3 *= nya::maths::sign( r13 + r31 );
         } else if ( q2 >= q0 && q2 >= q1 && q2 >= q3 ) {
-            q0 *= sign( r13 - r31 );
-            q1 *= sign( r21 + r12 );
+            q0 *= nya::maths::sign( r13 - r31 );
+            q1 *= nya::maths::sign( r21 + r12 );
             q2 *= +1.0f;
-            q3 *= sign( r32 + r23 );
+            q3 *= nya::maths::sign( r32 + r23 );
         } else if ( q3 >= q0 && q3 >= q1 && q3 >= q2 ) {
-            q0 *= sign( r21 - r12 );
-            q1 *= sign( r31 + r13 );
-            q2 *= sign( r32 + r23 );
+            q0 *= nya::maths::sign( r21 - r12 );
+            q1 *= nya::maths::sign( r31 + r13 );
+            q2 *= nya::maths::sign( r32 + r23 );
             q3 *= +1.0f;
         }
 
@@ -144,14 +144,14 @@ struct Quaternion
 
     constexpr Precision& operator[] ( const unsigned int index ) const
     {
-        static_assert( index < SCALAR_COUNT );
+        NYA_DEV_ASSERT( index < SCALAR_COUNT, "Invalid scalar index provided! (%i >= %i)", index, SCALAR_COUNT );
 
         return scalars[index];
     }
 
     constexpr Precision& operator[] ( const unsigned int index )
     {
-        static_assert( index < SCALAR_COUNT );
+        NYA_DEV_ASSERT( index < SCALAR_COUNT, "Invalid scalar index provided! (%i >= %i)", index, SCALAR_COUNT );
 
         return scalars[index];
     }

@@ -17,11 +17,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
+#include "Shared.h"
 
-#if NYA_MSVC
+#if NYA_GCC
+#include "DebugHelpers.h"
 
-#define NYA_TRIGGER_BREAKPOINT __debugbreak();
-
-void DumpStackBacktrace();
+void DumpStackBacktrace()
+{
+    NYA_CLOG << "TO BE IMPLEMENTED!!1!!11!!" << std::endl;
+}
 #endif
+

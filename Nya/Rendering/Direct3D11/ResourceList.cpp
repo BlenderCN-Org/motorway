@@ -137,31 +137,31 @@ void CommandList::bindResourceList( ResourceList* resourceList )
     if ( resourceList->uavBuffersBindCount != 0 ) {
         static constexpr ID3D11ShaderResourceView* NO_SRV[14] = { ( ID3D11ShaderResourceView* )nullptr };
 
-        NativeCommandList->deferredContext->VSSetShaderResources( 8, 14, NO_SRV );
-        NativeCommandList->deferredContext->HSSetShaderResources( 8, 14, NO_SRV );
-        NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, NO_SRV );
-        NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, NO_SRV );
-        NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->VSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->HSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->DSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->PSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->CSSetShaderResources( 8, 14, NO_SRV );
     }
 
-    NativeCommandList->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
+    CommandListObject->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
 
-    NativeCommandList->deferredContext->VSSetSamplers( 0, 16, resourceList->samplers.vertexStage );
-    NativeCommandList->deferredContext->HSSetSamplers( 0, 16, resourceList->samplers.hullStage );
-    NativeCommandList->deferredContext->DSSetSamplers( 0, 16, resourceList->samplers.domainStage );
-    NativeCommandList->deferredContext->PSSetSamplers( 0, 16, resourceList->samplers.pixelStage );
-    NativeCommandList->deferredContext->CSSetSamplers( 0, 16, resourceList->samplers.computeStage );
+    CommandListObject->deferredContext->VSSetSamplers( 0, 16, resourceList->samplers.vertexStage );
+    CommandListObject->deferredContext->HSSetSamplers( 0, 16, resourceList->samplers.hullStage );
+    CommandListObject->deferredContext->DSSetSamplers( 0, 16, resourceList->samplers.domainStage );
+    CommandListObject->deferredContext->PSSetSamplers( 0, 16, resourceList->samplers.pixelStage );
+    CommandListObject->deferredContext->CSSetSamplers( 0, 16, resourceList->samplers.computeStage );
 
-    NativeCommandList->deferredContext->VSSetConstantBuffers( 0, 14, resourceList->constantBuffers.vertexStage );
-    NativeCommandList->deferredContext->HSSetConstantBuffers( 0, 14, resourceList->constantBuffers.hullStage );
-    NativeCommandList->deferredContext->DSSetConstantBuffers( 0, 14, resourceList->constantBuffers.domainStage );
-    NativeCommandList->deferredContext->PSSetConstantBuffers( 0, 14, resourceList->constantBuffers.pixelStage );
-    NativeCommandList->deferredContext->CSSetConstantBuffers( 0, 14, resourceList->constantBuffers.computeStage );
+    CommandListObject->deferredContext->VSSetConstantBuffers( 0, 14, resourceList->constantBuffers.vertexStage );
+    CommandListObject->deferredContext->HSSetConstantBuffers( 0, 14, resourceList->constantBuffers.hullStage );
+    CommandListObject->deferredContext->DSSetConstantBuffers( 0, 14, resourceList->constantBuffers.domainStage );
+    CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceList->constantBuffers.pixelStage );
+    CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceList->constantBuffers.computeStage );
 
-    NativeCommandList->deferredContext->VSSetShaderResources( 8, 14, resourceList->buffers.vertexStage );
-    NativeCommandList->deferredContext->HSSetShaderResources( 8, 14, resourceList->buffers.hullStage );
-    NativeCommandList->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
-    NativeCommandList->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
-    NativeCommandList->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
+    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceList->buffers.vertexStage );
+    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceList->buffers.hullStage );
+    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
+    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
+    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
 }
 #endif

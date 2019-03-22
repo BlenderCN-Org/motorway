@@ -143,7 +143,7 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             cmdList->bindResourceList( &resourceList );
 
             // Update vertex buffer content
-            cmdList->updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, bufferOffset * sizeof( float ) );
+            cmdList->updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferOffset ) * sizeof( float ) );
 
             // Bind buffers
             cmdList->bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
@@ -227,7 +227,7 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     pipelineState.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     pipelineState.blendState.enableBlend = true;
-    pipelineState.blendState.sampleMask = ~0;
+    pipelineState.blendState.sampleMask = ~0u;
 
     pipelineState.blendState.blendConfColor.operation = eBlendOperation::BLEND_OPERATION_ADD;
     pipelineState.blendState.blendConfColor.source = eBlendSource::BLEND_SOURCE_SRC_ALPHA;
@@ -261,7 +261,7 @@ void TextRenderingModule::addOutlinedText( const char* text, float size, float x
 
     int charIdx = 0;
     for ( const char* p = text; *p != '\0'; p++, charIdx++ ) {
-        auto g = fontDescriptor->Glyphes[*p];
+        auto g = fontDescriptor->Glyphes[static_cast<size_t>( *p )];
 
         float gx = localX + static_cast<float>( g.OffsetX ) * localSize;
         float gy = -localY - static_cast<float>( g.OffsetY ) * localSize;

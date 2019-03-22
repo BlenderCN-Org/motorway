@@ -19,18 +19,18 @@
 */
 #pragma once
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #if NYA_DEVBUILD
 void DumpStackBacktrace();
 #endif
 
-#if NYA_DEVBUILD
-#define NYA_DEV_ASSERT( condition, format, ... ) NYA_ASSERT( condition, format, __VA_ARGS__ )
-#define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
-#else
-#define NYA_DEV_ASSERT( condition, format, ... ) 
-#define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
-#endif
-
+// TODO
+//  - Better modal window?
+//  - Add 'Report to github' button
+//  - Allow debugging?
 #if NYA_WIN
 [[noreturn]] static void Assert( const char* description, ... )
 {
@@ -48,11 +48,33 @@ void DumpStackBacktrace();
     MessageBoxA( NULL, "Stack Backtrace has been dumped to the log file", "Nya GameEngine: Assertion Failed!", MB_OK | MB_SYSTEMMODAL | MB_ICONASTERISK );
 #endif
 
-    // TODO
-    //  - Better modal window?
-    //  - Add 'Report to github' button
-    //  - Allow debugging?
+    std::exit( 1 );
+}
+#elif NYA_UNIX
+[[noreturn]] static void Assert( const char* description, ... )
+{
+    char buffer[4096] = { 0 };
+
+    va_list argList = {};
+    va_start( argList, description );
+    vsnprintf( buffer, sizeof( buffer ), description, argList );
+    va_end( argList );
+
+    printf( "Nya GameEngine: Assertion Failed!" );
+
+#if NYA_DEVBUILD
+    DumpStackBacktrace();
+    printf( "Stack Backtrace has been dumped to the log file" );
+#endif
 
     std::exit( 1 );
 }
+#endif
+
+#if NYA_DEVBUILD
+#define NYA_DEV_ASSERT( condition, format, ... ) NYA_ASSERT( condition, format, __VA_ARGS__ )
+#define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
+#else
+#define NYA_DEV_ASSERT( condition, format, ... )
+#define NYA_ASSERT( condition, format, ... ) ( condition ) ? (void)0 : Assert( format, __VA_ARGS__ )
 #endif

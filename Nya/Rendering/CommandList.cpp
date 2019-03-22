@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "CommandList.h"
 
 CommandList::CommandList( BaseAllocator* allocator )
-    : NativeCommandList( nullptr )
+    : CommandListObject( nullptr )
     , memoryAllocator( allocator )
 {
 

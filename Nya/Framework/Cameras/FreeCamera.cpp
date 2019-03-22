@@ -28,6 +28,8 @@
 #include <Maths/Sampling.h>
 #include <Maths/MatrixTransformations.h>
 
+#include <cmath>
+
 using namespace nya::maths;
 
 FreeCamera::FreeCamera( const float camSpeed )

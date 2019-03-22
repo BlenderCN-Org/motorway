@@ -42,7 +42,7 @@ void Profiler::beginSection( const std::string& sectionName )
     nya::core::StartTimer( &sectionsTimer[sectionIdx] );
     sectionsName[sectionIdx].clear();
 
-    for ( int depth = 0; depth < recordedSectionIndexes.size(); depth++ ) {
+    for ( size_t depth = 0; depth < recordedSectionIndexes.size(); depth++ ) {
         sectionsName[sectionIdx] += "\t";
     }
     sectionsName[sectionIdx] += sectionName;

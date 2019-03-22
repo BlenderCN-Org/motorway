@@ -120,7 +120,15 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH, { 1, 1, 1, 1 } };
+            passDesc.attachements[0].renderTarget = outputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE_DEPTH;
+            passDesc.attachements[0].targetState = RenderPassDesc::CLEAR_DEPTH;
+            passDesc.attachements[0].clearValue[0] = 1.0f;
+            passDesc.attachements[0].clearValue[1] = 1.0f;
+            passDesc.attachements[0].clearValue[2] = 1.0f;
+            passDesc.attachements[0].clearValue[3] = 1.0f;
+
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
             renderDevice->destroyRenderPass( renderPass );
@@ -129,7 +137,7 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             for ( int i = 0; i < CSM_SLICE_COUNT; i++ ) {
                 cmdList->setViewport( { CSM_SHADOW_MAP_DIMENSIONS * i, 0, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, 0.0f, 1.0f } );
 
-                const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_DEPTH, DrawCommandKey::DEPTH_VIEWPORT_LAYER_CSM0 + i );
+                const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_DEPTH, static_cast<uint8_t>( DrawCommandKey::DEPTH_VIEWPORT_LAYER_CSM0 + i ) );
 
                 InstanceBuffer instanceBufferData;
                 instanceBufferData.StartVector = drawCmdBucket.instanceDataStartOffset;

@@ -17,22 +17,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
+#include <Shared.h>
 
-#ifdef NYA_WIN
-namespace nya
+#if NYA_NULL_RENDERER
+#include <Rendering/RenderDevice.h>
+
+Shader* RenderDevice::createShader( const eShaderStage stage, const void* bytecode, const size_t bytecodeSize )
 {
-    namespace core
-    {
-        void        RetrieveWorkingDirectoryImpl( nyaString_t& workingDirectory );
-        void        RetrieveHomeDirectoryImpl( nyaString_t& homeDirectory );
-        void        RetrieveSavedGamesDirectoryImpl( nyaString_t& savedGamesDirectory );
+    return nullptr;
+}
 
-        void        RetrieveCPUNameImpl( nyaString_t& cpuName );
-        int32_t     GetCPUCoreCountImpl();
+void RenderDevice::destroyShader( Shader* shader )
+{
 
-        void        RetrieveOSNameImpl( nyaString_t& osName );
-        std::size_t GetTotalRAMSizeImpl();
-    }
 }
 #endif

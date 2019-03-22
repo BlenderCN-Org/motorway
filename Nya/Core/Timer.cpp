@@ -49,12 +49,12 @@ double nya::core::GetTimerDelta( Timer* timer )
 
 double nya::core::GetTimerDeltaAsMiliseconds( Timer* timer )
 {
-    return GetTimerDelta( timer ) * 0.001f;
+    return GetTimerDelta( timer ) * 0.001;
 }
 
 double nya::core::GetTimerDeltaAsSeconds( Timer* timer )
 {
-    return GetTimerDelta( timer ) * 0.000001f;
+    return GetTimerDelta( timer ) * 0.000001;
 }
 
 double nya::core::GetTimerElapsedTime( Timer* timer )
@@ -64,11 +64,11 @@ double nya::core::GetTimerElapsedTime( Timer* timer )
 
 double nya::core::GetTimerElapsedTimeAsMiliseconds( Timer* timer )
 {
-    return GetTimerElapsedTime( timer ) * 0.001f;
+    return GetTimerElapsedTime( timer ) * 0.001;
 }
 
 double nya::core::GetTimerElapsedTimeAsSeconds( Timer* timer )
 {
-    return GetTimerElapsedTime( timer ) * 0.000001f;
+    return GetTimerElapsedTime( timer ) * 0.000001;
 }
 

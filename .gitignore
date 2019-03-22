@@ -297,14 +297,18 @@ __pycache__/
 *.odx.cs
 *.xsd.cs
 
+*Makefile*
+
 # Debug dumps and dev stuff
 bin/dev/*
+
 
 # Compiled Libraries
 *.lib
 
 # CMake Stuff
-*CMakeFiles/*
+*/CMakeFiles/*
+/*CMakeFiles/*
 *CMakeCache*
 *.stamp*
 *cmake_install*
@@ -319,6 +323,9 @@ lib/*
 bin/*.dll
 bin/*.exe
 bin/data/shaders/*
+
+# ghc (gcc)
+*.h.gch
 
 Tools/tmp/*
 Tools/cache/*

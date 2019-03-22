@@ -83,7 +83,7 @@ constexpr double kMieSingleScatteringAlbedo = 0.9;
 constexpr double kMiePhaseFunctionG = 0.8;
 constexpr double kGroundAlbedo = 0.1;
 const double max_sun_zenith_angle =
-( use_half_precision_ ? 102.0 : 120.0 ) / 180.0 * nya::maths::PI<float>();
+( use_half_precision_ ? 102.0 : 120.0 ) / 180.0 * nya::maths::PI<double>();
 
 
 // An atmosphere layer of width 'width' (in m), and whose density is defined as

@@ -24,7 +24,7 @@
 
 #include <FileSystem/FileSystemObject.h>
 
-using nyaToStringEnvType_t = std::function<char*( void* )>;
+using nyaToStringEnvType_t = std::function<const char*( void* )>;
 using nyaFromStringEnvType_t = std::function<void*( const nyaString_t& )>;
 
 struct Variable
@@ -44,7 +44,7 @@ struct CustomVariableType
 class EnvironmentVariables
 {
 public:
-    template<typename T> static T&      registerVariable( const std::string& name, const nyaStringHash_t typeHashcode, T* value, const T defaultValue = ( T )0, const bool serialize = true );
+    template<typename T> static T&      registerVariable( const std::string& name, const nyaStringHash_t typeHashcode, T* value, const T defaultValue = static_cast<T>( 0 ), const bool serialize = true );
     static int                          registerCustomType( const nyaStringHash_t typeHashcode, nyaToStringEnvType_t toStringFunc, nyaFromStringEnvType_t fromStringFunc );
     template<typename T> static T*      getVariable( nyaStringHash_t hashcode );
     static void                         serialize( FileSystemObject* file );
@@ -58,8 +58,8 @@ private:
 #include "EnvVarsRegister.inl"
 
 #define NYA_ENV_OPTION_ENUM( optionName ) optionName,
-#define NYA_ENV_OPTION_STRING( optionName ) (char* const)#optionName,
-#define NYA_ENV_OPTION_CASE( optionName ) case NYA_STRING_HASH( #optionName ): return (void*)optionName;
+#define NYA_ENV_OPTION_STRING( optionName ) static_cast<const char* const>( #optionName ),
+#define NYA_ENV_OPTION_CASE( optionName ) case NYA_STRING_HASH( #optionName ): return reinterpret_cast<void*>( optionName );
 
 // Generates and registers a custom option type to the EnvironmentVariables instance
 // The registered type will be serializable/deserializable
@@ -78,22 +78,22 @@ enum e##name : int32_t\
     list( NYA_ENV_OPTION_ENUM )\
     e##name##_COUNT\
 };\
-static constexpr char* s##name[e##name##_COUNT] =\
+static constexpr const char* s##name[e##name##_COUNT] =\
 {\
     list( NYA_ENV_OPTION_STRING )\
 };\
-int __DUMMY##name =EnvironmentVariables::registerCustomType(\
+static int __DUMMY##name =EnvironmentVariables::registerCustomType(\
 NYA_STRING_HASH( "e"#name ),\
-[=]( void* typelessVar )\
+[]( void* typelessVar )\
 {\
-    return s##name[*(e##name*)typelessVar]; \
+    return s##name[*static_cast<e##name*>( typelessVar )]; \
 },\
-[=]( const nyaString_t& str )\
+[]( const nyaString_t& str )\
 {\
     const nyaStringHash_t hashcode = nya::core::CRC32( str );\
     switch ( hashcode ) {\
         list( NYA_ENV_OPTION_CASE )\
-        default: return (void*)nullptr;\
+        default: return static_cast<void*>( nullptr );\
     };\
 } );
 

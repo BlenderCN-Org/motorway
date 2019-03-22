@@ -38,37 +38,37 @@ void CommandList::begin()
     cmdBufferInfos.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     cmdBufferInfos.pInheritanceInfo = nullptr;
 
-    vkBeginCommandBuffer( NativeCommandList->cmdBuffer, &cmdBufferInfos );
+    vkBeginCommandBuffer( CommandListObject->cmdBuffer, &cmdBufferInfos );
 }
 
 void CommandList::end()
 {
-    vkEndCommandBuffer( NativeCommandList->cmdBuffer );
+    vkEndCommandBuffer( CommandListObject->cmdBuffer );
 }
 
 void CommandList::draw( const unsigned int vertexCount, const unsigned int vertexOffset )
 {
-    vkCmdDraw( NativeCommandList->cmdBuffer, vertexCount, 1, vertexOffset, 0 );
+    vkCmdDraw( CommandListObject->cmdBuffer, vertexCount, 1, vertexOffset, 0 );
 }
 
 void CommandList::drawIndexed( const unsigned int indiceCount, const unsigned int indiceOffset, const size_t indiceType, const unsigned int vertexOffset )
 {
-    vkCmdDrawIndexed( NativeCommandList->cmdBuffer, indiceCount, 1, indiceOffset, vertexOffset, 0 );
+    vkCmdDrawIndexed( CommandListObject->cmdBuffer, indiceCount, 1, indiceOffset, vertexOffset, 0 );
 }
 
 void CommandList::drawInstancedIndexed( const unsigned int indiceCount, const unsigned int instanceCount, const unsigned int indiceOffset, const unsigned int vertexOffset, const unsigned int instanceOffset )
 {
-    vkCmdDrawIndexed( NativeCommandList->cmdBuffer, indiceCount, instanceCount, indiceOffset, vertexOffset, instanceOffset );
+    vkCmdDrawIndexed( CommandListObject->cmdBuffer, indiceCount, instanceCount, indiceOffset, vertexOffset, instanceOffset );
 }
 
 void CommandList::dispatchCompute( const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )
 {
-    vkCmdDispatch( NativeCommandList->cmdBuffer, threadCountX, threadCountY, threadCountZ );
+    vkCmdDispatch( CommandListObject->cmdBuffer, threadCountX, threadCountY, threadCountZ );
 }
 
 void CommandList::setViewport( const Viewport& viewport )
 {
-    NativeCommandList->currentViewport = viewport;
+    CommandListObject->currentViewport = viewport;
 
     VkViewport vkViewport;
     vkViewport.x = static_cast<float>( viewport.X );
@@ -78,11 +78,11 @@ void CommandList::setViewport( const Viewport& viewport )
     vkViewport.minDepth = viewport.MinDepth;
     vkViewport.maxDepth = viewport.MaxDepth;
 
-    vkCmdSetViewport( NativeCommandList->cmdBuffer, 0, 1, &vkViewport );
+    vkCmdSetViewport( CommandListObject->cmdBuffer, 0, 1, &vkViewport );
 }
 
 void CommandList::getViewport( Viewport& viewport )
 {
-    viewport = NativeCommandList->currentViewport;
+    viewport = CommandListObject->currentViewport;
 }
 #endif

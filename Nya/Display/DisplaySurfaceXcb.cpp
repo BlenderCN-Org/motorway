@@ -24,10 +24,11 @@
 
 #include <stb_image.h>
 #include <vector>
+#include <string.h>
 
 inline xcb_intern_atom_cookie_t GetCookieForAtom( xcb_connection_t* connection, const nyaString_t& stateName )
 {
-    return xcb_intern_atom( connection, 0, stateName.size(), stateName.c_str() );
+    return xcb_intern_atom( connection, 0, static_cast<uint16_t>( stateName.size() ), stateName.c_str() );
 }
 
 xcb_atom_t GetReplyAtomFromCookie( xcb_connection_t* connection, xcb_intern_atom_cookie_t cookie )
@@ -41,7 +42,7 @@ xcb_atom_t GetReplyAtomFromCookie( xcb_connection_t* connection, xcb_intern_atom
     return reply->atom;
 }
 
-NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t surfaceWidth, const uint32_t surfaceHeight )
+NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( BaseAllocator* allocator, const uint32_t surfaceWidth, const uint32_t surfaceHeight )
 {
     NYA_CLOG << "Creating display surface (XCB)" << std::endl;
 
@@ -56,7 +57,7 @@ NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t sur
     xcb_screen_t* screen = xcb_setup_roots_iterator( xcb_get_setup( connection ) ).data;
 
     // Create native resource object
-    NativeDisplaySurface* surf = new NativeDisplaySurface();
+    NativeDisplaySurface* surf = nya::core::allocate<NativeDisplaySurface>( allocator );
     surf->Connection = connection;
     surf->WindowInstance = xcb_generate_id( surf->Connection );
 
@@ -82,8 +83,10 @@ NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t sur
                        XCB_COPY_FROM_PARENT,
                        surf->WindowInstance,
                        screen->root,
-                       surfaceWidth * 0.5f, surfaceHeight * 0.5f,
-                       surfaceWidth, surfaceHeight,
+                       static_cast<int16_t>( surfaceWidth * 0.5f ),
+                       static_cast<int16_t>( surfaceHeight * 0.5f ),
+                       static_cast<uint16_t>( surfaceWidth ),
+                       static_cast<uint16_t>( surfaceHeight ),
                        10,
                        XCB_WINDOW_CLASS_INPUT_OUTPUT,
                        screen->root_visual,
@@ -106,14 +109,14 @@ NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t sur
     int w, h, comp;
     auto image = stbi_load( "nya_icon.png", &w, &h, &comp, STBI_rgb_alpha );
     if ( image != nullptr ) {
-        const int texelCount = w * h;
-        const int iconBufferLength = texelCount + 2; // First two integers contain icon width and height
+        const unsigned int texelCount = static_cast<unsigned int>( w * h );
+        const unsigned int iconBufferLength = texelCount + 2u; // First two integers contain icon width and height
 
         std::vector<unsigned int> iconBuffer( iconBufferLength );
-        iconBuffer[0] = w;
-        iconBuffer[1] = h;
+        iconBuffer[0] = static_cast<unsigned int>( w );
+        iconBuffer[1] = static_cast<unsigned int>( h );
 
-        memcpy( &iconBuffer[2], image, texelCount * comp * sizeof( unsigned char ) );
+        memcpy( &iconBuffer[2], image, texelCount * static_cast<unsigned int>( comp ) * sizeof( unsigned char ) );
 
         stbi_image_free( image );
 
@@ -133,7 +136,7 @@ NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t sur
     XColor dummy = {};
     char BLANK_CURSOR_TEXELS[1] = { 0 };
 
-    Display* tmpDisp = XOpenDisplay( 0 );
+    Display* tmpDisp = XOpenDisplay( nullptr );
 
     Pixmap blank = XCreateBitmapFromData( tmpDisp, surf->WindowInstance, BLANK_CURSOR_TEXELS, 1, 1 );
 
@@ -150,7 +153,7 @@ NativeDisplaySurface* nya::display::CreateDisplaySurfaceImpl( const uint32_t sur
 
 void nya::display::SetDisplaySurfaceCaptionImpl( NativeDisplaySurface* surface, const nyaString_t& caption )
 {
-    xcb_change_property( surface->Connection, XCB_PROP_MODE_REPLACE, surface->WindowInstance, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, caption.size(), caption.c_str() );
+    xcb_change_property( surface->Connection, XCB_PROP_MODE_REPLACE, surface->WindowInstance, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, static_cast<uint32_t>( caption.size() ), caption.c_str() );
 }
 
 void nya::display::ToggleFullscreenImpl( NativeDisplaySurface* surface )
@@ -160,7 +163,7 @@ void nya::display::ToggleFullscreenImpl( NativeDisplaySurface* surface )
 
     constexpr int32_t NET_WM_STATE_TOGGLE = 2;
 
-    xcb_client_message_event_t event = { 0 };
+    xcb_client_message_event_t event;
     event.response_type = XCB_CLIENT_MESSAGE;
     event.type = GetReplyAtomFromCookie( surface->Connection, wm_state_ck );
     event.format = 32;
@@ -173,7 +176,7 @@ void nya::display::ToggleFullscreenImpl( NativeDisplaySurface* surface )
 
     constexpr uint32_t EVENT_MASK = ( XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
 
-    xcb_send_event( surface->Connection, 1, surface->WindowInstance, EVENT_MASK, (const char*)&event );
+    xcb_send_event( surface->Connection, 1, surface->WindowInstance, EVENT_MASK, reinterpret_cast<const char*>( &event ) );
 }
 
 void nya::display::ToggleBorderlessImpl( NativeDisplaySurface* surface )
@@ -188,7 +191,10 @@ bool nya::display::GetShouldQuitFlagImpl( NativeDisplaySurface* surface )
 
 void nya::display::SetMousePositionImpl(  NativeDisplaySurface* surface, const float surfaceNormalizedX, const float surfaceNormalizedY )
 {
-    xcb_warp_pointer( surface->Connection, surface->WindowInstance, surface->WindowInstance, 0, 0, surface->Width, surface->Height,
-                      surface->Width * surfaceNormalizedX, surface->Height * surfaceNormalizedY );
+    xcb_warp_pointer( surface->Connection, surface->WindowInstance, surface->WindowInstance, 0, 0,
+                      static_cast<uint16_t>( surface->Width ),
+                      static_cast<uint16_t>( surface->Height ),
+                      static_cast<int16_t>( surface->Width * surfaceNormalizedX ),
+                      static_cast<int16_t>( surface->Height * surfaceNormalizedY ) );
 }
 #endif

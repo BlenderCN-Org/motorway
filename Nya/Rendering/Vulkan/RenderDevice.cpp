@@ -49,6 +49,7 @@
 #include <Maths/Helpers.h>
 
 #include <vulkan/vulkan.h>
+#include <limits>
 
 using namespace nya::rendering;
 using namespace nya::maths;
@@ -248,7 +249,7 @@ void RenderDevice::create( DisplaySurface* surface )
 
     uint32_t devCount = 0;
     vkEnumeratePhysicalDevices( vulkanInstance, &devCount, nullptr );
-    NYA_ASSERT( ( devCount != 0 ), "No device available!" );
+    NYA_ASSERT( ( devCount != 0 ), "No device available! (devCount = %i)", devCount );
 
     NYA_CLOG << "Found " << devCount << " device(s)" << std::endl;
 
@@ -405,7 +406,9 @@ void RenderDevice::create( DisplaySurface* surface )
         }
     }
 
-    NYA_ASSERT( ( graphicsQueueFamilyIndex == UINT32_MAX || presentQueueFamilyIndex == UINT32_MAX ), "Could not find both graphics queue, present queue or graphics/present queue" );
+    NYA_ASSERT( ( graphicsQueueFamilyIndex == UINT32_MAX || presentQueueFamilyIndex == UINT32_MAX ),
+                "Could not find both graphics queue, present queue or graphics/present queue (graphicsQueueFamilyIndex %i, presentQueueFamilyIndex %i)",
+                graphicsQueueFamilyIndex, presentQueueFamilyIndex );
 
     // Create queues
     constexpr float queuePrios = 1.0f;
@@ -571,12 +574,12 @@ RenderTarget* RenderDevice::getSwapchainBuffer()
 
 CommandList& RenderDevice::allocateGraphicsCommandList() const
 {
-    return CommandList( nullptr );
+
 }
 
 CommandList& RenderDevice::allocateComputeCommandList() const
 {
-    return CommandList( nullptr );
+
 }
 
 void RenderDevice::submitCommandList( CommandList* commandList )
@@ -585,7 +588,7 @@ void RenderDevice::submitCommandList( CommandList* commandList )
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = nullptr;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandList->NativeCommandList->cmdBuffer;
+    submitInfo.pCommandBuffers = &commandList->CommandListObject->cmdBuffer;
 }
 
 void RenderDevice::present()

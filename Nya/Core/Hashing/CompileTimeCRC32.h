@@ -19,10 +19,13 @@
 */
 #pragma once
 
+#include <stdint.h>
+#include <stdlib.h>
+
 namespace
 {
     // Use Castagnoli or default polynomial
-    static constexpr int POLYNOMIAL = 0x82f63b78;
+    static constexpr unsigned int POLYNOMIAL = 0x82f63b78;
 
     // Generate CRC lookup table
     template <unsigned c, int k = 8>
@@ -73,14 +76,14 @@ constexpr unsigned crc_table[] = { A( 0 ) };
     //      Return:
     //          Recursively call itself if 'len' is not null (= hash is not generated yet), return 'crc' otherwise.
     //=====================================
-    constexpr uint32_t crc32_impl( const char* dataPointer, size_t dataLength, uint32_t crc = ~0 )
+    constexpr uint32_t crc32_impl( const char* dataPointer, size_t dataLength, uint32_t crc = ~0u )
     {
-        return ( dataLength != 0 ) ? crc32_impl( dataPointer + 1, dataLength - 1, ( crc >> 8 ) ^ crc_table[( crc & 0xFF ) ^ *dataPointer] ) : crc;
+        return ( dataLength != 0 ) ? crc32_impl( dataPointer + 1, dataLength - 1, ( crc >> 8 ) ^ crc_table[( crc & 0xFF ) ^ static_cast<unsigned char>( *dataPointer )] ) : crc;
     }
 
-    constexpr uint32_t crc32_impl( const wchar_t* dataPointer, size_t dataLength, uint32_t crc = ~0 )
+    constexpr uint32_t crc32_impl( const wchar_t* dataPointer, size_t dataLength, uint32_t crc = ~0u )
     {
-        return ( dataLength != 0 ) ? crc32_impl( dataPointer + 1, dataLength - 1, ( crc >> 8 ) ^ crc_table[( crc & 0xFF ) ^ *dataPointer] ) : crc;
+        return ( dataLength != 0 ) ? crc32_impl( dataPointer + 1, dataLength - 1, ( crc >> 8 ) ^ crc_table[( crc & 0xFF ) ^ static_cast<unsigned char>( *dataPointer )] ) : crc;
     }
 
     //=====================================

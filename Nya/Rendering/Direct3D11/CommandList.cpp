@@ -27,7 +27,7 @@
 
 CommandList::~CommandList()
 {
-    NativeCommandList->deferredContext->Release();
+    CommandListObject->deferredContext->Release();
 }
 
 void CommandList::begin()
@@ -37,27 +37,27 @@ void CommandList::begin()
 
 void CommandList::end()
 {
-    NativeCommandList->deferredContext->FinishCommandList( FALSE, &NativeCommandList->commandList );
+    CommandListObject->deferredContext->FinishCommandList( FALSE, &CommandListObject->commandList );
 }
 
 void CommandList::draw( const unsigned int vertexCount, const unsigned int vertexOffset )
 {
-    NativeCommandList->deferredContext->Draw( vertexCount, vertexOffset );
+    CommandListObject->deferredContext->Draw( vertexCount, vertexOffset );
 }
 
 void CommandList::drawIndexed( const unsigned int indiceCount, const unsigned int indiceOffset, const size_t indiceType, const unsigned int vertexOffset )
 {
-    NativeCommandList->deferredContext->DrawIndexed( indiceCount, indiceOffset, vertexOffset );
+    CommandListObject->deferredContext->DrawIndexed( indiceCount, indiceOffset, vertexOffset );
 }
 
 void CommandList::drawInstancedIndexed( const unsigned int indiceCount, const unsigned int instanceCount, const unsigned int indiceOffset, const unsigned int vertexOffset, const unsigned int instanceOffset )
 {
-    NativeCommandList->deferredContext->DrawIndexedInstanced( indiceCount, instanceCount, indiceOffset, vertexOffset, instanceOffset );
+    CommandListObject->deferredContext->DrawIndexedInstanced( indiceCount, instanceCount, indiceOffset, vertexOffset, instanceOffset );
 }
 
 void CommandList::dispatchCompute( const unsigned int threadCountX, const unsigned int threadCountY, const unsigned int threadCountZ )
 {
-    NativeCommandList->deferredContext->Dispatch( threadCountX, threadCountY, threadCountZ );
+    CommandListObject->deferredContext->Dispatch( threadCountX, threadCountY, threadCountZ );
 }
 
 void CommandList::setViewport( const Viewport& viewport )
@@ -72,7 +72,7 @@ void CommandList::setViewport( const Viewport& viewport )
         viewport.MaxDepth,
     };
 
-    NativeCommandList->deferredContext->RSSetViewports( 1, &d3dViewport );
+    CommandListObject->deferredContext->RSSetViewports( 1, &d3dViewport );
 }
 
 void CommandList::getViewport( Viewport& viewport )
@@ -81,7 +81,7 @@ void CommandList::getViewport( Viewport& viewport )
     UINT viewportCount = 1;
 
     D3D11_VIEWPORT activeViewport = {};
-    NativeCommandList->deferredContext->RSGetViewports( &viewportCount, &activeViewport );
+    CommandListObject->deferredContext->RSGetViewports( &viewportCount, &activeViewport );
 
     viewport.X = static_cast<int32_t>( activeViewport.TopLeftX );
     viewport.Y = static_cast<int32_t>( activeViewport.TopLeftY );

@@ -36,7 +36,8 @@ class CommandListPool;
 class CommandList;
 class ResourceListPool;
 
-enum eImageFormat;
+#include <stdint.h>
+#include "ImageFormat.h"
 
 namespace nya
 {
@@ -208,7 +209,7 @@ struct SamplerDesc
 
     }
 
-    const bool operator == ( const SamplerDesc& desc ) const
+    bool operator == ( const SamplerDesc& desc ) const
     {
         return ( addressU == desc.addressU
             && addressV == desc.addressV
@@ -262,7 +263,7 @@ struct TextureDescription
         unsigned int allowCPUWrite : 1;
         unsigned int : 0;
 
-        const bool operator == ( const TextureDescription::Flagset& flagset ) const
+        bool operator == ( const TextureDescription::Flagset& flagset ) const
         {
             return isCubeMap == flagset.isCubeMap
                 && isDepthResource == flagset.isDepthResource
@@ -274,7 +275,7 @@ struct TextureDescription
 
     TextureDescription()
         : dimension( DIMENSION_UNKNOWN )
-        , format( (eImageFormat)0 )
+        , format( eImageFormat::IMAGE_FORMAT_UNKNOWN )
         , width( 0 )
         , height( 0 )
         , depth( 1 )
@@ -286,7 +287,7 @@ struct TextureDescription
 
     }
 
-    const bool operator == ( const TextureDescription& desc ) const
+    bool operator == ( const TextureDescription& desc ) const
     {
         return desc.width == width
             && desc.height == height
@@ -329,8 +330,8 @@ struct BufferDesc
     {
         struct
         {
-            std::size_t     size;
-            std::size_t     singleElementSize;
+            size_t     size;
+            size_t     singleElementSize;
         };
 
         // UAV Textures

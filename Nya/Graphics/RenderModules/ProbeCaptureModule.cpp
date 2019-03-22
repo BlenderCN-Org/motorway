@@ -128,7 +128,7 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
         uint32_t    ProbeIndex;
     };
 
-    PassData& passData = renderPipeline->addRenderPass<PassData>(
+    renderPipeline->addRenderPass<PassData>(
         "IBL Probe Convolution Pass",
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
             passData.outputDiffuse = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "IBL/DiffuseProbesArray" ) );
@@ -224,15 +224,24 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
             RenderTarget* inputProbeArray = renderPipelineResources.getPersitentRenderTarget( passData.input );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputDiffuseTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = outputDiffuseTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
             passDesc.attachements[0].mipIndex = mipLevel;
             passDesc.attachements[0].layerIndex = faceIndex;
 
-            passDesc.attachements[1] = { outputSpecularTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[1].renderTarget = outputSpecularTarget;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
             passDesc.attachements[1].mipIndex = mipLevel;
             passDesc.attachements[1].layerIndex = faceIndex;
 
-            passDesc.attachements[2] = { inputProbeArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[2].renderTarget = inputProbeArray;
+            passDesc.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[2].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[2].targetState = RenderPassDesc::DONT_CARE;
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
@@ -256,7 +265,7 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
         ResHandle_t bilinearSampler;
     };
 
-    PassData& passData = renderPipeline->addRenderPass<PassData>(
+    renderPipeline->addRenderPass<PassData>(
         "IBL Captured Face Save Pass",
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
             renderPipelineBuilder.setUncullablePass();
@@ -287,11 +296,17 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = outputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
             passDesc.attachements[0].layerIndex = faceIndex;
             passDesc.attachements[0].mipIndex = 0u;
 
-            passDesc.attachements[1] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[1].renderTarget = inputTarget;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[1].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );

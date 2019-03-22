@@ -140,7 +140,7 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
             passData.input = renderPipelineBuilder.readRenderTarget( inputRenderTarget );
 
             // Per Tile Histogram
-            const uint32_t bufferDimension = ( ( (uint32_t)screenSize.y + 3 ) >> 2 ) * 128;
+            const uint32_t bufferDimension = ( static_cast<uint32_t>( screenSize.y + 3 ) >> 2 ) * 128;
             const auto perTileHistogramBufferSize = sizeof( unsigned int ) * static_cast<std::size_t>( bufferDimension );
 
             // Create Per-Tile Histogram Buffer
@@ -149,7 +149,7 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
             perTileHistogramsBufferDescription.viewFormat = IMAGE_FORMAT_R32_UINT;
             perTileHistogramsBufferDescription.size = perTileHistogramBufferSize;
             perTileHistogramsBufferDescription.singleElementSize = sizeof( unsigned int );
-            perTileHistogramsBufferDescription.stride = static_cast<std::size_t>( bufferDimension );
+            perTileHistogramsBufferDescription.stride = static_cast<std::uint32_t>( bufferDimension );
 
             passData.output = renderPipelineBuilder.allocateBuffer( perTileHistogramsBufferDescription, SHADER_STAGE_COMPUTE );
 
@@ -176,7 +176,10 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { inputTarget, SHADER_STAGE_COMPUTE, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = inputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_COMPUTE;
+            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );

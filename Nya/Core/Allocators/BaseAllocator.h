@@ -19,14 +19,17 @@
 */
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
 namespace
 {
     template<typename T>
     constexpr std::uint8_t GetAllocatedArrayHeaderSize()
     {
-        std::uint8_t headerSize = sizeof( size_t ) / sizeof( T );
+        std::uint8_t headerSize = sizeof( std::size_t ) / sizeof( T );
 
-        if ( sizeof( size_t ) % sizeof( T ) > 0 ) {
+        if ( sizeof( std::size_t ) % sizeof( T ) > 0ull ) {
             headerSize++;
         }
 
@@ -41,9 +44,9 @@ public:
     virtual             ~BaseAllocator();
 
     void*               getBaseAddress() const;
-    const std::size_t   getSize() const;
-    const std::size_t   getMemoryUsage() const;
-    const std::size_t   getAllocationCount() const;
+    std::size_t         getSize() const;
+    std::size_t         getMemoryUsage() const;
+    std::size_t         getAllocationCount() const;
 
     virtual void*       allocate( const std::size_t allocationSize, const std::uint8_t alignment = 4 ) = 0;
     virtual void        free( void* pointer ) = 0;
@@ -71,10 +74,10 @@ namespace nya
         {
             constexpr std::uint8_t headerSize = GetAllocatedArrayHeaderSize<T>();
 
-            T* allocationStart = ( T* )( allocator->allocate( sizeof( T ) * ( arrayLength + headerSize ), alignof( T ) ) ) + headerSize;
+            T* allocationStart = static_cast<T*>( allocator->allocate( sizeof( T ) * ( arrayLength + headerSize ), alignof( T ) ) ) + headerSize;
 
             // Write array length at the begining of the allocation
-            *( ( size_t* )( allocationStart ) - 1 ) = arrayLength;
+            *( reinterpret_cast<std::size_t*>( allocationStart ) - 1 ) = arrayLength;
 
             for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
                 new ( allocationStart + allocation ) T( std::forward<TArgs>( args )... );
@@ -93,9 +96,9 @@ namespace nya
         template<typename T>
         void freeArray( BaseAllocator* allocator, T* arrayObject )
         {
-            std::size_t arrayLength = *( ( size_t* )( arrayObject ) - 1 );
+            std::size_t arrayLength = *( reinterpret_cast<std::size_t*>( arrayObject ) - 1ull );
 
-            for ( std::size_t allocation = 0; allocation < arrayLength; allocation++ ) {
+            for ( std::size_t allocation = 0ull; allocation < arrayLength; allocation++ ) {
                 ( arrayObject + allocation )->~T();
             }
 

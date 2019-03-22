@@ -19,6 +19,8 @@
 */
 #pragma once
 
+#include <stdint.h>
+
 struct Timer
 {
     int64_t startTime;

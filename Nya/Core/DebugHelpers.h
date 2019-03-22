@@ -21,9 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #if NYA_DEVBUILD
 #if NYA_MSVC
-#include "DebugHelpersMsvc.h"
+#define NYA_TRIGGER_BREAKPOINT __debugbreak();
+#elif NYA_GCC
+#include <csignal>
+#define NYA_TRIGGER_BREAKPOINT std::raise(SIGINT);
 #endif
+
+void DumpStackBacktrace();
+
 #else
 #define NYA_TRIGGER_BREAKPOINT (void)0
 #endif
-

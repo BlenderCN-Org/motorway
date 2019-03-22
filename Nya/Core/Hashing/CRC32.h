@@ -26,7 +26,7 @@
 namespace
 {
     template<typename T>
-    static uint32_t Core_CRC32Impl( const T* string, const std::size_t length )
+    static uint32_t Core_CRC32Impl( const T* string )
     {
        /* unsigned int hashcode = ~0;
 
@@ -42,19 +42,19 @@ namespace
 
         return hashcode;*/
 
-        unsigned int hashcode = ~0;
+        unsigned int hashcode = ~0u;
 
         for ( const T* character = string; *character; ++character ) {
-            hashcode ^= *character;
+            hashcode ^= static_cast<unsigned int>( *character );
 
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
-            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ POLYNOMIAL : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
+            hashcode = hashcode & 1 ? ( hashcode >> 1 ) ^ 0x82f63b78 : hashcode >> 1;
         }
 
         return ~hashcode;
@@ -67,12 +67,12 @@ namespace nya
     {
         static inline uint32_t CRC32( const std::string& string )
         {
-            return Core_CRC32Impl( string.c_str(), string.size() );
+            return Core_CRC32Impl( string.c_str() );
         }
 
         static inline uint32_t CRC32( const std::wstring& string )
         {
-            return Core_CRC32Impl( string.c_str(), string.size() );
+            return Core_CRC32Impl( string.c_str() );
         }
     }
 }

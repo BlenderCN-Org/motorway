@@ -103,12 +103,12 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             Buffer* skyBuffer = renderPipelineResources.getBuffer( passData.parametersBuffer );
 
             // Update Parameters
-            parameters.SunSizeX = tan( sunAngularRadius );
-            parameters.SunSizeY = cos( sunAngularRadius * 4.0f );
+            parameters.SunSizeX = tanf( sunAngularRadius );
+            parameters.SunSizeY = cosf( sunAngularRadius * 4.0f );
             parameters.SunDirection = nyaVec3f(
-                cos( sunVerticalAngle ) * cos( sunHorizontalAngle ),
-                cos( sunVerticalAngle ) * sin( sunHorizontalAngle ),
-                sin( sunVerticalAngle )
+                cosf( sunVerticalAngle ) * cosf( sunHorizontalAngle ),
+                cosf( sunVerticalAngle ) * sinf( sunHorizontalAngle ),
+                sinf( sunVerticalAngle )
             );
 
             cmdList->updateBuffer( skyBuffer, &parameters, sizeof( parameters ) );
@@ -149,7 +149,14 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR, { 0 } };
+            passDesc.attachements[0].renderTarget = outputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[0].targetState = RenderPassDesc::CLEAR_COLOR;
+            passDesc.attachements[0].clearValue[0] = 0.0f;
+            passDesc.attachements[0].clearValue[1] = 0.0f;
+            passDesc.attachements[0].clearValue[2] = 0.0f;
+            passDesc.attachements[0].clearValue[3] = 1.0f;
 
             passDesc.attachements[1].texture = scatteringTexture;
             passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;

@@ -17,11 +17,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#pragma once
+#include <Shared.h>
 
-extern std::size_t g_GlobalHeapUsage;
+#if NYA_NULL_RENDERER
+#include <Rendering/RenderDevice.h>
 
-void* ::operator new ( std::size_t size );
-void* ::operator new[] ( std::size_t size );
-void ::operator delete( void* allocatedMemory, std::size_t size ) noexcept;
-void ::operator delete[]( void* allocatedMemory, std::size_t size ) noexcept;
+Sampler* RenderDevice::createSampler( const SamplerDesc& description )
+{
+    return nullptr;
+}
+
+void RenderDevice::destroySampler( Sampler* sampler )
+{
+
+}
+#endif

@@ -17,7 +17,7 @@ template<typename T>
 inline T RoundToEven( const T value )
 {
     static_assert( std::is_integral<T>(), "T should be integral (or implement modulo operator)" );
-    return ( ( value % 2 == (T)0 ) ? value : ( value - (T)1 ) );
+    return ( ( value % 2 == static_cast<T>( 0 ) ) ? value : ( value - static_cast<T>( 1 ) ) );
 }
 
 void LoadCachedResourcesBP( RenderDevice* renderDevice, ShaderCache* shaderCache )
@@ -98,8 +98,15 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
 
             // RenderPass
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { renderTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = inputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+
+            passDesc.attachements[1].renderTarget = renderTarget;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
 
             RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
             cmdList->useRenderPass( renderPass );
@@ -162,8 +169,15 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
 
             // RenderPass
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { renderTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = inputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+
+            passDesc.attachements[1].renderTarget = renderTarget;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
 
             const float downsample = ( 1.0f / downsampleFactor );
 
@@ -246,8 +260,15 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             // RenderPass
             RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { renderTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
+            passDesc.attachements[0].renderTarget = inputTarget;
+            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
+            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+
+            passDesc.attachements[1].renderTarget = renderTarget;
+            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
+            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
 
             cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 

@@ -47,34 +47,34 @@
 #include <Core/EnvVarsRegister.h>
 #include <Core/FramerateCounter.h>
 
+#include <Framework/GUI/Panel.h>
+
 #include "DefaultInputConfig.h"
 
-static constexpr nyaChar_t* const PROJECT_NAME = ( nyaChar_t* const )NYA_STRING( "NyaEd" );
+static constexpr const nyaChar_t* const PROJECT_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "NyaEd" ) );
 
 // CRT allocated memory for base heap allocation
-char                    g_BaseBuffer[128];
-void*                   g_AllocatedTable;
-void*                   g_AllocatedVirtualMemory;
+static char                    g_BaseBuffer[128];
+static void*                   g_AllocatedTable;
+static void*                   g_AllocatedVirtualMemory;
 
-AudioDevice*            g_AudioDevice;
-DisplaySurface*         g_DisplaySurface;
-InputMapper*            g_InputMapper;
-InputReader*            g_InputReader;
-RenderDevice*           g_RenderDevice;
-VirtualFileSystem*      g_VirtualFileSystem;
-FileSystemNative*       g_SaveFileSystem;
-FileSystemNative*       g_DataFileSystem;
-FileSystemNative*       g_DevFileSystem;
-ShaderCache*            g_ShaderCache;
-WorldRenderer*          g_WorldRenderer;
-GraphicsAssetCache*     g_GraphicsAssetCache;
-DrawCommandBuilder*     g_DrawCommandBuilder;
-LightGrid*              g_LightGrid;
+static AudioDevice*            g_AudioDevice;
+static DisplaySurface*         g_DisplaySurface;
+static InputMapper*            g_InputMapper;
+static InputReader*            g_InputReader;
+static RenderDevice*           g_RenderDevice;
+static VirtualFileSystem*      g_VirtualFileSystem;
+static FileSystemNative*       g_SaveFileSystem;
+static FileSystemNative*       g_DataFileSystem;
+static FileSystemNative*       g_DevFileSystem;
+static ShaderCache*            g_ShaderCache;
+static WorldRenderer*          g_WorldRenderer;
+static GraphicsAssetCache*     g_GraphicsAssetCache;
+static DrawCommandBuilder*     g_DrawCommandBuilder;
+static LightGrid*              g_LightGrid;
 
-Scene*                  g_SceneTest;
-FreeCamera*             g_FreeCamera;
-
-#include <Framework/GUI/Panel.h>
+static Scene*                  g_SceneTest;
+static FreeCamera*             g_FreeCamera;
 
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -126,7 +126,8 @@ void RegisterInputContexts()
     }, 0 );
 }
 
-GUIPanel panelTest;
+static GUIPanel panelTest;
+
 void TestStuff()
 {
     NYA_CLOG << "Initializing stuff..." << std::endl;
@@ -152,7 +153,6 @@ void TestStuff()
     auto& planeTest = g_SceneTest->allocateStaticGeometry();
 
     auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
-    auto& geometryTransform = g_SceneTest->TransformDatabase[planeTest.transform];
     geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
 
     for ( int j = 0; j < 5; j++ ) {
@@ -175,7 +175,7 @@ void TestStuff()
     sunLight.isSunLight = true;
     sunLight.intensityInLux = 100000.0f;
     sunLight.angularRadius = 0.00935f / 2.0f;
-    const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( sunLight.angularRadius ) );
+    const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * static_cast<float>( 1.0f - cosf( sunLight.angularRadius ) );
 
     sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
     sunLight.sphericalCoordinates = nyaVec2f( 0.50f, 0.5f );
@@ -227,7 +227,7 @@ void InitializeIOSubsystems()
         NYA_CWARN << "Failed to retrieve 'Saved Games' folder (this is expected behavior on Unix)" << std::endl;
         nya::core::RetrieveHomeDirectory( cfgFilesDir );
 
-        NYA_ASSERT( !cfgFilesDir.empty(), "Failed to retrieve a suitable directory for savegame storage on your system..." );
+        NYA_ASSERT( !cfgFilesDir.empty(), "Failed to retrieve a suitable directory for savegame storage on your system... (cfgFilesDir = %s)", cfgFilesDir.c_str() );
     }
 
     // Prepare files/folders stored on the system fs
@@ -404,10 +404,10 @@ void MainLoop()
 
         logicCounter.onFrame( frameTime );
 
-        accumulator += frameTime;
+        accumulator += static_cast<double>( frameTime );
         
         NYA_BEGIN_PROFILE_SCOPE( "Fixed-step updates" )
-            while ( accumulator >= nya::editor::LOGIC_DELTA ) {
+            while ( accumulator >= static_cast<double>( nya::editor::LOGIC_DELTA ) ) {
                 // Update Input
                 g_InputReader->onFrame( g_InputMapper );
 
@@ -416,7 +416,7 @@ void MainLoop()
                 g_InputMapper->clear();
 
                 g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
-                accumulator -= nya::editor::LOGIC_DELTA;
+                accumulator -= static_cast<double>( nya::editor::LOGIC_DELTA );
             }
         NYA_END_PROFILE_SCOPE()
 

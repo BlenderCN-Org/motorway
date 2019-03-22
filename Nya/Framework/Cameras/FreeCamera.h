@@ -53,7 +53,7 @@ public:
 
     CameraData&     getData();
 
-    decltype( CameraData::flags )& FreeCamera::getUpdatableFlagset()
+    decltype( CameraData::flags )& getUpdatableFlagset()
     {
         return data.flags;
     }

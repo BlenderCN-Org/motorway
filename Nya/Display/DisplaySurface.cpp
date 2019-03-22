@@ -77,8 +77,6 @@ void nya::display::SetDisplayMode( DisplaySurface* surface, const eDisplayMode d
 
 void nya::display::PollSystemEvents( DisplaySurface* surface, InputReader* inputReader )
 {
-    NYA_PROFILE( __FUNCTION__ )
-
     PollSystemEventsImpl( surface->nativeDisplaySurface, inputReader );
 }
 

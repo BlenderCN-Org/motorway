@@ -62,7 +62,7 @@ void* FreeListAllocator::allocate( const std::size_t allocationSize, const std::
                 freeBlock = freeBlock->next;
         } else {
             // Else create a new FreeBlock containing remaining memory 
-            FreeBlock* nextFreeBlock = ( FreeBlock* )( freeBlock + requiredSize );
+            FreeBlock* nextFreeBlock = static_cast<FreeBlock*>( freeBlock + requiredSize );
 
             nextFreeBlock->size = freeBlock->size - requiredSize;
             nextFreeBlock->next = freeBlock->next;
@@ -74,7 +74,7 @@ void* FreeListAllocator::allocate( const std::size_t allocationSize, const std::
         }
 
         std::uint8_t* allocatedAddress = reinterpret_cast< std::uint8_t* >( freeBlock ) + adjustment;
-        AllocationHeader* header = ( AllocationHeader* )( allocatedAddress - sizeof( AllocationHeader ) );
+        AllocationHeader* header = reinterpret_cast<AllocationHeader*>( allocatedAddress - sizeof( AllocationHeader ) );
         header->size = requiredSize;
         header->adjustment = adjustment;
 
@@ -89,7 +89,7 @@ void* FreeListAllocator::allocate( const std::size_t allocationSize, const std::
 
 void FreeListAllocator::free( void* pointer )
 {
-    AllocationHeader* header = ( ( AllocationHeader* )( pointer ) - sizeof( AllocationHeader ) );
+    AllocationHeader* header = ( reinterpret_cast<AllocationHeader*>( pointer ) - sizeof( AllocationHeader ) );
 
     const std::uint8_t* blockBaseAddress = reinterpret_cast<std::uint8_t*>( pointer ) - header->adjustment;
     const size_t blockSize = header->size;
@@ -99,7 +99,7 @@ void FreeListAllocator::free( void* pointer )
     FreeBlock* freeBlock = freeBlockList;
 
     while ( freeBlock != nullptr ) {
-        if ( ( std::uint8_t* )freeBlock >= blockEndAddress ) {
+        if ( reinterpret_cast<std::uint8_t*>(freeBlock) >= blockEndAddress ) {
             break;
         }
 

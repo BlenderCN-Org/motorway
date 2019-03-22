@@ -104,7 +104,7 @@ const Mesh::LevelOfDetail& Mesh::getLevelOfDetailByIndex( const uint32_t lodInde
     return lod[nya::maths::min( ( MAX_LOD_COUNT - 1u ), lodIndex )];
 }
 
-const int Mesh::getLevelOfDetailCount() const
+int Mesh::getLevelOfDetailCount() const
 {
     return lodCount;
 }

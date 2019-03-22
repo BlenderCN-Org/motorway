@@ -58,7 +58,7 @@ elseif( UNIX )
 
     find_package( Threads REQUIRED )
     find_package( X11 REQUIRED )
-    find_package( OpenAL REQUIRED )
+    # find_package( OpenAL REQUIRED )
 endif( WIN32 )
 
 if ( MSVC )

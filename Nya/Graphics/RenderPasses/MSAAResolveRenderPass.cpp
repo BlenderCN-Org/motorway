@@ -21,10 +21,10 @@ void LoadCachedResourcesMRP( RenderDevice* renderDevice, ShaderCache* shaderCach
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 #define LOAD_PERMUTATION( samplerCount )\
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X"#samplerCount, SHADER_STAGE_PIXEL );\
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount, SHADER_STAGE_PIXEL );\
     g_x##samplerCount##PipelineStateObject = renderDevice->createPipelineState( psoDesc );\
     \
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X"#samplerCount##"+NYA_USE_TAA", SHADER_STAGE_PIXEL );\
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount "+NYA_USE_TAA", SHADER_STAGE_PIXEL );\
     g_x##samplerCount##TAAPipelineStateObject = renderDevice->createPipelineState( psoDesc );
 
     LOAD_PERMUTATION( 2 )

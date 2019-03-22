@@ -21,6 +21,8 @@
 
 #if NYA_WIN
 #include "AllocationHelpersWin32.h"
+#elif NYA_UNIX
+#include "AllocationHelpersUnix.h"
 #endif
 
 namespace nya
@@ -29,13 +31,15 @@ namespace nya
     {
         inline static void* AlignForward( void* address, const uint8_t alignment )
         {
-            return ( void* )( static_cast<uint64_t>( ( ( uint64_t )( address ) + static_cast<uint8_t>( alignment - 1 ) ) )
-                              & static_cast<uint8_t>( ~( alignment - 1 ) ) );
+            return reinterpret_cast<void*>(
+                        static_cast<uint64_t>( ( reinterpret_cast<uint64_t>( address ) + static_cast<uint8_t>( alignment - 1 ) ) )
+                      & static_cast<uint8_t>( ~( alignment - 1 ) )
+            );
         }
 
         inline static uint8_t AlignForwardAdjustment( const void* address, uint8_t alignment )
         {
-            uint8_t adjustment = alignment - ( ( uint64_t )( address )
+            uint8_t adjustment = alignment - ( reinterpret_cast<uint64_t>( address )
                                              & static_cast<uint8_t>( alignment - 1 ) );
 
             if ( adjustment == alignment ) {

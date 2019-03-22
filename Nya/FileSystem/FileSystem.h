@@ -26,6 +26,7 @@ class FileSystemObject;
 class FileSystem
 {
 public:
+    virtual                     ~FileSystem() { };
     virtual FileSystemObject*   openFile( const nyaString_t& filename, const int32_t mode = nya::core::eFileOpenMode::FILE_OPEN_MODE_READ ) = 0;
     virtual void                closeFile( FileSystemObject* fileSystemObject ) = 0;
     virtual void                createFolder( const nyaString_t& folderName ) = 0;

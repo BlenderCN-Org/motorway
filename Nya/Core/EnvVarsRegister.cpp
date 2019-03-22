@@ -44,48 +44,48 @@ void EnvironmentVariables::readValue( Variable& variable, const nyaString_t& inp
 
     switch ( variable.Type ) {
     case NYA_STRING_HASH( "double" ):
-        *( double* )variable.Value = std::stod( inputValue );
+        *static_cast<double*>( variable.Value ) = std::stod( inputValue );
         break;
     case NYA_STRING_HASH( "float" ):
-        *( float* )variable.Value = std::stof( inputValue );
+        *static_cast<float*>( variable.Value ) = std::stof( inputValue );
         break;
     case NYA_STRING_HASH( "long long" ):
     case NYA_STRING_HASH( "int64_t" ):
-        *( int64_t* )variable.Value = std::stoll( inputValue );
+        *static_cast<int64_t*>( variable.Value ) = std::stoll( inputValue );
         break;
     case NYA_STRING_HASH( "unsigned long long" ):
     case NYA_STRING_HASH( "uint64_t" ):
-        *( uint64_t* )variable.Value = std::stoull( inputValue );
+        *static_cast<uint64_t*>( variable.Value ) = std::stoull( inputValue );
         break;
     case NYA_STRING_HASH( "int" ):
     case NYA_STRING_HASH( "int32_t" ):
-        *( int32_t* )variable.Value = std::stoi( inputValue );
+        *static_cast<int32_t*>( variable.Value ) = std::stoi( inputValue );
         break;
     case NYA_STRING_HASH( "unsigned int" ):
     case NYA_STRING_HASH( "uint32_t" ):
-        *( uint32_t* )variable.Value = std::stoi( inputValue );
+        *static_cast<uint32_t*>( variable.Value ) = static_cast<uint32_t>( std::stoi( inputValue ) );
         break;
         // TODO Not safe
     case NYA_STRING_HASH( "short" ):
     case NYA_STRING_HASH( "int16_t" ):
-        *( int16_t* )variable.Value = std::stoi( inputValue );
+        *static_cast<int16_t*>( variable.Value ) = static_cast<int16_t>( std::stoi( inputValue ) );
         break;
     case NYA_STRING_HASH( "unsigned short" ):
     case NYA_STRING_HASH( "uint16_t" ):
-        *( uint16_t* )variable.Value = std::stoi( inputValue );
+        *static_cast<uint16_t*>( variable.Value ) = static_cast<uint16_t>( std::stoi( inputValue ) );
         break;
     case NYA_STRING_HASH( "bool" ):
-        *( bool* )variable.Value = ( inputValue == NYA_STRING( "True" ) );
+        *static_cast<bool*>( variable.Value ) = ( inputValue == NYA_STRING( "True" ) );
         break;
     case NYA_STRING_HASH( "nyaVec2u" ):
-        *( nyaVec2u* )variable.Value = nya::core::StringTo2DVectorU( inputValue );
+        *static_cast<nyaVec2u*>( variable.Value ) = nya::core::StringTo2DVectorU( inputValue );
         break;
     default: {
         auto it = ENV_VAR_TYPES().find( variable.Type );
 
         // This shouldn't cause any trouble as long as the generated enum type matches the type used here
         if ( it != ENV_VAR_TYPES().end() ) {
-            *( int64_t* )variable.Value = ( int64_t )it->second.FromString( inputValue );
+            *static_cast<int64_t*>( variable.Value ) = reinterpret_cast<int64_t>( it->second.FromString( inputValue ) );
         }
     } break;
     }

@@ -26,11 +26,12 @@
 #include "InputLayouts.h"
 
 class InputReader;
+
 namespace nya
 {
-    namespace core
+    namespace input
     {
-        void CreateInputReaderImpl( nya::core::eInputLayout& activeInputLayout );
+        void CreateInputReaderImpl( const nya::input::eInputLayout& activeInputLayout );
         void ProcessInputEventImpl( InputReader* inputReader, const xcb_generic_event_t* event );
     }
 }

@@ -30,6 +30,8 @@
 
 #include <Maths/MatrixTransformations.h>
 
+#include <string.h>
+
 using namespace nya::rendering;
 
 LineRenderingModule::LineRenderingModule()
@@ -121,13 +123,13 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
             ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
             cmdList->bindResourceList( &resourceList );
 
-            cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, bufferIndex * sizeof( float ) );
+            cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );
            
             // Bind buffers
             cmdList->bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
             cmdList->bindIndiceBuffer( lineIndiceBuffer );
 
-            cmdList->draw( indiceCount );
+            cmdList->draw( static_cast<unsigned int>( indiceCount ) );
 
             renderDevice->destroyRenderPass( renderPass );
 
@@ -154,7 +156,6 @@ void LineRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
 
     uint32_t indexBufferData[indexBufferLength];
 
-    uint32_t i = 0;
     for ( uint32_t c = 0; c < LINE_RENDERING_MAX_LINE_COUNT; c++ ) {
         indexBufferData[c * 2] = c;
         indexBufferData[( c * 2 ) + 1] = ( c + 1 );
@@ -189,7 +190,7 @@ void LineRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     pipelineState.primitiveTopology = ePrimitiveTopology::PRIMITIVE_TOPOLOGY_LINELIST;
 
     pipelineState.blendState.enableBlend = true;
-    pipelineState.blendState.sampleMask = ~0;
+    pipelineState.blendState.sampleMask = ~0u;
 
     pipelineState.blendState.blendConfColor.operation = eBlendOperation::BLEND_OPERATION_ADD;
     pipelineState.blendState.blendConfColor.source = eBlendSource::BLEND_SOURCE_SRC_ALPHA;

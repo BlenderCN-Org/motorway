@@ -135,29 +135,29 @@ unsigned int CommandList::allocateQuery( QueryPool* queryPool )
 
 void CommandList::beginQuery( QueryPool* queryPool, const unsigned int queryIndex )
 {
-    NativeCommandList->deferredContext->Begin( queryPool->queryHandles[queryIndex] );
+    CommandListObject->deferredContext->Begin( queryPool->queryHandles[queryIndex] );
 }
 
 void CommandList::endQuery( QueryPool* queryPool, const unsigned int queryIndex )
 {
-    NativeCommandList->deferredContext->End( queryPool->queryHandles[queryIndex] );
+    CommandListObject->deferredContext->End( queryPool->queryHandles[queryIndex] );
 }
 
 void CommandList::writeTimestamp( QueryPool* queryPool, const unsigned int queryIndex )
 {
     // Update disjoint queries
     if ( !queryPool->isRecordingDisjointQuery ) {
-        NativeCommandList->deferredContext->Begin( queryPool->disjointQueryHandles[queryIndex] );
+        CommandListObject->deferredContext->Begin( queryPool->disjointQueryHandles[queryIndex] );
         queryPool->disjointQueriesResult[queryIndex] = 0;
         queryPool->currentDisjointAllocableIndex = queryIndex;
     } else {
-        NativeCommandList->deferredContext->End( queryPool->disjointQueryHandles[queryPool->currentDisjointAllocableIndex] );
+        CommandListObject->deferredContext->End( queryPool->disjointQueryHandles[queryPool->currentDisjointAllocableIndex] );
     }
 
     queryPool->queryDisjointTable[queryIndex] = queryPool->currentDisjointAllocableIndex;
     queryPool->isRecordingDisjointQuery = !queryPool->isRecordingDisjointQuery;
 
     // Write timestamp
-    NativeCommandList->deferredContext->End( queryPool->queryHandles[queryIndex] );
+    CommandListObject->deferredContext->End( queryPool->queryHandles[queryIndex] );
 }
 #endif

@@ -24,6 +24,8 @@
 
 #include "InputReader.h"
 
+#include "InputAxis.h"
+
 #include <xcb/xcb_keysyms.h>
 
 static xcb_key_symbols_t* KEY_SYMBOLS = nullptr;
@@ -31,13 +33,15 @@ static xcb_key_symbols_t* KEY_SYMBOLS = nullptr;
 static double previousX = 0.0;
 static double previousY = 0.0;
 
-void nya::core::CreateInputReaderImpl( nya::core::eInputLayout& activeInputLayout )
+using namespace nya::input;
+
+void nya::input::CreateInputReaderImpl( const nya::input::eInputLayout& activeInputLayout )
 {
     auto connection = xcb_connect( nullptr, nullptr );
     KEY_SYMBOLS = xcb_key_symbols_alloc( connection );
 }
 
-void nya::core::ProcessInputEventImpl( InputReader* inputReader, const xcb_generic_event_t* event )
+void nya::input::ProcessInputEventImpl( InputReader* inputReader, const xcb_generic_event_t* event )
 {
     const auto responseType = ( event->response_type & 0x7F );
 
@@ -59,13 +63,13 @@ void nya::core::ProcessInputEventImpl( InputReader* inputReader, const xcb_gener
 
     case XCB_KEY_RELEASE:{
         const xcb_key_release_event_t* keyReleaseEvent = reinterpret_cast<const xcb_key_release_event_t*>( event );
-        inputReader->pushKeyEvent( { nya::core::UnixKeys[xcb_key_symbols_get_keysym( KEY_SYMBOLS, keyReleaseEvent->detail, 0 )], 0 } );
+        inputReader->pushKeyEvent( { nya::input::UnixKeys[xcb_key_symbols_get_keysym( KEY_SYMBOLS, keyReleaseEvent->detail, 0 )], 0 } );
         break;
     }
 
     case XCB_KEY_PRESS: {
         const xcb_key_press_event_t* keyPressEvent = reinterpret_cast<const xcb_key_press_event_t*>( event );
-        inputReader->pushKeyEvent( { nya::core::UnixKeys[xcb_key_symbols_get_keysym( KEY_SYMBOLS, keyPressEvent->detail, 0 )], 1 } );
+        inputReader->pushKeyEvent( { nya::input::UnixKeys[xcb_key_symbols_get_keysym( KEY_SYMBOLS, keyPressEvent->detail, 0 )], 1 } );
         break;
     }
 

@@ -33,9 +33,6 @@ struct VkSurfaceKHR_T;
 struct VkSwapchainKHR_T;
 struct VkExtent2D;
 
-enum VkPresentModeKHR;
-enum VkFormat;
-
 #include <vector>
 #include <vulkan/vulkan.h>
 

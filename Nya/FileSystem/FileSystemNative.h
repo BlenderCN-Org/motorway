@@ -31,14 +31,14 @@ public:
                                         FileSystemNative( const nyaString_t& customWorkingDirectory = NYA_STRING( "" ) );
                                         FileSystemNative( FileSystemNative& ) = delete;
                                         FileSystemNative& operator = ( FileSystemNative& ) = delete;
-                                        ~FileSystemNative();
+                                        ~FileSystemNative() override;
 
     virtual FileSystemObject*           openFile( const nyaString_t& filename, const int32_t mode = nya::core::eFileOpenMode::FILE_OPEN_MODE_READ ) override;
     virtual void                        closeFile( FileSystemObject* fileSystemObject ) override;
     virtual void                        createFolder( const nyaString_t& folderName ) override;
     virtual bool                        fileExists( const nyaString_t& filename ) override;
     virtual bool                        isReadOnly() override;
-    virtual nyaString_t                  resolveFilename( const nyaString_t& mountPoint, const nyaString_t& filename );
+    virtual nyaString_t                 resolveFilename( const nyaString_t& mountPoint, const nyaString_t& filename );
 
 private:
     nyaString_t                          workingDirectory;
