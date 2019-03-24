@@ -21,10 +21,14 @@
 
 #if NYA_VULKAN
 struct VkBuffer_T;
+struct VkBufferView_T;
+struct VkDeviceMemory_T;
 
 struct Buffer
 {
-    VkBuffer_T*     bufferObject;
-    std::size_t     stride;
+    VkBuffer_T*         bufferObject;
+    VkDeviceMemory_T*   deviceMemory;
+    VkBufferView_T*     bufferView;
+    std::size_t         stride;
 };
 #endif
