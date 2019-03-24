@@ -71,22 +71,22 @@ void CreateDescriptorSetAndLayout( const VkDevice device, const VkDescriptorPool
 {
     bindCount = 0u;
 
-    VkDescriptorSetLayoutBinding samplerDescriptorSetBinding[MAX_RES_COUNT];
+    VkDescriptorSetLayoutBinding descriptorSetBinding[MAX_RES_COUNT];
 
     for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
-        const auto& sampler = description[i];
+        const auto& resource = description[i];
 
         // TODO Assuming we reach the end of the resource list once a resource has no explicit stage binding
         // Is that wise?
-        if ( sampler.stageBind == 0u ) {
+        if ( resource.stageBind == 0u ) {
             break;
         }
 
-        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = samplerDescriptorSetBinding[bindCount++];
-        descriptorSetLayoutBinding.binding = static_cast<uint32_t>( sampler.bindPoint );
+        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindCount++];
+        descriptorSetLayoutBinding.binding = static_cast<uint32_t>( resource.bindPoint );
         descriptorSetLayoutBinding.descriptorType = descriptorType;
         descriptorSetLayoutBinding.descriptorCount = 1u;
-        descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( sampler.stageBind );
+        descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( resource.stageBind );
         descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
     }
 
@@ -95,7 +95,7 @@ void CreateDescriptorSetAndLayout( const VkDevice device, const VkDescriptorPool
     descriptorSetLayoutInfo.pNext = nullptr;
     descriptorSetLayoutInfo.flags = 0u;
     descriptorSetLayoutInfo.bindingCount = bindCount;
-    descriptorSetLayoutInfo.pBindings = samplerDescriptorSetBinding;
+    descriptorSetLayoutInfo.pBindings = descriptorSetBinding;
 
     vkCreateDescriptorSetLayout( device, &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout );
 
