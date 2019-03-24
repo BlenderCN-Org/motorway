@@ -44,6 +44,7 @@ RenderTarget* RenderDevice::createRenderTarget1D( const TextureDescription& desc
     renderTarget->textureRenderTargetView = CreateImageView( renderContext->device, description, image );
 
     renderTarget->textureRenderTargetViewPerSlice = nya::core::allocateArray<VkImageView>( memoryAllocator, description.arraySize );
+    renderTarget->textureRenderTargetViewPerSliceAndMipLevel = nya::core::allocateArray<VkImageView*>( memoryAllocator, description.arraySize );
     for ( unsigned int layerIdx = 0; layerIdx < description.arraySize; layerIdx++ ) {
         renderTarget->textureRenderTargetViewPerSlice[layerIdx] = CreateImageView( renderContext->device, description, image, layerIdx, 1u );
 
@@ -68,6 +69,7 @@ RenderTarget* RenderDevice::createRenderTarget2D( const TextureDescription& desc
     renderTarget->textureRenderTargetView = CreateImageView( renderContext->device, description, image );
 
     renderTarget->textureRenderTargetViewPerSlice = nya::core::allocateArray<VkImageView>( memoryAllocator, description.arraySize );
+    renderTarget->textureRenderTargetViewPerSliceAndMipLevel = nya::core::allocateArray<VkImageView*>( memoryAllocator, description.arraySize );
     for ( unsigned int layerIdx = 0; layerIdx < description.arraySize; layerIdx++ ) {
         renderTarget->textureRenderTargetViewPerSlice[layerIdx] = CreateImageView( renderContext->device, description, image, layerIdx, 1u );
 
@@ -92,6 +94,7 @@ RenderTarget* RenderDevice::createRenderTarget3D( const TextureDescription& desc
     renderTarget->textureRenderTargetView = CreateImageView( renderContext->device, description, image );
 
     renderTarget->textureRenderTargetViewPerSlice = nya::core::allocateArray<VkImageView>( memoryAllocator, description.arraySize );
+    renderTarget->textureRenderTargetViewPerSliceAndMipLevel = nya::core::allocateArray<VkImageView*>( memoryAllocator, description.arraySize );
     for ( unsigned int layerIdx = 0; layerIdx < description.arraySize; layerIdx++ ) {
         renderTarget->textureRenderTargetViewPerSlice[layerIdx] = CreateImageView( renderContext->device, description, image, layerIdx, 1u );
 

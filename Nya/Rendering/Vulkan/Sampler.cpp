@@ -104,7 +104,7 @@ Sampler* RenderDevice::createSampler( const SamplerDesc& description )
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = static_cast< VkBool32 >( useComparisonFunction );
     samplerInfo.compareOp = VK_COMPARISON_FUNCTION[description.comparisonFunction];
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipmapMode = VK_MIP_MAP_MODE[description.filter];
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.minLod = static_cast<float>( description.minLOD );
     samplerInfo.maxLod = static_cast<float>( description.maxLOD );

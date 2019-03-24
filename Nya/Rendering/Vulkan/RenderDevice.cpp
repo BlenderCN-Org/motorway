@@ -456,7 +456,7 @@ void RenderDevice::create( DisplaySurface* surface )
         queues.push_back( computeQueueInfo );
     }
 
-    constexpr char* const DEVICE_EXTENSIONS[1] = {
+    constexpr const char* const DEVICE_EXTENSIONS[1] = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
@@ -566,6 +566,9 @@ void RenderDevice::create( DisplaySurface* surface )
     renderContext->graphicsQueueIndex = graphicsQueueFamilyIndex;
     renderContext->presentQueueIndex = presentQueueFamilyIndex;
 
+    NYA_CLOG << "Allocate device resources..." << std::endl;
+
+    // Allocate device resources
     renderContext->resListPool = nya::core::allocateArray<ResourceList>( memoryAllocator, 64 );
     renderContext->resListPoolCapacity = 64;
     renderContext->resListPoolIndex = 0;
@@ -577,6 +580,81 @@ void RenderDevice::create( DisplaySurface* surface )
         sizeof( RenderPass ) * 48,
         memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
     );
+
+    NYA_CLOG << "Allocate CommandPools..." << std::endl;
+
+    // Allocate cmdList Pools
+    VkCommandPoolCreateInfo gfxCmdPoolDesc;
+    gfxCmdPoolDesc.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    gfxCmdPoolDesc.pNext = nullptr;
+    gfxCmdPoolDesc.queueFamilyIndex = renderContext->graphicsQueueIndex;
+    gfxCmdPoolDesc.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    vkCreateCommandPool( renderContext->device, &gfxCmdPoolDesc, nullptr, &renderContext->graphicsCommandPool );
+
+    VkCommandPoolCreateInfo computeCmdPoolDesc;
+    computeCmdPoolDesc.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    computeCmdPoolDesc.pNext = nullptr;
+    computeCmdPoolDesc.queueFamilyIndex = renderContext->computeQueueIndex;
+    computeCmdPoolDesc.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    vkCreateCommandPool( renderContext->device, &computeCmdPoolDesc, nullptr, &renderContext->computeCommandPool );
+
+    VkCommandBuffer gfxCmdBuffers[16];
+    VkCommandBufferAllocateInfo cmdBufferAlloc;
+    cmdBufferAlloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdBufferAlloc.pNext = nullptr;
+    cmdBufferAlloc.commandPool = renderContext->graphicsCommandPool;
+    cmdBufferAlloc.commandBufferCount = 16u;
+    cmdBufferAlloc.level = VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+    vkAllocateCommandBuffers( renderContext->device, &cmdBufferAlloc, gfxCmdBuffers );
+
+    renderContext->cmdListPool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
+    for ( size_t i = 0; i < 16; i++ ) {
+        renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
+        renderContext->cmdListPool[i].CommandListObject->cmdBuffer = gfxCmdBuffers[i];
+    }
+
+    renderContext->cmdListPoolCapacity = 16;
+    renderContext->cmdListPoolIndex = 0;
+
+    NYA_CLOG << "Allocate DescriptorPools..." << std::endl;
+
+    VkDescriptorPoolCreateInfo descriptorPoolDesc;
+    descriptorPoolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolDesc.pNext = nullptr;
+    descriptorPoolDesc.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    descriptorPoolDesc.maxSets = 512;
+    descriptorPoolDesc.poolSizeCount = 1u;
+
+    VkDescriptorPoolSize samplerDescriptorPoolSize;
+    samplerDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &samplerDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->samplerDescriptorPool );
+
+    VkDescriptorPoolSize uboDescriptorPoolSize;
+    uboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &uboDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->uboDescriptorPool );
+
+    VkDescriptorPoolSize tboDescriptorPoolSize;
+    tboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    tboDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &tboDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->tboDescriptorPool );
+
+    VkDescriptorPoolSize sboDescriptorPoolSize;
+    sboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    sboDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &sboDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->sboDescriptorPool );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )
@@ -591,21 +669,32 @@ RenderTarget* RenderDevice::getSwapchainBuffer()
 
 CommandList& RenderDevice::allocateGraphicsCommandList() const
 {
+    const auto cmdListIdx = renderContext->cmdListPoolIndex;
+    renderContext->cmdListPoolIndex = ( ++renderContext->cmdListPoolIndex % renderContext->cmdListPoolCapacity );
 
+    CommandList& cmdList = renderContext->cmdListPool[cmdListIdx];
+    vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
+
+    return cmdList;
 }
 
 CommandList& RenderDevice::allocateComputeCommandList() const
 {
-
+    // TODO Implement me!
 }
 
 void RenderDevice::submitCommandList( CommandList* commandList )
 {
+    const NativeCommandList* cmdList = commandList->CommandListObject;
+
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = nullptr;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandList->CommandListObject->cmdBuffer;
+    submitInfo.pCommandBuffers = &cmdList->cmdBuffer;
+
+    VkQueue submitQueue = ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS ) ? renderContext->graphicsQueue : renderContext->computeQueue;
+    // vkQueueSubmit( submitQueue, 1u, &commandList->CommandListObject )
 }
 
 void RenderDevice::present()

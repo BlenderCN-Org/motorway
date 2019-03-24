@@ -98,23 +98,197 @@ static constexpr VkCullModeFlags VK_CM[eCullMode::CULL_MODE_COUNT] =
 
 struct PipelineState
 {
-    VkPipeline  nativePipelineObject;
+    VkPipeline          pipelineObject;
+    VkPipelineBindPoint bindPoint;
 };
 
 PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& description )
 {
     PipelineState* pipelineState = nya::core::allocate<PipelineState>( memoryAllocator );
 
+    // Blend State
+    const BlendStateDesc& blendStateDescription = description.blendState;
+
+    VkPipelineColorBlendStateCreateInfo blendCreateInfos = {};
+    blendCreateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    blendCreateInfos.pNext = nullptr;
+    blendCreateInfos.flags = 0;
+
+    blendCreateInfos.attachmentCount = 8;
+    blendCreateInfos.logicOpEnable = VK_FALSE;
+
+    blendCreateInfos.blendConstants[0] = 1.0f;
+    blendCreateInfos.blendConstants[1] = 1.0f;
+    blendCreateInfos.blendConstants[2] = 1.0f;
+    blendCreateInfos.blendConstants[3] = 1.0f;
+
+    VkPipelineColorBlendAttachmentState blendAttachments[8];
+    for ( int i = 0; i < 8; i++ ) {
+        VkPipelineColorBlendAttachmentState& blendAttachementState = blendAttachments[i];
+
+        blendAttachementState.blendEnable = ( blendStateDescription.enableBlend ) ? VK_TRUE : VK_FALSE;
+
+        // Reset write mask
+        blendAttachementState.colorWriteMask = 0;
+
+        if ( blendStateDescription.writeMask[0] )
+            blendAttachementState.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
+        else if ( blendStateDescription.writeMask[1] )
+            blendAttachementState.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
+        else if ( blendStateDescription.writeMask[2] )
+            blendAttachementState.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
+        else if ( blendStateDescription.writeMask[3] )
+            blendAttachementState.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
+
+        blendAttachementState.srcColorBlendFactor = VK_BLEND_SOURCE[blendStateDescription.blendConfColor.source];
+        blendAttachementState.dstColorBlendFactor = VK_BLEND_SOURCE[blendStateDescription.blendConfColor.dest];
+        blendAttachementState.colorBlendOp = VK_BLEND_OPERATION[blendStateDescription.blendConfColor.operation];
+
+        blendAttachementState.srcAlphaBlendFactor = VK_BLEND_SOURCE[blendStateDescription.blendConfAlpha.source];
+        blendAttachementState.dstAlphaBlendFactor = VK_BLEND_SOURCE[blendStateDescription.blendConfAlpha.dest];
+        blendAttachementState.alphaBlendOp = VK_BLEND_OPERATION[blendStateDescription.blendConfAlpha.operation];
+    }
+
+    blendCreateInfos.pAttachments = blendAttachments;
+
+
+    // Depth/Stencil state
+    const DepthStencilStateDesc& depthStencilDescription = description.depthStencilState;
+
+    VkPipelineDepthStencilStateCreateInfo depthStencilStateInfos;
+    depthStencilStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilStateInfos.pNext = nullptr;
+    depthStencilStateInfos.flags = 0u;
+    depthStencilStateInfos.depthTestEnable = static_cast< VkBool32 >( depthStencilDescription.enableDepthTest );
+    depthStencilStateInfos.depthWriteEnable = static_cast< VkBool32 >( depthStencilDescription.enableDepthWrite );
+    depthStencilStateInfos.depthCompareOp = VK_COMPARISON_FUNCTION[depthStencilDescription.depthComparisonFunc];
+    depthStencilStateInfos.depthBoundsTestEnable = depthStencilDescription.enableDepthBoundsTest;
+    depthStencilStateInfos.stencilTestEnable = depthStencilDescription.enableStencilTest;
+
+    VkStencilOpState frontStencilState;
+    frontStencilState.failOp = VK_STENCIL_OPERATION[depthStencilDescription.front.failOp];
+    frontStencilState.passOp = VK_STENCIL_OPERATION[depthStencilDescription.front.passOp];
+    frontStencilState.depthFailOp = VK_STENCIL_OPERATION[depthStencilDescription.front.zFailOp];
+    frontStencilState.compareOp = VK_COMPARISON_FUNCTION[depthStencilDescription.front.comparisonFunc];
+    frontStencilState.compareMask = depthStencilDescription.stencilReadMask;
+    frontStencilState.writeMask = depthStencilDescription.stencilWriteMask;
+    frontStencilState.reference = depthStencilDescription.stencilRefValue;
+    depthStencilStateInfos.front = frontStencilState;
+
+    VkStencilOpState backStencilState;
+    backStencilState.failOp = VK_STENCIL_OPERATION[depthStencilDescription.back.failOp];
+    backStencilState.passOp = VK_STENCIL_OPERATION[depthStencilDescription.back.passOp];
+    backStencilState.depthFailOp = VK_STENCIL_OPERATION[depthStencilDescription.back.zFailOp];
+    backStencilState.compareOp = VK_COMPARISON_FUNCTION[depthStencilDescription.back.comparisonFunc];
+    backStencilState.compareMask = depthStencilDescription.stencilReadMask;
+    backStencilState.writeMask = depthStencilDescription.stencilWriteMask;
+    backStencilState.reference = depthStencilDescription.stencilRefValue;
+    depthStencilStateInfos.back = backStencilState;
+
+    depthStencilStateInfos.minDepthBounds = depthStencilDescription.depthBoundsMin;
+    depthStencilStateInfos.maxDepthBounds = depthStencilDescription.depthBoundsMax;
+
+    // Input Assembly (Vertex Input State)
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly;
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.pNext = nullptr;
+    inputAssembly.flags = 0u;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY[description.primitiveTopology];
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // "Input Layout"
+    VkPipelineVertexInputStateCreateInfo vertexInputInfos;
+    vertexInputInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfos.pNext = VK_NULL_HANDLE;
+    vertexInputInfos.flags = 0;
+
+    // Rasterizer state
+    const RasterizerStateDesc& rasterizerDescription = description.rasterizerState;
+
+    VkPipelineRasterizationStateCreateInfo rasterizerStateInfos;
+    rasterizerStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizerStateInfos.pNext = nullptr;
+    rasterizerStateInfos.flags = 0;
+    rasterizerStateInfos.depthClampEnable = static_cast< VkBool32 >( rasterizerDescription.depthBiasClamp != 0.0f );
+    rasterizerStateInfos.rasterizerDiscardEnable = VK_FALSE;
+    rasterizerStateInfos.polygonMode = VK_FM[rasterizerDescription.fillMode];
+    rasterizerStateInfos.cullMode = VK_CM[rasterizerDescription.cullMode];
+    rasterizerStateInfos.frontFace = ( rasterizerDescription.useTriangleCCW ) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+    rasterizerStateInfos.depthBiasEnable = static_cast< VkBool32 >( rasterizerDescription.depthBias != 0.0f );
+    rasterizerStateInfos.depthBiasConstantFactor = rasterizerDescription.depthBias;
+    rasterizerStateInfos.depthBiasClamp = rasterizerDescription.depthBiasClamp;
+    rasterizerStateInfos.depthBiasSlopeFactor = rasterizerDescription.slopeScale;
+    rasterizerStateInfos.lineWidth = 1.0f;
+
+    // Don't bake viewport dimensions (allow viewport resizing at runtime; more convenient)
+    static constexpr VkDynamicState dynamicStates[1] = {
+       VK_DYNAMIC_STATE_VIEWPORT,
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicState = {};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.pNext = VK_NULL_HANDLE;
+    dynamicState.flags = 0;
+    dynamicState.dynamicStateCount = 1;
+    dynamicState.pDynamicStates = dynamicStates;
+
+    // Build pipeline state descriptor
+    const bool isComputePipeline = ( description.computeShader != nullptr );
+    if ( !isComputePipeline ) {
+        VkGraphicsPipelineCreateInfo pipelineInfo;
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.pNext = nullptr;
+        pipelineInfo.flags = 0u;
+
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pTessellationState = nullptr;
+        pipelineInfo.pViewportState = nullptr;
+        pipelineInfo.pRasterizationState = &rasterizerStateInfos;
+        pipelineInfo.pMultisampleState = nullptr;
+        pipelineInfo.pDepthStencilState = &depthStencilStateInfos;
+        pipelineInfo.pColorBlendState = &blendCreateInfos;
+        pipelineInfo.pDynamicState = &dynamicState;
+
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
+
+        pipelineState->bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    } else {
+        VkComputePipelineCreateInfo pipelineInfo = {};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pipelineInfo.pNext = nullptr;
+        pipelineInfo.flags = 0u;
+
+        VkPipelineShaderStageCreateInfo shaderStageInfos = {};
+        shaderStageInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStageInfos.pNext = nullptr;
+        shaderStageInfos.flags = 0u;
+        shaderStageInfos.stage = description.computeShader->shaderStage;
+        shaderStageInfos.module = description.computeShader->shaderModule;
+        shaderStageInfos.pName = "main";
+        shaderStageInfos.pSpecializationInfo = nullptr;
+
+        pipelineInfo.stage = shaderStageInfos;
+
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
+
+        pipelineState->bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+    }
+
     return pipelineState;
 }
 
 void RenderDevice::destroyPipelineState( PipelineState* pipelineState )
 {
+    // vkDestroyPipelineLayout( renderContext->device, pipelineState->nativePipelineLayout, nullptr );
+    vkDestroyPipeline( renderContext->device, pipelineState->pipelineObject, nullptr );
+
     nya::core::free( memoryAllocator, pipelineState );
 }
 
 void CommandList::bindPipelineState( PipelineState* pipelineState )
 {
-
+    vkCmdBindPipeline( CommandListObject->cmdBuffer, pipelineState->bindPoint, pipelineState->pipelineObject );
 }
 #endif

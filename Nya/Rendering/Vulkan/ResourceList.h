@@ -27,7 +27,10 @@ struct VkDescriptorSetLayout_T;
 struct ResourceList
 {
     VkPipelineLayout_T*         pipelineLayout;
-    VkDescriptorSetLayout_T*    descriptorSetLayout;
-    VkDescriptorSet_T*          descriptorSet;
+
+    // NOTE The number of descriptor sets is related to the resourceList object
+    // Basically, each kind of resource (cbo, uav, sampler, etc.) has its own descriptor set
+    // Might be nice to make this modulable in the future though
+    VkDescriptorSet_T*          descriptorSet[4];
 };
 #endif

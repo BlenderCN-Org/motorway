@@ -55,17 +55,6 @@ Shader* RenderDevice::createShader( const eShaderStage stage, const void* byteco
     shader->shaderModule = shaderModule;
     shader->shaderStage = VK_SHADER_STAGE[stage];
 
-/*
-    // TODO Move this to pipeline state creation
-    VkPipelineShaderStageCreateInfo shaderStageInfos = {};
-    shaderStageInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageInfos.pNext = nullptr;
-    shaderStageInfos.flags = 0u;
-    shaderStageInfos.stage = VK_SHADER_STAGE[stage];
-    shaderStageInfos.module = shaderModule;
-    shaderStageInfos.pName = "main";
-    shaderStageInfos.pSpecializationInfo = nullptr;*/
-
     return shader;
 }
 

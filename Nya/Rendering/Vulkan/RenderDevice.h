@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #if NYA_VULKAN
 class PoolAllocator;
+class CommandList;
 
 struct VkInstance_T;
 struct VkPhysicalDevice_T;
@@ -53,6 +54,10 @@ struct RenderContext
     uint32_t                            physicalDeviceQueueCount;
     std::vector<VkExtensionProperties>  deviceExtensionList;
 
+    CommandList*            cmdListPool;
+    size_t                  cmdListPoolIndex;
+    size_t                  cmdListPoolCapacity;
+
 #if NYA_DEVBUILD
     VkDebugUtilsMessengerEXT_T*         debugCallback;
 #endif
@@ -69,7 +74,13 @@ struct RenderContext
     VkExtent2D                          swapChainExtent;
     VkFormat                            swapChainFormat;
 
-    VkDescriptorPool                    descriptorPool;
+    VkDescriptorPool                    samplerDescriptorPool;
+    VkDescriptorPool                    uboDescriptorPool;
+    VkDescriptorPool                    tboDescriptorPool; // Texel Buffer Object
+    VkDescriptorPool                    sboDescriptorPool; // Storage Buffer Object
+
+    VkCommandPool                       graphicsCommandPool;
+    VkCommandPool                       computeCommandPool;
 
     ResourceList*                       resListPool;
     size_t                              resListPoolIndex;

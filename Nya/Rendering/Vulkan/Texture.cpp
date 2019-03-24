@@ -29,6 +29,7 @@
 #include "CommandList.h"
 
 #include "Texture.h"
+#include <Maths/Helpers.h>
 
 #include <vulkan/vulkan.h>
 
@@ -38,9 +39,8 @@ VkImageCreateFlags GetTextureCreateFlags( const TextureDescription& description 
 
     if ( description.flags.isCubeMap == 1 ) {
         flagset |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    }
-
-    if ( description.arraySize > 1 ) {
+    } else if ( description.arraySize > 1 ) {
+        // NOTE Do not set VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT when VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT is set (not allowed by the specs.)
         flagset |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
     }
 
@@ -58,7 +58,26 @@ uint32_t FindMemoryType( RenderContext* renderContext, const uint32_t typeFilter
         }
     }
 
-    return ~0;
+    return ~0u;
+}
+
+bool IsUsingCompressedFormat( const eImageFormat format )
+{
+    return format == IMAGE_FORMAT_BC1_TYPELESS
+        || format == IMAGE_FORMAT_BC1_UNORM
+        || format == IMAGE_FORMAT_BC1_UNORM_SRGB
+        || format == IMAGE_FORMAT_BC2_TYPELESS
+        || format == IMAGE_FORMAT_BC2_UNORM
+        || format == IMAGE_FORMAT_BC2_UNORM_SRGB
+        || format == IMAGE_FORMAT_BC3_TYPELESS
+        || format == IMAGE_FORMAT_BC3_UNORM
+        || format == IMAGE_FORMAT_BC3_UNORM_SRGB
+        || format == IMAGE_FORMAT_BC4_TYPELESS
+        || format == IMAGE_FORMAT_BC4_UNORM
+        || format == IMAGE_FORMAT_BC4_SNORM
+        || format == IMAGE_FORMAT_BC5_TYPELESS
+        || format == IMAGE_FORMAT_BC5_UNORM
+        || format == IMAGE_FORMAT_BC5_SNORM;
 }
 
 Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTexture, const VkImageType imageType, const TextureDescription& description, const void* initialData, const size_t initialDataSize )
@@ -70,15 +89,38 @@ Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTextu
     imageInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.pNext = nullptr;
     imageInfo.flags = GetTextureCreateFlags( description );
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+
+    if ( imageType == VK_IMAGE_TYPE_2D && description.arraySize > 1 && description.flags.isCubeMap == 0 ) {
+        imageInfo.imageType = VK_IMAGE_TYPE_3D;
+        imageInfo.arrayLayers = description.arraySize * description.depth;
+        imageInfo.extent.depth = 1u;
+    } else {
+        imageInfo.imageType = imageType;
+
+        if ( description.flags.isCubeMap == 0)
+            imageInfo.arrayLayers = ( imageType == VK_IMAGE_TYPE_3D ) ? 1u : description.arraySize; // if pCreateInfo->imageType is VK_IMAGE_TYPE_3D, pCreateInfo->arrayLayers must be 1.
+        else
+            imageInfo.arrayLayers = description.arraySize * description.depth; // if pCreateInfo->imageType is VK_IMAGE_TYPE_3D, pCreateInfo->arrayLayers must be 1.
+
+        imageInfo.extent.depth = ( imageType == VK_IMAGE_TYPE_2D ) ? 1u : description.depth; // if pCreateInfo->imageType is VK_IMAGE_TYPE_2D, pCreateInfo->extent.depth must be 1.
+    }
+
     imageInfo.extent.width = static_cast<uint32_t>( description.width );
     imageInfo.extent.height = static_cast<uint32_t>( description.height );
-    imageInfo.extent.depth = description.depth;
     imageInfo.mipLevels = description.mipCount;
-    imageInfo.arrayLayers = description.arraySize;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.format = preallocatedTexture->imageFormat;
+    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    // TODO This is quite lazy and not efficient?
+    if ( !IsUsingCompressedFormat( description.format ) ) {
+        if ( description.flags.isDepthResource == 1 ) {
+            imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        } else {
+            imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        }
+    }
 
     VkImage imageObject = nullptr;
 
@@ -135,6 +177,8 @@ void RenderDevice::destroyTexture( Texture* texture )
     vkDestroyImage( renderContext->device, texture->image, nullptr );
     vkDestroyImageView( renderContext->device, texture->imageView, nullptr );
     vkFreeMemory( renderContext->device, texture->imageMemory, nullptr );
+
+    nya::core::free( memoryAllocator, texture );
 }
 
 void RenderDevice::setDebugMarker( Texture* texture, const char* objectName )
