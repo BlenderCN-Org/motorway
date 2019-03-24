@@ -24,10 +24,131 @@
 #if NYA_VULKAN
 #include <vulkan/vulkan.h>
 
+// Channel * PerChannelSize
+static constexpr size_t VK_IMAGE_FORMAT_SIZE[IMAGE_FORMAT_COUNT] =
+{
+    0ull,
+    0ull,
+    16ull,
+    16ull,
+    16ull,
+    0ull,
+    12ull,
+    12ull,
+    12ull,
+    0ull,
+    8ull,
+    8ull,
+    8ull,
+    8ull,
+    8ull,
+    0ull,
+    8ull,
+    8ull,
+    8ull,
+    0ull,
+    8ull,
+    0ull,
+    0ull,
+    0ull,
+    4ull,
+    4ull,
+    4ull,
+    0ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    0ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+    4ull,
+
+    4ull,
+    0ull,
+    0ull,
+    0ull,
+
+    0ull,
+    2ull,
+    2ull,
+    2ull,
+    2ull,
+
+    0ull,
+    2ull,
+
+    2ull,
+    2ull,
+    2ull,
+    2ull,
+    2ull,
+
+    0ull,
+    1ull,
+    1ull,
+    1ull,
+    1ull,
+
+    0ull,
+    0ull,
+    0ull,
+    0ull,
+    0ull,
+
+    8ull,
+    8ull,
+    8ull,
+
+    16ull,
+    16ull,
+    16ull,
+
+    16ull,
+    16ull,
+    16ull,
+
+    8ull,
+    8ull,
+    8ull,
+
+    16ull,
+    16ull,
+    16ull,
+
+    2ull,
+    2ull,
+
+    4ull,
+    4ull,
+
+    0ull,
+    0ull,
+
+    4ull,
+    0ull,
+    0ull,
+
+    0ull,
+    16ull,
+    16ull,
+
+    0ull,
+    16ull,
+    16ull
+};
+
 static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
 {
     VK_FORMAT_UNDEFINED,
-
     VK_FORMAT_UNDEFINED,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_UINT,
@@ -44,8 +165,8 @@ static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
     VK_FORMAT_R16G16B16A16_SINT,
     VK_FORMAT_UNDEFINED,
     VK_FORMAT_R32G32_SFLOAT,
-    VK_FORMAT_R32G32B32_UINT,
-    VK_FORMAT_R32G32B32_SINT,
+    VK_FORMAT_R32G32_UINT,
+    VK_FORMAT_R32G32_SINT,
     VK_FORMAT_UNDEFINED,
     VK_FORMAT_D32_SFLOAT_S8_UINT,
     VK_FORMAT_UNDEFINED,
@@ -54,22 +175,19 @@ static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
     VK_FORMAT_A2R10G10B10_UNORM_PACK32,
     VK_FORMAT_A2R10G10B10_UINT_PACK32,
     VK_FORMAT_B10G11R11_UFLOAT_PACK32,
-
     VK_FORMAT_UNDEFINED,
-    VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK,
-    VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK,
+    VK_FORMAT_R8G8B8A8_UNORM,
+    VK_FORMAT_R8G8B8A8_SRGB,
     VK_FORMAT_R8G8B8A8_UINT,
     VK_FORMAT_R8G8B8A8_SNORM,
     VK_FORMAT_R8G8B8A8_SINT,
-
     VK_FORMAT_UNDEFINED,
     VK_FORMAT_R16G16_SFLOAT,
     VK_FORMAT_R16G16_UNORM,
     VK_FORMAT_R16G16_UINT,
     VK_FORMAT_R16G16_SNORM,
     VK_FORMAT_R16G16_SINT,
-
-    VK_FORMAT_UNDEFINED,
+    VK_FORMAT_D32_SFLOAT,
     VK_FORMAT_R32_SFLOAT,
     VK_FORMAT_D32_SFLOAT,
     VK_FORMAT_R32_UINT,
@@ -149,18 +267,18 @@ static constexpr VkFormat VK_IMAGE_FORMAT[IMAGE_FORMAT_COUNT] =
     VK_FORMAT_BC7_SRGB_BLOCK
 };
 
-static VkImageViewType GetViewType( const TextureDescription& description )
+static VkImageViewType GetViewType( const TextureDescription& description, const bool perSliceView = false )
 {
     switch ( description.dimension ) {
     case TextureDescription::DIMENSION_TEXTURE_1D:
-        return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_1D );
+        return ( ( description.arraySize > 1 && !perSliceView ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_1D );
 
     case TextureDescription::DIMENSION_TEXTURE_2D:
     {
-        if ( description.flags.isCubeMap == 1 ) {
+        if ( description.flags.isCubeMap == 1 && !perSliceView ) {
             return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE );
         } else {
-            return ( ( description.arraySize > 1 ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_2D );
+            return ( ( description.arraySize > 1 && !perSliceView ) ? VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY : VkImageViewType::VK_IMAGE_VIEW_TYPE_2D );
         }
     } break;
 
@@ -176,6 +294,8 @@ static VkImageViewType GetViewType( const TextureDescription& description )
 
 static VkImageView CreateImageView( VkDevice device, const TextureDescription& description, const VkImage image, const uint32_t sliceIndex = 0u, const uint32_t sliceCount = ~0u, const uint32_t mipIndex = 0u, const uint32_t mipCount = ~0u )
 {
+    const bool isPerSliceView = ( sliceIndex != 0 );
+
     VkImageViewCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfo.pNext = nullptr;
