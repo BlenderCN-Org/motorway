@@ -233,7 +233,7 @@ void RenderDevice::create( DisplaySurface* surface )
     
     renderContext->cmdListPool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
     for ( size_t i = 0; i < 16; i++ ) {
-        renderContext->cmdListPool[i].NativeCommandList = nya::core::allocate<NativeCommandList>( memoryAllocator );
+        renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->nativeDevice->CreateDeferredContext( 0, &renderContext->cmdListPool[i].CommandListObject->deferredContext );
     }
 
