@@ -200,6 +200,12 @@ RenderContext::RenderContext()
 
 RenderContext::~RenderContext()
 {
+    vkDestroyDescriptorPool( device, samplerDescriptorPool, nullptr );
+    vkDestroyDescriptorPool( device, sboDescriptorPool, nullptr );
+    vkDestroyDescriptorPool( device, uboDescriptorPool, nullptr );
+    vkDestroyDescriptorPool( device, stboDescriptorPool, nullptr );
+    vkDestroyDescriptorPool( device, utboDescriptorPool, nullptr );
+
     vkDestroySwapchainKHR( device, swapChain, nullptr );
     vkDestroySurfaceKHR( instance, displaySurface, nullptr );
     vkDestroyInstance( instance, nullptr );
@@ -642,19 +648,26 @@ void RenderDevice::create( DisplaySurface* surface )
     descriptorPoolDesc.pPoolSizes = &uboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->uboDescriptorPool );
 
-    VkDescriptorPoolSize tboDescriptorPoolSize;
-    tboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    tboDescriptorPoolSize.descriptorCount = 512u;
-
-    descriptorPoolDesc.pPoolSizes = &tboDescriptorPoolSize;
-    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->tboDescriptorPool );
-
     VkDescriptorPoolSize sboDescriptorPoolSize;
-    sboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    sboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     sboDescriptorPoolSize.descriptorCount = 512u;
 
     descriptorPoolDesc.pPoolSizes = &sboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->sboDescriptorPool );
+
+    VkDescriptorPoolSize utboDescriptorPoolSize;
+    utboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    utboDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &utboDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->utboDescriptorPool );
+
+    VkDescriptorPoolSize stboDescriptorPoolSize;
+    stboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    stboDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &stboDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->stboDescriptorPool );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )

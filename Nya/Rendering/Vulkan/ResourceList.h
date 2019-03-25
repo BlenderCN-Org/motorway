@@ -31,6 +31,6 @@ struct ResourceList
     // NOTE The number of descriptor sets is related to the resourceList object
     // Basically, each kind of resource (cbo, uav, sampler, etc.) has its own descriptor set
     // Might be nice to make this modulable in the future though
-    VkDescriptorSet_T*          descriptorSet[4];
+    VkDescriptorSet_T*          descriptorSet[5];
 };
 #endif

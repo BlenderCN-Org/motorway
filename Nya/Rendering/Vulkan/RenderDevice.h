@@ -75,9 +75,10 @@ struct RenderContext
     VkFormat                            swapChainFormat;
 
     VkDescriptorPool                    samplerDescriptorPool;
-    VkDescriptorPool                    uboDescriptorPool;
-    VkDescriptorPool                    tboDescriptorPool; // Texel Buffer Object
+    VkDescriptorPool                    uboDescriptorPool; // Uniform Buffer Object
     VkDescriptorPool                    sboDescriptorPool; // Storage Buffer Object
+    VkDescriptorPool                    utboDescriptorPool; // Uniform Texel Buffer Object
+    VkDescriptorPool                    stboDescriptorPool; // Storage Texel Buffer Object
 
     VkCommandPool                       graphicsCommandPool;
     VkCommandPool                       computeCommandPool;

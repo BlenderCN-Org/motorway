@@ -128,21 +128,86 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
     resList.descriptorSet[1] = nullptr;
     resList.descriptorSet[2] = nullptr;
     resList.descriptorSet[3] = nullptr;
+    resList.descriptorSet[4] = nullptr;
 
     resList.pipelineLayout = nullptr;
 
-    VkDescriptorSetLayout resourceListDescriptorSetLayout[4];
-    uint32_t bindingCount[4];
+    VkDescriptorSetLayout resourceListDescriptorSetLayout[5];
+    uint32_t bindingCount[5];
     CreateDescriptorSetAndLayout<Sampler>( renderContext->device, renderContext->samplerDescriptorPool, VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER, description.samplers, resList.descriptorSet[0], resourceListDescriptorSetLayout[0], bindingCount[0] );
     CreateDescriptorSetAndLayout<Buffer>( renderContext->device, renderContext->uboDescriptorPool, VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, description.constantBuffers, resList.descriptorSet[1], resourceListDescriptorSetLayout[1], bindingCount[1] );
-    CreateDescriptorSetAndLayout<Buffer>( renderContext->device, renderContext->tboDescriptorPool, VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, description.buffers, resList.descriptorSet[2], resourceListDescriptorSetLayout[2], bindingCount[2] );
-    CreateDescriptorSetAndLayout<Buffer>( renderContext->device, renderContext->sboDescriptorPool, VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, description.uavBuffers, resList.descriptorSet[3], resourceListDescriptorSetLayout[3], bindingCount[3] );
+    CreateDescriptorSetAndLayout<Buffer>( renderContext->device, renderContext->utboDescriptorPool, VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, description.buffers, resList.descriptorSet[2], resourceListDescriptorSetLayout[2], bindingCount[2] );
 
+    // UAV Buffers first, UAV Textures second
+    bindingCount[3] = 0u;
+    bindingCount[4] = 0u;
+
+    VkDescriptorSetLayoutBinding descriptorSetBinding[MAX_RES_COUNT], texelDescriptorSetBinding[MAX_RES_COUNT];
+    VkDescriptorSetLayout descriptorSetLayout, texelDescriptorSetLayout;
+
+    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
+        const auto& resource = description.uavBuffers[i];
+
+        // TODO Assuming we reach the end of the resource list once a resource has no explicit stage binding
+        // Is that wise?
+        if ( resource.stageBind == 0u ) {
+            break;
+        }
+
+        // TODO Only Texel Buffers should have a buffer view
+        // That's a pretty lame and unsafe way to distinguish uav texture from uav buffers...
+        if ( resource.resource->bufferView != nullptr ) {
+            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindingCount[3]++];
+            descriptorSetLayoutBinding.binding = static_cast<uint32_t>( resource.bindPoint );
+            descriptorSetLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            descriptorSetLayoutBinding.descriptorCount = 1u;
+            descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( resource.stageBind );
+            descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+        } else {
+            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = texelDescriptorSetBinding[bindingCount[4]++];
+            descriptorSetLayoutBinding.binding = static_cast<uint32_t>( resource.bindPoint );
+            descriptorSetLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorSetLayoutBinding.descriptorCount = 1u;
+            descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( resource.stageBind );
+            descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+        }
+    }
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo;
+    descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutInfo.pNext = nullptr;
+    descriptorSetLayoutInfo.flags = 0u;
+    descriptorSetLayoutInfo.bindingCount = bindingCount[3];
+    descriptorSetLayoutInfo.pBindings = descriptorSetBinding;
+
+    vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout[3] );
+
+    descriptorSetLayoutInfo.bindingCount = bindingCount[4];
+    descriptorSetLayoutInfo.pBindings = texelDescriptorSetBinding;
+
+    vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout[4] );
+
+    VkDescriptorSetAllocateInfo allocInfo;
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.pNext = nullptr;
+    allocInfo.descriptorPool = renderContext->stboDescriptorPool;
+    allocInfo.descriptorSetCount = 1u;
+    allocInfo.pSetLayouts = &resourceListDescriptorSetLayout[3];
+
+    vkAllocateDescriptorSets( renderContext->device, &allocInfo, &resList.descriptorSet[3] );
+
+    allocInfo.descriptorPool = renderContext->sboDescriptorPool;
+    allocInfo.descriptorSetCount = 1u;
+    allocInfo.pSetLayouts = &resourceListDescriptorSetLayout[4];
+
+    vkAllocateDescriptorSets( renderContext->device, &allocInfo, &resList.descriptorSet[4] );
+
+    // Allocate pipeline Layout for the current resource list
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pNext = nullptr;
     pipelineLayoutInfo.flags = 0u;
-    pipelineLayoutInfo.setLayoutCount = 4u;
+    pipelineLayoutInfo.setLayoutCount = 5u;
     pipelineLayoutInfo.pSetLayouts = resourceListDescriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0u;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
@@ -151,7 +216,7 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
     // Update descriptors sets
     uint32_t descriptorSetUpdateCount = 0u;
-    VkWriteDescriptorSet descriptorSetUpdates[4];
+    VkWriteDescriptorSet descriptorSetUpdates[5];
 
     // Samplers
     if ( bindingCount[0] > 0u ) {
@@ -242,33 +307,71 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
         tboWriteDescriptorSet.pTexelBufferView = tboDesc;
     }
 
-    // UAV Buffers
+    // UAV Textures
     if ( bindingCount[3] > 0u ) {
-        VkWriteDescriptorSet& sboWriteDescriptorSet = descriptorSetUpdates[descriptorSetUpdateCount++];
+        VkWriteDescriptorSet& stboWriteDescriptorSet = descriptorSetUpdates[descriptorSetUpdateCount++];
 
-        sboWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        sboWriteDescriptorSet.pNext = nullptr;
-        sboWriteDescriptorSet.dstSet = resList.descriptorSet[3];
-        sboWriteDescriptorSet.dstArrayElement = 0u;
-        sboWriteDescriptorSet.descriptorCount = bindingCount[3];
-        sboWriteDescriptorSet.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        sboWriteDescriptorSet.dstBinding = 0u;
+        stboWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        stboWriteDescriptorSet.pNext = nullptr;
+        stboWriteDescriptorSet.dstSet = resList.descriptorSet[3];
+        stboWriteDescriptorSet.dstArrayElement = 0u;
+        stboWriteDescriptorSet.descriptorCount = bindingCount[3];
+        stboWriteDescriptorSet.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        stboWriteDescriptorSet.dstBinding = 0u;
 
-        VkBufferView sboDesc[MAX_RES_COUNT];
+        VkBufferView stboDesc[MAX_RES_COUNT];
 
         uint32_t smallestBindPoint = ( MAX_RES_COUNT - 1 );
         for ( uint32_t i = 0; i < bindingCount[3]; i++ ) {
             const auto& bufferBinding = description.uavBuffers[i];
-            sboDesc[i] = bufferBinding.resource->bufferView;
+            stboDesc[i] = bufferBinding.resource->bufferView;
 
             smallestBindPoint = nya::maths::min( smallestBindPoint, bufferBinding.bindPoint );
+        }
+
+        if ( smallestBindPoint > stboWriteDescriptorSet.dstBinding ) {
+            stboWriteDescriptorSet.dstBinding = smallestBindPoint;
+        }
+
+        stboWriteDescriptorSet.pTexelBufferView = stboDesc;
+    }
+
+    // UAV Buffers
+    if ( bindingCount[4] > 0u ) {
+        VkWriteDescriptorSet& sboWriteDescriptorSet = descriptorSetUpdates[descriptorSetUpdateCount++];
+
+        sboWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        sboWriteDescriptorSet.pNext = nullptr;
+        sboWriteDescriptorSet.dstSet = resList.descriptorSet[4];
+        sboWriteDescriptorSet.dstArrayElement = 0u;
+        sboWriteDescriptorSet.descriptorCount = bindingCount[4];
+        sboWriteDescriptorSet.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        sboWriteDescriptorSet.dstBinding = 0u;
+
+        VkDescriptorBufferInfo sboDesc[MAX_RES_COUNT];
+
+        uint32_t smallestBindPoint = ( MAX_RES_COUNT - 1 );
+        for ( uint32_t i = 0; i < bindingCount[4]; ) {
+            const auto& bufferBinding = description.uavBuffers[i];
+
+            if ( bufferBinding.resource->bufferView != nullptr ) {
+                continue;
+            }
+
+            sboDesc[i].buffer = bufferBinding.resource->bufferObject;
+            sboDesc[i].offset = 0ull;
+            sboDesc[i].range = VK_WHOLE_SIZE;
+
+            smallestBindPoint = nya::maths::min( smallestBindPoint, bufferBinding.bindPoint );
+
+            i++;
         }
 
         if ( smallestBindPoint > sboWriteDescriptorSet.dstBinding ) {
             sboWriteDescriptorSet.dstBinding = smallestBindPoint;
         }
 
-        sboWriteDescriptorSet.pTexelBufferView = sboDesc;
+        sboWriteDescriptorSet.pBufferInfo = sboDesc;
     }
 
     // Submit descriptors set updates

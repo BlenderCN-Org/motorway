@@ -129,7 +129,7 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
 
     VkBufferView bufferView = nullptr;
     if ( bufferInfo.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
-      || bufferInfo.usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT ) {
+      || bufferInfo.usage & VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ) {
         VkBufferViewCreateInfo bufferViewDesc;
         bufferViewDesc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
         bufferViewDesc.pNext = nullptr;
