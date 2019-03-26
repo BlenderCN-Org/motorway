@@ -54,9 +54,9 @@ struct RenderContext
     uint32_t                            physicalDeviceQueueCount;
     std::vector<VkExtensionProperties>  deviceExtensionList;
 
-    CommandList*            cmdListPool;
-    size_t                  cmdListPoolIndex;
-    size_t                  cmdListPoolCapacity;
+    CommandList*                        cmdListPool;
+    size_t                              cmdListPoolIndex;
+    size_t                              cmdListPoolCapacity;
 
 #if NYA_DEVBUILD
     VkDebugUtilsMessengerEXT_T*         debugCallback;
@@ -82,11 +82,5 @@ struct RenderContext
 
     VkCommandPool                       graphicsCommandPool;
     VkCommandPool                       computeCommandPool;
-
-    ResourceList*                       resListPool;
-    size_t                              resListPoolIndex;
-    size_t                              resListPoolCapacity;
-
-    PoolAllocator*                      renderPassAllocator;
 };
 #endif

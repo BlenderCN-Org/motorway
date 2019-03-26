@@ -38,8 +38,6 @@
 #include "RenderDevice.h"
 
 #include "CommandList.h"
-#include "ResourceList.h"
-#include "RenderPass.h"
 
 #include <Core/Allocators/PoolAllocator.h>
 
@@ -193,7 +191,6 @@ RenderContext::RenderContext()
     : instance( nullptr )
     , physicalDevice( nullptr )
     , device( nullptr )
-    , renderPassAllocator( nullptr )
 {
 
 }
@@ -215,9 +212,6 @@ RenderContext::~RenderContext()
 
 RenderDevice::~RenderDevice()
 {
-    nya::core::freeArray<ResourceList>( memoryAllocator, renderContext->resListPool );
-
-    nya::core::free( memoryAllocator, renderContext->renderPassAllocator );
     nya::core::free( memoryAllocator, renderContext );
 }
 
@@ -571,21 +565,6 @@ void RenderDevice::create( DisplaySurface* surface )
     renderContext->computeQueueIndex = computeQueueFamilyIndex;
     renderContext->graphicsQueueIndex = graphicsQueueFamilyIndex;
     renderContext->presentQueueIndex = presentQueueFamilyIndex;
-
-    NYA_CLOG << "Allocate device resources..." << std::endl;
-
-    // Allocate device resources
-    renderContext->resListPool = nya::core::allocateArray<ResourceList>( memoryAllocator, 64 );
-    renderContext->resListPoolCapacity = 64;
-    renderContext->resListPoolIndex = 0;
-    
-    renderContext->renderPassAllocator = nya::core::allocate<PoolAllocator>( 
-        memoryAllocator, 
-        sizeof( RenderPass ), 
-        4, 
-        sizeof( RenderPass ) * 48,
-        memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
-    );
 
     NYA_CLOG << "Allocate CommandPools..." << std::endl;
 

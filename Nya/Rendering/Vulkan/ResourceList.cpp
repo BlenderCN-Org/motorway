@@ -23,13 +23,12 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
-#include "ResourceList.h"
-
 #include "RenderDevice.h"
 #include "CommandList.h"
 
 #include "Sampler.h"
 #include "Buffer.h"
+#include "PipelineState.h"
 
 #include <Maths/Helpers.h>
 
@@ -37,7 +36,7 @@
 
 using namespace nya::rendering;
 
-VkShaderStageFlags GetDescriptorStageFlags( const uint32_t shaderStageBindBitfield )
+/*VkShaderStageFlags GetDescriptorStageFlags( const uint32_t shaderStageBindBitfield )
 {
     VkShaderStageFlags bindFlags = 0u;
 
@@ -143,8 +142,6 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
     bindingCount[4] = 0u;
 
     VkDescriptorSetLayoutBinding descriptorSetBinding[MAX_RES_COUNT], texelDescriptorSetBinding[MAX_RES_COUNT];
-    VkDescriptorSetLayout descriptorSetLayout, texelDescriptorSetLayout;
-
     for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
         const auto& resource = description.uavBuffers[i];
 
@@ -157,14 +154,14 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
         // TODO Only Texel Buffers should have a buffer view
         // That's a pretty lame and unsafe way to distinguish uav texture from uav buffers...
         if ( resource.resource->bufferView != nullptr ) {
-            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindingCount[3]++];
+            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = texelDescriptorSetBinding[bindingCount[3]++];
             descriptorSetLayoutBinding.binding = static_cast<uint32_t>( resource.bindPoint );
             descriptorSetLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
             descriptorSetLayoutBinding.descriptorCount = 1u;
             descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( resource.stageBind );
             descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
         } else {
-            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = texelDescriptorSetBinding[bindingCount[4]++];
+            VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindingCount[4]++];
             descriptorSetLayoutBinding.binding = static_cast<uint32_t>( resource.bindPoint );
             descriptorSetLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             descriptorSetLayoutBinding.descriptorCount = 1u;
@@ -177,14 +174,13 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
     descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetLayoutInfo.pNext = nullptr;
     descriptorSetLayoutInfo.flags = 0u;
-    descriptorSetLayoutInfo.bindingCount = bindingCount[3];
-    descriptorSetLayoutInfo.pBindings = descriptorSetBinding;
 
+    descriptorSetLayoutInfo.bindingCount = bindingCount[3];
+    descriptorSetLayoutInfo.pBindings = texelDescriptorSetBinding;
     vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout[3] );
 
     descriptorSetLayoutInfo.bindingCount = bindingCount[4];
-    descriptorSetLayoutInfo.pBindings = texelDescriptorSetBinding;
-
+    descriptorSetLayoutInfo.pBindings = descriptorSetBinding;
     vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout[4] );
 
     VkDescriptorSetAllocateInfo allocInfo;
@@ -321,12 +317,22 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
         VkBufferView stboDesc[MAX_RES_COUNT];
 
+        uint32_t stboBindingIndex = 0u;
         uint32_t smallestBindPoint = ( MAX_RES_COUNT - 1 );
-        for ( uint32_t i = 0; i < bindingCount[3]; i++ ) {
+        for ( uint32_t i = 0; i < MAX_RES_COUNT; i++ ) {
             const auto& bufferBinding = description.uavBuffers[i];
-            stboDesc[i] = bufferBinding.resource->bufferView;
+            if ( bufferBinding.resource->bufferView == nullptr ) {
+                continue;
+            }
 
+            stboDesc[stboBindingIndex] = bufferBinding.resource->bufferView;
+
+            stboBindingIndex++;
             smallestBindPoint = nya::maths::min( smallestBindPoint, bufferBinding.bindPoint );
+
+            if ( stboBindingIndex >= bindingCount[3] ) {
+                break;
+            }
         }
 
         if ( smallestBindPoint > stboWriteDescriptorSet.dstBinding ) {
@@ -350,21 +356,25 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
         VkDescriptorBufferInfo sboDesc[MAX_RES_COUNT];
 
+        uint32_t sboBindingIndex = 0u;
         uint32_t smallestBindPoint = ( MAX_RES_COUNT - 1 );
-        for ( uint32_t i = 0; i < bindingCount[4]; ) {
+        for ( uint32_t i = 0; i < MAX_RES_COUNT; i++ ) {
             const auto& bufferBinding = description.uavBuffers[i];
 
             if ( bufferBinding.resource->bufferView != nullptr ) {
                 continue;
             }
 
-            sboDesc[i].buffer = bufferBinding.resource->bufferObject;
-            sboDesc[i].offset = 0ull;
-            sboDesc[i].range = VK_WHOLE_SIZE;
+            sboDesc[sboBindingIndex].buffer = bufferBinding.resource->bufferObject;
+            sboDesc[sboBindingIndex].offset = 0ull;
+            sboDesc[sboBindingIndex].range = VK_WHOLE_SIZE;
 
+            sboBindingIndex++;
             smallestBindPoint = nya::maths::min( smallestBindPoint, bufferBinding.bindPoint );
 
-            i++;
+            if ( sboBindingIndex >= bindingCount[4] ) {
+                break;
+            }
         }
 
         if ( smallestBindPoint > sboWriteDescriptorSet.dstBinding ) {
@@ -379,17 +389,19 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
     return resList;
 }
+*/
 
-void CommandList::bindResourceList( ResourceList* resourceList )
+void CommandList::bindResourceList( const PipelineState* pipelineState, const ResourceList& resourceList )
 {
     vkCmdBindDescriptorSets( 
         CommandListObject->cmdBuffer, 
         CommandListObject->resourcesBindPoint, 
-        resourceList->pipelineLayout, 
+        pipelineState->layout,
         0u, 
         4u,
-        resourceList->descriptorSet,
+        pipelineState->descriptorSet,
         0u, 
-        nullptr );
+        nullptr
+    );
 }
 #endif

@@ -93,6 +93,7 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
         }
     } else if ( description.type == BufferDesc::GENERIC_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+        bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
 
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
