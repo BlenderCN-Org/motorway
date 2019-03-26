@@ -99,7 +99,20 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
                 passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
-            // Resource List
+            // Update viewport (using image quality scaling)
+            const CameraData* camera = renderPipelineResources.getMainCamera();
+
+            nyaVec2f scaledViewportSize = camera->viewportSize * camera->imageQuality;
+            Viewport vp;
+            vp.X = 0;
+            vp.Y = 0;
+            vp.Width = static_cast<int>( scaledViewportSize.x );
+            vp.Height = static_cast<int>( scaledViewportSize.y );
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
+            cmdList->setViewport( vp );
+
+            // Retrieve allocated resources
             Buffer* skyBuffer = renderPipelineResources.getBuffer( passData.parametersBuffer );
 
             // Update Parameters
@@ -113,75 +126,41 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
 
             cmdList->updateBuffer( skyBuffer, &parameters, sizeof( parameters ) );
 
-            const CameraData* camera = renderPipelineResources.getMainCamera();
-
-            nyaVec2f scaledViewportSize = camera->viewportSize * camera->imageQuality;
-            Viewport vp;
-            vp.X = 0;
-            vp.Y = 0;
-            vp.Width = static_cast<int>( scaledViewportSize.x );
-            vp.Height = static_cast<int>( scaledViewportSize.y );
-            vp.MinDepth = 0.0f;
-            vp.MaxDepth = 1.0f;
-            cmdList->setViewport( vp );
-
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
             cmdList->updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
 
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.constantBuffers[0] = { 1, SHADER_STAGE_PIXEL, skyBuffer };
-            resListDesc.constantBuffers[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
+            // Bind resources to the pipeline
+            // Pipeline State
+            PipelineState* pso = ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso;
+            cmdList->bindPipelineState( pso );
+
+            // Resource List
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = skyBuffer;
+            resourceList.resource[1].buffer = cameraBuffer;
+            resourceList.resource[2].sampler = bilinearSampler;
+            resourceList.resource[3].sampler = bilinearSampler;
+            resourceList.resource[4].sampler = bilinearSampler;
 
             if ( useAutomaticExposure )
-                resListDesc.buffers[0] = { 0, SHADER_STAGE_PIXEL, autoExposureBuffer };
+                resourceList.resource[5].buffer = autoExposureBuffer;
 
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.samplers[2] = { 2, SHADER_STAGE_PIXEL, bilinearSampler };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            cmdList->bindResourceList( pso, resourceList );
 
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[0].targetState = RenderPassDesc::CLEAR_COLOR;
-            passDesc.attachements[0].clearValue[0] = 0.0f;
-            passDesc.attachements[0].clearValue[1] = 0.0f;
-            passDesc.attachements[0].clearValue[2] = 0.0f;
-            passDesc.attachements[0].clearValue[3] = 1.0f;
+            RenderPass renderPass;
+            renderPass.resource[0].renderTarget = outputTarget;
+            renderPass.resource[1].texture = scatteringTexture;
+            renderPass.resource[2].texture = irradianceTexture;
+            renderPass.resource[3].texture = transmittanceTexture;
 
-            passDesc.attachements[1].texture = scatteringTexture;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[1].targetState = RenderPassDesc::IS_TEXTURE;
-
-            passDesc.attachements[2].texture = irradianceTexture;
-            passDesc.attachements[2].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[2].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[2].targetState = RenderPassDesc::IS_TEXTURE;
-
-            passDesc.attachements[3].texture = transmittanceTexture;
-            passDesc.attachements[3].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[3].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[3].targetState = RenderPassDesc::IS_TEXTURE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-
-            // Pipeline State
-            cmdList->bindPipelineState( ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso );
-
+            cmdList->bindRenderPass( pso, renderPass );
             cmdList->draw( 3 );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 
@@ -206,6 +185,38 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.blendState.enableBlend = false;
     psoDesc.rasterizerState.useTriangleCCW = false;
 
+    // ResourceList
+    psoDesc.resourceListBindings[0] = { 1, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+    psoDesc.resourceListBindings[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+
+    psoDesc.resourceListBindings[2] = { 0, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
+    psoDesc.resourceListBindings[3] = { 1, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
+    psoDesc.resourceListBindings[4] = { 2, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
+
+    psoDesc.resourceListBindings[5] = { 2, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_GENERIC_BUFFER };
+
+    // RenderPass
+    psoDesc.renderPass.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPass.attachements[0].bindMode = RenderPassDesc__::WRITE;
+    psoDesc.renderPass.attachements[0].targetState = RenderPassDesc__::CLEAR_COLOR;
+    psoDesc.renderPass.attachements[0].clearValue[0] = 0.0f;
+    psoDesc.renderPass.attachements[0].clearValue[1] = 0.0f;
+    psoDesc.renderPass.attachements[0].clearValue[2] = 0.0f;
+    psoDesc.renderPass.attachements[0].clearValue[3] = 1.0f;
+
+    psoDesc.renderPass.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPass.attachements[1].bindMode = RenderPassDesc__::READ;
+    psoDesc.renderPass.attachements[1].targetState = RenderPassDesc__::IS_TEXTURE;
+
+    psoDesc.renderPass.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPass.attachements[2].bindMode = RenderPassDesc__::READ;
+    psoDesc.renderPass.attachements[2].targetState = RenderPassDesc__::IS_TEXTURE;
+
+    psoDesc.renderPass.attachements[3].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPass.attachements[3].bindMode = RenderPassDesc__::READ;
+    psoDesc.renderPass.attachements[3].targetState = RenderPassDesc__::IS_TEXTURE;
+
+    // Allocate and cache pipeline state
     skyRenderPso = renderDevice->createPipelineState( psoDesc );
 
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_FIXED_EXPOSURE", SHADER_STAGE_PIXEL );

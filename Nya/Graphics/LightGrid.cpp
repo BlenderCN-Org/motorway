@@ -103,16 +103,14 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
             Buffer* lightsClustersInfos = renderPipelineResources.getBuffer( passData.lightsClustersInfosBuffer );
             cmdList->updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, lightsClusters };
-            resListDesc.uavBuffers[1] = { 1, SHADER_STAGE_COMPUTE, itemList };
-            resListDesc.constantBuffers[0] = { 2, SHADER_STAGE_COMPUTE, lightsBuffer };
-            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_COMPUTE, lightsClustersInfos };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = lightsClusters;
+            resourceList.resource[1].buffer = itemList;
+            resourceList.resource[2].buffer = lightsBuffer;
+            resourceList.resource[3].buffer = lightsClustersInfos;
 
             cmdList->bindPipelineState( lightCullingPso );
+            cmdList->bindResourceList( lightCullingPso, resourceList );
             
             cmdList->dispatchCompute( 4, 4, 4 );
         }
@@ -125,6 +123,10 @@ void LightGrid::loadCachedResources( RenderDevice* renderDevice, ShaderCache* sh
 {
     PipelineStateDesc pipelineState = {};
     pipelineState.computeShader = shaderCache->getOrUploadStage( "Lighting/LightCulling", eShaderStage::SHADER_STAGE_COMPUTE );
+    pipelineState.resourceListBindings[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_UAV_TEXTURE };
+    pipelineState.resourceListBindings[1] = { 1, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_UAV_BUFFER };
+    pipelineState.resourceListBindings[2] = { 2, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+    pipelineState.resourceListBindings[3] = { 1, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
 
     lightCullingPso = renderDevice->createPipelineState( pipelineState );
 }

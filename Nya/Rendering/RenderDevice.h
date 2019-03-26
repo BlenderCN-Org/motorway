@@ -29,7 +29,6 @@ struct RenderPass;
 struct PipelineState;
 struct Shader;
 struct Sampler;
-struct ResourceList;
 struct QueryPool;
 
 class CommandListPool;
@@ -382,22 +381,6 @@ struct RenderPassDesc
     } attachements[8 + 16];
 };
 
-struct ResourceListDesc
-{
-    template<typename Res>
-    struct ResourceList
-    {
-        int         bindPoint;
-        uint32_t    stageBind;
-        Res         resource;
-    };
-
-    ResourceList<Buffer*>    uavBuffers[64];
-    ResourceList<Buffer*>    constantBuffers[64];
-    ResourceList<Sampler*>   samplers[64];
-    ResourceList<Buffer*>    buffers[64];
-};
-
 struct DepthStencilStateDesc
 {
     bool                                    enableDepthTest;
@@ -430,6 +413,52 @@ struct RasterizerStateDesc
     bool                        useTriangleCCW;
 };
 
+// TODO Proto
+struct ResourceListBinding
+{
+    int         bindPoint;
+    uint32_t    stageBind;
+
+    enum {
+        RESOURCE_LIST_BINDING_TYPE_SAMPLER = 0,
+        RESOURCE_LIST_BINDING_TYPE_GENERIC_BUFFER,
+        RESOURCE_LIST_BINDING_TYPE_CBUFFER,
+        RESOURCE_LIST_BINDING_TYPE_UAV_BUFFER,
+        RESOURCE_LIST_BINDING_TYPE_UAV_TEXTURE,
+
+        RESOURCE_LIST_BINDING_TYPE_COUNT,
+    } type;
+};
+
+
+struct RenderPassDesc__
+{
+    enum BindMode {
+        UNUSED = 0,
+        READ,
+        WRITE,
+        WRITE_DEPTH
+    };
+
+    enum State {
+        DONT_CARE = 0,
+        CLEAR_COLOR,
+        CLEAR_DEPTH,
+        IS_TEXTURE,
+        IS_UAV_TEXTURE
+    };
+
+    struct {
+        uint32_t        stageBind;
+        BindMode        bindMode;
+        State           targetState;
+        eImageFormat    viewFormat;
+        float           clearValue[4];
+        uint32_t        layerIndex;
+        uint32_t        mipIndex;
+    } attachements[24];
+};
+
 struct PipelineStateDesc
 {
     Shader*                             vertexShader;
@@ -442,6 +471,8 @@ struct PipelineStateDesc
     RasterizerStateDesc                 rasterizerState;
     BlendStateDesc                      blendState;
     InputLayoutEntry                    inputLayout[8];
+    ResourceListBinding                 resourceListBindings[64];
+    RenderPassDesc__                    renderPass;
 };
 
 class RenderDevice
@@ -478,12 +509,8 @@ public:
     Buffer*             createBuffer( const BufferDesc& description, const void* initialData = nullptr );
     Shader*             createShader( const eShaderStage stage, const void* bytecode, const size_t bytecodeSize );
     Sampler*            createSampler( const SamplerDesc& description );
-
-    RenderPass*         createRenderPass( const RenderPassDesc& description );
     PipelineState*      createPipelineState( const PipelineStateDesc& description );
     QueryPool*          createQueryPool( const eQueryType type, const unsigned int poolCapacity );
-
-    ResourceList&       allocateResourceList( const ResourceListDesc& description ) const;
 
     bool                getQueryResult( QueryPool* queryPool, const unsigned int queryIndex, uint64_t& queryResult );
     double              convertTimestampToMs( const QueryPool* queryPool, const double timestamp );
@@ -493,7 +520,6 @@ public:
     void                destroyBuffer( Buffer* buffer );
     void                destroyShader( Shader* shader );
     void                destroyPipelineState( PipelineState* pipelineState );
-    void                destroyRenderPass( RenderPass* renderPass );
     void                destroySampler( Sampler* sampler );
     void                destroyQueryPool( QueryPool* queryPool );
 

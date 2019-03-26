@@ -94,11 +94,8 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
             passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
             passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
 
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-
-            // Pipeline State
-            cmdList->bindPipelineState( renderLinePso );
+            RenderPass renderPass;
+            renderPass.resource[0].renderTarget = outputTarget;
 
             Buffer* screenBuffer = renderPipelineResources.getBuffer( passData.screenBuffer );
 
@@ -117,21 +114,21 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
 
             cmdList->updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX, screenBuffer };
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = screenBuffer;
 
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );         
 
-            cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );
-           
+            // Pipeline State
+            cmdList->bindPipelineState( renderLinePso );
+            cmdList->bindResourceList( renderLinePso, resourceList );
+            cmdList->bindRenderPass( renderLinePso, renderPass );
+
             // Bind buffers
             cmdList->bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
             cmdList->bindIndiceBuffer( lineIndiceBuffer );
 
             cmdList->draw( static_cast<unsigned int>( indiceCount ) );
-
-            renderDevice->destroyRenderPass( renderPass );
 
             // Swap buffers
             vertexBufferIndex = ( vertexBufferIndex == 0 ) ? 1 : 0;
@@ -210,6 +207,12 @@ void LineRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
 
     pipelineState.inputLayout[0] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "POSITION" };
     pipelineState.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "COLOR" };
+
+    pipelineState.renderPass.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    pipelineState.renderPass.attachements[0].bindMode = RenderPassDesc__::WRITE;
+    pipelineState.renderPass.attachements[0].targetState = RenderPassDesc__::DONT_CARE;
+
+    pipelineState.resourceListBindings[0] = { 0, SHADER_STAGE_VERTEX, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
 
     renderLinePso = renderDevice->createPipelineState( pipelineState );
 }

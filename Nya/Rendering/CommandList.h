@@ -27,6 +27,7 @@ struct Buffer;
 struct ResourceList;
 struct QueryPool;
 struct Texture;
+struct Sampler;
 
 struct Viewport
 {
@@ -59,6 +60,29 @@ static bool operator != ( const Viewport& l, const Viewport& r )
         || l.MaxDepth != r.MaxDepth;
 }
 
+struct ResourceList
+{
+    // NOTE Type is set in the resource list binding
+    struct {
+        union {
+            Buffer*     buffer;
+            Sampler*    sampler;
+        };
+    } resource[64];
+};
+
+struct RenderPass
+{
+    // NOTE Type is set in the resource list binding
+    struct {
+        union {
+            RenderTarget*   renderTarget;
+            Texture*        texture;
+            Buffer*         buffer;
+        };
+    } resource[24];
+};
+
 class CommandList
 {
 public:
@@ -77,12 +101,11 @@ public:
     void                bindIndiceBuffer( const Buffer* buffer );
 
     void                bindPipelineState( PipelineState* pipelineState );
-    void                bindResourceList( ResourceList* resourceList );
+    void                bindResourceList( const PipelineState* pipelineState, const ResourceList& resourceList );
+    void                bindRenderPass( const PipelineState* pipelineState, const RenderPass& resourceList );
 
     void                setViewport( const Viewport& viewport );
     void                getViewport( Viewport& viewport );
-
-    void                useRenderPass( RenderPass* renderPass );
 
     void                draw( const unsigned int vertexCount, const unsigned int vertexOffset = 0u );
     void                drawIndexed( const unsigned int indiceCount, const unsigned int indiceOffset = 0, const size_t indiceType = sizeof( unsigned int ), const unsigned int vertexOffset = 0 );
