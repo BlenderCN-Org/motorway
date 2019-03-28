@@ -113,16 +113,30 @@ void AutomaticExposureModule::loadCachedResources( RenderDevice* renderDevice, S
         autoExposureBuffer[i] = renderDevice->createBuffer( autoExposureBufferDescription, &autoExposureInfos );
     }
 
-    PipelineStateDesc psoDesc = {};
+    PipelineStateDesc binComputePsoDesc = {};
+    binComputePsoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/BinCompute", SHADER_STAGE_COMPUTE );
+    binComputePsoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
+    binComputePsoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    binComputePsoDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET };
 
-    psoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/BinCompute", SHADER_STAGE_COMPUTE );
-    binComputePso = renderDevice->createPipelineState( psoDesc );
+    binComputePso = renderDevice->createPipelineState( binComputePsoDesc );
 
-    psoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/HistogramMerge", SHADER_STAGE_COMPUTE );
-    mergeHistoPso = renderDevice->createPipelineState( psoDesc );
-    
-    psoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/TileHistogramCompute", SHADER_STAGE_COMPUTE );
-    tileHistoComputePso = renderDevice->createPipelineState( psoDesc );
+    PipelineStateDesc mergeHistoPsoDesc = {};
+    mergeHistoPsoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/HistogramMerge", SHADER_STAGE_COMPUTE );
+    mergeHistoPsoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
+    mergeHistoPsoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    mergeHistoPsoDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+
+    mergeHistoPso = renderDevice->createPipelineState( mergeHistoPsoDesc );
+
+    PipelineStateDesc tileHistoComputePsoDesc = {};
+    tileHistoComputePsoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/TileHistogramCompute", SHADER_STAGE_COMPUTE );
+    tileHistoComputePsoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
+    tileHistoComputePsoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    tileHistoComputePsoDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    tileHistoComputePsoDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+
+    tileHistoComputePso = renderDevice->createPipelineState( tileHistoComputePsoDesc );
 }
 
 MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* renderPipeline, const ResHandle_t inputRenderTarget, const nyaVec2u& screenSize )
@@ -160,35 +174,21 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
             passData.screenInfosBuffer = renderPipelineBuilder.allocateBuffer( screenInfosBuffer, SHADER_STAGE_COMPUTE );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+            // RenderPass
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
-
             Buffer* screenSizeBuffer = renderPipelineResources.getBuffer( passData.screenInfosBuffer );
             cmdList->updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, outputBuffer };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_COMPUTE, screenSizeBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
-
-            // RenderPass
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
-
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = inputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_COMPUTE;
-            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = outputBuffer;
+            resourceList.resource[1].buffer = screenSizeBuffer;
+            resourceList.resource[2].renderTarget = inputTarget;
 
             cmdList->bindPipelineState( binComputePso );
+            cmdList->bindResourceList( binComputePso, resourceList );
 
             cmdList->dispatchCompute( 1u, static_cast<unsigned int>( ceilf( screenSize.y / 4.0f ) ), 1u );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 
@@ -234,15 +234,13 @@ MutableResHandle_t AutomaticExposureModule::addHistogramMergePass( RenderPipelin
             Buffer* screenSizeBuffer = renderPipelineResources.getBuffer( passData.screenInfosBuffer );
             cmdList->updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, outputBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_COMPUTE, inputBuffer };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_COMPUTE, screenSizeBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = outputBuffer;
+            resourceList.resource[1].buffer = inputBuffer;
+            resourceList.resource[2].buffer = screenSizeBuffer;
 
             cmdList->bindPipelineState( mergeHistoPso );
+            cmdList->bindResourceList( mergeHistoPso, resourceList );
 
             cmdList->dispatchCompute( 128u, 1u, 1u );
         }
@@ -287,18 +285,14 @@ ResHandle_t AutomaticExposureModule::addExposureComputePass( RenderPipeline* ren
             Buffer* bufferToRead = renderPipelineResources.getPersistentBuffer( passData.lastFrameOutput );
             Buffer* bufferToWrite = renderPipelineResources.getPersistentBuffer( passData.output );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, bufferToWrite };
-
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_COMPUTE, bufferToRead };
-            resListDesc.buffers[1] = { 1, SHADER_STAGE_COMPUTE, inputBuffer };
-
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_COMPUTE, parametersBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = bufferToWrite;
+            resourceList.resource[1].buffer = bufferToRead;
+            resourceList.resource[2].buffer = inputBuffer;
+            resourceList.resource[3].buffer = parametersBuffer;
 
             cmdList->bindPipelineState( tileHistoComputePso );
+            cmdList->bindResourceList( tileHistoComputePso, resourceList );
 
             cmdList->dispatchCompute( 1u, 1u, 1u );
         }

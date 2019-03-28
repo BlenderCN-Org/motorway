@@ -19,17 +19,51 @@ void LoadCachedResourcesMRP( RenderDevice* renderDevice, ShaderCache* shaderCach
     PipelineStateDesc psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[3].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[3].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[3].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[3].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
 
 #define LOAD_PERMUTATION( samplerCount )\
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount, SHADER_STAGE_PIXEL );\
     g_x##samplerCount##PipelineStateObject = renderDevice->createPipelineState( psoDesc );\
-    \
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount "+NYA_USE_TAA", SHADER_STAGE_PIXEL );\
-    g_x##samplerCount##TAAPipelineStateObject = renderDevice->createPipelineState( psoDesc );
 
     LOAD_PERMUTATION( 2 )
     LOAD_PERMUTATION( 4 )
     LOAD_PERMUTATION( 8 )
+
+#undef LOAD_PERMUTATION
+
+    psoDesc.renderPassLayout.attachements[4].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[4].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[4].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[4].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+#define LOAD_PERMUTATION_TAA( samplerCount )\
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount "+NYA_USE_TAA", SHADER_STAGE_PIXEL );\
+    g_x##samplerCount##TAAPipelineStateObject = renderDevice->createPipelineState( psoDesc );
+
+    LOAD_PERMUTATION_TAA( 2 )
+    LOAD_PERMUTATION_TAA( 4 )
+    LOAD_PERMUTATION_TAA( 8 )
 
 #undef LOAD_PERMUTATION
 }
@@ -113,38 +147,32 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_PIXEL, resolveBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_PIXEL, autoExposureBuffer };
-
-            ResourceList& resList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resList );
-
-            // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
             RenderTarget* depthTarget = renderPipelineResources.getRenderTarget( passData.inputDepth );
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.inputVelocity );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { inputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[2] = { velocityTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[3] = { depthTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = resolveBuffer;
+            resourceList.resource[1].buffer = autoExposureBuffer;
+
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
+            renderPass.attachement[1] = { inputTarget, 0, 0 };
+            renderPass.attachement[2] = { velocityTarget, 0, 0 };
+            renderPass.attachement[3] = { depthTarget, 0, 0 };
 
             if ( enableTAA ) {
                 RenderTarget* lastFrameTarget = renderPipelineResources.getPersitentRenderTarget( passData.inputLastFrameTarget );
-                passDesc.attachements[4] = { lastFrameTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
+                renderPass.attachement[4] = { lastFrameTarget, 0, 0 };
             }
 
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-
-            cmdList->bindPipelineState( GetPermutationPSO( sampleCount, enableTAA ) );
+            PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
+            cmdList->bindPipelineState( pso );
+            cmdList->bindResourceList( pso, resourceList );
+            cmdList->bindRenderPass( pso, renderPass );
 
             cmdList->draw( 3 );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 

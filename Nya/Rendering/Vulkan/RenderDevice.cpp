@@ -647,6 +647,20 @@ void RenderDevice::create( DisplaySurface* surface )
 
     descriptorPoolDesc.pPoolSizes = &stboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->stboDescriptorPool );
+
+    VkDescriptorPoolSize siDescriptorPoolSize;
+    siDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    siDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &siDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->siDescriptorPool );
+
+    VkDescriptorPoolSize iaDescriptorPoolSize;
+    iaDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    iaDescriptorPoolSize.descriptorCount = 512u;
+
+    descriptorPoolDesc.pPoolSizes = &iaDescriptorPoolSize;
+    vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->iaDescriptorPool );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )

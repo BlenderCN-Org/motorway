@@ -28,7 +28,7 @@ class GraphicsAssetCache;
 
 struct PipelineState;
 struct ResourceList;
-struct RenderPassDesc;
+struct RenderPass;
 
 #include <Core/LazyEnum.h>
 #include <Shaders/MaterialShared.h>
@@ -84,9 +84,9 @@ public:
     void                        setName( const nyaString_t& meshName );
     const nyaString_t&          getName() const;
 
-    void                        bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
-    void                        bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
-    void                        bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const;
+    void                        bind( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bindProbeCapture( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
 
     // NOTE -This function should only be used in case of override/debug materials
     //      -This function implicitly drops regular flagset (based on sortkey infos)
@@ -137,6 +137,6 @@ private:
     };
 
 private:
-    void                        bindDefaultTextureSet( RenderPassDesc& renderPassDesc ) const;
+    void                        bindDefaultTextureSet( ResourceList& resourceList ) const;
     void                        getShadingModelResources( GraphicsAssetCache* graphicsAssetCache );
 };

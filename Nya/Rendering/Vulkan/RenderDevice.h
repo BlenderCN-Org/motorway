@@ -79,6 +79,8 @@ struct RenderContext
     VkDescriptorPool                    sboDescriptorPool; // Storage Buffer Object
     VkDescriptorPool                    utboDescriptorPool; // Uniform Texel Buffer Object
     VkDescriptorPool                    stboDescriptorPool; // Storage Texel Buffer Object
+    VkDescriptorPool                    siDescriptorPool; // Sampled Image
+    VkDescriptorPool                    iaDescriptorPool; // Input Attachment
 
     VkCommandPool                       graphicsCommandPool;
     VkCommandPool                       computeCommandPool;

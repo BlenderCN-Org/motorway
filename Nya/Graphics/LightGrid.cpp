@@ -123,10 +123,10 @@ void LightGrid::loadCachedResources( RenderDevice* renderDevice, ShaderCache* sh
 {
     PipelineStateDesc pipelineState = {};
     pipelineState.computeShader = shaderCache->getOrUploadStage( "Lighting/LightCulling", eShaderStage::SHADER_STAGE_COMPUTE );
-    pipelineState.resourceListBindings[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_UAV_TEXTURE };
-    pipelineState.resourceListBindings[1] = { 1, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_UAV_BUFFER };
-    pipelineState.resourceListBindings[2] = { 2, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
-    pipelineState.resourceListBindings[3] = { 1, SHADER_STAGE_COMPUTE, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+    pipelineState.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };
+    pipelineState.resourceListLayout.resources[1] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
+    pipelineState.resourceListLayout.resources[2] = { 2, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    pipelineState.resourceListLayout.resources[3] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
     lightCullingPso = renderDevice->createPipelineState( pipelineState );
 }

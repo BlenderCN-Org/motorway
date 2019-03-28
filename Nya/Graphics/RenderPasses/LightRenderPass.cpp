@@ -191,23 +191,21 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
 #endif
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.samplers[1] = { 1, SHADER_STAGE_PIXEL, anisotropicSampler };
-            resListDesc.samplers[2] = { 2, SHADER_STAGE_PIXEL, shadowMapSampler };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, cameraBuffer };
-            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
-            resListDesc.constantBuffers[2] = { 1, SHADER_STAGE_PIXEL, sceneInfosBuffer };
-            resListDesc.constantBuffers[3] = { 2, SHADER_STAGE_PIXEL, lightsBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
-            resListDesc.buffers[1] = { 1, SHADER_STAGE_PIXEL, itemListBuffer };
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].sampler = anisotropicSampler;
+            resourceList.resource[2].sampler = shadowMapSampler;
+            resourceList.resource[3].buffer = cameraBuffer;
+            resourceList.resource[4].buffer = instanceBuffer;
+            resourceList.resource[5].buffer = sceneInfosBuffer;
+            resourceList.resource[6].buffer = lightsBuffer;
+            resourceList.resource[7].buffer = vectorDataBuffer;
+            resourceList.resource[8].buffer = itemListBuffer;
 
 #if NYA_DEVBUILD
-            resListDesc.constantBuffers[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, materialEditorBuffer };
+            resourceList.resource[9].buffer = materialEditorBuffer;
 #endif
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            resourceList.resource[10].buffer = clustersBuffer;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
@@ -239,29 +237,14 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { velocityTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
-            passDesc.attachements[2] = { thinGBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::CLEAR_COLOR,{ 0, 0, 0, 0 } };
-            passDesc.attachements[3] = { zBufferTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE_DEPTH, RenderPassDesc::CLEAR_DEPTH,{ 0, 0, 0, 0 } };
-
-            passDesc.attachements[4].buffer = clustersBuffer;
-            passDesc.attachements[4].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[4].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[4].targetState = RenderPassDesc::IS_UAV_TEXTURE;
-
-            passDesc.attachements[5] = { sunShadowMapTarget, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[6] = { iblDiffuseArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[7] = { iblSpecularArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            //passDesc.attachements[8] = { iblCapturedArray, SHADER_STAGE_PIXEL, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-       
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-            renderDevice->destroyRenderPass( renderPass );
-
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
-            passDesc.attachements[2].targetState = RenderPassDesc::DONT_CARE;
-            passDesc.attachements[3].targetState = RenderPassDesc::DONT_CARE;
+            RenderPass renderPass;
+            renderPass.attachement[0].renderTarget = outputTarget;
+            renderPass.attachement[1].renderTarget = velocityTarget;
+            renderPass.attachement[2].renderTarget = thinGBufferTarget;
+            renderPass.attachement[3].renderTarget = zBufferTarget;
+            renderPass.attachement[4].renderTarget = sunShadowMapTarget;
+            renderPass.attachement[5].renderTarget = iblDiffuseArray;
+            renderPass.attachement[6].renderTarget = iblSpecularArray;
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
 
@@ -273,17 +256,14 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             for ( const auto& drawCmd : drawCmdBucket ) {
                 if ( !isCapturingProbe )
-                    drawCmd.infos.material->bind( cmdList, passDesc );
+                    drawCmd.infos.material->bind( cmdList, renderPass, resourceList );
                 else
-                    drawCmd.infos.material->bindProbeCapture( cmdList, passDesc );
+                    drawCmd.infos.material->bindProbeCapture( cmdList, renderPass, resourceList );
 
 #if NYA_DEVBUILD
                 const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
                 cmdList->updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
-
-                RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-                cmdList->useRenderPass( renderPass );
 
                 cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
                 cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
@@ -293,8 +273,6 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
                 // Update vector buffer offset
                 instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
                 cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
-
-                renderDevice->destroyRenderPass( renderPass );
             }
         }
     );

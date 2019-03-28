@@ -25,16 +25,47 @@ void LoadCachedResourcesBP( RenderDevice* renderDevice, ShaderCache* shaderCache
     PipelineStateDesc psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "PostFX/Downsample", SHADER_STAGE_PIXEL );
+
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+
+    psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
 
     g_DownsamplePipelineStateObject = renderDevice->createPipelineState( psoDesc );
 
     // Mip0 to mip1 pso
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "PostFX/Downsample+NYA_USE_KARIS_AVERAGE", SHADER_STAGE_PIXEL );
+
     g_KarisAveragePipelineStateObject = renderDevice->createPipelineState( psoDesc );
 
     // Bright pass pso
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "PostFX/BrightPass", SHADER_STAGE_PIXEL );
+    PipelineStateDesc brightPassPso = {};
+    brightPassPso.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
+    brightPassPso.pixelShader = shaderCache->getOrUploadStage( "PostFX/BrightPass", SHADER_STAGE_PIXEL );
+
+    brightPassPso.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+    brightPassPso.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+
+    brightPassPso.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    brightPassPso.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::READ;
+    brightPassPso.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    brightPassPso.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+
+    brightPassPso.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    brightPassPso.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+    brightPassPso.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    brightPassPso.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+
     g_BrightPassPipelineStateObject = renderDevice->createPipelineState( psoDesc );
 
     // Upsample pso
@@ -49,7 +80,23 @@ void LoadCachedResourcesBP( RenderDevice* renderDevice, ShaderCache* shaderCache
     psoDesc.blendState.blendConfColor.dest = nya::rendering::eBlendSource::BLEND_SOURCE_ONE;
     psoDesc.blendState.blendConfColor.operation = nya::rendering::eBlendOperation::BLEND_OPERATION_ADD;
 
+    psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+
+    psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "PostFX/Upsample", SHADER_STAGE_PIXEL );
+
     g_UpsamplePipelineStateObject = renderDevice->createPipelineState( psoDesc );
 }
 
@@ -85,36 +132,23 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
-            RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
-
+            RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
-            // RenderPass
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = inputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
 
-            passDesc.attachements[1].renderTarget = renderTarget;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            RenderPass renderPass;
+            renderPass.attachement[0] = { inputTarget, 0, 0 };
+            renderPass.attachement[1] = { renderTarget, 0, 0 };
 
             cmdList->bindPipelineState( g_BrightPassPipelineStateObject );
-            cmdList->draw( 3 );
+            cmdList->bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
+            cmdList->bindResourceList( g_BrightPassPipelineStateObject , resourceList );
 
-            renderDevice->destroyRenderPass( renderPass );
+            cmdList->draw( 3 );
         }
     );
 
@@ -156,40 +190,28 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
-            RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
-
+            RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
-            // RenderPass
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = inputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
 
-            passDesc.attachements[1].renderTarget = renderTarget;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
+            RenderPass renderPass;
+            renderPass.attachement[0] = { inputTarget, 0, 0 };
+            renderPass.attachement[1] = { renderTarget, 0, 0 };
 
             const float downsample = ( 1.0f / downsampleFactor );
 
             cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
 
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            PipelineState* pso = ( useKarisAverage ) ? g_KarisAveragePipelineStateObject : g_DownsamplePipelineStateObject;
+            cmdList->bindPipelineState( pso );
+            cmdList->bindRenderPass( pso, renderPass );
+            cmdList->bindResourceList( pso, resourceList );
 
-            cmdList->bindPipelineState( ( useKarisAverage ) ? g_KarisAveragePipelineStateObject : g_DownsamplePipelineStateObject );
             cmdList->draw( 3 );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 
@@ -235,6 +257,8 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
+
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
            
             Buffer* upsampleBuffer = renderPipelineResources.getBuffer( passData.upsampleInfosBuffer );
@@ -249,36 +273,21 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             cmdList->updateBuffer( upsampleBuffer, &upsampleInfos, sizeof( UpsampleInfos ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_PIXEL, upsampleBuffer };
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].buffer = upsampleBuffer;
 
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
-
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
-
-            // RenderPass
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = inputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-
-            passDesc.attachements[1].renderTarget = renderTarget;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
+            RenderPass renderPass;
+            renderPass.attachement[0] = { inputTarget, 0, 0 };
+            renderPass.attachement[1] = { renderTarget, 0, 0 };
 
             cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-
             cmdList->bindPipelineState( g_UpsamplePipelineStateObject );
-            cmdList->draw( 3 );
+            cmdList->bindRenderPass( g_UpsamplePipelineStateObject, renderPass );
+            cmdList->bindResourceList( g_UpsamplePipelineStateObject, resourceList );
 
-            renderDevice->destroyRenderPass( renderPass );
+            cmdList->draw( 3 );
         }
     );
 

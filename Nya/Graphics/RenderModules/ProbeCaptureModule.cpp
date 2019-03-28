@@ -86,12 +86,42 @@ void ProbeCaptureModule::loadCachedResources( RenderDevice* renderDevice, Shader
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "CopyTexture", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
+    psoDesc.resourceListLayout.resources[0] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
     copyPso = renderDevice->createPipelineState( psoDesc );
 
     psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "Editor/IBLProbeConvolution", SHADER_STAGE_VERTEX );
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "Editor/IBLProbeConvolution", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+
+    psoDesc.resourceListLayout.resources[0] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    psoDesc.resourceListLayout.resources[1] =  { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    psoDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::READ;
+    psoDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::DONT_CARE;
+    psoDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
     convolutionPso = renderDevice->createPipelineState( psoDesc );
 }
@@ -198,12 +228,9 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
 
             cmdList->updateBuffer( infosBuffer, &convolutionParameters, sizeof( PassInfos ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, infosBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].buffer = infosBuffer;
 
             // Viewport
             Viewport vp = {};
@@ -223,47 +250,29 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
             RenderTarget* outputSpecularTarget = renderPipelineResources.getPersitentRenderTarget( passData.outputSpecular );
             RenderTarget* inputProbeArray = renderPipelineResources.getPersitentRenderTarget( passData.input );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputDiffuseTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-            passDesc.attachements[0].mipIndex = mipLevel;
-            passDesc.attachements[0].layerIndex = faceIndex;
-
-            passDesc.attachements[1].renderTarget = outputSpecularTarget;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
-            passDesc.attachements[1].mipIndex = mipLevel;
-            passDesc.attachements[1].layerIndex = faceIndex;
-
-            passDesc.attachements[2].renderTarget = inputProbeArray;
-            passDesc.attachements[2].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[2].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[2].targetState = RenderPassDesc::DONT_CARE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputDiffuseTarget, mipLevel, faceIndex };
+            renderPass.attachement[1] = { outputSpecularTarget, mipLevel, faceIndex };
+            renderPass.attachement[2] = { inputProbeArray, 0, 0 };
 
             cmdList->bindPipelineState( convolutionPso );
+            cmdList->bindResourceList( convolutionPso, resourceList );
+            cmdList->bindRenderPass( convolutionPso, renderPass );
 
             cmdList->draw( 4 );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 }
 
 void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, ResHandle_t capturedFace, const uint32_t probeArrayIndex, const uint16_t probeCaptureStep )
 {
-    uint32_t faceIndex = probeArrayIndex * 6u + probeCaptureStep;
-
     struct PassData {
         ResHandle_t input;
         ResHandle_t output;
         ResHandle_t bilinearSampler;
     };
+
+    const uint32_t faceIndex = probeArrayIndex * 6u + probeCaptureStep;
 
     renderPipeline->addRenderPass<PassData>(
         "IBL Captured Face Save Pass",
@@ -285,37 +294,22 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-            passDesc.attachements[0].layerIndex = faceIndex;
-            passDesc.attachements[0].mipIndex = 0u;
-
-            passDesc.attachements[1].renderTarget = inputTarget;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[1].targetState = RenderPassDesc::DONT_CARE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, faceIndex };
+            renderPass.attachement[1] = { inputTarget, 0, 0 };
 
             cmdList->bindPipelineState( copyPso );
+            cmdList->bindResourceList( copyPso, resourceList );
+            cmdList->bindRenderPass( copyPso, renderPass );
 
             cmdList->draw( 3 );
-
-            renderDevice->destroyRenderPass( renderPass );
         }
     );
 }

@@ -77,15 +77,11 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             Buffer* screenBuffer = renderPipelineResources.getBuffer( passData.screenBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
 
-
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX, screenBuffer };
-            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].buffer = screenBuffer;
+            resourceList.resource[2].buffer = instanceBuffer;
+            resourceList.resource[3].buffer = vectorDataBuffer;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
@@ -109,9 +105,9 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
 
             cmdList->updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { outputTarget, SHADER_STAGE_PIXEL, RenderPassDesc::WRITE, RenderPassDesc::DONT_CARE };
-          
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
+
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_HUD, DrawCommandKey::HUD_VIEWPORT_LAYER_DEFAULT );
 
             InstanceBuffer instanceBufferData;
@@ -121,11 +117,7 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
-                drawCmd.infos.material->bind( cmdList, passDesc );
-
-
-                RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-                cmdList->useRenderPass( renderPass );
+                drawCmd.infos.material->bind( cmdList, renderPass, resourceList );
 
                 cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
                 cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
@@ -135,8 +127,6 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
                 // Update vector buffer offset
                 instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
                 cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
-
-                renderDevice->destroyRenderPass( renderPass );
             }
         }
     );

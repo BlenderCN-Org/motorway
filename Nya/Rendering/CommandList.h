@@ -65,22 +65,21 @@ struct ResourceList
     // NOTE Type is set in the resource list binding
     struct {
         union {
-            Buffer*     buffer;
-            Sampler*    sampler;
+            Buffer*         buffer;
+            Sampler*        sampler;
+            Texture*        texture;
+            RenderTarget*   renderTarget; // NOTE Read-only
         };
     } resource[64];
 };
 
 struct RenderPass
 {
-    // NOTE Type is set in the resource list binding
     struct {
-        union {
-            RenderTarget*   renderTarget;
-            Texture*        texture;
-            Buffer*         buffer;
-        };
-    } resource[24];
+        RenderTarget*   renderTarget;
+        uint32_t        mipLevel;
+        uint32_t        faceIndex;
+    } attachement[24];
 };
 
 class CommandList

@@ -142,11 +142,12 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             resourceList.resource[0].buffer = skyBuffer;
             resourceList.resource[1].buffer = cameraBuffer;
             resourceList.resource[2].sampler = bilinearSampler;
-            resourceList.resource[3].sampler = bilinearSampler;
-            resourceList.resource[4].sampler = bilinearSampler;
+            resourceList.resource[3].texture = scatteringTexture;
+            resourceList.resource[4].texture = irradianceTexture;
+            resourceList.resource[5].texture = transmittanceTexture;
 
             if ( useAutomaticExposure )
-                resourceList.resource[5].buffer = autoExposureBuffer;
+                resourceList.resource[6].buffer = autoExposureBuffer;
 
             cmdList->bindResourceList( pso, resourceList );
 
@@ -154,10 +155,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             RenderPass renderPass;
-            renderPass.resource[0].renderTarget = outputTarget;
-            renderPass.resource[1].texture = scatteringTexture;
-            renderPass.resource[2].texture = irradianceTexture;
-            renderPass.resource[3].texture = transmittanceTexture;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             cmdList->bindRenderPass( pso, renderPass );
             cmdList->draw( 3 );
@@ -186,35 +184,26 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.rasterizerState.useTriangleCCW = false;
 
     // ResourceList
-    psoDesc.resourceListBindings[0] = { 1, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
-    psoDesc.resourceListBindings[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+    psoDesc.resourceListLayout.resources[0] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
-    psoDesc.resourceListBindings[2] = { 0, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
-    psoDesc.resourceListBindings[3] = { 1, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
-    psoDesc.resourceListBindings[4] = { 2, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_SAMPLER };
+    psoDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
 
-    psoDesc.resourceListBindings[5] = { 2, SHADER_STAGE_PIXEL, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_GENERIC_BUFFER };
+    psoDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+    psoDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+    psoDesc.resourceListLayout.resources[5] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+
+    psoDesc.resourceListLayout.resources[6] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
     // RenderPass
-    psoDesc.renderPass.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPass.attachements[0].bindMode = RenderPassDesc__::WRITE;
-    psoDesc.renderPass.attachements[0].targetState = RenderPassDesc__::CLEAR_COLOR;
-    psoDesc.renderPass.attachements[0].clearValue[0] = 0.0f;
-    psoDesc.renderPass.attachements[0].clearValue[1] = 0.0f;
-    psoDesc.renderPass.attachements[0].clearValue[2] = 0.0f;
-    psoDesc.renderPass.attachements[0].clearValue[3] = 1.0f;
-
-    psoDesc.renderPass.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPass.attachements[1].bindMode = RenderPassDesc__::READ;
-    psoDesc.renderPass.attachements[1].targetState = RenderPassDesc__::IS_TEXTURE;
-
-    psoDesc.renderPass.attachements[2].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPass.attachements[2].bindMode = RenderPassDesc__::READ;
-    psoDesc.renderPass.attachements[2].targetState = RenderPassDesc__::IS_TEXTURE;
-
-    psoDesc.renderPass.attachements[3].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPass.attachements[3].bindMode = RenderPassDesc__::READ;
-    psoDesc.renderPass.attachements[3].targetState = RenderPassDesc__::IS_TEXTURE;
+    psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::CLEAR;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[0].clearValue[0] = 0.0f;
+    psoDesc.renderPassLayout.attachements[0].clearValue[1] = 0.0f;
+    psoDesc.renderPassLayout.attachements[0].clearValue[2] = 0.0f;
+    psoDesc.renderPassLayout.attachements[0].clearValue[3] = 1.0f;
 
     // Allocate and cache pipeline state
     skyRenderPso = renderDevice->createPipelineState( psoDesc );

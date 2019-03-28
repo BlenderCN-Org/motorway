@@ -104,23 +104,6 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-
-            passDesc.attachements[1].texture = fontAtlas;
-            passDesc.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[1].bindMode = RenderPassDesc::READ;
-            passDesc.attachements[1].targetState = RenderPassDesc::IS_TEXTURE;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-
-            // Pipeline State
-            cmdList->bindPipelineState( renderTextPso );
-
             // Resource List
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             
@@ -135,12 +118,13 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             };
             cmdList->updateBuffer( viewportBuffer, &rtDimensions, sizeof( nyaVec4u ) );
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX, viewportBuffer };
-            resListDesc.samplers[0] = { 2, SHADER_STAGE_PIXEL, bilinearSampler };
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = viewportBuffer;
+            resourceList.resource[1].sampler = bilinearSampler;
+            resourceList.resource[2].texture = fontAtlas;
 
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             // Update vertex buffer content
             cmdList->updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferOffset ) * sizeof( float ) );
@@ -148,10 +132,13 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             // Bind buffers
             cmdList->bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
             cmdList->bindIndiceBuffer( glyphIndiceBuffer );
-            
-            cmdList->drawIndexed( static_cast<uint32_t>( indiceCount ) );
 
-            renderDevice->destroyRenderPass( renderPass );
+            // Pipeline State
+            cmdList->bindPipelineState( renderTextPso );
+            cmdList->bindRenderPass( renderTextPso, renderPass );
+            cmdList->bindResourceList( renderTextPso, resourceList );
+
+            cmdList->drawIndexed( static_cast<uint32_t>( indiceCount ) );
 
             // Swap buffers
             vertexBufferIndex = ( vertexBufferIndex == 0 ) ? 1 : 0;
@@ -248,6 +235,15 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     pipelineState.inputLayout[0] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "POSITION" };
     pipelineState.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0,  0, true, "TEXCOORD" };
     pipelineState.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "COLOR" };
+
+    pipelineState.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    pipelineState.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    pipelineState.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    pipelineState.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    pipelineState.resourceListLayout.resources[0] =  { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    pipelineState.resourceListLayout.resources[1] =  { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    pipelineState.resourceListLayout.resources[2] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
 
     renderTextPso = renderDevice->createPipelineState( pipelineState );
 }

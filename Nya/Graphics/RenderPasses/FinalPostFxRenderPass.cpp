@@ -13,6 +13,10 @@ void LoadCachedResourcesFP( RenderDevice* renderDevice, ShaderCache* shaderCache
 {
     PipelineStateDesc psoDesc = {};
     psoDesc.computeShader = shaderCache->getOrUploadStage( "PostFX/FinalPost", SHADER_STAGE_COMPUTE );
+    psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
+    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    psoDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET };
+    psoDesc.resourceListLayout.resources[3] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET };
 
     g_PipelineStateObject = renderDevice->createPipelineState( psoDesc );
 }
@@ -50,34 +54,23 @@ ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_
             passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+            const Viewport* viewport = renderPipelineResources.getMainViewport();
+
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
-
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
-
-            ResourceListDesc resListDesc = {};
-            resListDesc.uavBuffers[0] = { 0, SHADER_STAGE_COMPUTE, outputBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_COMPUTE, autoExposureBuffer };
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
-
-            // RenderPass
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
             RenderTarget* inputBloomTarget = renderPipelineResources.getRenderTarget( passData.inputBloom );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0] = { inputTarget, SHADER_STAGE_COMPUTE, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-            passDesc.attachements[1] = { inputBloomTarget, SHADER_STAGE_COMPUTE, RenderPassDesc::READ, RenderPassDesc::DONT_CARE };
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = outputBuffer;
+            resourceList.resource[1].buffer = autoExposureBuffer;
+            resourceList.resource[2].renderTarget = inputTarget;
+            resourceList.resource[3].renderTarget = inputBloomTarget;
 
             cmdList->bindPipelineState( g_PipelineStateObject );
-            
-            const Viewport* viewport = renderPipelineResources.getMainViewport();
-            cmdList->dispatchCompute( viewport->Width / 16u, viewport->Height / 16u, 1u );
+            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
 
-            renderDevice->destroyRenderPass( renderPass );
+            cmdList->dispatchCompute( static_cast<uint32_t>( viewport->Width ) / 16u, static_cast<uint32_t>( viewport->Height ) / 16u, 1u );
         }
     );
 

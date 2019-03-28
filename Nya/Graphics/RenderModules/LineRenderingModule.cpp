@@ -88,14 +88,8 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE;
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
-
             RenderPass renderPass;
-            renderPass.resource[0].renderTarget = outputTarget;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             Buffer* screenBuffer = renderPipelineResources.getBuffer( passData.screenBuffer );
 
@@ -208,11 +202,12 @@ void LineRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     pipelineState.inputLayout[0] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "POSITION" };
     pipelineState.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32A32_FLOAT, 0, 0, 0, true, "COLOR" };
 
-    pipelineState.renderPass.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-    pipelineState.renderPass.attachements[0].bindMode = RenderPassDesc__::WRITE;
-    pipelineState.renderPass.attachements[0].targetState = RenderPassDesc__::DONT_CARE;
+    pipelineState.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    pipelineState.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    pipelineState.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    pipelineState.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
-    pipelineState.resourceListBindings[0] = { 0, SHADER_STAGE_VERTEX, ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_CBUFFER };
+    pipelineState.resourceListLayout.resources[0] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
     renderLinePso = renderDevice->createPipelineState( pipelineState );
 }

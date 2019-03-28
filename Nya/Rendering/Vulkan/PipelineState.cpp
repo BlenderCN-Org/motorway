@@ -31,6 +31,7 @@
 #include "PipelineState.h"
 
 #include <vulkan/vulkan.h>
+#include <string.h>
 
 using namespace nya::rendering;
 
@@ -98,13 +99,14 @@ static constexpr VkCullModeFlags VK_CM[eCullMode::CULL_MODE_COUNT] =
     VK_CULL_MODE_FRONT_AND_BACK,
 };
 
-static constexpr VkDescriptorType VK_DT[ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT] =
+static constexpr VkDescriptorType VK_DT[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] =
 {
     VK_DESCRIPTOR_TYPE_SAMPLER,
     VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
@@ -150,35 +152,42 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
     PipelineState* pipelineState = nya::core::allocate<PipelineState>( memoryAllocator );
 
     // Resource List
-    VkDescriptorSetLayout resourceListDescriptorSetLayout[ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT];
+    VkDescriptorSetLayout resourceListDescriptorSetLayout[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT];
 
-    uint32_t bindingCount[ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT];
-    VkDescriptorSetLayoutBinding descriptorSetBinding[ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT][64];
+    uint32_t bindingCount[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] = { 0u };
+    VkDescriptorSetLayoutBinding descriptorSetBinding[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT][64];
     for ( int i = 0; i < 64; i++ ) {
-        const ResourceListBinding& binding = description.resourceListBindings[i];
+        const auto& binding = description.resourceListLayout.resources[i];
 
         if ( binding.stageBind == 0u ) {
             break;
         }
 
-        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[binding.type][bindingCount[binding.type]++];
+        int descriptorSetType = binding.type;
+        uint32_t& typeBindingCount = bindingCount[binding.type];
+
+        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[descriptorSetType][typeBindingCount];
         descriptorSetLayoutBinding.binding = static_cast<uint32_t>( binding.bindPoint );
         descriptorSetLayoutBinding.descriptorType = VK_DT[binding.type];
         descriptorSetLayoutBinding.descriptorCount = 1u;
         descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( binding.stageBind );
         descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+        typeBindingCount++;
     }
 
-    VkDescriptorPool* poolSet[ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT] = {
+    VkDescriptorPool* poolSet[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] = {
         &renderContext->samplerDescriptorPool,
         &renderContext->uboDescriptorPool,
         &renderContext->utboDescriptorPool,
+        &renderContext->stboDescriptorPool,
         &renderContext->sboDescriptorPool,
-        &renderContext->stboDescriptorPool
+        &renderContext->siDescriptorPool,
+        &renderContext->iaDescriptorPool
     };
 
     pipelineState->descriptorSetCount = 0u;
-    for ( int i = 0; i < ResourceListBinding::RESOURCE_LIST_BINDING_TYPE_COUNT; i++ ) {
+    for ( int i = 0; i < ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT; i++ ) {
         if ( bindingCount[i] == 0u ) {
             continue;
         }
@@ -435,10 +444,10 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         VkAttachmentDescription attachments[24];
         uint32_t attachmentCount = 0u;
         for ( int i = 0; i < 24; i++ ) {
-            const auto& attachment = description.renderPass.attachements[i];
+            const auto& attachment = description.renderPassLayout.attachements[i];
 
             switch ( attachment.bindMode ) {
-            case RenderPassDesc__::READ: {
+            case RenderPassLayoutDesc::READ: {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
@@ -460,13 +469,13 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentCount++;
             } break;
 
-            case RenderPassDesc__::WRITE: {
+            case RenderPassLayoutDesc::WRITE: {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
                 attachmentDesc.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
 
-                attachmentDesc.loadOp = ( attachment.targetState == RenderPassDesc__::DONT_CARE )
+                attachmentDesc.loadOp = ( attachment.targetState == RenderPassLayoutDesc::DONT_CARE )
                     ? VK_ATTACHMENT_LOAD_OP_DONT_CARE
                     : VK_ATTACHMENT_LOAD_OP_CLEAR;
                 attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -477,8 +486,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-                if ( attachment.targetState != RenderPassDesc__::DONT_CARE )
-                    memcpy( pipelineState->clearValues[attachmentCount], attachment.clearValue, sizeof( float ) * 4 );
+                if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
+                    memcpy( &pipelineState->clearValues[attachmentCount], attachment.clearValue, sizeof( float ) * 4 );
 
                 VkAttachmentReference& attachmentReference = writeReference[writeReferenceCount++];
                 attachmentReference.attachment = attachmentCount;
@@ -487,7 +496,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentCount++;
                } break;
 
-            case RenderPassDesc__::WRITE_DEPTH: {
+            case RenderPassLayoutDesc::WRITE_DEPTH: {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
@@ -496,7 +505,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-                attachmentDesc.stencilLoadOp = ( attachment.targetState == RenderPassDesc__::DONT_CARE )
+                attachmentDesc.stencilLoadOp = ( attachment.targetState == RenderPassLayoutDesc::DONT_CARE )
                     ? VK_ATTACHMENT_LOAD_OP_DONT_CARE
                     : VK_ATTACHMENT_LOAD_OP_CLEAR;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -504,8 +513,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-                if ( attachment.targetState != RenderPassDesc__::DONT_CARE )
-                    memcpy( pipelineState->clearValues[attachmentCount], attachment.clearValue, sizeof( float ) * 4 );
+                if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
+                    memcpy( &pipelineState->clearValues[attachmentCount], attachment.clearValue, sizeof( float ) * 4 );
 
                 depthStencilReference.attachment = attachmentCount;
                 depthStencilReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

@@ -96,18 +96,15 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
 #endif
 
-            ResourceListDesc resListDesc = {};
-            resListDesc.samplers[0] = { 0, SHADER_STAGE_PIXEL, bilinearSampler };
-            resListDesc.constantBuffers[0] = { 0, SHADER_STAGE_VERTEX, cameraBuffer };
-            resListDesc.constantBuffers[1] = { 1, SHADER_STAGE_VERTEX, instanceBuffer };
-            resListDesc.buffers[0] = { 0, SHADER_STAGE_VERTEX, vectorDataBuffer };
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].buffer = cameraBuffer;
+            resourceList.resource[2].buffer = instanceBuffer;
+            resourceList.resource[3].buffer = vectorDataBuffer;
 
 #if NYA_DEVBUILD
-            resListDesc.constantBuffers[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, materialEditorBuffer };
+            resourceList.resource[4].buffer = materialEditorBuffer;
 #endif
-
-            ResourceList& resourceList = renderDevice->allocateResourceList( resListDesc );
-            cmdList->bindResourceList( &resourceList );
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
@@ -119,20 +116,8 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
-            RenderPassDesc passDesc = {};
-            passDesc.attachements[0].renderTarget = outputTarget;
-            passDesc.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-            passDesc.attachements[0].bindMode = RenderPassDesc::WRITE_DEPTH;
-            passDesc.attachements[0].targetState = RenderPassDesc::CLEAR_DEPTH;
-            passDesc.attachements[0].clearValue[0] = 1.0f;
-            passDesc.attachements[0].clearValue[1] = 1.0f;
-            passDesc.attachements[0].clearValue[2] = 1.0f;
-            passDesc.attachements[0].clearValue[3] = 1.0f;
-
-            RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-            cmdList->useRenderPass( renderPass );
-            renderDevice->destroyRenderPass( renderPass );
-            passDesc.attachements[0].targetState = RenderPassDesc::DONT_CARE;
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             for ( int i = 0; i < CSM_SLICE_COUNT; i++ ) {
                 cmdList->setViewport( { CSM_SHADOW_MAP_DIMENSIONS * i, 0, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, 0.0f, 1.0f } );
@@ -146,15 +131,12 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
                 cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
                 for ( const auto& drawCmd : drawCmdBucket ) {
-                    drawCmd.infos.material->bindDepthOnly( cmdList, passDesc );
+                    drawCmd.infos.material->bindDepthOnly( cmdList, renderPass, resourceList );
 
 #if NYA_DEVBUILD
                     const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
                     cmdList->updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
-
-                    RenderPass* renderPass = renderDevice->createRenderPass( passDesc );
-                    cmdList->useRenderPass( renderPass );
 
                     cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
                     cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
@@ -164,8 +146,6 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
                     // Update vector buffer offset
                     instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
                     cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
-
-                    renderDevice->destroyRenderPass( renderPass );
                 }
             }
         }

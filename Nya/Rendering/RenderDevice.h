@@ -344,43 +344,6 @@ struct BufferDesc
     };
 };
 
-struct RenderPassDesc
-{
-    enum BindMode
-    {
-        UNUSED = 0,
-        READ,
-        WRITE,
-        WRITE_DEPTH
-    };
-
-    enum State
-    {
-        DONT_CARE = 0,
-        CLEAR_COLOR,
-        CLEAR_DEPTH,
-        IS_TEXTURE,
-        IS_UAV_TEXTURE
-    };
-
-    struct
-    {
-        union
-        {
-            RenderTarget*   renderTarget;
-            Texture*        texture;
-            Buffer*         buffer;
-        };
-
-        uint32_t        stageBind;
-        BindMode        bindMode;
-        State           targetState;
-        float           clearValue[4];
-        uint32_t        layerIndex;
-        uint32_t        mipIndex;
-    } attachements[8 + 16];
-};
-
 struct DepthStencilStateDesc
 {
     bool                                    enableDepthTest;
@@ -413,25 +376,29 @@ struct RasterizerStateDesc
     bool                        useTriangleCCW;
 };
 
-// TODO Proto
-struct ResourceListBinding
+struct ResourceListLayoutDesc
 {
-    int         bindPoint;
-    uint32_t    stageBind;
+    enum ResourceType {
+        RESOURCE_LIST_RESOURCE_TYPE_SAMPLER = 0,
+        RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER,
+        RESOURCE_LIST_RESOURCE_TYPE_CBUFFER,
+        RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER,
+        RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE,
+        RESOURCE_LIST_RESOURCE_TYPE_TEXTURE,
+        RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET,
 
-    enum {
-        RESOURCE_LIST_BINDING_TYPE_SAMPLER = 0,
-        RESOURCE_LIST_BINDING_TYPE_GENERIC_BUFFER,
-        RESOURCE_LIST_BINDING_TYPE_CBUFFER,
-        RESOURCE_LIST_BINDING_TYPE_UAV_BUFFER,
-        RESOURCE_LIST_BINDING_TYPE_UAV_TEXTURE,
+        RESOURCE_LIST_RESOURCE_TYPE_COUNT,
+    };
 
-        RESOURCE_LIST_BINDING_TYPE_COUNT,
-    } type;
+    struct {
+        int             bindPoint;
+        uint32_t        stageBind;
+        ResourceType    type;
+    } resources[64];
 };
 
 
-struct RenderPassDesc__
+struct RenderPassLayoutDesc
 {
     enum BindMode {
         UNUSED = 0,
@@ -442,10 +409,8 @@ struct RenderPassDesc__
 
     enum State {
         DONT_CARE = 0,
-        CLEAR_COLOR,
-        CLEAR_DEPTH,
-        IS_TEXTURE,
-        IS_UAV_TEXTURE
+        CLEAR,
+        CLEAR_DEPTH
     };
 
     struct {
@@ -471,8 +436,8 @@ struct PipelineStateDesc
     RasterizerStateDesc                 rasterizerState;
     BlendStateDesc                      blendState;
     InputLayoutEntry                    inputLayout[8];
-    ResourceListBinding                 resourceListBindings[64];
-    RenderPassDesc__                    renderPass;
+    ResourceListLayoutDesc              resourceListLayout;
+    RenderPassLayoutDesc                renderPassLayout;
 };
 
 class RenderDevice

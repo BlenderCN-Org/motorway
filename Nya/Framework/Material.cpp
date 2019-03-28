@@ -194,6 +194,72 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         defaultPipelineStateDesc.blendState.enableAlphaToCoverage = editableMaterialData.AlphaToCoverage;
     }
 
+    defaultPipelineStateDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::CLEAR;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16_FLOAT;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[0] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[1] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[2] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[3] = 0.0f;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::WRITE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::CLEAR;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[0] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[1] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[2] = 0.0f;
+    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[3] = 0.0f;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[3].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[3].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
+    defaultPipelineStateDesc.renderPassLayout.attachements[3].targetState = RenderPassLayoutDesc::CLEAR_DEPTH;
+    defaultPipelineStateDesc.renderPassLayout.attachements[3].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
+    defaultPipelineStateDesc.renderPassLayout.attachements[3].clearValue[0] = 0.0f;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[4].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[4].bindMode = RenderPassLayoutDesc::READ;
+    defaultPipelineStateDesc.renderPassLayout.attachements[4].targetState = RenderPassLayoutDesc::DONT_CARE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[4].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[5].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[5].bindMode = RenderPassLayoutDesc::READ;
+    defaultPipelineStateDesc.renderPassLayout.attachements[5].targetState = RenderPassLayoutDesc::DONT_CARE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[5].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    defaultPipelineStateDesc.renderPassLayout.attachements[6].stageBind = SHADER_STAGE_PIXEL;
+    defaultPipelineStateDesc.renderPassLayout.attachements[6].bindMode = RenderPassLayoutDesc::READ;
+    defaultPipelineStateDesc.renderPassLayout.attachements[6].targetState = RenderPassLayoutDesc::DONT_CARE;
+    defaultPipelineStateDesc.renderPassLayout.attachements[6].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+
+    defaultPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    defaultPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    defaultPipelineStateDesc.resourceListLayout.resources[2] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    defaultPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[5] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[6] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[7] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[8] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+
+#if NYA_DEVBUILD
+    defaultPipelineStateDesc.resourceListLayout.resources[9] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+#endif
+
+    defaultPipelineStateDesc.resourceListLayout.resources[10] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };
+
+    uint32_t textureBindIndex = 11u;
+    for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
+        defaultPipelineStateDesc.resourceListLayout.resources[textureBindIndex] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+        textureBindIndex++;
+    }
+
     defaultPipelineState = renderDevice->createPipelineState( defaultPipelineStateDesc );
 
     // Probe Capture PSO
@@ -215,7 +281,30 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     depthPipelineStateDesc.inputLayout[0] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
     depthPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
     depthPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
-   
+
+    depthPipelineStateDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::CLEAR_DEPTH;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[0] = 1.0f;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[1] = 1.0f;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[2] = 1.0f;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[3] = 1.0f;
+
+    depthPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    depthPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    depthPipelineStateDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    depthPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+
+#if NYA_DEVBUILD
+    depthPipelineStateDesc.resourceListLayout.resources[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+#endif
+
+    uint32_t depthTextureBindIndex = 5u;
+    for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
+        defaultPipelineStateDesc.resourceListLayout.resources[depthTextureBindIndex] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+        depthTextureBindIndex++;
+    }
+
     depthOnlyPipelineState = renderDevice->createPipelineState( depthPipelineStateDesc );
 }
 
@@ -413,33 +502,38 @@ const nyaString_t& Material::getName() const
     return name;
 }
 
-void Material::bind( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+void Material::bind( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
     cmdList->bindPipelineState( defaultPipelineState );
-    bindDefaultTextureSet( renderPassDesc );
+    bindDefaultTextureSet( resourceList );
+
+    cmdList->bindRenderPass( defaultPipelineState, renderPass );
+    cmdList->bindResourceList( defaultPipelineState, resourceList );
 }
 
-void Material::bindProbeCapture( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+void Material::bindProbeCapture( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
     cmdList->bindPipelineState( probeCapturePipelineState );
-    bindDefaultTextureSet( renderPassDesc );
+    bindDefaultTextureSet( resourceList );
+
+    cmdList->bindRenderPass( defaultPipelineState, renderPass );
+    cmdList->bindResourceList( defaultPipelineState, resourceList );
 }
 
-void Material::bindDepthOnly( CommandList* cmdList, RenderPassDesc& renderPassDesc ) const
+void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
     cmdList->bindPipelineState( depthOnlyPipelineState );
 
     // 0 -> Output RenderTarget
-    int32_t textureBindIndex = 1;
+    int32_t textureBindIndex = 5;
 
-    for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
-        renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
-        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
-        renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
-        renderPassDesc.attachements[textureBindIndex].texture = depthOnlyTextureSet[textureIdx];
-
+    for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
+        resourceList.resource[textureBindIndex].texture = defaultTextureSet[textureIdx];
         textureBindIndex++;
     }
+
+    cmdList->bindRenderPass( defaultPipelineState, renderPass );
+    cmdList->bindResourceList( defaultPipelineState, resourceList );
 }
 
 void Material::setCustomFlagset( const std::string& customFlagset )
@@ -454,20 +548,16 @@ const Material::EditorBuffer& Material::getEditorBuffer() const
 }
 #endif
 
-void Material::bindDefaultTextureSet( RenderPassDesc& renderPassDesc ) const
+void Material::bindDefaultTextureSet( ResourceList& resourceList ) const
 {
     // 0..3 -> Output RenderTargets
     // 4 -> Clusters (3D Tex)
     // 5 -> Sun ShadowMap
     // 6..8 -> IBL Probes (Diffuse/Specular/Captured (HDR))
-    int32_t textureBindIndex = 8;
+    int32_t textureBindIndex = 11;
 
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
-        renderPassDesc.attachements[textureBindIndex].bindMode = RenderPassDesc::READ;
-        renderPassDesc.attachements[textureBindIndex].stageBind = SHADER_STAGE_PIXEL;
-        renderPassDesc.attachements[textureBindIndex].targetState = RenderPassDesc::IS_TEXTURE;
-        renderPassDesc.attachements[textureBindIndex].texture = defaultTextureSet[textureIdx];
-
+        resourceList.resource[textureBindIndex].texture = defaultTextureSet[textureIdx];
         textureBindIndex++;
     }
 }
