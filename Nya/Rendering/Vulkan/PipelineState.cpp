@@ -584,7 +584,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         shaderStageInfos.flags = 0u;
         shaderStageInfos.stage = description.computeShader->shaderStage;
         shaderStageInfos.module = description.computeShader->shaderModule;
-        shaderStageInfos.pName = "main";
+        shaderStageInfos.pName = "EntryPointCS";
         shaderStageInfos.pSpecializationInfo = nullptr;
 
         pipelineInfo.stage = shaderStageInfos;

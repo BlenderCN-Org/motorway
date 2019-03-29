@@ -462,12 +462,16 @@ void RenderDevice::create( DisplaySurface* surface )
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
     deviceFeatures.imageCubeArray = VK_TRUE;
+    deviceFeatures.shaderStorageImageExtendedFormats = VK_TRUE;
 
-    VkDeviceCreateInfo deviceCreationInfos = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    VkDeviceCreateInfo deviceCreationInfos;
+    deviceCreationInfos.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreationInfos.pNext = nullptr;
     deviceCreationInfos.flags = 0;
     deviceCreationInfos.queueCreateInfoCount = static_cast<uint32_t>( queues.size() );
     deviceCreationInfos.pQueueCreateInfos = queues.data();
+    deviceCreationInfos.enabledLayerCount = 0u;
+    deviceCreationInfos.ppEnabledLayerNames = nullptr;
     deviceCreationInfos.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
     deviceCreationInfos.enabledExtensionCount = 1;
     deviceCreationInfos.pEnabledFeatures = &deviceFeatures;
@@ -481,7 +485,7 @@ void RenderDevice::create( DisplaySurface* surface )
     vkGetDeviceQueue( device, ( computeQueueFamilyIndex == UINT32_MAX ) ? graphicsQueueFamilyIndex : computeQueueFamilyIndex, 0, &renderContext->computeQueue );
 
     uint32_t surfFormatsCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR( physicalDevice, displaySurf, &surfFormatsCount, 0 );
+    vkGetPhysicalDeviceSurfaceFormatsKHR( physicalDevice, displaySurf, &surfFormatsCount, VK_NULL_HANDLE );
     NYA_CLOG << "Found " << surfFormatsCount << " surface format(s)" << std::endl;
 
     std::vector<VkSurfaceFormatKHR> formatList( surfFormatsCount );
