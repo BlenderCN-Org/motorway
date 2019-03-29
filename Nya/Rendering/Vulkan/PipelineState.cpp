@@ -106,7 +106,8 @@ static constexpr VkDescriptorType VK_DT[ResourceListLayoutDesc::RESOURCE_LIST_RE
     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
     VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+    VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
@@ -116,7 +117,28 @@ void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageIn
     shaderStageInfos.flags = 0u;
     shaderStageInfos.stage = shader->shaderStage;
     shaderStageInfos.module = shader->shaderModule;
-    shaderStageInfos.pName = "main";
+
+    switch ( shader->shaderStage ) {
+    case VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT:
+        shaderStageInfos.pName = "EntryPointVS";
+        break;
+    case VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT:
+        shaderStageInfos.pName = "EntryPointCS";
+        break;
+    case VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT:
+        shaderStageInfos.pName = "EntryPointPS";
+        break;
+    case VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+        shaderStageInfos.pName = "EntryPointDS";
+        break;
+    case VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+        shaderStageInfos.pName = "EntryPointHS";
+        break;
+    default:
+        shaderStageInfos.pName = "main";
+        break;
+    }
+
     shaderStageInfos.pSpecializationInfo = nullptr;
 }
 
@@ -178,10 +200,10 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
 
     VkDescriptorPool* poolSet[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] = {
         &renderContext->samplerDescriptorPool,
-        &renderContext->uboDescriptorPool,
         &renderContext->utboDescriptorPool,
-        &renderContext->stboDescriptorPool,
+        &renderContext->uboDescriptorPool,
         &renderContext->sboDescriptorPool,
+        &renderContext->stboDescriptorPool,
         &renderContext->siDescriptorPool,
         &renderContext->iaDescriptorPool
     };
@@ -206,7 +228,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         allocInfo.pNext = nullptr;
         allocInfo.descriptorPool = *poolSet[i];
         allocInfo.descriptorSetCount = 1u;
-        allocInfo.pSetLayouts = &resourceListDescriptorSetLayout[i];
+        allocInfo.pSetLayouts = &resourceListDescriptorSetLayout[pipelineState->descriptorSetCount];
 
         vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet[pipelineState->descriptorSetCount] );
 
@@ -400,7 +422,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         pipelineInfo.pVertexInputState = &vertexInputStateDesc;
 
         uint32_t pipelineStageCount = 0u;
-        VkPipelineShaderStageCreateInfo pipelineStages[SHADER_STAGE_COUNT - 1u];
+        VkPipelineShaderStageCreateInfo pipelineStages[SHADER_STAGE_COUNT];
 
         if ( description.vertexShader != nullptr ) {
             CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.vertexShader );
