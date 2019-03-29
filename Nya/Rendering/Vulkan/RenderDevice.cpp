@@ -460,6 +460,9 @@ void RenderDevice::create( DisplaySurface* surface )
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
 
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+    deviceFeatures.imageCubeArray = VK_TRUE;
+
     VkDeviceCreateInfo deviceCreationInfos = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     deviceCreationInfos.pNext = nullptr;
     deviceCreationInfos.flags = 0;
@@ -467,6 +470,7 @@ void RenderDevice::create( DisplaySurface* surface )
     deviceCreationInfos.pQueueCreateInfos = queues.data();
     deviceCreationInfos.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
     deviceCreationInfos.enabledExtensionCount = 1;
+    deviceCreationInfos.pEnabledFeatures = &deviceFeatures;
 
     VkDevice device;
     VkResult deviceCreationResult = vkCreateDevice( physicalDevice, &deviceCreationInfos, nullptr, &device );
@@ -610,54 +614,54 @@ void RenderDevice::create( DisplaySurface* surface )
     descriptorPoolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolDesc.pNext = nullptr;
     descriptorPoolDesc.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    descriptorPoolDesc.maxSets = 512;
+    descriptorPoolDesc.maxSets = 128;
     descriptorPoolDesc.poolSizeCount = 1u;
 
     VkDescriptorPoolSize samplerDescriptorPoolSize;
     samplerDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
-    samplerDescriptorPoolSize.descriptorCount = 512u;
+    samplerDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &samplerDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->samplerDescriptorPool );
 
     VkDescriptorPoolSize uboDescriptorPoolSize;
     uboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboDescriptorPoolSize.descriptorCount = 512u;
+    uboDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &uboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->uboDescriptorPool );
 
     VkDescriptorPoolSize sboDescriptorPoolSize;
     sboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    sboDescriptorPoolSize.descriptorCount = 512u;
+    sboDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &sboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->sboDescriptorPool );
 
     VkDescriptorPoolSize utboDescriptorPoolSize;
     utboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    utboDescriptorPoolSize.descriptorCount = 512u;
+    utboDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &utboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->utboDescriptorPool );
 
     VkDescriptorPoolSize stboDescriptorPoolSize;
     stboDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    stboDescriptorPoolSize.descriptorCount = 512u;
+    stboDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &stboDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->stboDescriptorPool );
 
     VkDescriptorPoolSize siDescriptorPoolSize;
     siDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    siDescriptorPoolSize.descriptorCount = 512u;
+    siDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &siDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->siDescriptorPool );
 
     VkDescriptorPoolSize iaDescriptorPoolSize;
     iaDescriptorPoolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-    iaDescriptorPoolSize.descriptorCount = 512u;
+    iaDescriptorPoolSize.descriptorCount = 128;
 
     descriptorPoolDesc.pPoolSizes = &iaDescriptorPoolSize;
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->iaDescriptorPool );
