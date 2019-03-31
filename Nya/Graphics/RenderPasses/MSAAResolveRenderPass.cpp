@@ -133,7 +133,7 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
                 passData.inputLastFrameTarget = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "LastFrameRenderTarget" ) );
             }
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             // ResourceList
             Buffer* resolveBuffer = renderPipelineResources.getBuffer( passData.resolveBuffer );
 

@@ -53,7 +53,7 @@ ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_
             
             passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             const Viewport* viewport = renderPipelineResources.getMainViewport();
 
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );

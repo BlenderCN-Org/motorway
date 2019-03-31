@@ -93,7 +93,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
             
             passData.itemList = renderPipelineBuilder.allocateBuffer( bufferDesc, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Buffer* lightsClusters = renderPipelineResources.getBuffer( passData.lightsClusters );
             Buffer* itemList = renderPipelineResources.getBuffer( passData.itemList );
 

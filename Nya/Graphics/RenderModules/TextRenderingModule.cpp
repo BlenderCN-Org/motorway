@@ -100,7 +100,7 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             // Passthrough rendertarget
             passData.output = renderPipelineBuilder.readRenderTarget( output );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 

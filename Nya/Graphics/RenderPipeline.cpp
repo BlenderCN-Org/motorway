@@ -752,7 +752,7 @@ void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime 
         for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
             NYA_BEGIN_PROFILE_SCOPE( renderPasses[passIdx].name );
                 graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
-                    renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+                    renderPasses[passIdx].execute( renderPipelineResources, &cmdList );
                 graphicsProfiler->endSection( &cmdList );
             NYA_END_PROFILE_SCOPE()
         }

@@ -46,6 +46,11 @@ void CommandList::end()
     vkEndCommandBuffer( CommandListObject->cmdBuffer );
 }
 
+RenderTarget* CommandList::getSwapchainBuffer()
+{
+    return nullptr;
+}
+
 void CommandList::draw( const unsigned int vertexCount, const unsigned int vertexOffset )
 {
     vkCmdDraw( CommandListObject->cmdBuffer, vertexCount, 1, vertexOffset, 0 );

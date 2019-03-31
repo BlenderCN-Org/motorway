@@ -98,7 +98,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             if ( useAutomaticExposure )
                 passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             // Update viewport (using image quality scaling)
             const CameraData* camera = renderPipelineResources.getMainCamera();
 
@@ -193,7 +193,7 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
     psoDesc.resourceListLayout.resources[5] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
 
-    psoDesc.resourceListLayout.resources[6] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    psoDesc.resourceListLayout.resources[6] = { 8, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
     // RenderPass
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;

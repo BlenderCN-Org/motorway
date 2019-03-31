@@ -96,6 +96,8 @@ public:
     void                begin();
     void                end();
 
+    RenderTarget*       getSwapchainBuffer();
+
     void                bindVertexBuffer( const Buffer* buffer, const unsigned int bindIndex = 0 );
     void                bindIndiceBuffer( const Buffer* buffer );
 

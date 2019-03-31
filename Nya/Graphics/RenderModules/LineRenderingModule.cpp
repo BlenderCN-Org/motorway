@@ -84,7 +84,7 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
 
             passData.screenBuffer = renderPipelineBuilder.allocateBuffer( screenBufferDesc, SHADER_STAGE_VERTEX );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 

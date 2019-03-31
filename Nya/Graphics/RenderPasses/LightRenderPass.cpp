@@ -174,7 +174,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             passData.shadowMapSampler = renderPipelineBuilder.allocateSampler( shadowComparisonSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Sampler* anisotropicSampler = renderPipelineResources.getSampler( passData.anisotropicSampler );
             Sampler* shadowMapSampler = renderPipelineResources.getSampler( passData.shadowMapSampler );

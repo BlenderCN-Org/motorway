@@ -173,7 +173,7 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
 
             passData.screenInfosBuffer = renderPipelineBuilder.allocateBuffer( screenInfosBuffer, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             // RenderPass
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
@@ -227,7 +227,7 @@ MutableResHandle_t AutomaticExposureModule::addHistogramMergePass( RenderPipelin
 
             passData.screenInfosBuffer = renderPipelineBuilder.allocateBuffer( rtDimensionBuffer, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
 
@@ -274,7 +274,7 @@ ResHandle_t AutomaticExposureModule::addExposureComputePass( RenderPipeline* ren
 
             passData.parametersBuffer = renderPipelineBuilder.allocateBuffer( parametersBufferDesc, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
 
             Buffer* parametersBuffer = renderPipelineResources.getBuffer( passData.parametersBuffer );

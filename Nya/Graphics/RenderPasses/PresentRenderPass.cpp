@@ -54,8 +54,8 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
-            RenderTarget* outputTarget = renderDevice->getSwapchainBuffer();
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+            RenderTarget* outputTarget = cmdList->getSwapchainBuffer();
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 

@@ -179,7 +179,7 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             Buffer* infosBuffer = renderPipelineResources.getBuffer( passData.passInfosBuffer );
@@ -291,7 +291,7 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             ResourceList resourceList;

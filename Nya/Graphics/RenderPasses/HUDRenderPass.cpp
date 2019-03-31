@@ -70,7 +70,7 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );

@@ -58,7 +58,7 @@ ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t input
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             ResourceList resourceList;
@@ -114,7 +114,7 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             ResourceList resourceList;
@@ -171,7 +171,7 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             ResourceList resourceList;

@@ -131,7 +131,7 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
@@ -189,7 +189,7 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
@@ -255,7 +255,7 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
