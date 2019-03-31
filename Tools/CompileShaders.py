@@ -206,7 +206,7 @@ def compile_permutation_spirv( shader_name, filename, entry_point, extension, sh
     with open( "./tmp/" + filename + ".unroll", 'w') as outfile:
         outfile.write( resolved_file )
 
-    cmdLine = glslang_exe + " -I" + shader_folder + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
+    cmdLine = glslang_exe + " -I" + shader_folder + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V --sub " + shading_model + " 64 --suavb " + shading_model + " 128 --sib " + shading_model + " 192 --stb " + shading_model + " 256 --sbb " + shading_model + " 384 -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
     popenAndCall( ( cmdLine ) )
     
 def compile_shader( shader_name, type, flags = [] ):
@@ -280,6 +280,7 @@ if not os.path.exists( "./cache" ):
 compile_shader_VS( "Error" )
 compile_shader_PS( "Error" )
 compile_shader_CS( "Error" )
+
 
 # Atmosphere
 compile_shader_VS( "Atmosphere/BrunetonSky" )
