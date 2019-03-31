@@ -28,8 +28,6 @@
 */
 
 sampler g_ScatteringSampler : register( s0 );
-sampler g_IrradianceSampler : register( s1 );
-sampler g_TransmittanceSampler : register( s2 );
 
 #define IN(x) in x
 #define OUT(x) out x
@@ -294,7 +292,7 @@ DimensionlessSpectrum GetTransmittanceToTopAtmosphereBoundary(
     Length r, 
     Number mu) {
   float2 uv = GetTransmittanceTextureUvFromRMu(atmosphere, r, mu);
-  return DimensionlessSpectrum(transmittance_texture.Sample(g_TransmittanceSampler, uv).rgb);
+  return DimensionlessSpectrum(transmittance_texture.Sample(g_ScatteringSampler, uv).rgb);
 }
 DimensionlessSpectrum GetTransmittance(
     IN(AtmosphereParameters) atmosphere,
@@ -800,7 +798,7 @@ IrradianceSpectrum GetIrradiance(
     IN(IrradianceTexture) irradiance_texture,
     Length r, Number mu_s) {
   float2 uv = GetIrradianceTextureUvFromRMuS(atmosphere, r, mu_s);
-  return IrradianceSpectrum(irradiance_texture.Sample(g_IrradianceSampler, uv).rgb);
+  return IrradianceSpectrum(irradiance_texture.Sample(g_ScatteringSampler, uv).rgb);
 }
 #ifdef COMBINED_SCATTERING_TEXTURES
 float3 GetExtrapolatedSingleMieScattering(
