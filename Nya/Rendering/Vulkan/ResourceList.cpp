@@ -398,8 +398,8 @@ void CommandList::bindResourceList( const PipelineState* pipelineState, const Re
         CommandListObject->resourcesBindPoint, 
         pipelineState->layout,
         0u, 
-        4u,
-        pipelineState->descriptorSet,
+        1u,
+        &pipelineState->descriptorSet,
         0u, 
         nullptr
     );

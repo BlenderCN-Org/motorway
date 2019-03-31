@@ -42,6 +42,8 @@ VkImageCreateFlags GetTextureCreateFlags( const TextureDescription& description 
     } else if ( description.arraySize > 1 ) {
         // NOTE Do not set VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT when VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT is set (not allowed by the specs.)
         flagset |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+    } else if ( description.flags.isDepthResource == 1 ) {
+        flagset |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
     return flagset;

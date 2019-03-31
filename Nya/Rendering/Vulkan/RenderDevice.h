@@ -74,13 +74,7 @@ struct RenderContext
     VkExtent2D                          swapChainExtent;
     VkFormat                            swapChainFormat;
 
-    VkDescriptorPool                    samplerDescriptorPool;
-    VkDescriptorPool                    uboDescriptorPool; // Uniform Buffer Object
-    VkDescriptorPool                    sboDescriptorPool; // Storage Buffer Object
-    VkDescriptorPool                    utboDescriptorPool; // Uniform Texel Buffer Object
-    VkDescriptorPool                    stboDescriptorPool; // Storage Texel Buffer Object
-    VkDescriptorPool                    siDescriptorPool; // Sampled Image
-    VkDescriptorPool                    iaDescriptorPool; // Input Attachment
+    VkDescriptorPool                    descriptorPool;
 
     VkCommandPool                       graphicsCommandPool;
     VkCommandPool                       computeCommandPool;

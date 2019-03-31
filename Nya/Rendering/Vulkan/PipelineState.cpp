@@ -102,12 +102,23 @@ static constexpr VkCullModeFlags VK_CM[eCullMode::CULL_MODE_COUNT] =
 static constexpr VkDescriptorType VK_DT[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] =
 {
     VK_DESCRIPTOR_TYPE_SAMPLER,
-    VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
     VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+    VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
     VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-    VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT
+    VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+};
+
+static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] =
+{
+    0u,
+    64u,
+    192u,
+    128u,
+    256u,
+    256u,
+    384u,
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
@@ -173,75 +184,53 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
 {
     PipelineState* pipelineState = nya::core::allocate<PipelineState>( memoryAllocator );
 
-    // Resource List
-    VkDescriptorSetLayout resourceListDescriptorSetLayout[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT];
-
-    uint32_t bindingCount[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] = { 0u };
-    VkDescriptorSetLayoutBinding descriptorSetBinding[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT][64];
-    for ( int i = 0; i < 64; i++ ) {
+    uint32_t bindingCount = 0u;
+    VkDescriptorSetLayoutBinding descriptorSetBinding[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT * 64];
+    for ( unsigned int i = 0u; i < 64u; i++ ) {
         const auto& binding = description.resourceListLayout.resources[i];
 
         if ( binding.stageBind == 0u ) {
             break;
         }
 
-        int descriptorSetType = binding.type;
-        uint32_t& typeBindingCount = bindingCount[binding.type];
-
-        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[descriptorSetType][typeBindingCount];
-        descriptorSetLayoutBinding.binding = static_cast<uint32_t>( binding.bindPoint );
+        VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindingCount];
+        descriptorSetLayoutBinding.binding = VK_DT_OFFSET[binding.type] + static_cast<uint32_t>( binding.bindPoint );
         descriptorSetLayoutBinding.descriptorType = VK_DT[binding.type];
         descriptorSetLayoutBinding.descriptorCount = 1u;
         descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( binding.stageBind );
         descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
-        typeBindingCount++;
+        bindingCount++;
     }
 
-    VkDescriptorPool* poolSet[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT] = {
-        &renderContext->samplerDescriptorPool,
-        &renderContext->utboDescriptorPool,
-        &renderContext->uboDescriptorPool,
-        &renderContext->sboDescriptorPool,
-        &renderContext->stboDescriptorPool,
-        &renderContext->siDescriptorPool,
-        &renderContext->iaDescriptorPool
-    };
+    // Resource List
+    VkDescriptorSetLayout resourceListDescriptorSetLayout;
 
-    pipelineState->descriptorSetCount = 0u;
-    for ( int i = 0; i < ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT; i++ ) {
-        if ( bindingCount[i] == 0u ) {
-            continue;
-        }
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo;
+    descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutInfo.pNext = nullptr;
+    descriptorSetLayoutInfo.flags = 0u;
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo;
-        descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutInfo.pNext = nullptr;
-        descriptorSetLayoutInfo.flags = 0u;
+    descriptorSetLayoutInfo.bindingCount = bindingCount;
+    descriptorSetLayoutInfo.pBindings = descriptorSetBinding;
+    vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout );
 
-        descriptorSetLayoutInfo.bindingCount = bindingCount[i];
-        descriptorSetLayoutInfo.pBindings = descriptorSetBinding[i];
-        vkCreateDescriptorSetLayout( renderContext->device, &descriptorSetLayoutInfo, nullptr, &resourceListDescriptorSetLayout[pipelineState->descriptorSetCount] );
+    VkDescriptorSetAllocateInfo allocInfo;
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.pNext = nullptr;
+    allocInfo.descriptorPool = renderContext->descriptorPool;
+    allocInfo.descriptorSetCount = 1u;
+    allocInfo.pSetLayouts = &resourceListDescriptorSetLayout;
 
-        VkDescriptorSetAllocateInfo allocInfo;
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.pNext = nullptr;
-        allocInfo.descriptorPool = *poolSet[i];
-        allocInfo.descriptorSetCount = 1u;
-        allocInfo.pSetLayouts = &resourceListDescriptorSetLayout[pipelineState->descriptorSetCount];
-
-        vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet[pipelineState->descriptorSetCount] );
-
-        pipelineState->descriptorSetCount++;
-    }
+    vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet );
 
     // Allocate pipeline Layout for the current resource list
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pNext = nullptr;
     pipelineLayoutInfo.flags = 0u;
-    pipelineLayoutInfo.setLayoutCount = pipelineState->descriptorSetCount;
-    pipelineLayoutInfo.pSetLayouts = resourceListDescriptorSetLayout;
+    pipelineLayoutInfo.setLayoutCount = 1u;
+    pipelineLayoutInfo.pSetLayouts = &resourceListDescriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0u;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -505,7 +494,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
@@ -532,7 +521,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                     : VK_ATTACHMENT_LOAD_OP_CLEAR;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
@@ -553,7 +542,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         subpassDesc.inputAttachmentCount = readReferenceCount;
         subpassDesc.pColorAttachments = writeReference;
         subpassDesc.colorAttachmentCount = writeReferenceCount;
-        subpassDesc.pDepthStencilAttachment = &depthStencilReference;
+        subpassDesc.pDepthStencilAttachment = ( depthStencilReference.attachment = VK_ATTACHMENT_UNUSED ) ? nullptr : &depthStencilReference;
         subpassDesc.pResolveAttachments = nullptr;
         subpassDesc.preserveAttachmentCount = 0u;
         subpassDesc.pPreserveAttachments = nullptr;
@@ -603,7 +592,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
 
 void RenderDevice::destroyPipelineState( PipelineState* pipelineState )
 {
-    // vkDestroyPipelineLayout( renderContext->device, pipelineState->nativePipelineLayout, nullptr );
+    vkDestroyPipelineLayout( renderContext->device, pipelineState->layout, nullptr );
     vkDestroyPipeline( renderContext->device, pipelineState->pipelineObject, nullptr );
     vkDestroyRenderPass( renderContext->device, pipelineState->renderPass, nullptr );
 

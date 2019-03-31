@@ -31,11 +31,6 @@ struct PipelineState
     VkRenderPass                renderPass;
 
     VkClearValue                clearValues[24];
-
-    // NOTE The number of descriptor sets is related to the resourceList object
-    // Basically, each kind of resource (cbo, uav, sampler, etc.) has its own descriptor set
-    // Might be nice to make this modulable in the future though
-    VkDescriptorSet             descriptorSet[5];
-    uint32_t                    descriptorSetCount;
+    VkDescriptorSet             descriptorSet;
 };
 #endif
