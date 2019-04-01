@@ -25,9 +25,7 @@
 
 #include "RenderDevice.h"
 #include "CommandList.h"
-#include "ResourceList.h"
 #include "RenderTarget.h"
-#include "RenderPass.h"
 
 #include <Display/DisplayMode.h>
 #include <Display/DisplaySurface.h>
@@ -230,27 +228,6 @@ void RenderDevice::create( DisplaySurface* surface )
     renderContext->nativeDeviceContext = nativeDeviceContext;
     renderContext->swapChain = swapChain;
     renderContext->backbuffer = nya::core::allocate<RenderTarget>( memoryAllocator );
-    
-    renderContext->cmdListPool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
-    for ( size_t i = 0; i < 16; i++ ) {
-        renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
-        renderContext->nativeDevice->CreateDeferredContext( 0, &renderContext->cmdListPool[i].CommandListObject->deferredContext );
-    }
-
-    renderContext->cmdListPoolCapacity = 16;
-    renderContext->cmdListPoolIndex = 0;
-
-    renderContext->resListPool = nya::core::allocateArray<ResourceList>( memoryAllocator, 64 );
-    renderContext->resListPoolCapacity = 64;
-    renderContext->resListPoolIndex = 0;
-
-    renderContext->renderPassAllocator = nya::core::allocate<PoolAllocator>( 
-        memoryAllocator, 
-        sizeof( RenderPass ),
-        4, 
-        sizeof( RenderPass ) * 48,
-        memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
-    );
 
     // Unbind backbuffer
     nativeDeviceContext->OMSetRenderTargets( 0, 0, 0 );
@@ -268,6 +245,29 @@ void RenderDevice::create( DisplaySurface* surface )
 
     RELEASE_D3D_RESOURCE( backbufferTex2D )
 #undef RELEASE_D3D_RESOURCE
+
+    renderContext->cmdListPool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
+    for ( size_t i = 0; i < 16; i++ ) {
+        renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
+        renderContext->cmdListPool[i].CommandListObject->swapchain = renderContext->backbuffer;
+
+        renderContext->nativeDevice->CreateDeferredContext( 0, &renderContext->cmdListPool[i].CommandListObject->deferredContext );
+    }
+
+    renderContext->cmdListPoolCapacity = 16;
+    renderContext->cmdListPoolIndex = 0;
+
+    renderContext->resListPool = nya::core::allocateArray<ResourceList>( memoryAllocator, 64 );
+    renderContext->resListPoolCapacity = 64;
+    renderContext->resListPoolIndex = 0;
+
+    renderContext->renderPassAllocator = nya::core::allocate<PoolAllocator>( 
+        memoryAllocator, 
+        sizeof( RenderPass ),
+        4, 
+        sizeof( RenderPass ) * 48,
+        memoryAllocator->allocate( sizeof( RenderPass ) * 48 )
+    );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )

@@ -29,7 +29,7 @@
 
 #include <vulkan/vulkan.h>
 
-void CommandList::bindRenderPass( const PipelineState* pipelineState, const RenderPass& resourceList )
+void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
     /*VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

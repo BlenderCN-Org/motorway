@@ -391,7 +391,7 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 }
 */
 
-void CommandList::bindResourceList( const PipelineState* pipelineState, const ResourceList& resourceList )
+void CommandList::bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
 {
     vkCmdBindDescriptorSets( 
         CommandListObject->cmdBuffer, 

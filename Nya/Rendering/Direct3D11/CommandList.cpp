@@ -40,6 +40,11 @@ void CommandList::end()
     CommandListObject->deferredContext->FinishCommandList( FALSE, &CommandListObject->commandList );
 }
 
+RenderTarget* CommandList::getSwapchainBuffer()
+{
+    return CommandListObject->swapchain;
+}
+
 void CommandList::draw( const unsigned int vertexCount, const unsigned int vertexOffset )
 {
     CommandListObject->deferredContext->Draw( vertexCount, vertexOffset );

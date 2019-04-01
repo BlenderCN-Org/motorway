@@ -102,8 +102,8 @@ public:
     void                bindIndiceBuffer( const Buffer* buffer );
 
     void                bindPipelineState( PipelineState* pipelineState );
-    void                bindResourceList( const PipelineState* pipelineState, const ResourceList& resourceList );
-    void                bindRenderPass( const PipelineState* pipelineState, const RenderPass& resourceList );
+    void                bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList );
+    void                bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass );
 
     void                setViewport( const Viewport& viewport );
     void                getViewport( Viewport& viewport );

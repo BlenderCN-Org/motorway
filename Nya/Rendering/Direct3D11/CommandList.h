@@ -22,10 +22,12 @@
 #if NYA_D3D11
 struct ID3D11DeviceContext;
 struct ID3D11CommandList;
+struct RenderTarget;
 
 struct NativeCommandList
 {
     ID3D11DeviceContext*    deferredContext;
     ID3D11CommandList*      commandList;
+    RenderTarget*           swapchain;
 };
 #endif

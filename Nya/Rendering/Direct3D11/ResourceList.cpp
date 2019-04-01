@@ -23,118 +23,48 @@
 #include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
-#include "ResourceList.h"
-
 #include "RenderDevice.h"
 #include "CommandList.h"
 
 #include "Buffer.h"
 #include "Sampler.h"
+#include "PipelineState.h"
+#include "Texture.h"
+#include "RenderTarget.h"
 
 #include <d3d11.h>
 
 using namespace nya::rendering;
 
-ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& description ) const
+void CommandList::bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
 {
-    const size_t resListIdx = renderContext->resListPoolIndex;
-
-    ++renderContext->resListPoolIndex;
-    if ( renderContext->resListPoolIndex >= renderContext->resListPoolCapacity ) {
-        renderContext->resListPoolIndex = 0;
-    }
-
-    ResourceList& resList = renderContext->resListPool[resListIdx];
-    resList = { 0 };
-
-    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
-        const auto& sampler = description.samplers[i];
-
-        if ( sampler.stageBind & SHADER_STAGE_VERTEX ) {
-            resList.samplers.vertexStage[sampler.bindPoint] = sampler.resource->samplerState;
-        }
-
-        if ( sampler.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
-            resList.samplers.hullStage[sampler.bindPoint] = sampler.resource->samplerState;
-        }
-        
-        if ( sampler.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
-            resList.samplers.domainStage[sampler.bindPoint] = sampler.resource->samplerState;
-        }
-        
-        if ( sampler.stageBind & SHADER_STAGE_PIXEL ) {
-            resList.samplers.pixelStage[sampler.bindPoint] = sampler.resource->samplerState;
-        }
-        
-        if ( sampler.stageBind & SHADER_STAGE_COMPUTE ) {
-            resList.samplers.computeStage[sampler.bindPoint] = sampler.resource->samplerState;
+    for ( int i = 0; i < pipelineState->resourceList.resourceToBindCount; i++ ) {
+        auto& resource = pipelineState->resourceList.resources[i];
+        switch ( resource.type ) {
+        case PipelineState::ResourceListLayout::Buffer:
+            *resource.buffers = resourceList.resource[resource.resourceIndex].buffer->bufferObject;
+            break;
+        case PipelineState::ResourceListLayout::Sampler:
+            *resource.samplerState = resourceList.resource[resource.resourceIndex].sampler->samplerState;
+            break;
+        case PipelineState::ResourceListLayout::Texture:
+            *resource.shaderResourceView = resourceList.resource[resource.resourceIndex].texture->shaderResourceView;
+            break;
+        case PipelineState::ResourceListLayout::RenderTarget:
+            *resource.shaderResourceView = resourceList.resource[resource.resourceIndex].renderTarget->texture->shaderResourceView;
+            break;
+        case PipelineState::ResourceListLayout::UAVResource:
+            *resource.unorderedAccessView = resourceList.resource[resource.resourceIndex].buffer->bufferUAVObject;
+            break;
+        default:
+            break;
         }
     }
 
-    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
-        const auto& constantBuffer = description.constantBuffers[i];
+    auto& resourceListLayout = pipelineState->resourceList;
 
-        if ( constantBuffer.stageBind & SHADER_STAGE_VERTEX ) {
-            resList.constantBuffers.vertexStage[constantBuffer.bindPoint] = constantBuffer.resource->bufferObject;
-        }
-
-        if ( constantBuffer.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
-            resList.constantBuffers.hullStage[constantBuffer.bindPoint] = constantBuffer.resource->bufferObject;
-        }
-
-        if ( constantBuffer.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
-            resList.constantBuffers.domainStage[constantBuffer.bindPoint] = constantBuffer.resource->bufferObject;
-        }
-
-        if ( constantBuffer.stageBind & SHADER_STAGE_PIXEL ) {
-            resList.constantBuffers.pixelStage[constantBuffer.bindPoint] = constantBuffer.resource->bufferObject;
-        }
-
-        if ( constantBuffer.stageBind & SHADER_STAGE_COMPUTE ) {
-            resList.constantBuffers.computeStage[constantBuffer.bindPoint] = constantBuffer.resource->bufferObject;
-        }
-    }
-
-    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
-        const auto& buffer = description.buffers[i];
-
-        if ( buffer.stageBind & SHADER_STAGE_VERTEX ) {
-            resList.buffers.vertexStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
-        }
-
-        if ( buffer.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
-            resList.buffers.hullStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
-        }
-
-        if ( buffer.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
-            resList.buffers.domainStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
-        }
-
-        if ( buffer.stageBind & SHADER_STAGE_PIXEL ) {
-            resList.buffers.pixelStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
-        }
-
-        if ( buffer.stageBind & SHADER_STAGE_COMPUTE ) {
-            resList.buffers.computeStage[buffer.bindPoint] = buffer.resource->bufferResourceView;
-        }
-    }
-    
-    for ( int i = 0; i < MAX_RES_COUNT; i++ ) {
-        const auto& buffer = description.uavBuffers[i];
-
-        if ( buffer.stageBind & eShaderStage::SHADER_STAGE_COMPUTE ) {
-            resList.uavBuffers[buffer.bindPoint] = buffer.resource->bufferUAVObject;
-            resList.uavBuffersBindCount++;
-        }
-    }
-
-    return resList;
-}
-
-void CommandList::bindResourceList( ResourceList* resourceList )
-{
     // For extra-safety, unbind SRV resources prior to UAV bindings
-    if ( resourceList->uavBuffersBindCount != 0 ) {
+    if ( resourceListLayout.uavBuffersBindCount != 0 ) {
         static constexpr ID3D11ShaderResourceView* NO_SRV[14] = { ( ID3D11ShaderResourceView* )nullptr };
 
         CommandListObject->deferredContext->VSSetShaderResources( 8, 14, NO_SRV );
@@ -144,24 +74,24 @@ void CommandList::bindResourceList( ResourceList* resourceList )
         CommandListObject->deferredContext->CSSetShaderResources( 8, 14, NO_SRV );
     }
 
-    CommandListObject->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceList->uavBuffers, nullptr );
+    CommandListObject->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceListLayout.uavBuffers, nullptr );
 
-    CommandListObject->deferredContext->VSSetSamplers( 0, 16, resourceList->samplers.vertexStage );
-    CommandListObject->deferredContext->HSSetSamplers( 0, 16, resourceList->samplers.hullStage );
-    CommandListObject->deferredContext->DSSetSamplers( 0, 16, resourceList->samplers.domainStage );
-    CommandListObject->deferredContext->PSSetSamplers( 0, 16, resourceList->samplers.pixelStage );
-    CommandListObject->deferredContext->CSSetSamplers( 0, 16, resourceList->samplers.computeStage );
+    CommandListObject->deferredContext->VSSetSamplers( 0, 16, resourceListLayout.samplers.vertexStage );
+    CommandListObject->deferredContext->HSSetSamplers( 0, 16, resourceListLayout.samplers.hullStage );
+    CommandListObject->deferredContext->DSSetSamplers( 0, 16, resourceListLayout.samplers.domainStage );
+    CommandListObject->deferredContext->PSSetSamplers( 0, 16, resourceListLayout.samplers.pixelStage );
+    CommandListObject->deferredContext->CSSetSamplers( 0, 16, resourceListLayout.samplers.computeStage );
 
-    CommandListObject->deferredContext->VSSetConstantBuffers( 0, 14, resourceList->constantBuffers.vertexStage );
-    CommandListObject->deferredContext->HSSetConstantBuffers( 0, 14, resourceList->constantBuffers.hullStage );
-    CommandListObject->deferredContext->DSSetConstantBuffers( 0, 14, resourceList->constantBuffers.domainStage );
-    CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceList->constantBuffers.pixelStage );
-    CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceList->constantBuffers.computeStage );
+    CommandListObject->deferredContext->VSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.vertexStage );
+    CommandListObject->deferredContext->HSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.hullStage );
+    CommandListObject->deferredContext->DSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.domainStage );
+    CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.pixelStage );
+    CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.computeStage );
 
-    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceList->buffers.vertexStage );
-    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceList->buffers.hullStage );
-    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceList->buffers.domainStage );
-    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceList->buffers.pixelStage );
-    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceList->buffers.computeStage );
+    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceListLayout.buffers.vertexStage );
+    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceListLayout.buffers.hullStage );
+    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceListLayout.buffers.domainStage );
+    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceListLayout.buffers.pixelStage );
+    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceListLayout.buffers.computeStage );
 }
 #endif

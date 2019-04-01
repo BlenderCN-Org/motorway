@@ -20,7 +20,7 @@
 #include <Shared.h>
 
 #ifdef NYA_WIN
-#include "EnvironmentWin32.h"
+#include "Environment.h"
 
 #include <Shlobj.h>
 #include <shlwapi.h>
