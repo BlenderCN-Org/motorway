@@ -292,7 +292,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
     depthPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     depthPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    depthPipelineStateDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    depthPipelineStateDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
     depthPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
 #if NYA_DEVBUILD
