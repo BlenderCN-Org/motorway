@@ -238,13 +238,13 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPass renderPass;
-            renderPass.attachement[0].renderTarget = outputTarget;
-            renderPass.attachement[1].renderTarget = velocityTarget;
-            renderPass.attachement[2].renderTarget = thinGBufferTarget;
-            renderPass.attachement[3].renderTarget = zBufferTarget;
-            renderPass.attachement[4].renderTarget = sunShadowMapTarget;
-            renderPass.attachement[5].renderTarget = iblDiffuseArray;
-            renderPass.attachement[6].renderTarget = iblSpecularArray;
+            renderPass.attachement[0] = { outputTarget, 0u, 0u };
+            renderPass.attachement[1] = { velocityTarget, 0u, 0u };
+            renderPass.attachement[2] = { thinGBufferTarget, 0u, 0u };
+            renderPass.attachement[3] = { zBufferTarget, 0u, 0u };
+            renderPass.attachement[4] = { sunShadowMapTarget, 0u, 0u };
+            renderPass.attachement[5] = { iblDiffuseArray, 0u, 0u };
+            renderPass.attachement[6] = { iblSpecularArray, 0u, 0u };
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
 
