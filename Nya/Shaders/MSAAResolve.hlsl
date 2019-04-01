@@ -94,7 +94,7 @@ float3 Reproject(in float2 pixelPos)
 	float3 sum = 0.0f;
 	float totalWeight = 0.0f;
 
-    AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
+    AutoExposureInfos currentExposure = AutoExposureBuffer[0];
 	float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );
     
     float exposure = exp2( ( convertEV100ToExposure( currentEV ) ) );
@@ -152,8 +152,8 @@ float4 EntryPointPS( VertexStageData VertexStage ) : SV_TARGET0
     float3 m2 = 0.0f;
     float mWeight = 0.0f;
 	
-    AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
-	 float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );
+    AutoExposureInfos currentExposure = AutoExposureBuffer[0];
+	float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );
     
     float exposure = exp2( ( convertEV100ToExposure( currentEV ) ) );
     

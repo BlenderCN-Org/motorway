@@ -70,9 +70,9 @@ void EntryPointCS( uint2 id : SV_DispatchThreadID )
 {
     static const float g_BloomStrength = 0.00001f;
        
-    AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
+    AutoExposureInfos currentExposure = AutoExposureBuffer[0];
     float currentEV = computeEV100FromAvgLuminance( currentExposure.EngineLuminanceFactor );
-    
+   
     float exposure = exp2( ( convertEV100ToExposure( currentEV ) ) );
     
 	float4 finalColor = g_InputRenderTarget.Load( int3( id, 0 ) );    

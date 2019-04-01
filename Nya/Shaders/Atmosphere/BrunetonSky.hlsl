@@ -74,7 +74,7 @@ float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
 #if NYA_FIXED_EXPOSURE
     float4 color = float4( 1.0 - exp( -radiance / 20.0f ), 1.0f );
 #else
-    AutoExposureInfos currentExposure = GetAutoExposureParameters( AutoExposureBuffer );
+    AutoExposureInfos currentExposure = AutoExposureBuffer[0];
     float4 color = float4( 1.0 - exp( -radiance / ( currentExposure.EngineLuminanceFactor * 0.10f ) ), 1.0f );
 #endif
 
