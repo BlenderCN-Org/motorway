@@ -112,10 +112,10 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
     vkDestroyImageView( renderContext->device, renderTarget->textureRenderTargetView, nullptr );
 
     // Iterate and destroy rtv
-    for ( int arrayIdx = 0; arrayIdx < renderTarget->arraySize; arrayIdx++ ) {
+    for ( unsigned int arrayIdx = 0u; arrayIdx < renderTarget->arraySize; arrayIdx++ ) {
         vkDestroyImageView( renderContext->device, renderTarget->textureRenderTargetViewPerSlice[arrayIdx], nullptr );
 
-        for ( int mipIdx = 0; mipIdx < renderTarget->mipCount; mipIdx++ ) {
+        for ( unsigned int mipIdx = 0u; mipIdx < renderTarget->mipCount; mipIdx++ ) {
             vkDestroyImageView( renderContext->device, renderTarget->textureRenderTargetViewPerSliceAndMipLevel[arrayIdx][mipIdx], nullptr );
         }
     }

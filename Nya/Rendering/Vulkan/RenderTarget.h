@@ -31,7 +31,7 @@ struct RenderTarget
     VkImageView_T***    textureRenderTargetViewPerSliceAndMipLevel;
 
     // NOTE Keep these for image views release
-    int                 arraySize;
-    int                 mipCount;
+    unsigned int        arraySize;
+    unsigned int        mipCount;
 };
 #endif
