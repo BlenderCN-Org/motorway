@@ -33,6 +33,7 @@
 #include "ImageHelpers.h"
 
 #include <vulkan/vulkan.h>
+#include <string.h>
 
 uint32_t _FindMemoryType( RenderContext* renderContext, const uint32_t typeFilter, const VkMemoryPropertyFlags properties )
 {
@@ -46,6 +47,70 @@ uint32_t _FindMemoryType( RenderContext* renderContext, const uint32_t typeFilte
     }
 
     return ~0u;
+}
+
+void _createBuffer(RenderContext* renderContext, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+{
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vkCreateBuffer(renderContext->device, &bufferInfo, nullptr, &buffer);
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(renderContext->device, buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = _FindMemoryType(renderContext, memRequirements.memoryTypeBits, properties);
+
+    vkAllocateMemory(renderContext->device, &allocInfo, nullptr, &bufferMemory);
+    vkBindBufferMemory(renderContext->device, buffer, bufferMemory, 0);
+}
+
+VkCommandBuffer _beginSingleTimeCommands(RenderContext* renderContext) {
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = renderContext->graphicsCommandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(renderContext->device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void _endSingleTimeCommands(RenderContext* renderContext, VkCommandBuffer commandBuffer) {
+   vkEndCommandBuffer(commandBuffer);
+
+   VkSubmitInfo submitInfo = {};
+   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   submitInfo.commandBufferCount = 1;
+   submitInfo.pCommandBuffers = &commandBuffer;
+
+   vkQueueSubmit(renderContext->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+   vkQueueWaitIdle(renderContext->graphicsQueue);
+
+   vkFreeCommandBuffers(renderContext->device, renderContext->graphicsCommandPool, 1, &commandBuffer);
+}
+
+void copyBuffer(RenderContext* renderContext, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    VkCommandBuffer commandBuffer = _beginSingleTimeCommands(renderContext);
+
+    VkBufferCopy copyRegion = {};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    _endSingleTimeCommands(renderContext,commandBuffer);
 }
 
 Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* initialData )
@@ -96,6 +161,10 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
 
+    if ( initialData != nullptr ) {
+        bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    }
+
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     auto bufferCreationResult = vkCreateBuffer( renderContext->device, &bufferInfo, nullptr, &nativeBuffer );
@@ -144,6 +213,21 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
     }
     buffer->bufferView = bufferView;
 
+    if ( initialData != nullptr ) {
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        _createBuffer(renderContext, bufferInfo.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void* data;
+        vkMapMemory(renderContext->device, stagingBufferMemory, 0, bufferInfo.size, 0, &data);
+            memcpy(data, initialData, bufferInfo.size);
+        vkUnmapMemory(renderContext->device, stagingBufferMemory);
+
+        copyBuffer(renderContext, stagingBuffer, nativeBuffer, bufferInfo.size);
+
+        vkDestroyBuffer(renderContext->device, stagingBuffer, nullptr);
+        vkFreeMemory(renderContext->device, stagingBufferMemory, nullptr);
+    }
     return buffer;
 }
 

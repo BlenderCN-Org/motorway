@@ -32,6 +32,7 @@
 #include <Maths/Helpers.h>
 
 #include <vulkan/vulkan.h>
+#include <string.h>
 
 VkImageCreateFlags GetTextureCreateFlags( const TextureDescription& description )
 {
@@ -42,8 +43,6 @@ VkImageCreateFlags GetTextureCreateFlags( const TextureDescription& description 
     } else if ( description.arraySize > 1 ) {
         // NOTE Do not set VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT when VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT is set (not allowed by the specs.)
         flagset |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-    } else if ( description.flags.isDepthResource == 1 ) {
-        flagset |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
     return flagset;
@@ -82,6 +81,153 @@ bool IsUsingCompressedFormat( const eImageFormat format )
         || format == IMAGE_FORMAT_BC5_SNORM;
 }
 
+VkSampleCountFlagBits GetVkSampleCount( const uint32_t sampleCount )
+{
+    switch ( sampleCount ) {
+    case 1:
+        return VK_SAMPLE_COUNT_1_BIT;
+    case 2:
+        return VK_SAMPLE_COUNT_2_BIT;
+    case 4:
+        return VK_SAMPLE_COUNT_4_BIT;
+    case 8:
+        return VK_SAMPLE_COUNT_8_BIT;
+    case 16:
+        return VK_SAMPLE_COUNT_16_BIT;
+    case 32:
+        return VK_SAMPLE_COUNT_32_BIT;
+    case 64:
+        return VK_SAMPLE_COUNT_64_BIT;
+    default:
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+}
+
+void createBuffer(RenderContext* renderContext, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+{
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vkCreateBuffer(renderContext->device, &bufferInfo, nullptr, &buffer);
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(renderContext->device, buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = FindMemoryType(renderContext, memRequirements.memoryTypeBits, properties);
+
+    vkAllocateMemory(renderContext->device, &allocInfo, nullptr, &bufferMemory);
+    vkBindBufferMemory(renderContext->device, buffer, bufferMemory, 0);
+}
+
+VkCommandBuffer beginSingleTimeCommands(RenderContext* renderContext) {
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = renderContext->graphicsCommandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(renderContext->device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void endSingleTimeCommands(RenderContext* renderContext, VkCommandBuffer commandBuffer) {
+   vkEndCommandBuffer(commandBuffer);
+
+   VkSubmitInfo submitInfo = {};
+   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   submitInfo.commandBufferCount = 1;
+   submitInfo.pCommandBuffers = &commandBuffer;
+
+   vkQueueSubmit(renderContext->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+   vkQueueWaitIdle(renderContext->graphicsQueue);
+
+   vkFreeCommandBuffers(renderContext->device, renderContext->graphicsCommandPool, 1, &commandBuffer);
+}
+
+void transitionImageLayout(RenderContext* renderContext, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands( renderContext );
+
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
+    endSingleTimeCommands(renderContext, commandBuffer);
+}
+
+void copyBufferToImage(RenderContext* renderContext, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+   VkCommandBuffer commandBuffer = beginSingleTimeCommands( renderContext );
+
+   VkBufferImageCopy region = {};
+   region.bufferOffset = 0;
+   region.bufferRowLength = 0;
+   region.bufferImageHeight = 0;
+   region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+   region.imageSubresource.mipLevel = 0;
+   region.imageSubresource.baseArrayLayer = 0;
+   region.imageSubresource.layerCount = 1;
+   region.imageOffset = {0, 0, 0};
+   region.imageExtent = {
+       width,
+       height,
+       1
+   };
+
+   vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+   endSingleTimeCommands(renderContext, commandBuffer);
+}
+
 Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTexture, const VkImageType imageType, const TextureDescription& description, const void* initialData, const size_t initialDataSize )
 {
     preallocatedTexture->imageFormat = VK_IMAGE_FORMAT[description.format];
@@ -111,9 +257,13 @@ Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTextu
     imageInfo.extent.height = static_cast<uint32_t>( description.height );
     imageInfo.mipLevels = description.mipCount;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.samples = GetVkSampleCount( description.samplerCount );
     imageInfo.format = preallocatedTexture->imageFormat;
     imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    if ( initialData != nullptr ) {
+        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
 
     // TODO This is quite lazy and not efficient?
     if ( !IsUsingCompressedFormat( description.format ) ) {
@@ -153,8 +303,30 @@ Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTextu
     // Bind allocated memory to descriptor
     vkBindImageMemory( renderContext->device, preallocatedTexture->image, preallocatedTexture->imageMemory, 0ull );
 
-    // Create resource view
-    preallocatedTexture->imageView = CreateImageView( renderContext->device, description, preallocatedTexture->image );
+    // Upload inital data (if provided)
+    if ( initialData != nullptr ) {
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+
+        // initialDataSize is the scanline size; not the actual buffer size
+        size_t bufferSize = initialDataSize * description.height;
+        createBuffer(renderContext, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void* data;
+        vkMapMemory(renderContext->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, initialData, bufferSize);
+        vkUnmapMemory(renderContext->device, stagingBufferMemory);
+
+        // Create resource view
+        preallocatedTexture->imageView = CreateImageView( renderContext->device, description, preallocatedTexture->image );
+
+        transitionImageLayout(renderContext, imageObject, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            copyBufferToImage(renderContext, stagingBuffer, imageObject, description.width, description.height);
+        transitionImageLayout(renderContext, imageObject, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        vkDestroyBuffer(renderContext->device, stagingBuffer, nullptr);
+        vkFreeMemory(renderContext->device, stagingBufferMemory, nullptr);
+    }
 
     return preallocatedTexture;
 }
