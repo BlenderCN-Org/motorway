@@ -30,6 +30,7 @@ struct PipelineState
     VkPipelineLayout            layout;
     VkRenderPass                renderPass;
 
+    uint32_t                    attachmentCount;
     VkClearValue                clearValues[24];
     VkDescriptorSet             descriptorSet;
 };

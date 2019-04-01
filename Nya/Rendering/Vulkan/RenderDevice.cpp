@@ -38,6 +38,7 @@
 #include "RenderDevice.h"
 
 #include "CommandList.h"
+#include "RenderTarget.h"
 
 #include <Core/Allocators/PoolAllocator.h>
 
@@ -558,6 +559,27 @@ void RenderDevice::create( DisplaySurface* surface )
     renderContext->swapChainImages.resize( imageCount );
     vkGetSwapchainImagesKHR( device, swapChain, &imageCount, renderContext->swapChainImages.data() );
 
+    for ( auto& swapChainImage : renderContext->swapChainImages ) {
+        VkImageViewCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = swapChainImage;
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = selectedFormat.format;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        RenderTarget* renderTarget = nya::core::allocate<RenderTarget>( memoryAllocator );
+        vkCreateImageView(device, &createInfo, nullptr, &renderTarget->textureRenderTargetView);
+        renderContext->swapChainRenderTargets.push_back( renderTarget );
+    }
+
     // Set RenderContext pointers
     renderContext->instance = vulkanInstance;
     renderContext->device = device;
@@ -604,10 +626,31 @@ void RenderDevice::create( DisplaySurface* surface )
     for ( size_t i = 0; i < 16; i++ ) {
         renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->cmdListPool[i].CommandListObject->cmdBuffer = gfxCmdBuffers[i];
+        renderContext->cmdListPool[i].CommandListObject->device = device;
     }
 
     renderContext->cmdListPoolCapacity = 16;
     renderContext->cmdListPoolIndex = 0;
+
+    VkCommandBuffer computeCmdBuffers[16];
+    VkCommandBufferAllocateInfo computeCmdBufferAlloc;
+    computeCmdBufferAlloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    computeCmdBufferAlloc.pNext = nullptr;
+    computeCmdBufferAlloc.commandPool = renderContext->computeCommandPool;
+    computeCmdBufferAlloc.commandBufferCount = 16u;
+    computeCmdBufferAlloc.level = VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+    vkAllocateCommandBuffers( renderContext->device, &computeCmdBufferAlloc, computeCmdBuffers );
+
+    renderContext->cmdListComputePool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
+    for ( size_t i = 0; i < 16; i++ ) {
+        renderContext->cmdListComputePool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
+        renderContext->cmdListComputePool[i].CommandListObject->cmdBuffer = computeCmdBuffers[i];
+        renderContext->cmdListComputePool[i].CommandListObject->device = device;
+    }
+
+    renderContext->cmdListComputePoolIndex = 16;
+    renderContext->cmdListComputePoolCapacity = 0;
 
     NYA_CLOG << "Allocate DescriptorPools..." << std::endl;
 
@@ -638,11 +681,6 @@ void RenderDevice::enableVerticalSynchronisation( const bool enabled )
     renderContext->presentMode = ( enabled ) ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
 }
 
-RenderTarget* RenderDevice::getSwapchainBuffer()
-{
-    return nullptr;
-}
-
 CommandList& RenderDevice::allocateGraphicsCommandList() const
 {
     const auto cmdListIdx = renderContext->cmdListPoolIndex;
@@ -656,7 +694,13 @@ CommandList& RenderDevice::allocateGraphicsCommandList() const
 
 CommandList& RenderDevice::allocateComputeCommandList() const
 {
-    // TODO Implement me!
+    const auto cmdListIdx = renderContext->cmdListComputePoolIndex;
+    renderContext->cmdListComputePoolIndex = ( ++renderContext->cmdListComputePoolIndex % renderContext->cmdListComputePoolCapacity );
+
+    CommandList& cmdList = renderContext->cmdListComputePool[cmdListIdx];
+    vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
+
+    return cmdList;
 }
 
 void RenderDevice::submitCommandList( CommandList* commandList )
@@ -670,12 +714,13 @@ void RenderDevice::submitCommandList( CommandList* commandList )
     submitInfo.pCommandBuffers = &cmdList->cmdBuffer;
 
     VkQueue submitQueue = ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS ) ? renderContext->graphicsQueue : renderContext->computeQueue;
-    // vkQueueSubmit( submitQueue, 1u, &commandList->CommandListObject )
+    vkQueueSubmit( submitQueue, 1u, &submitInfo, nullptr );
 }
 
 void RenderDevice::present()
 {
-
+    uint32_t imageIndex;
+    vkAcquireNextImageKHR( renderContext->device, renderContext->swapChain, std::numeric_limits<uint64_t>::max(), nullptr, VK_NULL_HANDLE, &imageIndex);
 }
 
 const nyaChar_t* RenderDevice::getBackendName() const

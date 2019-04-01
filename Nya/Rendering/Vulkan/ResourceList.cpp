@@ -393,15 +393,24 @@ ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& descri
 
 void CommandList::bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
 {
-    vkCmdBindDescriptorSets( 
-        CommandListObject->cmdBuffer, 
-        CommandListObject->resourcesBindPoint, 
+    vkCmdBindDescriptorSets(
+        CommandListObject->cmdBuffer,
+        CommandListObject->resourcesBindPoint,
         pipelineState->layout,
-        0u, 
+        0u,
         1u,
         &pipelineState->descriptorSet,
-        0u, 
+        0u,
         nullptr
     );
+
+    // Update resource list
+    VkWriteDescriptorSet samplerWriteDescriptorSet;
+    samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    samplerWriteDescriptorSet.pNext = nullptr;
+    samplerWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+    samplerWriteDescriptorSet.dstBinding = 0u;
+    samplerWriteDescriptorSet.dstArrayElement = 0u;
+    samplerWriteDescriptorSet.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
 }
 #endif

@@ -27,32 +27,43 @@
 #include "Texture.h"
 #include "PipelineState.h"
 
+#include <Maths/Helpers.h>
+
 #include <vulkan/vulkan.h>
 
 void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
-    /*VkRenderPassBeginInfo renderPassInfo = {};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.pNext = nullptr;
-    renderPassInfo.renderPass = renderPass->renderPass;
-    renderPassInfo.framebuffer = renderPass->framebuffer;
-    renderPassInfo.clearValueCount = 24;
-    renderPassInfo.pClearValues = renderPass->clearValues;
+    VkImageView imageViews[24];
+    uint32_t attachmentCount = 0u;
+    for ( ; attachmentCount < pipelineState->attachmentCount; attachmentCount++ ) {
+        const auto& attachment = renderPass.attachement[attachmentCount];
 
-    vkCmdBeginRenderPass( CommandListObject->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
+        imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
+    }
+
+    VkFramebuffer framebuffer;
 
     VkFramebufferCreateInfo framebufferCreateInfos = {};
     framebufferCreateInfos.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferCreateInfos.pNext = nullptr;
     framebufferCreateInfos.flags = 0u;
-    framebufferCreateInfos.renderPass = renderPass->renderPass;
-    framebufferCreateInfos.attachmentCount = renderPass->attachmentCount;
-    framebufferCreateInfos.pAttachments = renderPass->imageViews;
-    framebufferCreateInfos.width = renderPass->width;
-    framebufferCreateInfos.height = renderPass->height;
+    framebufferCreateInfos.renderPass = pipelineState->renderPass;
+    framebufferCreateInfos.attachmentCount = attachmentCount;
+    framebufferCreateInfos.pAttachments = imageViews;
+    framebufferCreateInfos.width = static_cast<uint32_t>( CommandListObject->currentViewport.Width );
+    framebufferCreateInfos.height = static_cast<uint32_t>( CommandListObject->currentViewport.Height );
     framebufferCreateInfos.layers = 1u;
 
-    vkCreateFramebuffer( renderContext->device, &framebufferCreateInfos, nullptr, &renderPass->framebuffer );
-    */
+    vkCreateFramebuffer( CommandListObject->device, &framebufferCreateInfos, nullptr, &framebuffer );
+
+    VkRenderPassBeginInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.pNext = nullptr;
+    renderPassInfo.renderPass = pipelineState->renderPass;
+    renderPassInfo.framebuffer = framebuffer;
+    renderPassInfo.clearValueCount = 24;
+    renderPassInfo.pClearValues = pipelineState->clearValues;
+
+    vkCmdBeginRenderPass( CommandListObject->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
 }
 #endif

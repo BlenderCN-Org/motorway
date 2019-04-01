@@ -26,6 +26,7 @@ struct VkCommandBuffer_T;
 
 struct NativeCommandList
 {
+    VkDevice            device;
     VkCommandBuffer_T*  cmdBuffer;
     Viewport            currentViewport;
     VkPipelineBindPoint resourcesBindPoint;

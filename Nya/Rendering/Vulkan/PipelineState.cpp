@@ -559,7 +559,9 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         pipelineInfo.renderPass = pipelineState->renderPass;
         pipelineInfo.subpass = 0u;
 
+        pipelineState->attachmentCount = attachmentCount;
         pipelineState->bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
         vkCreateGraphicsPipelines( renderContext->device, VK_NULL_HANDLE, 1u, &pipelineInfo, nullptr, &pipelineState->pipelineObject );
     } else {
         VkComputePipelineCreateInfo pipelineInfo = {};
