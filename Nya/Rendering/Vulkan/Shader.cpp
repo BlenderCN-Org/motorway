@@ -26,14 +26,6 @@
 
 #include <vulkan/vulkan.h>
 
-static constexpr VkShaderStageFlagBits VK_SHADER_STAGE[eShaderStage::SHADER_STAGE_COUNT] = {
-    VK_SHADER_STAGE_VERTEX_BIT,
-    VK_SHADER_STAGE_FRAGMENT_BIT,
-    VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-    VK_SHADER_STAGE_COMPUTE_BIT,
-};
-
 VkShaderStageFlagBits GetVkStageFlags( const eShaderStage shaderStage )
 {
     switch ( shaderStage ) {
