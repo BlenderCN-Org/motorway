@@ -135,7 +135,7 @@ void GetShaderStage( const eShadingModel shadingModel, std::string& standardVert
         depthVertexStage = "Lighting/UberDepthOnly";
         depthPixelStage = "Lighting/UberDepthOnly";
         break;
-    };
+    }
 }
 
 void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
@@ -283,6 +283,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     depthPipelineStateDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     depthPipelineStateDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
     depthPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
 
     depthPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     depthPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
@@ -396,13 +397,13 @@ void Material::load( FileSystemObject* stream, GraphicsAssetCache* graphicsAsset
                     break;
 
                 // Material Flags
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, WriteVelocity );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaTest );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, IsDoubleFace );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaBlend );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, CastShadow );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, ReceiveShadow );
-                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, AlphaToCoverage );
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, WriteVelocity )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaTest )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, IsDoubleFace )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, EnableAlphaBlend )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, CastShadow )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, ReceiveShadow )
+                NYA_CASE_READ_MATERIAL_FLAG( dictionaryValue, AlphaToCoverage )
 
                 // Shading Model Inputs
                 //NYA_CASE_READ_LAYER_VERTEX_INPUT( dictionaryValue, currentLayerIndex, 0, Heightmap )
