@@ -213,6 +213,31 @@ void RenderDevice::create( DisplaySurface* surface )
     );
 
     NYA_CLOG << "D3D11CreateDeviceAndSwapChain >> Operation result: " << NYA_PRINT_HEX( nativeDeviceCreationResult ) << std::endl;
+#if NYA_DEVBUILD
+	if ( nativeDevice == nullptr ) {
+		NYA_CWARN << "Missing Windows SDK! Recreating device without D3D11_CREATE_DEVICE_DEBUG flag..." << std::endl;
+
+		creationFlags = 0u;
+
+		static constexpr D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
+		const HRESULT nativeDeviceCreationResult = D3D11CreateDeviceAndSwapChain(
+			adapter,
+			D3D_DRIVER_TYPE_UNKNOWN,
+			NULL,
+			creationFlags,
+			&featureLevel,
+			1,
+			D3D11_SDK_VERSION,
+			&swapChainDesc,
+			&swapChain,
+			&nativeDevice,
+			NULL,
+			&nativeDeviceContext
+		);
+
+		NYA_CLOG << "D3D11CreateDeviceAndSwapChain >> Operation result: " << NYA_PRINT_HEX(nativeDeviceCreationResult) << std::endl;
+	}
+#endif
 
     D3D11_FEATURE_DATA_THREADING threadingInfos = { 0 };
 
