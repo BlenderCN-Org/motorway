@@ -72,7 +72,7 @@ struct PipelineState
             Res  computeStage[MAX_RES_COUNT];
         };
 
-        ResourceBinding<ID3D11ShaderResourceView*>  buffers;
+        ResourceBinding<ID3D11ShaderResourceView*>  shaderResourceViews;
         ID3D11UnorderedAccessView*                  uavBuffers[MAX_RES_COUNT];
         UINT                                        uavBuffersBindCount;
         ResourceBinding<ID3D11Buffer*>              constantBuffers;
