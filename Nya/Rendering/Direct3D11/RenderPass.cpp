@@ -44,10 +44,10 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
 
         switch ( resource.type ) {
         case PipelineState::RenderPassLayout::RenderTargetView:
-            *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetView;
+            *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
             break;
         case PipelineState::RenderPassLayout::DepthStencilView:
-            *resource.depthStencilView = renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthRenderTargetView;
+            *resource.depthStencilView = renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
             break;
         case PipelineState::RenderPassLayout::ShaderResourceView:
             *resource.shaderResourceView = renderPass.attachement[resource.resourceIndex].renderTarget->texture->shaderResourceView;
