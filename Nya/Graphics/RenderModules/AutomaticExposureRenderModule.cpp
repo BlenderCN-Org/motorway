@@ -124,7 +124,7 @@ void AutomaticExposureModule::loadCachedResources( RenderDevice* renderDevice, S
     PipelineStateDesc mergeHistoPsoDesc = {};
     mergeHistoPsoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/HistogramMerge", SHADER_STAGE_COMPUTE );
     mergeHistoPsoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
-    mergeHistoPsoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    mergeHistoPsoDesc.resourceListLayout.resources[1] = { 8, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
     mergeHistoPsoDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
     mergeHistoPso = renderDevice->createPipelineState( mergeHistoPsoDesc );
@@ -132,8 +132,8 @@ void AutomaticExposureModule::loadCachedResources( RenderDevice* renderDevice, S
     PipelineStateDesc tileHistoComputePsoDesc = {};
     tileHistoComputePsoDesc.computeShader = shaderCache->getOrUploadStage( "AutoExposure/TileHistogramCompute", SHADER_STAGE_COMPUTE );
     tileHistoComputePsoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
-    tileHistoComputePsoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
-    tileHistoComputePsoDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    tileHistoComputePsoDesc.resourceListLayout.resources[1] = { 8, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    tileHistoComputePsoDesc.resourceListLayout.resources[2] = { 9, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
     tileHistoComputePsoDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
     tileHistoComputePso = renderDevice->createPipelineState( tileHistoComputePsoDesc );

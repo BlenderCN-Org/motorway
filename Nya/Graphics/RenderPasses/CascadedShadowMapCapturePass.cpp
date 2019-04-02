@@ -54,12 +54,6 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
             passData.instanceBuffer = renderPipelineBuilder.allocateBuffer( instanceBufferDesc, SHADER_STAGE_VERTEX );
 
-            BufferDesc cameraBufferDesc;
-            cameraBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
-            cameraBufferDesc.size = sizeof( CameraData );
-
-            passData.cameraBuffer = renderPipelineBuilder.allocateBuffer( cameraBufferDesc, SHADER_STAGE_VERTEX );
-
 #if NYA_DEVBUILD
             BufferDesc materialBufferDesc;
             materialBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
@@ -90,7 +84,6 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
-            Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
 
 #if NYA_DEVBUILD
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
@@ -98,12 +91,11 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
-            resourceList.resource[1].buffer = cameraBuffer;
-            resourceList.resource[2].buffer = instanceBuffer;
-            resourceList.resource[3].buffer = vectorDataBuffer;
+            resourceList.resource[1].buffer = instanceBuffer;
+            resourceList.resource[2].buffer = vectorDataBuffer;
 
 #if NYA_DEVBUILD
-            resourceList.resource[4].buffer = materialEditorBuffer;
+            resourceList.resource[3].buffer = materialEditorBuffer;
 #endif
 
             // RenderPass
@@ -112,9 +104,6 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
             cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
-
-            const CameraData* cameraData = renderPipelineResources.getMainCamera();
-            cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };

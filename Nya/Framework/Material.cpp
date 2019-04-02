@@ -245,8 +245,8 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
     defaultPipelineStateDesc.resourceListLayout.resources[5] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
     defaultPipelineStateDesc.resourceListLayout.resources[6] = { 3, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[7] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[8] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[7] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    defaultPipelineStateDesc.resourceListLayout.resources[8] = { 9, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
 #if NYA_DEVBUILD
     defaultPipelineStateDesc.resourceListLayout.resources[9] = { 4, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
@@ -292,16 +292,15 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
     depthPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     depthPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    depthPipelineStateDesc.resourceListLayout.resources[2] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    depthPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    depthPipelineStateDesc.resourceListLayout.resources[2] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
 #if NYA_DEVBUILD
-    depthPipelineStateDesc.resourceListLayout.resources[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    depthPipelineStateDesc.resourceListLayout.resources[3] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 #endif
 
-    uint32_t depthTextureBindIndex = 5u;
+    uint32_t depthTextureBindIndex = 4u;
     for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
-        defaultPipelineStateDesc.resourceListLayout.resources[depthTextureBindIndex] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+        depthPipelineStateDesc.resourceListLayout.resources[depthTextureBindIndex] = { textureIdx, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
         depthTextureBindIndex++;
     }
 
@@ -525,10 +524,10 @@ void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, Reso
     cmdList->bindPipelineState( depthOnlyPipelineState );
 
     // 0 -> Output RenderTarget
-    int32_t textureBindIndex = 5;
+    int32_t textureBindIndex = 4;
 
-    for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
-        resourceList.resource[textureBindIndex].texture = defaultTextureSet[textureIdx];
+    for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
+        resourceList.resource[textureBindIndex].texture = depthOnlyTextureSet[textureIdx];
         textureBindIndex++;
     }
 

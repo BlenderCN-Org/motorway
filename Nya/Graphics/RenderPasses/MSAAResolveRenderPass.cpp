@@ -20,7 +20,7 @@ void LoadCachedResourcesMRP( RenderDevice* renderDevice, ShaderCache* shaderCach
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    psoDesc.resourceListLayout.resources[1] = { 8, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
