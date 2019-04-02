@@ -37,6 +37,11 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
 {
     for ( int i = 0; i < pipelineState->renderPass.resourceToBindCount; i++ ) {
         auto& resource = pipelineState->renderPass.resources[i];
+
+        if ( renderPass.attachement[resource.resourceIndex].renderTarget == nullptr ) {
+            continue;
+        }
+
         switch ( resource.type ) {
         case PipelineState::RenderPassLayout::RenderTargetView:
             *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetView;

@@ -40,6 +40,11 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
 {
     for ( int i = 0; i < pipelineState->resourceList.resourceToBindCount; i++ ) {
         auto& resource = pipelineState->resourceList.resources[i];
+        
+        if ( resourceList.resource[resource.resourceIndex].buffer == nullptr ) {
+            continue;
+        }
+
         switch ( resource.type ) {
         case PipelineState::ResourceListLayout::Buffer:
             *resource.buffers = resourceList.resource[resource.resourceIndex].buffer->bufferObject;
@@ -87,6 +92,8 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
     CommandListObject->deferredContext->DSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.domainStage );
     CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.pixelStage );
     CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.computeStage );
+
+    return;
 
     CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceListLayout.buffers.vertexStage );
     CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceListLayout.buffers.hullStage );

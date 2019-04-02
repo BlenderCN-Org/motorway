@@ -70,7 +70,7 @@ struct ResourceList
             Texture*        texture;
             RenderTarget*   renderTarget; // NOTE Read-only
         };
-    } resource[64];
+    } resource[64] = { nullptr };
 };
 
 struct RenderPass
@@ -79,7 +79,7 @@ struct RenderPass
         RenderTarget*   renderTarget;
         uint32_t        mipLevel;
         uint32_t        faceIndex;
-    } attachement[24];
+    } attachement[24] = { nullptr, 0u, 0u };
 };
 
 class CommandList
