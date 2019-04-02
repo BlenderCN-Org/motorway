@@ -200,6 +200,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( binding.stageBind );
         descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
+        pipelineState->descriptors[bindingCount] = VK_DT[binding.type];
+
         bindingCount++;
     }
 
@@ -494,7 +496,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
@@ -521,7 +523,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                     : VK_ATTACHMENT_LOAD_OP_CLEAR;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
@@ -594,8 +596,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
 
 void RenderDevice::destroyPipelineState( PipelineState* pipelineState )
 {
-    vkDestroyPipelineLayout( renderContext->device, pipelineState->layout, nullptr );
     vkDestroyPipeline( renderContext->device, pipelineState->pipelineObject, nullptr );
+    vkDestroyPipelineLayout( renderContext->device, pipelineState->layout, nullptr );
     vkDestroyRenderPass( renderContext->device, pipelineState->renderPass, nullptr );
 
     nya::core::free( memoryAllocator, pipelineState );
@@ -603,6 +605,17 @@ void RenderDevice::destroyPipelineState( PipelineState* pipelineState )
 
 void CommandList::bindPipelineState( PipelineState* pipelineState )
 {
+    vkCmdBindDescriptorSets(
+        CommandListObject->cmdBuffer,
+        CommandListObject->resourcesBindPoint,
+        pipelineState->layout,
+        0u,
+        1u,
+        &pipelineState->descriptorSet,
+        0u,
+        nullptr
+    );
+
     vkCmdBindPipeline( CommandListObject->cmdBuffer, pipelineState->bindPoint, pipelineState->pipelineObject );
 }
 #endif

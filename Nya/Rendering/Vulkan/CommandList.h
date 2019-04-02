@@ -30,5 +30,6 @@ struct NativeCommandList
     VkCommandBuffer_T*  cmdBuffer;
     Viewport            currentViewport;
     VkPipelineBindPoint resourcesBindPoint;
+    bool                isRenderPassInProgress;
 };
 #endif

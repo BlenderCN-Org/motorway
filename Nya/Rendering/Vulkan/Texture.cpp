@@ -259,11 +259,7 @@ Texture* CreateTexture( RenderContext* renderContext, Texture* preallocatedTextu
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.samples = GetVkSampleCount( description.samplerCount );
     imageInfo.format = preallocatedTexture->imageFormat;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    if ( initialData != nullptr ) {
-        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    }
+    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     // TODO This is quite lazy and not efficient?
     if ( !IsUsingCompressedFormat( description.format ) ) {

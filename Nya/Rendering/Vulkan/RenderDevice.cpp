@@ -627,6 +627,7 @@ void RenderDevice::create( DisplaySurface* surface )
         renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->cmdListPool[i].CommandListObject->cmdBuffer = gfxCmdBuffers[i];
         renderContext->cmdListPool[i].CommandListObject->device = device;
+        renderContext->cmdListPool[i].CommandListObject->isRenderPassInProgress = false;
     }
 
     renderContext->cmdListPoolCapacity = 16;
@@ -689,6 +690,8 @@ CommandList& RenderDevice::allocateGraphicsCommandList() const
     CommandList& cmdList = renderContext->cmdListPool[cmdListIdx];
     vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
 
+    cmdList.CommandListObject->isRenderPassInProgress = false;
+
     return cmdList;
 }
 
@@ -700,12 +703,18 @@ CommandList& RenderDevice::allocateComputeCommandList() const
     CommandList& cmdList = renderContext->cmdListComputePool[cmdListIdx];
     vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
 
+    cmdList.CommandListObject->isRenderPassInProgress = false;
+
     return cmdList;
 }
 
 void RenderDevice::submitCommandList( CommandList* commandList )
 {
     const NativeCommandList* cmdList = commandList->CommandListObject;
+
+    if ( cmdList->isRenderPassInProgress ) {
+        vkCmdEndRenderPass( cmdList->cmdBuffer );
+    }
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

@@ -33,5 +33,6 @@ struct PipelineState
     uint32_t                    attachmentCount;
     VkClearValue                clearValues[24];
     VkDescriptorSet             descriptorSet;
+    VkDescriptorType            descriptors[64];
 };
 #endif

@@ -31,6 +31,7 @@
 #include "ImageHelpers.h"
 
 #include <vulkan/vulkan.h>
+#include <string.h>
 
 RenderTarget* RenderDevice::createRenderTarget1D( const TextureDescription& description, Texture* initialTexture )
 {
@@ -124,5 +125,48 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
     destroyTexture( renderTarget->texture );
 
     nya::core::free( memoryAllocator, renderTarget );
+}
+
+void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] )
+{
+    if ( CommandListObject->isRenderPassInProgress ) {
+        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
+        CommandListObject->isRenderPassInProgress = false;
+    }
+
+    VkClearColorValue colorClearValue;
+    memcpy( colorClearValue.float32, clearValue, sizeof( float ) * 4 );
+
+    VkImageSubresourceRange imageSubresourceRange;
+    imageSubresourceRange.baseMipLevel = 0u;
+    imageSubresourceRange.baseArrayLayer = 0u;
+    imageSubresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+    imageSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+    imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    for ( uint32_t i = 0; i < renderTargetCount; i++ ) {
+        vkCmdClearColorImage( CommandListObject->cmdBuffer, renderTargets[i]->texture->image, VK_IMAGE_LAYOUT_GENERAL, &colorClearValue, 1u, &imageSubresourceRange );
+    }
+}
+
+void CommandList::clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue )
+{
+    if ( CommandListObject->isRenderPassInProgress ) {
+        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
+        CommandListObject->isRenderPassInProgress = false;
+    }
+
+    VkClearDepthStencilValue depthClearValue;
+    depthClearValue.depth = clearValue;
+    depthClearValue.stencil = 0u;
+
+    VkImageSubresourceRange imageSubresourceRange;
+    imageSubresourceRange.baseMipLevel = 0u;
+    imageSubresourceRange.baseArrayLayer = 0u;
+    imageSubresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+    imageSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+    imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    vkCmdClearDepthStencilImage( CommandListObject->cmdBuffer, renderTarget->texture->image, VK_IMAGE_LAYOUT_GENERAL, &depthClearValue, 1u, &imageSubresourceRange );
 }
 #endif

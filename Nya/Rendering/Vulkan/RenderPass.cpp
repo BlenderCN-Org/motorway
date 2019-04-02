@@ -33,6 +33,11 @@
 
 void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
+    if ( CommandListObject->isRenderPassInProgress ) {
+        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
+        CommandListObject->isRenderPassInProgress = false;
+    }
+
     VkImageView imageViews[24];
     uint32_t attachmentCount = 0u;
     for ( ; attachmentCount < pipelineState->attachmentCount; attachmentCount++ ) {
@@ -65,5 +70,7 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
     renderPassInfo.pClearValues = pipelineState->clearValues;
 
     vkCmdBeginRenderPass( CommandListObject->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+    CommandListObject->isRenderPassInProgress = true;
 }
 #endif
