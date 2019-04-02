@@ -98,6 +98,7 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             resourceList.resource[3].buffer = materialEditorBuffer;
 #endif
 
+
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
@@ -107,6 +108,7 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
+            cmdList->clearDepthStencilRenderTarget( outputTarget, 1.0f );
 
             for ( int i = 0; i < CSM_SLICE_COUNT; i++ ) {
                 cmdList->setViewport( { CSM_SHADOW_MAP_DIMENSIONS * i, 0, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, 0.0f, 1.0f } );

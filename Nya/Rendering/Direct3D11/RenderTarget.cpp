@@ -297,4 +297,15 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
 
     nya::core::free( memoryAllocator, renderTarget );
 }
+
+void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] )
+{
+    for (uint32_t i = 0; i < renderTargetCount; i++)
+        CommandListObject->deferredContext->ClearRenderTargetView(renderTargets[i]->textureRenderTargetView, clearValue);
+}
+
+void CommandList::clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue )
+{
+    CommandListObject->deferredContext->ClearDepthStencilView( renderTarget->textureDepthRenderTargetView, D3D11_CLEAR_DEPTH, clearValue, 0x0 );
+}
 #endif

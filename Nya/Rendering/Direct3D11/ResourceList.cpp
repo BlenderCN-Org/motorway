@@ -46,6 +46,9 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
         }
 
         switch ( resource.type ) {
+        case PipelineState::ResourceListLayout::CBuffer:
+            *resource.buffers = resourceList.resource[resource.resourceIndex].buffer->bufferObject;
+            break;
         case PipelineState::ResourceListLayout::Buffer:
             *resource.shaderResourceView = resourceList.resource[resource.resourceIndex].buffer->bufferResourceView;
             break;
@@ -70,13 +73,15 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
 
     // For extra-safety, unbind SRV resources prior to UAV bindings
     if ( resourceListLayout.uavBuffersBindCount != 0 ) {
-        static constexpr ID3D11ShaderResourceView* NO_SRV[14] = { ( ID3D11ShaderResourceView* )nullptr };
+        static constexpr ID3D11ShaderResourceView* NO_SRV[20] = { ( ID3D11ShaderResourceView* )nullptr };
+        static constexpr ID3D11RenderTargetView* NO_RTV[8] = { (ID3D11RenderTargetView*)nullptr };
+        CommandListObject->deferredContext->OMSetRenderTargets( 8u, NO_RTV, nullptr );
 
-        CommandListObject->deferredContext->VSSetShaderResources( 8, 14, NO_SRV );
-        CommandListObject->deferredContext->HSSetShaderResources( 8, 14, NO_SRV );
-        CommandListObject->deferredContext->DSSetShaderResources( 8, 14, NO_SRV );
-        CommandListObject->deferredContext->PSSetShaderResources( 8, 14, NO_SRV );
-        CommandListObject->deferredContext->CSSetShaderResources( 8, 14, NO_SRV );
+        CommandListObject->deferredContext->VSSetShaderResources( 0, 20, NO_SRV );
+        CommandListObject->deferredContext->HSSetShaderResources( 0, 20, NO_SRV );
+        CommandListObject->deferredContext->DSSetShaderResources( 0, 20, NO_SRV );
+        CommandListObject->deferredContext->PSSetShaderResources( 0, 20, NO_SRV );
+        CommandListObject->deferredContext->CSSetShaderResources( 0, 20, NO_SRV );
     }
 
     CommandListObject->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceListLayout.uavBuffers, nullptr );
@@ -93,10 +98,10 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
     CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.pixelStage );
     CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.computeStage );
 
-    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.vertexStage );
-    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.hullStage );
-    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.domainStage );
-    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.pixelStage );
-    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.computeStage );
+    CommandListObject->deferredContext->VSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.vertexStage );
+    CommandListObject->deferredContext->HSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.hullStage );
+    CommandListObject->deferredContext->DSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.domainStage );
+    CommandListObject->deferredContext->PSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.pixelStage );
+    CommandListObject->deferredContext->CSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.computeStage );
 }
 #endif

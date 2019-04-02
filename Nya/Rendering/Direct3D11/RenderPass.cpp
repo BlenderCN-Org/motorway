@@ -71,12 +71,12 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
     // TODO Avoid resource binding dependencies (skip explicit SRV unbind)?
     static constexpr ID3D11ShaderResourceView* NO_SRV[8] = { ( ID3D11ShaderResourceView* )nullptr };
 
-    CommandListObject->deferredContext->PSSetShaderResources( 0, 8, NO_SRV );
-    CommandListObject->deferredContext->CSSetShaderResources( 0, 8, NO_SRV );
+    CommandListObject->deferredContext->PSSetShaderResources( 20, 8, NO_SRV );
+    CommandListObject->deferredContext->CSSetShaderResources( 20, 8, NO_SRV );
 
     CommandListObject->deferredContext->OMSetRenderTargets( renderPassLayout.rtvCount, renderPassLayout.renderTargetViews, renderPassLayout.depthStencilView );
 
-    CommandListObject->deferredContext->PSSetShaderResources( 0, 8, renderPassLayout.pixelStage.shaderResourceView );
-    CommandListObject->deferredContext->CSSetShaderResources( 0, 8, renderPassLayout.computeStage.shaderResourceView );
+    CommandListObject->deferredContext->PSSetShaderResources( 20, 8, renderPassLayout.pixelStage.shaderResourceView );
+    CommandListObject->deferredContext->CSSetShaderResources( 20, 8, renderPassLayout.computeStage.shaderResourceView );
 }
 #endif

@@ -242,7 +242,7 @@ void TextRenderingModule::loadCachedResources( RenderDevice* renderDevice, Shade
     pipelineState.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
     pipelineState.resourceListLayout.resources[0] =  { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    pipelineState.resourceListLayout.resources[1] =  { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    pipelineState.resourceListLayout.resources[1] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     pipelineState.resourceListLayout.resources[2] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
 
     renderTextPso = renderDevice->createPipelineState( pipelineState );

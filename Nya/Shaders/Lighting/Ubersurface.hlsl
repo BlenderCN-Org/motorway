@@ -122,9 +122,9 @@ sampler					g_BRDFInputsSampler : register( s1 );
 SamplerComparisonState 	g_ShadowMapSampler : register( s2 );
 
 Texture3D<uint2>        g_Clusters : register( t0 );
-Texture2D               g_SunShadowMap : register( t1 );
-TextureCubeArray        g_EnvProbeDiffuseArray : register( t2 );
-TextureCubeArray        g_EnvProbeSpecularArray : register( t3 );
+Texture2D               g_SunShadowMap : register( t20 );
+TextureCubeArray        g_EnvProbeDiffuseArray : register( t21 );
+TextureCubeArray        g_EnvProbeSpecularArray : register( t22 );
 Buffer<uint> g_ItemList : register( t9 );
 
 #if NYA_EDITOR

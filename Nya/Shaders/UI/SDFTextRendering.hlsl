@@ -36,7 +36,7 @@ VertexOutput EntryPointVS( in VertexBufferData VertexBuffer )
 }
 
 Texture2D g_FontAtlasTexture : register( t0 );
-sampler g_LinearSampler : register( s2 );
+sampler g_LinearSampler : register( s0 );
 
 float contour( in float f, in float d, in float w )
 {

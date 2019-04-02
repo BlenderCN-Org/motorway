@@ -199,64 +199,62 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
     defaultPipelineStateDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::CLEAR;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16_FLOAT;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[0] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[1] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[2] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[1].clearValue[3] = 0.0f;
+    if ( sortKeyInfos.shadingModel != eShadingModel::SHADING_MODEL_HUD_STANDARD ) {
+        defaultPipelineStateDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16_FLOAT;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::WRITE;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::CLEAR;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[0] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[1] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[2] = 0.0f;
-    defaultPipelineStateDesc.renderPassLayout.attachements[2].clearValue[3] = 0.0f;
+        defaultPipelineStateDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::WRITE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[3].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[3].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
-    defaultPipelineStateDesc.renderPassLayout.attachements[3].targetState = RenderPassLayoutDesc::CLEAR_DEPTH;
-    defaultPipelineStateDesc.renderPassLayout.attachements[3].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
-    defaultPipelineStateDesc.renderPassLayout.attachements[3].clearValue[0] = 0.0f;
+        defaultPipelineStateDesc.renderPassLayout.attachements[3].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[3].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
+        defaultPipelineStateDesc.renderPassLayout.attachements[3].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[3].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[4].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[4].bindMode = RenderPassLayoutDesc::READ;
-    defaultPipelineStateDesc.renderPassLayout.attachements[4].targetState = RenderPassLayoutDesc::DONT_CARE;
-    defaultPipelineStateDesc.renderPassLayout.attachements[4].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
+        defaultPipelineStateDesc.renderPassLayout.attachements[4].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[4].bindMode = RenderPassLayoutDesc::READ;
+        defaultPipelineStateDesc.renderPassLayout.attachements[4].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[4].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[5].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[5].bindMode = RenderPassLayoutDesc::READ;
-    defaultPipelineStateDesc.renderPassLayout.attachements[5].targetState = RenderPassLayoutDesc::DONT_CARE;
-    defaultPipelineStateDesc.renderPassLayout.attachements[5].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+        defaultPipelineStateDesc.renderPassLayout.attachements[5].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[5].bindMode = RenderPassLayoutDesc::READ;
+        defaultPipelineStateDesc.renderPassLayout.attachements[5].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[5].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
-    defaultPipelineStateDesc.renderPassLayout.attachements[6].stageBind = SHADER_STAGE_PIXEL;
-    defaultPipelineStateDesc.renderPassLayout.attachements[6].bindMode = RenderPassLayoutDesc::READ;
-    defaultPipelineStateDesc.renderPassLayout.attachements[6].targetState = RenderPassLayoutDesc::DONT_CARE;
-    defaultPipelineStateDesc.renderPassLayout.attachements[6].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+        defaultPipelineStateDesc.renderPassLayout.attachements[6].stageBind = SHADER_STAGE_PIXEL;
+        defaultPipelineStateDesc.renderPassLayout.attachements[6].bindMode = RenderPassLayoutDesc::READ;
+        defaultPipelineStateDesc.renderPassLayout.attachements[6].targetState = RenderPassLayoutDesc::DONT_CARE;
+        defaultPipelineStateDesc.renderPassLayout.attachements[6].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
-    defaultPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
-    defaultPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
-    defaultPipelineStateDesc.resourceListLayout.resources[2] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
-    defaultPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[5] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[6] = { 3, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[7] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
-    defaultPipelineStateDesc.resourceListLayout.resources[8] = { 9, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+        defaultPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+        defaultPipelineStateDesc.resourceListLayout.resources[2] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+        defaultPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[5] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[6] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[7] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[8] = { 9, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
 
 #if NYA_DEVBUILD
-    defaultPipelineStateDesc.resourceListLayout.resources[9] = { 4, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[9] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 #endif
 
-    defaultPipelineStateDesc.resourceListLayout.resources[10] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };
+        defaultPipelineStateDesc.resourceListLayout.resources[10] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };
+    } else {
+        defaultPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+        defaultPipelineStateDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[3] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+    }
 
     uint32_t textureBindIndex = 11u;
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
-        defaultPipelineStateDesc.resourceListLayout.resources[textureBindIndex] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+        defaultPipelineStateDesc.resourceListLayout.resources[textureBindIndex] = { textureIdx + 4, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
         textureBindIndex++;
     }
 
@@ -284,11 +282,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
     depthPipelineStateDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     depthPipelineStateDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE_DEPTH;
-    depthPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::CLEAR_DEPTH;
-    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[0] = 1.0f;
-    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[1] = 1.0f;
-    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[2] = 1.0f;
-    depthPipelineStateDesc.renderPassLayout.attachements[0].clearValue[3] = 1.0f;
+    depthPipelineStateDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
 
     depthPipelineStateDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     depthPipelineStateDesc.resourceListLayout.resources[1] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };

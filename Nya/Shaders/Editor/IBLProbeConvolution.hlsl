@@ -1,7 +1,7 @@
 #include <MathsHelpers.hlsli>
 #include <PhotometricHelpers.hlsli>
 
-TextureCubeArray g_IBLProbeArray : register( t0 );
+TextureCubeArray g_IBLProbeArray : register( t20 );
 
 sampler g_BilinearSampler : register( s0 );
 

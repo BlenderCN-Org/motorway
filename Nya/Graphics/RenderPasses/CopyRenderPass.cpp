@@ -17,16 +17,12 @@ void LoadCachedResourcesCP( RenderDevice* renderDevice, ShaderCache* shaderCache
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     psoDesc.resourceListLayout.resources[0] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
+    psoDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET };
 
     psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
     psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
-
-    psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::READ;
-    psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
     g_PipelineStateObject = renderDevice->createPipelineState( psoDesc );
 }
@@ -61,16 +57,17 @@ ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t input
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
+
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].renderTarget = inputTarget;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
-            renderPass.attachement[1] = { inputTarget, 0, 0 };
 
             cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
@@ -116,17 +113,17 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].renderTarget = inputTarget;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
-            renderPass.attachement[1] = { inputTarget, 0, 0 };
 
             Viewport vp;
             vp.X = 0;
@@ -173,17 +170,17 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
         },
         [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].renderTarget = inputTarget;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
-            renderPass.attachement[1] = { inputTarget, 0, 0 };
 
             cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );

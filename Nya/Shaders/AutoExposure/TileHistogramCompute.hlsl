@@ -20,9 +20,9 @@ cbuffer CB_AutoExposure : register( b0 )
     float	_adapt_speed_down;
 };
 
-StructuredBuffer<AutoExposureInfos>	    _bufferAutoExposure2 : register( t8 );
+StructuredBuffer<AutoExposureInfos>	    _bufferAutoExposure2 : register( t0 );
 RWStructuredBuffer<AutoExposureInfos>	_targetBufferAutoExposure : register( u0 );
-Buffer<uint>						    _texHistogram : register( t9 );
+Buffer<uint>						    _texHistogram : register( t1 );
 
 [numthreads( NUMTHREADX, NUMTHREADY, NUMTHREADZ )]
 void EntryPointCS( uint3 _GroupID : SV_GROUPID, uint3 _GroupThreadID : SV_GROUPTHREADID, uint3 _DispatchThreadID : SV_DISPATCHTHREADID )

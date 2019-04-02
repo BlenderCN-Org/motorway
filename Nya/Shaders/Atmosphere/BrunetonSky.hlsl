@@ -62,7 +62,7 @@ DEFAULT_VS_OUT EntryPointVS( uint id : SV_VERTEXID )
     return output;
 }
 
-StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t8 );
+StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t3 );
 
 float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
 {

@@ -246,6 +246,15 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             renderPass.attachement[5] = { iblDiffuseArray, 0u, 0u };
             renderPass.attachement[6] = { iblSpecularArray, 0u, 0u };
 
+            // Clear renderTargets only once (kinda crap since we can't reuse the renderpass cleaning of D3D12/Vulkan)
+            RenderTarget* clearRenderTargets[2] = {
+                velocityTarget,
+                thinGBufferTarget
+            };
+            constexpr float CLEAR_VALUE[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            cmdList->clearColorRenderTargets( clearRenderTargets, 2u, CLEAR_VALUE );
+            cmdList->clearDepthStencilRenderTarget( zBufferTarget, 0.0f );
+
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
 
             InstanceBuffer instanceBufferData;

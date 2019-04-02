@@ -7,12 +7,12 @@ struct VertexStageData
 	float2	TexCoordinates : TEXCOORD;
 };
 
-Texture2DMS<float4> g_InputTexture 			: register( t0 );
-Texture2DMS<float2> g_VelocityTexture 		: register( t1 );
-Texture2DMS<float> g_DepthTexture 			: register( t2 );
-Texture2D<float4> g_LastFrameInputTexture 	: register( t3 );
+Texture2DMS<float4> g_InputTexture 			: register( t20 );
+Texture2DMS<float2> g_VelocityTexture 		: register( t21 );
+Texture2DMS<float> g_DepthTexture 			: register( t22 );
+Texture2D<float4> g_LastFrameInputTexture 	: register( t23 );
 
-StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t8 );
+StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t0 );
 
 cbuffer PassBuffer : register( b0 )
 {

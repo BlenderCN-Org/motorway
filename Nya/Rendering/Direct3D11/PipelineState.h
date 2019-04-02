@@ -46,7 +46,8 @@ struct PipelineState
             Sampler,
             Texture,
             RenderTarget,
-            UAVResource
+            UAVResource,
+            CBuffer
         };
 
         struct {

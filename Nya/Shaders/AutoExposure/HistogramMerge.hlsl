@@ -10,7 +10,7 @@ cbuffer PassData : register( b0 )
    uint2 BackbufferDimension;
 }
 
-Buffer<uint>	histogramBins : register( t8 );
+Buffer<uint>	histogramBins : register( t0 );
 RWBuffer<uint>	finalHistogram : register( u0 );
 
 groupshared uint	Rows[NUMTHREADY];

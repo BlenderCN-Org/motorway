@@ -61,7 +61,7 @@ float convertEV100ToExposure(float EV100)
 Texture2D<float4>	g_InputRenderTarget : register( t0 );
 Texture2D<float3>	g_BloomRenderTarget : register( t1 );
 
-StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t8 );
+StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t2 );
 
 RWTexture2D<float4>	g_OutputRenderTarget : register( u0 );
 

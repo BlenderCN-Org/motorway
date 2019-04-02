@@ -105,6 +105,9 @@ public:
     void                bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList );
     void                bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass );
 
+    void                clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] );
+    void                clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue );
+
     void                setViewport( const Viewport& viewport );
     void                getViewport( Viewport& viewport );
 

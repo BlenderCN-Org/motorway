@@ -10,7 +10,7 @@ cbuffer PassData : register( b0 )
    uint2 BackbufferDimension;
 }
 
-Texture2D<float4> sourceTextureSRV : register( t0 );
+Texture2D<float4> sourceTextureSRV : register( t20 );
 RWBuffer<uint> histogramBuffer : register( u0 );
 
 static const uint	PASSES_COUNT = HISTOGRAM_BUCKETS_COUNT / NUMTHREADX;

@@ -1,4 +1,4 @@
-Texture2D g_TextureInput : register( t0 );
+Texture2D g_TextureInput : register( t20 );
 sampler g_BilinearSampler : register( s0 );
 
 struct VertexStageData
