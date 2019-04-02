@@ -320,28 +320,29 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
             }
         } else if ( resource.type == ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER
                  || resource.type == ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE ) {
+            uint32_t resourceRegisterIdxShift = 8u;
             if ( resource.stageBind & SHADER_STAGE_VERTEX ) {
                pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.vertexStage[resource.bindPoint];
+               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.vertexStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
                pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.hullStage[resource.bindPoint];
+               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.hullStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
                pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.domainStage[resource.bindPoint];
+               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.domainStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_PIXEL ) {
                pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.pixelStage[resource.bindPoint];
+               pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.pixelStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_COMPUTE ) {
@@ -351,34 +352,36 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                pipelineState->resourceList.uavBuffersBindCount++;
             }
         } else {
+            uint32_t resourceRegisterIdxShift = (resource.type == ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_RENDER_TARGET
+                || resource.type == ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE) ? 0u : 8u;
             if ( resource.stageBind & SHADER_STAGE_VERTEX ) {
                 pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                 pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.vertexStage[resource.bindPoint];
+                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.vertexStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_TESSELATION_CONTROL ) {
                 pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                 pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.hullStage[resource.bindPoint];
+                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.hullStage[resource.bindPoin - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_TESSELATION_EVALUATION ) {
                 pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                 pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.domainStage[resource.bindPoint];
+                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.domainStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_PIXEL ) {
                 pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                 pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.pixelStage[resource.bindPoint];
+                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.pixelStage[resource.bindPoint - resourceRegisterIdxShift];
             }
 
             if ( resource.stageBind & SHADER_STAGE_COMPUTE ) {
                 pipelineState->resourceList.resources[resourceBindCount].resourceIndex = i;
                 pipelineState->resourceList.resources[resourceBindCount].type = GetBindType( resource.type );
-                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.computeStage[resource.bindPoint];
+                pipelineState->resourceList.resources[resourceBindCount++].shaderResourceView = &pipelineState->resourceList.buffers.computeStage[resource.bindPoint - resourceRegisterIdxShift];
             }
         }
     }
