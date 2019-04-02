@@ -47,7 +47,7 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
 
         switch ( resource.type ) {
         case PipelineState::ResourceListLayout::Buffer:
-            *resource.buffers = resourceList.resource[resource.resourceIndex].buffer->bufferObject;
+            *resource.shaderResourceView = resourceList.resource[resource.resourceIndex].buffer->bufferResourceView;
             break;
         case PipelineState::ResourceListLayout::Sampler:
             *resource.samplerState = resourceList.resource[resource.resourceIndex].sampler->samplerState;
@@ -93,12 +93,10 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
     CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.pixelStage );
     CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.computeStage );
 
-    return;
-
-    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceListLayout.buffers.vertexStage );
-    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceListLayout.buffers.hullStage );
-    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceListLayout.buffers.domainStage );
-    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceListLayout.buffers.pixelStage );
-    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceListLayout.buffers.computeStage );
+    CommandListObject->deferredContext->VSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.vertexStage );
+    CommandListObject->deferredContext->HSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.hullStage );
+    CommandListObject->deferredContext->DSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.domainStage );
+    CommandListObject->deferredContext->PSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.pixelStage );
+    CommandListObject->deferredContext->CSSetShaderResources( 8, 14, resourceListLayout.shaderResourceViews.computeStage );
 }
 #endif
