@@ -83,7 +83,7 @@ void ProbeCaptureModule::loadCachedResources( RenderDevice* renderDevice, Shader
 
     PipelineStateDesc psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "FullscreenTriangle", SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "CopyTexture", SHADER_STAGE_PIXEL );
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "CopyTexture+NYA_SAMPLE_FROM_RENDERPASS", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     psoDesc.resourceListLayout.resources[0] =  { 0, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };

@@ -37,6 +37,7 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
 {
     for ( int i = 0; i < pipelineState->renderPass.resourceToBindCount; i++ ) {
         auto& resource = pipelineState->renderPass.resources[i];
+        auto& attachment = renderPass.attachement[i];
 
         if ( renderPass.attachement[resource.resourceIndex].renderTarget == nullptr ) {
             continue;
@@ -44,10 +45,20 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
 
         switch ( resource.type ) {
         case PipelineState::RenderPassLayout::RenderTargetView:
-            *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
+            if ( attachment.faceIndex != 0 )
+                *resource.renderTargetView = ( attachment.mipLevel != 0 )
+                    ? renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel]
+                    : renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSlice[attachment.faceIndex];
+            else
+                *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetView;
             break;
         case PipelineState::RenderPassLayout::DepthStencilView:
-            *resource.depthStencilView = renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
+            if ( attachment.faceIndex != 0 )
+                *resource.depthStencilView = ( attachment.mipLevel != 0 )
+                    ? renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthStencilViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel]
+                    : renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthStencilViewPerSlice[attachment.faceIndex];
+            else
+                *resource.depthStencilView = renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthRenderTargetView;
             break;
         case PipelineState::RenderPassLayout::ShaderResourceView:
             *resource.shaderResourceView = renderPass.attachement[resource.resourceIndex].renderTarget->texture->shaderResourceView;

@@ -168,7 +168,7 @@ def get_sprv_sm( type ):
     
 def popenAndCall(popenArgs):
     global current_task_count
-    cpu_thread_count = multiprocessing.cpu_count()
+    cpu_thread_count = max( 16, multiprocessing.cpu_count() )
     
     def runInThread(popenArgs):
         global current_task_count
@@ -303,7 +303,7 @@ compile_shader_PS( "Editor/IBLProbeConvolution" )
 
 # Shared
 compile_shader_VS( "FullscreenTriangle" )
-compile_shader_PS( "CopyTexture" )
+compile_shader_PS( "CopyTexture", [ "NYA_SAMPLE_FROM_RENDERPASS" ] )
 compile_shader_VS( "LineRendering" )
 compile_shader_PS( "LineRendering" )
 
