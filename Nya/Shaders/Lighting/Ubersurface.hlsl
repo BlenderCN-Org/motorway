@@ -644,7 +644,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 	
     LightContribution.rgb += ( LightContribution.rgb * surface.Emissivity );   
 	
-#ifndef PA_PROBE_CAPTURE
+#ifndef NYA_PROBE_CAPTURE
 #if NYA_BRDF_STANDARD
     // Reflections / IBL
     static const float DFG_TEXTURE_SIZE =  512.0f;
