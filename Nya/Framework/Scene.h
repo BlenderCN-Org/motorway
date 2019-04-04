@@ -48,6 +48,7 @@ struct RenderableMesh
 
     RenderableMesh()
     {
+        renderDepth = 1;
         isVisible = 1;
     }
 };

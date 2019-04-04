@@ -68,7 +68,7 @@ public:
     void                        loadDebugResources( GraphicsAssetCache* graphicsAssetCache );
 #endif
 
-    void                        addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix );
+    void                        addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix, const uint32_t flagset );
     void                        addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius, Material* material );
     void                        addCamera( CameraData* cameraData );
     void                        addIBLProbeToCapture( const IBLProbeData* probeData );
@@ -80,6 +80,18 @@ private:
     struct MeshInstance {
         const Mesh*         mesh;
         const nyaMat4x4f*   modelMatrix;
+
+        // TODO Unify with Scene mesh instance flagset
+        union {
+            struct {
+                uint8_t isVisible : 1;
+                uint8_t renderDepth : 1;
+                uint8_t useBatching : 1;
+                uint8_t : 0;
+            };
+
+            uint32_t    flags;
+        };
     };
 
     struct IBLProbeCaptureCommand {

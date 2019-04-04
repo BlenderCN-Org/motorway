@@ -146,7 +146,7 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 
         // Check renderable flags (but don't cull the instance yet)
         if ( renderable.isVisible ) {
-            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix() );
+            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix(), renderable.flags );
         }
     }
 

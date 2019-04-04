@@ -172,11 +172,12 @@ void DrawCommandBuilder::loadDebugResources( GraphicsAssetCache* graphicsAssetCa
 }
 #endif
 
-void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix )
+void DrawCommandBuilder::addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix, const uint32_t flagset )
 {
     auto* mesh = nya::core::allocate<MeshInstance>( meshes );
     mesh->mesh = meshResource;
     mesh->modelMatrix = modelMatrix;
+    mesh->flags = flagset;
 }
 
 void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius, Material* material )
@@ -414,6 +415,11 @@ void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, Camera
     const size_t meshCount = meshes->getAllocationCount();
     for ( uint32_t meshIdx = 0; meshIdx < meshCount; meshIdx++ ) {
         const MeshInstance& meshInstance = meshesArray[meshIdx];
+
+        // TODO Avoid this crappy test per mesh instance (store per-layer list inside the commandBuilder?)
+        if ( layer == DrawCommandKey::LAYER_DEPTH && meshInstance.renderDepth == 0 ) {
+            continue;
+        }
 
         const nyaVec3f instancePosition = nya::maths::ExtractTranslation( *meshInstance.modelMatrix );
         const float instanceScale = nya::maths::GetBiggestScalar( nya::maths::ExtractScale( *meshInstance.modelMatrix ) );
