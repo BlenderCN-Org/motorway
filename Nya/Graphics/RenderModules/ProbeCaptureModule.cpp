@@ -70,7 +70,7 @@ void ProbeCaptureModule::loadCachedResources( RenderDevice* renderDevice, Shader
     probeArrayDesc.width = IBL_PROBE_DIMENSION;
     probeArrayDesc.height = IBL_PROBE_DIMENSION;
     probeArrayDesc.arraySize = MAX_IBL_PROBE_COUNT;
-    probeArrayDesc.format = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    probeArrayDesc.format = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
     probeArrayDesc.flags.isCubeMap = 1;
 
     capturedProbesArray = renderDevice->createRenderTarget2D( probeArrayDesc );
@@ -91,12 +91,12 @@ void ProbeCaptureModule::loadCachedResources( RenderDevice* renderDevice, Shader
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
     psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
     psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::READ;
     psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
     copyPso = renderDevice->createPipelineState( psoDesc );
 
@@ -111,17 +111,17 @@ void ProbeCaptureModule::loadCachedResources( RenderDevice* renderDevice, Shader
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
     psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
     psoDesc.renderPassLayout.attachements[1].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[1].bindMode = RenderPassLayoutDesc::WRITE;
     psoDesc.renderPassLayout.attachements[1].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[1].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
     psoDesc.renderPassLayout.attachements[2].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[2].bindMode = RenderPassLayoutDesc::READ;
     psoDesc.renderPassLayout.attachements[2].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.renderPassLayout.attachements[2].viewFormat = eImageFormat::IMAGE_FORMAT_R11G11B10_FLOAT;
 
     convolutionPso = renderDevice->createPipelineState( psoDesc );
 }

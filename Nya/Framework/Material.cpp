@@ -176,7 +176,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
     defaultPipelineStateDesc.depthStencilState.enableDepthTest = true;
     defaultPipelineStateDesc.depthStencilState.enableDepthWrite = true;
     defaultPipelineStateDesc.depthStencilState.depthComparisonFunc = eComparisonFunction::COMPARISON_FUNCTION_GREATER;
-    defaultPipelineStateDesc.inputLayout[0] = { 0, eImageFormat::IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
+    defaultPipelineStateDesc.inputLayout[0] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, false, "POSITION" };
     defaultPipelineStateDesc.inputLayout[1] = { 0, IMAGE_FORMAT_R32G32B32_FLOAT, 0, 0, 0, true, "NORMAL" };
     defaultPipelineStateDesc.inputLayout[2] = { 0, IMAGE_FORMAT_R32G32_FLOAT, 0, 0, 0, true, "TEXCOORD" };
      

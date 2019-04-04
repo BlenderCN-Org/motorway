@@ -8,15 +8,15 @@ static const float MaxRange = 65025.0f;
 
 float4 EncodeRGBD(float3 rgb)
 {
-    float maxRGB = max(rgb.x,max(rgb.g,rgb.b));
-    float D      = max(MaxRange / maxRGB, 1);
-    D            = saturate(floor(D) / 255.0);
-    return float4(rgb.rgb * (D * (255.0 / MaxRange)), D);
+    float maxRGB = max(rgb.r,max(rgb.g,rgb.b));
+    float D      = max(MaxRange / maxRGB, 1.0f);
+    D            = saturate(floor(D) / 255.0f);
+    return float4(rgb.rgb * (D * (255.0f / MaxRange)), D);
 }
 
 float3 DecodeRGBD(float4 rgbd)
 {
-    return rgbd.rgb * ((MaxRange / 255.0) / rgbd.a);
+    return rgbd.rgb * ((MaxRange / 255.0f) / rgbd.a);
 }
 
 float3 accurateSRGBToLinear( in float3 sRGBCol )
