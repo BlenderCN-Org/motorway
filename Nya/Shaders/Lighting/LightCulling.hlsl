@@ -155,6 +155,6 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
     // Write from LDS memory to UAV
     if ( localIdxFlattened == 0 ) { 
 		for ( int i = 0; i < NUM_THREADS * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT ); i++ )
-			g_ItemList[itemListOffset + i] = g_ClusterItems[i];
+			g_ItemList[i] = g_ClusterItems[i];
 	}
 }
