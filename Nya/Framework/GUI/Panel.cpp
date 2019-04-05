@@ -27,6 +27,7 @@ GUIPanel::GUIPanel()
     , IsDraggable( false )
     , IsResizable( false )
     , IsScrollable( false )
+    , canBeDragged( false )
 {
 
 }
@@ -36,6 +37,25 @@ GUIPanel::~GUIPanel()
     IsDraggable = false;
     IsResizable = false;
     IsScrollable = false;
+
+    canBeDragged = false;
+}
+
+void GUIPanel::onMouseButtonDown()
+{
+    canBeDragged = true;
+}
+
+void GUIPanel::onMouseButtonUp()
+{
+    canBeDragged = false;
+}
+
+void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
+{
+    if ( IsDraggable && canBeDragged ) {
+        Position = nyaVec2f( mouseX, mouseY );
+    }
 }
 
 void GUIPanel::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )

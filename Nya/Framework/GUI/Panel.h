@@ -40,5 +40,12 @@ public:
                 GUIPanel& operator = ( GUIPanel& widget ) = default;
                 ~GUIPanel();
 
+    void        onMouseButtonDown();
+    void        onMouseButtonUp();
+    void        onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
+
     void        collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
+
+private:
+    bool        canBeDragged;
 };

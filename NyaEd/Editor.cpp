@@ -75,6 +75,7 @@ static LightGrid*              g_LightGrid;
 
 static Scene*                  g_SceneTest;
 static FreeCamera*             g_FreeCamera;
+static bool                    g_IsDevMenuVisible = false;
 
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -88,18 +89,24 @@ NYA_ENV_VAR( EnableVSync, false, bool ) // "Enable Vertical Synchronisation [fal
 NYA_ENV_VAR( EnableTAA, false, bool ) // "Enable TemporalAntiAliasing [false/true]"
 NYA_ENV_VAR( MSAASamplerCount, 1, uint32_t ) // "MultiSampledAntiAliasing Sampler Count [1..8]"
 
+static GUIPanel panelTest;
+
 void RegisterInputContexts()
 {
     g_InputMapper->pushContext( NYA_STRING_HASH( "Editor" ) );
 
     // Free Camera
     g_InputMapper->addCallback( [&]( MappedInput& input, float frameTime ) {
+        if ( g_IsDevMenuVisible ) {
+            return;
+        }
+
         // Camera Controls
         auto axisX = input.Ranges[NYA_STRING_HASH( "CameraMoveHorizontal" )];
         auto axisY = input.Ranges[NYA_STRING_HASH( "CameraMoveVertical" )];
 
         g_FreeCamera->updateMouse( frameTime, axisX, axisY );
-
+      
         if ( input.States.find( NYA_STRING_HASH( "CameraMoveRight" ) ) != input.States.end() ) {
             g_FreeCamera->moveRight( frameTime );
         }
@@ -124,9 +131,30 @@ void RegisterInputContexts()
             g_FreeCamera->takeAltitude( frameTime );
         }
     }, 0 );
-}
 
-static GUIPanel panelTest;
+    // DebugUI
+    g_InputMapper->addCallback( [&]( MappedInput& input, float frameTime ) {
+        if ( input.Actions.find( NYA_STRING_HASH( "OpenDevMenu" ) ) != input.Actions.end() ) {
+            g_IsDevMenuVisible = !g_IsDevMenuVisible;
+
+            if ( g_IsDevMenuVisible ) {
+                g_InputMapper->pushContext( NYA_STRING_HASH( "DebugUI" ) );
+            } else {
+                g_InputMapper->popContext();
+            }
+        }
+
+        auto rawX = nya::maths::clamp( static_cast<float>( g_InputReader->getAbsoluteAxisValue( nya::input::eInputAxis::MOUSE_X ) ), 0.0f, static_cast<float>( ScreenSize.x ) );
+        auto rawY = nya::maths::clamp( static_cast<float>( g_InputReader->getAbsoluteAxisValue( nya::input::eInputAxis::MOUSE_Y ) ), 0.0f, static_cast<float>( ScreenSize.y ) );
+
+        panelTest.onMouseCoordinatesUpdate( rawX, rawY );
+        if ( input.States.find( NYA_STRING_HASH( "MouseClick" ) ) != input.States.end() ) {
+            panelTest.onMouseButtonDown();
+        } else {
+            panelTest.onMouseButtonUp();
+        }
+    }, -1 );
+}
 
 void TestStuff()
 {
@@ -149,11 +177,12 @@ void TestStuff()
 
     auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
     geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
-
+    
     auto& planeTest = g_SceneTest->allocateStaticGeometry();
 
     auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
     geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
+    geometryPlane.renderDepth = 0;
 
     for ( int j = 0; j < 5; j++ ) {
         for ( int i = 0; i < 6; i++ ) {
@@ -192,8 +221,8 @@ void TestStuff()
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
     IBLProbeData localProbe = {};
-    localProbe.worldPosition = { 0, 8, -2 };
-    localProbe.radius = 6.0f;
+    localProbe.worldPosition = { 0, 8, -4 };
+    localProbe.radius = 4.0f;
     localProbe.isFallbackProbe = false;
 
     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
@@ -210,6 +239,8 @@ void TestStuff()
 
     panelTest.Size.x = 128;
     panelTest.Size.y = 128;
+
+    panelTest.IsDraggable = true;
 
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 }
