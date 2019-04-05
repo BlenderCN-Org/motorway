@@ -665,8 +665,6 @@ RenderPipeline::RenderPipeline( BaseAllocator* allocator )
     : memoryAllocator( allocator )
     , renderPasses{ { { 0 }, nullptr, "RenderPass" } }
     , renderPassCount( 0 )
-    , passGroupStartIndexes{ 0u }
-    , passGroupCount( 0 )
     , activeViewport{ 0, 0, 0, 0, 0.0f, 0.0f }
     , hasViewportChanged( false )
     , pipelineImageQuality( 1.0f )
@@ -700,11 +698,6 @@ void RenderPipeline::enableProfiling( RenderDevice* renderDevice )
 {
     graphicsProfiler = nya::core::allocate<GraphicsProfiler>( memoryAllocator );
     graphicsProfiler->create( renderDevice );
-}
-
-void RenderPipeline::beginPassGroup()
-{
-    passGroupStartIndexes[passGroupCount++] = static_cast<uint32_t>( renderPassCount );
 }
 
 void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime )
@@ -746,7 +739,6 @@ void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime 
     }
 
     renderPassCount = 0;
-    passGroupCount = 0;
 }
 
 void RenderPipeline::submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount )

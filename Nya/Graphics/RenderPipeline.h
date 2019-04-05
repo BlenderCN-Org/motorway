@@ -280,7 +280,6 @@ public:
     void    destroy( RenderDevice* renderDevice );
     void    enableProfiling( RenderDevice* renderDevice );
 
-    void    beginPassGroup();
     void    execute( RenderDevice* renderDevice, const float deltaTime );
 
     void    submitAndDispatchDrawCmds( DrawCmd* drawCmds, const size_t drawCmdCount );
@@ -325,9 +324,6 @@ private:
     RenderPipelineRenderPass            renderPasses[48];
 
     int                                 renderPassCount;
-
-    uint32_t                            passGroupStartIndexes[8];
-    int                                 passGroupCount;
 
     Viewport                            activeViewport;
     bool                                hasViewportChanged;
