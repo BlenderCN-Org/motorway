@@ -63,7 +63,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
 
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             VkDescriptorImageInfo& descriptorImageInfo = descriptorImageInfos[i];
-            descriptorImageInfo.imageView = resourceList.resource[i].renderTarget->texture->imageView;
+            descriptorImageInfo.imageView = resourceList.resource[i].renderTarget->textureRenderTargetView;
             descriptorImageInfo.imageLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
