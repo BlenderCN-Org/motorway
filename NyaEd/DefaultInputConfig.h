@@ -213,7 +213,7 @@ namespace nya
 
             stream->writeString( "}\n" );
             stream->writeString( "Context: \"DebugUI\" {\n" );
-            stream->writeString( "\tPickNode: { ACTION, " + std::string( nya::input::InputKeyToString[PICK_OBJECT[inputLayout]] ) + " }\n" );
+            stream->writeString( "\tMouseClick: { STATE, " + std::string( nya::input::InputKeyToString[PICK_OBJECT[inputLayout]] ) + " }\n" );
             stream->writeString( "\tMoveCamera: { STATE, " + std::string( nya::input::InputKeyToString[MOVE_CAMERA[inputLayout]] ) + " }\n" );
 
             stream->writeString( "\tModifier1: { STATE, " + std::string( nya::input::InputKeyToString[DBGUI_MOD1[inputLayout]] ) + " }\n" );
