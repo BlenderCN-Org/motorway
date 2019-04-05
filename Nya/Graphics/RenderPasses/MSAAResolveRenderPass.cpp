@@ -168,9 +168,9 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
             }
 
             PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
-            cmdList->bindPipelineState( pso );
-            cmdList->bindResourceList( pso, resourceList );
             cmdList->bindRenderPass( pso, renderPass );
+            cmdList->bindResourceList( pso, resourceList );
+            cmdList->bindPipelineState( pso );
 
             cmdList->draw( 3 );
         }

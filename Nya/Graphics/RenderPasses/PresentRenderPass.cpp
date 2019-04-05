@@ -66,9 +66,9 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
             cmdList->bindResourceList( g_PipelineStateObject, resourceList );
+            cmdList->bindPipelineState( g_PipelineStateObject );
 
             cmdList->draw( 3 );
         }

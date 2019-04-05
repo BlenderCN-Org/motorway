@@ -507,16 +507,17 @@ void Material::bind( CommandList* cmdList, RenderPass& renderPass, ResourceList&
 
 void Material::bindProbeCapture( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
-    cmdList->bindPipelineState( probeCapturePipelineState );
+    cmdList->bindRenderPass( probeCapturePipelineState, renderPass );
+
     bindDefaultTextureSet( resourceList );
 
-    cmdList->bindRenderPass( probeCapturePipelineState, renderPass );
     cmdList->bindResourceList( probeCapturePipelineState, resourceList );
+    cmdList->bindPipelineState( probeCapturePipelineState );
 }
 
 void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
-    cmdList->bindPipelineState( depthOnlyPipelineState );
+    cmdList->bindRenderPass( depthOnlyPipelineState, renderPass );
 
     // 0 -> Output RenderTarget
     int32_t textureBindIndex = 4;
@@ -526,8 +527,8 @@ void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, Reso
         textureBindIndex++;
     }
 
-    cmdList->bindRenderPass( depthOnlyPipelineState, renderPass );
     cmdList->bindResourceList( depthOnlyPipelineState, resourceList );
+    cmdList->bindPipelineState( depthOnlyPipelineState );
 }
 
 void Material::setCustomFlagset( const std::string& customFlagset )

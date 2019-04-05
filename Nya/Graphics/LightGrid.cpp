@@ -93,26 +93,32 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
             
             passData.itemList = renderPipelineBuilder.allocateBuffer( bufferDesc, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Buffer* lightsClusters = renderPipelineResources.getBuffer( passData.lightsClusters );
             Buffer* itemList = renderPipelineResources.getBuffer( passData.itemList );
-
             Buffer* lightsBuffer = renderPipelineResources.getBuffer( passData.lightsBuffer );
-            cmdList->updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
-
             Buffer* lightsClustersInfos = renderPipelineResources.getBuffer( passData.lightsClustersInfosBuffer );
-            cmdList->updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
 
             ResourceList resourceList;
             resourceList.resource[0].buffer = lightsClusters;
             resourceList.resource[1].buffer = itemList;
             resourceList.resource[2].buffer = lightsBuffer;
             resourceList.resource[3].buffer = lightsClustersInfos;
+            renderDevice->updateResourceList( lightCullingPso, resourceList );
 
-            cmdList->bindPipelineState( lightCullingPso );
-            cmdList->bindResourceList( lightCullingPso, resourceList );
+            CommandList& cmdList = renderDevice->allocateComputeCommandList();
+            cmdList.begin();
+
+            cmdList.updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
+            cmdList.updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
+
+            cmdList.bindPipelineState( lightCullingPso );
             
-            cmdList->dispatchCompute( 4, 4, 4 );
+            cmdList.dispatchCompute( 4, 4, 4 );
+
+            cmdList.end();
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

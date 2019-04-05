@@ -38,6 +38,10 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
         CommandListObject->isRenderPassInProgress = false;
     }
 
+    if ( pipelineState->framebuffer != VK_NULL_HANDLE ) {
+        vkDestroyFramebuffer( CommandListObject->device, pipelineState->framebuffer, nullptr );
+    }
+
     VkImageView imageViews[24];
     uint32_t attachmentCount = 0u;
     for ( ; attachmentCount < pipelineState->attachmentCount; attachmentCount++ ) {
@@ -45,8 +49,6 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
 
         imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
     }
-
-    VkFramebuffer framebuffer;
 
     VkFramebufferCreateInfo framebufferCreateInfos = {};
     framebufferCreateInfos.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -59,13 +61,13 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
     framebufferCreateInfos.height = static_cast<uint32_t>( CommandListObject->currentViewport.Height );
     framebufferCreateInfos.layers = 1u;
 
-    vkCreateFramebuffer( CommandListObject->device, &framebufferCreateInfos, nullptr, &framebuffer );
+    vkCreateFramebuffer( CommandListObject->device, &framebufferCreateInfos, nullptr, &pipelineState->framebuffer );
 
     VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.pNext = nullptr;
     renderPassInfo.renderPass = pipelineState->renderPass;
-    renderPassInfo.framebuffer = framebuffer;
+    renderPassInfo.framebuffer = pipelineState->framebuffer;
     renderPassInfo.clearValueCount = 24;
     renderPassInfo.pClearValues = pipelineState->clearValues;
 

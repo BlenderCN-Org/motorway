@@ -60,19 +60,6 @@ static bool operator != ( const Viewport& l, const Viewport& r )
         || l.MaxDepth != r.MaxDepth;
 }
 
-struct ResourceList
-{
-    // NOTE Type is set in the resource list binding
-    struct {
-        union {
-            Buffer*         buffer;
-            Sampler*        sampler;
-            Texture*        texture;
-            RenderTarget*   renderTarget; // NOTE Read-only
-        };
-    } resource[64] = { nullptr };
-};
-
 struct RenderPass
 {
     struct {
@@ -96,13 +83,10 @@ public:
     void                begin();
     void                end();
 
-    RenderTarget*       getSwapchainBuffer();
-
     void                bindVertexBuffer( const Buffer* buffer, const unsigned int bindIndex = 0 );
     void                bindIndiceBuffer( const Buffer* buffer );
 
     void                bindPipelineState( PipelineState* pipelineState );
-    void                bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList );
     void                bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass );
 
     void                clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] );

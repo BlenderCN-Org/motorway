@@ -69,9 +69,9 @@ ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t input
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
             cmdList->bindResourceList( g_PipelineStateObject, resourceList );
+            cmdList->bindPipelineState( g_PipelineStateObject );
 
             cmdList->draw( 3 );
         }
@@ -135,9 +135,9 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
 
             cmdList->setViewport( vp );
 
-            cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
             cmdList->bindResourceList( g_PipelineStateObject, resourceList );
+            cmdList->bindPipelineState( g_PipelineStateObject );
 
             cmdList->draw( 3 );
         }
@@ -182,9 +182,9 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->bindPipelineState( g_PipelineStateObject );
             cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
             cmdList->bindResourceList( g_PipelineStateObject, resourceList );
+            cmdList->bindPipelineState( g_PipelineStateObject );
 
             cmdList->draw( 3 );
         }

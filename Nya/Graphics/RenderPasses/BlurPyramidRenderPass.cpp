@@ -144,9 +144,9 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
             renderPass.attachement[0] = { inputTarget, 0, 0 };
             renderPass.attachement[1] = { renderTarget, 0, 0 };
 
-            cmdList->bindPipelineState( g_BrightPassPipelineStateObject );
             cmdList->bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
             cmdList->bindResourceList( g_BrightPassPipelineStateObject , resourceList );
+            cmdList->bindPipelineState( g_BrightPassPipelineStateObject );
 
             cmdList->draw( 3 );
         }
@@ -207,9 +207,10 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
 
             PipelineState* pso = ( useKarisAverage ) ? g_KarisAveragePipelineStateObject : g_DownsamplePipelineStateObject;
-            cmdList->bindPipelineState( pso );
+
             cmdList->bindRenderPass( pso, renderPass );
             cmdList->bindResourceList( pso, resourceList );
+            cmdList->bindPipelineState( pso );
 
             cmdList->draw( 3 );
         }
@@ -283,9 +284,9 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 
-            cmdList->bindPipelineState( g_UpsamplePipelineStateObject );
             cmdList->bindRenderPass( g_UpsamplePipelineStateObject, renderPass );
             cmdList->bindResourceList( g_UpsamplePipelineStateObject, resourceList );
+            cmdList->bindPipelineState( g_UpsamplePipelineStateObject );
 
             cmdList->draw( 3 );
         }

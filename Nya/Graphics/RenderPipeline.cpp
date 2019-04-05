@@ -741,33 +741,9 @@ void RenderPipeline::execute( RenderDevice* renderDevice, const float deltaTime 
     renderPipelineBuilder.cullRenderPasses( renderPasses, renderPassCount );
     renderPipelineBuilder.compile( renderDevice, renderPipelineResources );
 
-    // Execute render passes
-    CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
-
-    cmdList.begin();
-    cmdList.setViewport( activeViewport );
-
-#if NYA_DEVBUILD && !defined( NYA_NULL_RENDERER )
-    NYA_BEGIN_PROFILE_SCOPE( "RenderPasses Execution" );
-        for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
-            NYA_BEGIN_PROFILE_SCOPE( renderPasses[passIdx].name );
-                graphicsProfiler->beginSection( &cmdList, renderPasses[passIdx].name );
-                    renderPasses[passIdx].execute( renderPipelineResources, &cmdList );
-                graphicsProfiler->endSection( &cmdList );
-            NYA_END_PROFILE_SCOPE()
-        }
-    NYA_END_PROFILE_SCOPE()
-
-    graphicsProfiler->onFrame( renderDevice );
-#else
     for ( int passIdx = 0; passIdx < renderPassCount; passIdx++ ) {
-        renderPasses[passIdx].execute( renderPipelineResources, renderDevice, &cmdList );
+        renderPasses[passIdx].execute( renderPipelineResources, renderDevice );
     }
-#endif
-
-    cmdList.end();
-
-    renderDevice->submitCommandList( &cmdList );
 
     renderPassCount = 0;
     passGroupCount = 0;

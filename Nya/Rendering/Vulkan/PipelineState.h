@@ -29,10 +29,13 @@ struct PipelineState
     VkPipelineBindPoint         bindPoint;
     VkPipelineLayout            layout;
     VkRenderPass                renderPass;
+    VkFramebuffer               framebuffer;
 
     uint32_t                    attachmentCount;
     VkClearValue                clearValues[24];
     VkDescriptorSet             descriptorSet;
-    VkDescriptorType            descriptors[64];
+    uint32_t                    descriptorBindingCount;
+    VkDescriptorType            descriptorBindingTypes[64];
+    uint32_t                    descriptorBindings[64];
 };
 #endif

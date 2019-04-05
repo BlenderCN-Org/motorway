@@ -134,9 +134,9 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             cmdList->bindIndiceBuffer( glyphIndiceBuffer );
 
             // Pipeline State
-            cmdList->bindPipelineState( renderTextPso );
             cmdList->bindRenderPass( renderTextPso, renderPass );
             cmdList->bindResourceList( renderTextPso, resourceList );
+            cmdList->bindPipelineState( renderTextPso );
 
             cmdList->drawIndexed( static_cast<uint32_t>( indiceCount ) );
 

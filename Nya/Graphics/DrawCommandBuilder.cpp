@@ -97,12 +97,7 @@ nyaMat4x4f GetProbeCaptureViewMatrix( const nyaVec3f& probePositionWorldSpace, c
             probePositionWorldSpace,
             probePositionWorldSpace + nyaVec3f( 0.0f, 0.0f, -1.0f ),
             nyaVec3f( 0.0f, 1.0f, 0.0f ) );
-
-    default:
-        return nyaMat4x4f::Identity;
     }
-
-    return nyaMat4x4f::Identity;
 }
 
 float DistanceToPlane( const nyaVec4f& vPlane, const nyaVec3f& vPoint )

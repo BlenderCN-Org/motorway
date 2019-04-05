@@ -255,9 +255,9 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
             renderPass.attachement[1] = { outputSpecularTarget, mipLevel, faceIndex };
             renderPass.attachement[2] = { inputProbeArray, 0, 0 };
 
-            cmdList->bindPipelineState( convolutionPso );
-            cmdList->bindResourceList( convolutionPso, resourceList );
             cmdList->bindRenderPass( convolutionPso, renderPass );
+            cmdList->bindResourceList( convolutionPso, resourceList );
+            cmdList->bindPipelineState( convolutionPso );
 
             cmdList->draw( 4 );
         }
@@ -305,9 +305,9 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
             renderPass.attachement[0] = { outputTarget, 0, faceIndex };
             renderPass.attachement[1] = { inputTarget, 0, 0 };
 
-            cmdList->bindPipelineState( copyPso );
-            cmdList->bindResourceList( copyPso, resourceList );
             cmdList->bindRenderPass( copyPso, renderPass );
+            cmdList->bindResourceList( copyPso, resourceList );
+            cmdList->bindPipelineState( copyPso );
 
             cmdList->draw( 3 );
         }

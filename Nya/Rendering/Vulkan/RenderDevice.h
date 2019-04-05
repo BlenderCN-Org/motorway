@@ -75,6 +75,7 @@ struct RenderContext
     uint32_t                            computeQueueIndex;
     uint32_t                            presentQueueIndex;
 
+    uint32_t                            currentFrameIndex;
     std::vector<VkImage>                swapChainImages;
     std::vector<RenderTarget*>          swapChainRenderTargets;
     VkExtent2D                          swapChainExtent;

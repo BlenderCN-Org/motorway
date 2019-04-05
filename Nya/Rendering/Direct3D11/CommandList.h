@@ -28,6 +28,5 @@ struct NativeCommandList
 {
     ID3D11DeviceContext*    deferredContext;
     ID3D11CommandList*      commandList;
-    RenderTarget*           swapchain;
 };
 #endif

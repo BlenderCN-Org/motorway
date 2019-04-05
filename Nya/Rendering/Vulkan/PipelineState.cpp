@@ -30,6 +30,8 @@
 #include "ImageHelpers.h"
 #include "PipelineState.h"
 
+#include <Maths/Helpers.h>
+
 #include <vulkan/vulkan.h>
 #include <string.h>
 
@@ -116,9 +118,9 @@ static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RES
     64u,
     192u,
     128u,
-    256u,
-    256u,
     384u,
+    192u,
+    256u,
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
@@ -185,25 +187,29 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
     PipelineState* pipelineState = nya::core::allocate<PipelineState>( memoryAllocator );
 
     uint32_t bindingCount = 0u;
-    VkDescriptorSetLayoutBinding descriptorSetBinding[ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_COUNT * 64];
-    for ( unsigned int i = 0u; i < 64u; i++ ) {
-        const auto& binding = description.resourceListLayout.resources[i];
+    VkDescriptorSetLayoutBinding descriptorSetBinding[64];
+    for ( ; bindingCount < 64u; bindingCount++ ) {
+        const auto& binding = description.resourceListLayout.resources[bindingCount];
 
         if ( binding.stageBind == 0u ) {
             break;
         }
 
+        const uint32_t descriptorBindingIndex = VK_DT_OFFSET[binding.type] + static_cast<uint32_t>( binding.bindPoint );
+        const VkDescriptorType descriptorType = VK_DT[binding.type];
+
         VkDescriptorSetLayoutBinding& descriptorSetLayoutBinding = descriptorSetBinding[bindingCount];
-        descriptorSetLayoutBinding.binding = VK_DT_OFFSET[binding.type] + static_cast<uint32_t>( binding.bindPoint );
-        descriptorSetLayoutBinding.descriptorType = VK_DT[binding.type];
+        descriptorSetLayoutBinding.binding = descriptorBindingIndex;
+        descriptorSetLayoutBinding.descriptorType = descriptorType;
         descriptorSetLayoutBinding.descriptorCount = 1u;
         descriptorSetLayoutBinding.stageFlags = GetDescriptorStageFlags( binding.stageBind );
         descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
-        pipelineState->descriptors[bindingCount] = VK_DT[binding.type];
-
-        bindingCount++;
+        pipelineState->descriptorBindingTypes[bindingCount] = descriptorType;
+        pipelineState->descriptorBindings[bindingCount] = descriptorBindingIndex;
     }
+
+    pipelineState->descriptorBindingCount = bindingCount;
 
     // Resource List
     VkDescriptorSetLayout resourceListDescriptorSetLayout;
@@ -523,7 +529,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                     : VK_ATTACHMENT_LOAD_OP_CLEAR;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                 attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
@@ -607,7 +613,7 @@ void CommandList::bindPipelineState( PipelineState* pipelineState )
 {
     vkCmdBindDescriptorSets(
         CommandListObject->cmdBuffer,
-        CommandListObject->resourcesBindPoint,
+        pipelineState->bindPoint,
         pipelineState->layout,
         0u,
         1u,

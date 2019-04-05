@@ -145,7 +145,7 @@ void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const u
     imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     for ( uint32_t i = 0; i < renderTargetCount; i++ ) {
-        vkCmdClearColorImage( CommandListObject->cmdBuffer, renderTargets[i]->texture->image, VK_IMAGE_LAYOUT_GENERAL, &colorClearValue, 1u, &imageSubresourceRange );
+        vkCmdClearColorImage( CommandListObject->cmdBuffer, renderTargets[i]->texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &colorClearValue, 1u, &imageSubresourceRange );
     }
 }
 
@@ -167,6 +167,6 @@ void CommandList::clearDepthStencilRenderTarget( RenderTarget* renderTarget, con
     imageSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
     imageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    vkCmdClearDepthStencilImage( CommandListObject->cmdBuffer, renderTarget->texture->image, VK_IMAGE_LAYOUT_GENERAL, &depthClearValue, 1u, &imageSubresourceRange );
+    vkCmdClearDepthStencilImage( CommandListObject->cmdBuffer, renderTarget->texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &depthClearValue, 1u, &imageSubresourceRange );
 }
 #endif

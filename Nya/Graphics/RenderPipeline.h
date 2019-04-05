@@ -49,9 +49,9 @@ template<typename T>
 using nyaPassSetup_t = std::function< void( RenderPipelineBuilder&, T& ) >;
 
 template<typename T>
-using nyaPassCallback_t = std::function< void( const T&, const RenderPipelineResources&, CommandList* ) >;
+using nyaPassCallback_t = std::function< void( const T&, const RenderPipelineResources&, RenderDevice* ) >;
 
-using BindCallback = std::function< void( const RenderPipelineResources&, CommandList* ) >;
+using BindCallback = std::function< void( const RenderPipelineResources&, RenderDevice* ) >;
 
 struct RenderPipelineRenderPass
 {

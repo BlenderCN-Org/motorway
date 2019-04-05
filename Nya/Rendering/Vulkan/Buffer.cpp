@@ -138,6 +138,7 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
     } else if ( description.type == BufferDesc::UNORDERED_ACCESS_VIEW_BUFFER
              || description.type == BufferDesc::STRUCTURED_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     } else if ( description.type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_1D
              || description.type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_2D
              || description.type == BufferDesc::UNORDERED_ACCESS_VIEW_TEXTURE_3D ) {
@@ -159,6 +160,7 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
     } else if ( description.type == BufferDesc::GENERIC_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
 
     if ( initialData != nullptr ) {

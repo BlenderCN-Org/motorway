@@ -132,10 +132,14 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
 
-            // Bind resources to the pipeline
             // Pipeline State
             PipelineState* pso = ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso;
-            cmdList->bindPipelineState( pso );
+
+            // Render Pass
+            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
+
+            RenderPass renderPass;
+            renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             // Resource List
             ResourceList resourceList;
@@ -149,15 +153,11 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             if ( useAutomaticExposure )
                 resourceList.resource[6].buffer = autoExposureBuffer;
 
-            cmdList->bindResourceList( pso, resourceList );
-
-            // Render Pass
-            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
-
-            RenderPass renderPass;
-            renderPass.attachement[0] = { outputTarget, 0, 0 };
-
+            // Bind resources to the pipeline
             cmdList->bindRenderPass( pso, renderPass );
+            cmdList->bindResourceList( pso, resourceList );
+            cmdList->bindPipelineState( pso );
+
             cmdList->draw( 3 );
         }
     );

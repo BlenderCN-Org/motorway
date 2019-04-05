@@ -419,8 +419,6 @@ struct RenderPassLayoutDesc
         State           targetState;
         eImageFormat    viewFormat;
         float           clearValue[4];
-        uint32_t        layerIndex;
-        uint32_t        mipIndex;
     } attachements[24];
 };
 
@@ -438,6 +436,19 @@ struct PipelineStateDesc
     InputLayoutEntry                    inputLayout[8];
     ResourceListLayoutDesc              resourceListLayout;
     RenderPassLayoutDesc                renderPassLayout;
+};
+
+struct ResourceList
+{
+    // NOTE Type is set in the resource list binding
+    struct {
+        union {
+            Buffer*         buffer;
+            Sampler*        sampler;
+            Texture*        texture;
+            RenderTarget*   renderTarget; // NOTE Read-only
+        };
+    } resource[64] = { nullptr };
 };
 
 class RenderDevice
@@ -490,6 +501,8 @@ public:
 
     void                setDebugMarker( Texture* texture, const char* objectName );
     void                setDebugMarker( Buffer* buffer, const char* objectName );
+
+    void                updateResourceList( PipelineState* pipelineState, const ResourceList& resourceList );
 
 private:
     BaseAllocator*      memoryAllocator;

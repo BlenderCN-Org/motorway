@@ -114,9 +114,9 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
             cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );         
 
             // Pipeline State
-            cmdList->bindPipelineState( renderLinePso );
-            cmdList->bindResourceList( renderLinePso, resourceList );
             cmdList->bindRenderPass( renderLinePso, renderPass );
+            cmdList->bindResourceList( renderLinePso, resourceList );
+            cmdList->bindPipelineState( renderLinePso );
 
             // Bind buffers
             cmdList->bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );

@@ -35,7 +35,7 @@ void CommandList::begin()
     VkCommandBufferBeginInfo cmdBufferInfos = {};
     cmdBufferInfos.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     cmdBufferInfos.pNext = nullptr;
-    cmdBufferInfos.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    cmdBufferInfos.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     cmdBufferInfos.pInheritanceInfo = nullptr;
 
     vkBeginCommandBuffer( CommandListObject->cmdBuffer, &cmdBufferInfos );
@@ -43,12 +43,12 @@ void CommandList::begin()
 
 void CommandList::end()
 {
-    vkEndCommandBuffer( CommandListObject->cmdBuffer );
-}
+    if ( CommandListObject->isRenderPassInProgress ) {
+        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
+        CommandListObject->isRenderPassInProgress = false;
+    }
 
-RenderTarget* CommandList::getSwapchainBuffer()
-{
-    return nullptr;
+    vkEndCommandBuffer( CommandListObject->cmdBuffer );
 }
 
 void CommandList::draw( const unsigned int vertexCount, const unsigned int vertexOffset )
