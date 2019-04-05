@@ -107,16 +107,18 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
             renderDevice->updateResourceList( lightCullingPso, resourceList );
 
             CommandList& cmdList = renderDevice->allocateComputeCommandList();
-            cmdList.begin();
+            {
+                cmdList.begin();
 
-            cmdList.updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
-            cmdList.updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
+                cmdList.updateBuffer( lightsBuffer, &lights, sizeof( lights ) );
+                cmdList.updateBuffer( lightsClustersInfos, &sceneInfosBuffer, sizeof( SceneInfosBuffer ) );
 
-            cmdList.bindPipelineState( lightCullingPso );
-            
-            cmdList.dispatchCompute( 4, 4, 4 );
+                cmdList.bindPipelineState( lightCullingPso );
 
-            cmdList.end();
+                cmdList.dispatchCompute( 4u, 4u, 4u );
+
+                cmdList.end();
+            }
 
             renderDevice->submitCommandList( &cmdList );
         }

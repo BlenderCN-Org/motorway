@@ -174,7 +174,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             passData.shadowMapSampler = renderPipelineBuilder.allocateSampler( shadowComparisonSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Sampler* anisotropicSampler = renderPipelineResources.getSampler( passData.anisotropicSampler );
             Sampler* shadowMapSampler = renderPipelineResources.getSampler( passData.shadowMapSampler );
@@ -221,7 +221,10 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
-            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
+
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            cmdList.begin();
+            cmdList.updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
 
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
 
@@ -233,9 +236,9 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             vp.Height = static_cast<int>( scaledViewportSize.y );
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
-            cmdList->setViewport( vp );
+            cmdList.setViewport( vp );
 
-            cmdList->updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
+            cmdList.updateBuffer( cameraBuffer, cameraData, sizeof( CameraData ) );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0u, 0u };
@@ -252,8 +255,8 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
                 thinGBufferTarget
             };
             constexpr float CLEAR_VALUE[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            cmdList->clearColorRenderTargets( clearRenderTargets, 2u, CLEAR_VALUE );
-            cmdList->clearDepthStencilRenderTarget( zBufferTarget, 0.0f );
+            cmdList.clearColorRenderTargets( clearRenderTargets, 2u, CLEAR_VALUE );
+            cmdList.clearDepthStencilRenderTarget( zBufferTarget, 0.0f );
 
             const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
 
@@ -261,7 +264,7 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             instanceBufferData.StartVector = drawCmdBucket.instanceDataStartOffset;
             instanceBufferData.VectorPerInstance = drawCmdBucket.vectorPerInstance;
 
-            cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+            cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
                 if ( !isCapturingProbe )
@@ -271,18 +274,21 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 
 #if NYA_DEVBUILD
                 const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
-                cmdList->updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
+                cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
 
-                cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
-                cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+                cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                cmdList->drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
 
                 // Update vector buffer offset
                 instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
-                cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+                cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
             }
+
+            cmdList.end();
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

@@ -70,12 +70,12 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
             Buffer* screenBuffer = renderPipelineResources.getBuffer( passData.screenBuffer );
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
+            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
@@ -83,12 +83,12 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             resourceList.resource[2].buffer = instanceBuffer;
             resourceList.resource[3].buffer = vectorDataBuffer;
 
-            // RenderPass
-            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            cmdList.begin();
 
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
-            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
+            cmdList.updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
 
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
 
@@ -99,11 +99,11 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             vp.Height = static_cast<int>( cameraData->viewportSize.y );
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
-            cmdList->setViewport( vp );
+            cmdList.setViewport( vp );
 
             nyaMat4x4f orthoMatrix = nya::maths::MakeOrtho( 0.0f, cameraData->viewportSize.x, cameraData->viewportSize.y, 0.0f, -1.0f, 1.0f );
 
-            cmdList->updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
+            cmdList.updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
@@ -114,20 +114,23 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             instanceBufferData.StartVector = drawCmdBucket.instanceDataStartOffset;
             instanceBufferData.VectorPerInstance = drawCmdBucket.vectorPerInstance;
 
-            cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+            cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
                 drawCmd.infos.material->bind( cmdList, renderPass, resourceList );
 
-                cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
-                cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+                cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                cmdList->drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
 
                 // Update vector buffer offset
                 instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
-                cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+                cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
             }
+
+            cmdList.end();
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

@@ -131,24 +131,31 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
 
+            renderDevice->updateResourceList( g_BrightPassPipelineStateObject, resourceList );
+
             RenderPass renderPass;
             renderPass.attachement[0] = { inputTarget, 0, 0 };
             renderPass.attachement[1] = { renderTarget, 0, 0 };
 
-            cmdList->bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_BrightPassPipelineStateObject , resourceList );
-            cmdList->bindPipelineState( g_BrightPassPipelineStateObject );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_BrightPassPipelineStateObject );
 
-            cmdList->draw( 3 );
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -189,11 +196,12 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
+
+            PipelineState* pipelineStateObject = ( useKarisAverage ) ? g_KarisAveragePipelineStateObject : g_DownsamplePipelineStateObject;
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
@@ -202,17 +210,23 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
             renderPass.attachement[0] = { inputTarget, 0, 0 };
             renderPass.attachement[1] = { renderTarget, 0, 0 };
 
+            renderDevice->updateResourceList( pipelineStateObject, resourceList );
+
             const float downsample = ( 1.0f / downsampleFactor );
 
-            cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
 
-            PipelineState* pso = ( useKarisAverage ) ? g_KarisAveragePipelineStateObject : g_DownsamplePipelineStateObject;
+                cmdList.bindRenderPass( pipelineStateObject, renderPass );
+                cmdList.bindPipelineState( pipelineStateObject );
 
-            cmdList->bindRenderPass( pso, renderPass );
-            cmdList->bindResourceList( pso, resourceList );
-            cmdList->bindPipelineState( pso );
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
 
-            cmdList->draw( 3 );
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -256,12 +270,10 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             RenderTarget* renderTarget = renderPipelineResources.getRenderTarget( passData.output );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
-
-            Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-           
+            Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );       
             Buffer* upsampleBuffer = renderPipelineResources.getBuffer( passData.upsampleInfosBuffer );
 
             const float inputInverseScaleFactor = ( 1.0f / upsampleFactor );
@@ -272,8 +284,6 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
             upsampleInfos.inverseTextureDimensions.x = ( 1.0f / ( inputWidth * outputInverseScaleFactor ) );
             upsampleInfos.inverseTextureDimensions.y = ( 1.0f / ( inputHeight * outputInverseScaleFactor ) );
 
-            cmdList->updateBuffer( upsampleBuffer, &upsampleInfos, sizeof( UpsampleInfos ) );
-
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].buffer = upsampleBuffer;
@@ -281,14 +291,23 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
             RenderPass renderPass;
             renderPass.attachement[0] = { inputTarget, 0, 0 };
             renderPass.attachement[1] = { renderTarget, 0, 0 };
+            renderDevice->updateResourceList( g_UpsamplePipelineStateObject, resourceList );
 
-            cmdList->setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.updateBuffer( upsampleBuffer, &upsampleInfos, sizeof( UpsampleInfos ) );
 
-            cmdList->bindRenderPass( g_UpsamplePipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_UpsamplePipelineStateObject, resourceList );
-            cmdList->bindPipelineState( g_UpsamplePipelineStateObject );
+                cmdList.setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 
-            cmdList->draw( 3 );
+                cmdList.bindRenderPass( g_UpsamplePipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_UpsamplePipelineStateObject );
+
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

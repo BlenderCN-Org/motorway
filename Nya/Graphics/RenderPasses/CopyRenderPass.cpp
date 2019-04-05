@@ -54,26 +54,32 @@ ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t input
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
+            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].renderTarget = inputTarget;
 
-            // RenderPass
-            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
+            renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
-            cmdList->bindPipelineState( g_PipelineStateObject );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
 
-            cmdList->draw( 3 );
+                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_PipelineStateObject );
+
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -111,16 +117,14 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
+            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].renderTarget = inputTarget;
-
-            // RenderPass
-            RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
@@ -133,13 +137,21 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
 
-            cmdList->setViewport( vp );
+            renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
 
-            cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
-            cmdList->bindPipelineState( g_PipelineStateObject );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.setViewport( vp );
 
-            cmdList->draw( 3 );
+                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_PipelineStateObject );
+
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -168,25 +180,32 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget(passData.input);
+            RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
+            RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].renderTarget = inputTarget;
 
-            // RenderPass
-            RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
+            renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
-            cmdList->bindPipelineState( g_PipelineStateObject );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
 
-            cmdList->draw( 3 );
+                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_PipelineStateObject );
+
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 }

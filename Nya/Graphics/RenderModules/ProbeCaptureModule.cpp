@@ -179,12 +179,15 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
-
             Buffer* infosBuffer = renderPipelineResources.getBuffer( passData.passInfosBuffer );
+            RenderTarget* outputDiffuseTarget = renderPipelineResources.getPersitentRenderTarget( passData.outputDiffuse );
+            RenderTarget* outputSpecularTarget = renderPipelineResources.getPersitentRenderTarget( passData.outputSpecular );
+            RenderTarget* inputProbeArray = renderPipelineResources.getPersitentRenderTarget( passData.input );
 
             PassInfos convolutionParameters;
+
             switch ( probeCaptureStep % 6 ) {
             case 0:
                 convolutionParameters.CubeDirectionX = { 0, 0, -1 };
@@ -221,45 +224,46 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
                 convolutionParameters.CubeDirectionY = { 0, 1, 0 };
                 convolutionParameters.CubeDirectionZ = { 0, 0, -1 };
                 break;
-            };
+            }
+
             convolutionParameters.ProbeIndex = probeArrayIndex;
             convolutionParameters.Width = static_cast<float>( IBL_PROBE_DIMENSION >> mipLevel );
             convolutionParameters.RoughnessValue = mipLevel / nya::maths::max( 1.0f, std::log2( convolutionParameters.Width ) );
 
-            cmdList->updateBuffer( infosBuffer, &convolutionParameters, sizeof( PassInfos ) );
-
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].buffer = infosBuffer;
+            renderDevice->updateResourceList( convolutionPso, resourceList );
 
             // Viewport
             Viewport vp = {};
             vp.X = 0;
             vp.Y = 0;
-
             vp.Width = ( IBL_PROBE_DIMENSION >> mipLevel );
             vp.Height = ( IBL_PROBE_DIMENSION >> mipLevel );
-
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
-
-            cmdList->setViewport( vp );
-
-            // RenderPass
-            RenderTarget* outputDiffuseTarget = renderPipelineResources.getPersitentRenderTarget( passData.outputDiffuse );
-            RenderTarget* outputSpecularTarget = renderPipelineResources.getPersitentRenderTarget( passData.outputSpecular );
-            RenderTarget* inputProbeArray = renderPipelineResources.getPersitentRenderTarget( passData.input );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputDiffuseTarget, mipLevel, faceIndex };
             renderPass.attachement[1] = { outputSpecularTarget, mipLevel, faceIndex };
             renderPass.attachement[2] = { inputProbeArray, 0, 0 };
 
-            cmdList->bindRenderPass( convolutionPso, renderPass );
-            cmdList->bindResourceList( convolutionPso, resourceList );
-            cmdList->bindPipelineState( convolutionPso );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.setViewport( vp );
 
-            cmdList->draw( 4 );
+                cmdList.updateBuffer( infosBuffer, &convolutionParameters, sizeof( PassInfos ) );
+
+                cmdList.bindRenderPass( convolutionPso, renderPass );
+                cmdList.bindPipelineState( convolutionPso );
+
+                cmdList.draw( 4 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 }
@@ -291,11 +295,12 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+       [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
+            renderDevice->updateResourceList( convolutionPso, resourceList );
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
@@ -305,11 +310,17 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
             renderPass.attachement[0] = { outputTarget, 0, faceIndex };
             renderPass.attachement[1] = { inputTarget, 0, 0 };
 
-            cmdList->bindRenderPass( copyPso, renderPass );
-            cmdList->bindResourceList( copyPso, resourceList );
-            cmdList->bindPipelineState( copyPso );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.bindRenderPass( copyPso, renderPass );
+                cmdList.bindPipelineState( copyPso );
 
-            cmdList->draw( 3 );
+                cmdList.draw( 3 );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 }

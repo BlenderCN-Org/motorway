@@ -133,18 +133,9 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
                 passData.inputLastFrameTarget = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "LastFrameRenderTarget" ) );
             }
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             // ResourceList
             Buffer* resolveBuffer = renderPipelineResources.getBuffer( passData.resolveBuffer );
-
-            const CameraData* cameraData = renderPipelineResources.getMainCamera();
-
-            ResolveConstantBuffer resolveBufferData;
-            resolveBufferData.FilterSize = 2.0f;
-            resolveBufferData.SampleRadius = static_cast<int32_t>( ( resolveBufferData.FilterSize / 2.0f ) + 0.499f );
-            resolveBufferData.InputTextureDimension = ( cameraData->viewportSize * cameraData->imageQuality );
-            cmdList->updateBuffer( resolveBuffer, &resolveBufferData, sizeof( ResolveConstantBuffer ) );
-
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
 
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
@@ -152,27 +143,43 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
             RenderTarget* depthTarget = renderPipelineResources.getRenderTarget( passData.inputDepth );
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.inputVelocity );
 
-            ResourceList resourceList;
-            resourceList.resource[0].buffer = resolveBuffer;
-            resourceList.resource[1].buffer = autoExposureBuffer;
+            const CameraData* cameraData = renderPipelineResources.getMainCamera();
 
-            RenderPass renderPass;
-            renderPass.attachement[0] = { outputTarget, 0, 0 };
-            renderPass.attachement[1] = { inputTarget, 0, 0 };
-            renderPass.attachement[2] = { velocityTarget, 0, 0 };
-            renderPass.attachement[3] = { depthTarget, 0, 0 };
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
 
-            if ( enableTAA ) {
-                RenderTarget* lastFrameTarget = renderPipelineResources.getPersitentRenderTarget( passData.inputLastFrameTarget );
-                renderPass.attachement[4] = { lastFrameTarget, 0, 0 };
+                ResolveConstantBuffer resolveBufferData;
+                resolveBufferData.FilterSize = 2.0f;
+                resolveBufferData.SampleRadius = static_cast<int32_t>( ( resolveBufferData.FilterSize / 2.0f ) + 0.499f );
+                resolveBufferData.InputTextureDimension = ( cameraData->viewportSize * cameraData->imageQuality );
+                cmdList.updateBuffer( resolveBuffer, &resolveBufferData, sizeof( ResolveConstantBuffer ) );
+
+                ResourceList resourceList;
+                resourceList.resource[0].buffer = resolveBuffer;
+                resourceList.resource[1].buffer = autoExposureBuffer;
+
+                RenderPass renderPass;
+                renderPass.attachement[0] = { outputTarget, 0, 0 };
+                renderPass.attachement[1] = { inputTarget, 0, 0 };
+                renderPass.attachement[2] = { velocityTarget, 0, 0 };
+                renderPass.attachement[3] = { depthTarget, 0, 0 };
+
+                if ( enableTAA ) {
+                    RenderTarget* lastFrameTarget = renderPipelineResources.getPersitentRenderTarget( passData.inputLastFrameTarget );
+                    renderPass.attachement[4] = { lastFrameTarget, 0, 0 };
+                }
+
+                PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
+                cmdList.bindRenderPass( pso, renderPass );
+                cmdList.bindPipelineState( pso );
+
+                cmdList.draw( 3 );
+
+                cmdList.end();
             }
 
-            PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
-            cmdList->bindRenderPass( pso, renderPass );
-            cmdList->bindResourceList( pso, resourceList );
-            cmdList->bindPipelineState( pso );
-
-            cmdList->draw( 3 );
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

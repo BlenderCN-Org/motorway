@@ -79,7 +79,7 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
             Buffer* instanceBuffer = renderPipelineResources.getBuffer( passData.instanceBuffer );
@@ -103,15 +103,18 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             // Upload buffer data
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            cmdList.begin();
+
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();
-            cmdList->updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
+            cmdList.updateBuffer( vectorDataBuffer, vectorBuffer, sizeof( nyaVec4f ) * 1024 );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
-            cmdList->clearDepthStencilRenderTarget( outputTarget, 1.0f );
+            cmdList.clearDepthStencilRenderTarget( outputTarget, 1.0f );
 
             for ( int i = 0; i < CSM_SLICE_COUNT; i++ ) {
-                cmdList->setViewport( { CSM_SHADOW_MAP_DIMENSIONS * i, 0, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, 0.0f, 1.0f } );
+                cmdList.setViewport( { CSM_SHADOW_MAP_DIMENSIONS * i, 0, CSM_SHADOW_MAP_DIMENSIONS, CSM_SHADOW_MAP_DIMENSIONS, 0.0f, 1.0f } );
 
                 const auto& drawCmdBucket = renderPipelineResources.getDrawCmdBucket( DrawCommandKey::LAYER_DEPTH, static_cast<uint8_t>( DrawCommandKey::DEPTH_VIEWPORT_LAYER_CSM0 + i ) );
 
@@ -119,26 +122,29 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
                 instanceBufferData.StartVector = drawCmdBucket.instanceDataStartOffset;
                 instanceBufferData.VectorPerInstance = drawCmdBucket.vectorPerInstance;
 
-                cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+                cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
                 for ( const auto& drawCmd : drawCmdBucket ) {
                     drawCmd.infos.material->bindDepthOnly( cmdList, renderPass, resourceList );
 
 #if NYA_DEVBUILD
                     const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
-                    cmdList->updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
+                    cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
 
-                    cmdList->bindVertexBuffer( drawCmd.infos.vertexBuffer );
-                    cmdList->bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+                    cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                    cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                    cmdList->drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                    cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
 
                     // Update vector buffer offset
                     instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );
-                    cmdList->updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
+                    cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
                 }
             }
+
+            cmdList.end();
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

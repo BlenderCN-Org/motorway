@@ -98,7 +98,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             if ( useAutomaticExposure )
                 passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             // Update viewport (using image quality scaling)
             const CameraData* camera = renderPipelineResources.getMainCamera();
 
@@ -110,7 +110,6 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             vp.Height = static_cast<int>( scaledViewportSize.y );
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
-            cmdList->setViewport( vp );
 
             // Retrieve allocated resources
             Buffer* skyBuffer = renderPipelineResources.getBuffer( passData.parametersBuffer );
@@ -124,22 +123,19 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
                 sinf( sunVerticalAngle )
             );
 
-            cmdList->updateBuffer( skyBuffer, &parameters, sizeof( parameters ) );
-
             Buffer* cameraBuffer = renderPipelineResources.getBuffer( passData.cameraBuffer );
-            cmdList->updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
 
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
             Buffer* autoExposureBuffer = renderPipelineResources.getPersistentBuffer( passData.autoExposureBuffer );
-
-            // Pipeline State
-            PipelineState* pso = ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso;
 
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
+
+            // Pipeline State
+            PipelineState* pipelineStateObject = ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso;
 
             // Resource List
             ResourceList resourceList;
@@ -153,12 +149,26 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             if ( useAutomaticExposure )
                 resourceList.resource[6].buffer = autoExposureBuffer;
 
-            // Bind resources to the pipeline
-            cmdList->bindRenderPass( pso, renderPass );
-            cmdList->bindResourceList( pso, resourceList );
-            cmdList->bindPipelineState( pso );
+            renderDevice->updateResourceList( pipelineStateObject, resourceList );
 
-            cmdList->draw( 3 );
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+
+                cmdList.setViewport( vp );
+
+                cmdList.updateBuffer( skyBuffer, &parameters, sizeof( parameters ) );
+                cmdList.updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
+
+                cmdList.bindRenderPass( pipelineStateObject, renderPass );
+                cmdList.bindPipelineState( pipelineStateObject );
+
+                cmdList.draw( 3 );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

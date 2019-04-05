@@ -100,7 +100,7 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
             // Passthrough rendertarget
             passData.output = renderPipelineBuilder.readRenderTarget( output );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
@@ -116,29 +116,38 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
                 0u,
                 0u
             };
-            cmdList->updateBuffer( viewportBuffer, &rtDimensions, sizeof( nyaVec4u ) );
 
             ResourceList resourceList;
             resourceList.resource[0].buffer = viewportBuffer;
             resourceList.resource[1].sampler = bilinearSampler;
             resourceList.resource[2].texture = fontAtlas;
+            renderDevice->updateResourceList( renderTextPso, resourceList );
 
-            RenderPass renderPass;
-            renderPass.attachement[0] = { outputTarget, 0, 0 };
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
+                cmdList.updateBuffer( viewportBuffer, &rtDimensions, sizeof( nyaVec4u ) );
 
-            // Update vertex buffer content
-            cmdList->updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferOffset ) * sizeof( float ) );
+                RenderPass renderPass;
+                renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            // Bind buffers
-            cmdList->bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
-            cmdList->bindIndiceBuffer( glyphIndiceBuffer );
+                // Update vertex buffer content
+                cmdList.updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferOffset ) * sizeof( float ) );
 
-            // Pipeline State
-            cmdList->bindRenderPass( renderTextPso, renderPass );
-            cmdList->bindResourceList( renderTextPso, resourceList );
-            cmdList->bindPipelineState( renderTextPso );
+                // Bind buffers
+                cmdList.bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
+                cmdList.bindIndiceBuffer( glyphIndiceBuffer );
 
-            cmdList->drawIndexed( static_cast<uint32_t>( indiceCount ) );
+                // Pipeline State
+                cmdList.bindRenderPass( renderTextPso, renderPass );
+                cmdList.bindPipelineState( renderTextPso );
+
+                cmdList.drawIndexed( static_cast<uint32_t>( indiceCount ) );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
 
             // Swap buffers
             vertexBufferIndex = ( vertexBufferIndex == 0 ) ? 1 : 0;

@@ -54,23 +54,32 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
 
             passData.bilinearSampler = renderPipelineBuilder.allocateSampler( bilinearSamplerDesc );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
-            RenderTarget* outputTarget = cmdList->getSwapchainBuffer();
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
+            RenderTarget* outputTarget = renderDevice->getSwapchainBuffer();
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
-            ResourceList resourceList;
-            resourceList.resource[0].sampler = bilinearSampler;
-            resourceList.resource[1].buffer = inputBuffer;
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
 
-            RenderPass renderPass;
-            renderPass.attachement[0] = { outputTarget, 0, 0 };
+                ResourceList resourceList;
+                resourceList.resource[0].sampler = bilinearSampler;
+                resourceList.resource[1].buffer = inputBuffer;
+                renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
 
-            cmdList->bindRenderPass( g_PipelineStateObject, renderPass );
-            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
-            cmdList->bindPipelineState( g_PipelineStateObject );
+                RenderPass renderPass;
+                renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            cmdList->draw( 3 );
+                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
+                cmdList.bindPipelineState( g_PipelineStateObject );
+
+                cmdList.draw( 3 );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 }

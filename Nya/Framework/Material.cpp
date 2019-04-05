@@ -496,28 +496,29 @@ const nyaString_t& Material::getName() const
     return name;
 }
 
-void Material::bind( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bind( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
-    cmdList->bindPipelineState( defaultPipelineState );
+    cmdList.bindRenderPass( defaultPipelineState, renderPass );
+    cmdList.bindPipelineState( defaultPipelineState );
     bindDefaultTextureSet( resourceList );
 
-    cmdList->bindRenderPass( defaultPipelineState, renderPass );
-    cmdList->bindResourceList( defaultPipelineState, resourceList );
+   // cmdList->bindResourceList( defaultPipelineState, resourceList );
 }
 
-void Material::bindProbeCapture( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bindProbeCapture( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
-    cmdList->bindRenderPass( probeCapturePipelineState, renderPass );
+    cmdList.bindRenderPass( probeCapturePipelineState, renderPass );
+    cmdList.bindPipelineState( probeCapturePipelineState );
 
     bindDefaultTextureSet( resourceList );
 
-    cmdList->bindResourceList( probeCapturePipelineState, resourceList );
-    cmdList->bindPipelineState( probeCapturePipelineState );
+    //cmdList-bindResourceList( probeCapturePipelineState, resourceList );
 }
 
-void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bindDepthOnly( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
 {
-    cmdList->bindRenderPass( depthOnlyPipelineState, renderPass );
+    cmdList.bindRenderPass( depthOnlyPipelineState, renderPass );
+    cmdList.bindPipelineState( depthOnlyPipelineState );
 
     // 0 -> Output RenderTarget
     int32_t textureBindIndex = 4;
@@ -527,8 +528,7 @@ void Material::bindDepthOnly( CommandList* cmdList, RenderPass& renderPass, Reso
         textureBindIndex++;
     }
 
-    cmdList->bindResourceList( depthOnlyPipelineState, resourceList );
-    cmdList->bindPipelineState( depthOnlyPipelineState );
+    //cmdList->bindResourceList( depthOnlyPipelineState, resourceList );
 }
 
 void Material::setCustomFlagset( const std::string& customFlagset )

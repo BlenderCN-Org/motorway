@@ -84,7 +84,7 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
 
             passData.screenBuffer = renderPipelineBuilder.allocateBuffer( screenBufferDesc, SHADER_STAGE_VERTEX );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             // Render Pass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
@@ -102,27 +102,36 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
             vp.Height = static_cast<int>( cameraData->viewportSize.y );
             vp.MinDepth = 0.0f;
             vp.MaxDepth = 1.0f;
-            cmdList->setViewport( vp );
 
             nyaMat4x4f orthoMatrix = nya::maths::MakeOrtho( 0.0f, cameraData->viewportSize.x, cameraData->viewportSize.y, 0.0f, -1.0f, 1.0f );
 
-            cmdList->updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
-
             ResourceList resourceList;
             resourceList.resource[0].buffer = screenBuffer;
+            renderDevice->updateResourceList( renderLinePso, resourceList );
 
-            cmdList->updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );         
+            CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
+            {
+                cmdList.begin();
 
-            // Pipeline State
-            cmdList->bindRenderPass( renderLinePso, renderPass );
-            cmdList->bindResourceList( renderLinePso, resourceList );
-            cmdList->bindPipelineState( renderLinePso );
+                cmdList.setViewport( vp );
 
-            // Bind buffers
-            cmdList->bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
-            cmdList->bindIndiceBuffer( lineIndiceBuffer );
+                cmdList.updateBuffer( screenBuffer, &orthoMatrix, sizeof( nyaMat4x4f ) );
+                cmdList.updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );
 
-            cmdList->draw( static_cast<unsigned int>( indiceCount ) );
+                // Pipeline State
+                cmdList.bindRenderPass( renderLinePso, renderPass );
+                cmdList.bindPipelineState( renderLinePso );
+
+                // Bind buffers
+                cmdList.bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
+                cmdList.bindIndiceBuffer( lineIndiceBuffer );
+
+                cmdList.draw( static_cast<unsigned int>( indiceCount ) );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
 
             // Swap buffers
             vertexBufferIndex = ( vertexBufferIndex == 0 ) ? 1 : 0;

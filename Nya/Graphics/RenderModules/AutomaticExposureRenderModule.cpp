@@ -173,22 +173,31 @@ MutableResHandle_t AutomaticExposureModule::addBinComputePass( RenderPipeline* r
 
             passData.screenInfosBuffer = renderPipelineBuilder.allocateBuffer( screenInfosBuffer, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             // RenderPass
             RenderTarget* inputTarget = renderPipelineResources.getRenderTarget( passData.input );
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
             Buffer* screenSizeBuffer = renderPipelineResources.getBuffer( passData.screenInfosBuffer );
-            cmdList->updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
 
             ResourceList resourceList;
             resourceList.resource[0].buffer = outputBuffer;
             resourceList.resource[1].buffer = screenSizeBuffer;
             resourceList.resource[2].renderTarget = inputTarget;
+            renderDevice->updateResourceList( binComputePso, resourceList );
 
-            cmdList->bindPipelineState( binComputePso );
-            cmdList->bindResourceList( binComputePso, resourceList );
+            CommandList& cmdList = renderDevice->allocateComputeCommandList();
+            {
+                cmdList.begin();
 
-            cmdList->dispatchCompute( 1u, static_cast<unsigned int>( ceilf( screenSize.y / 4.0f ) ), 1u );
+                cmdList.updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
+                cmdList.bindPipelineState( binComputePso );
+
+                cmdList.dispatchCompute( 1u, static_cast<unsigned int>( ceilf( screenSize.y / 4.0f ) ), 1u );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -227,22 +236,30 @@ MutableResHandle_t AutomaticExposureModule::addHistogramMergePass( RenderPipelin
 
             passData.screenInfosBuffer = renderPipelineBuilder.allocateBuffer( rtDimensionBuffer, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
 
             Buffer* screenSizeBuffer = renderPipelineResources.getBuffer( passData.screenInfosBuffer );
-            cmdList->updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
 
             ResourceList resourceList;
             resourceList.resource[0].buffer = outputBuffer;
             resourceList.resource[1].buffer = inputBuffer;
             resourceList.resource[2].buffer = screenSizeBuffer;
+            renderDevice->updateResourceList( mergeHistoPso, resourceList );
 
-            cmdList->bindPipelineState( mergeHistoPso );
-            cmdList->bindResourceList( mergeHistoPso, resourceList );
+            CommandList& cmdList = renderDevice->allocateComputeCommandList();
+            {
+                cmdList.begin();
 
-            cmdList->dispatchCompute( 128u, 1u, 1u );
+                cmdList.updateBuffer( screenSizeBuffer, &screenSize, sizeof( nyaVec2u ) );
+                cmdList.bindPipelineState( mergeHistoPso );
+
+                cmdList.dispatchCompute( 128u, 1u, 1u );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
@@ -274,12 +291,11 @@ ResHandle_t AutomaticExposureModule::addExposureComputePass( RenderPipeline* ren
 
             passData.parametersBuffer = renderPipelineBuilder.allocateBuffer( parametersBufferDesc, SHADER_STAGE_COMPUTE );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
 
             Buffer* parametersBuffer = renderPipelineResources.getBuffer( passData.parametersBuffer );
             parameters._delta_time = renderPipelineResources.getDeltaTime() / 1000.0f;
-            cmdList->updateBuffer( parametersBuffer, &parameters, sizeof( parameters ) );
 
             // Finally, compute auto exposure infos
             Buffer* bufferToRead = renderPipelineResources.getPersistentBuffer( passData.lastFrameOutput );
@@ -290,11 +306,20 @@ ResHandle_t AutomaticExposureModule::addExposureComputePass( RenderPipeline* ren
             resourceList.resource[1].buffer = bufferToRead;
             resourceList.resource[2].buffer = inputBuffer;
             resourceList.resource[3].buffer = parametersBuffer;
+            renderDevice->updateResourceList( tileHistoComputePso, resourceList );
 
-            cmdList->bindPipelineState( tileHistoComputePso );
-            cmdList->bindResourceList( tileHistoComputePso, resourceList );
+            CommandList& cmdList = renderDevice->allocateComputeCommandList();
+            {
+                cmdList.begin();
 
-            cmdList->dispatchCompute( 1u, 1u, 1u );
+                cmdList.updateBuffer( parametersBuffer, &parameters, sizeof( parameters ) );
+                cmdList.bindPipelineState( tileHistoComputePso );
+
+                cmdList.dispatchCompute( 1u, 1u, 1u );
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 

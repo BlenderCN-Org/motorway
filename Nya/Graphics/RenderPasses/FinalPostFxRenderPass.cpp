@@ -53,7 +53,7 @@ ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_
             
             passData.autoExposureBuffer = renderPipelineBuilder.retrievePersistentBuffer( NYA_STRING_HASH( "AutoExposure/ReadBuffer" ) );
         },
-        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, CommandList* cmdList ) {
+        [=]( const PassData& passData, const RenderPipelineResources& renderPipelineResources, RenderDevice* renderDevice ) {
             const Viewport* viewport = renderPipelineResources.getMainViewport();
 
             Buffer* outputBuffer = renderPipelineResources.getBuffer( passData.output );
@@ -67,10 +67,19 @@ ResHandle_t AddFinalPostFxRenderPass( RenderPipeline* renderPipeline, ResHandle_
             resourceList.resource[2].renderTarget = inputTarget;
             resourceList.resource[3].renderTarget = inputBloomTarget;
 
-            cmdList->bindPipelineState( g_PipelineStateObject );
-            cmdList->bindResourceList( g_PipelineStateObject, resourceList );
+            renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
 
-            cmdList->dispatchCompute( static_cast<uint32_t>( viewport->Width ) / 16u, static_cast<uint32_t>( viewport->Height ) / 16u, 1u );
+            CommandList& cmdList = renderDevice->allocateComputeCommandList();
+            {
+                cmdList.begin();
+
+                cmdList.bindPipelineState( g_PipelineStateObject );
+                cmdList.dispatchCompute( static_cast<uint32_t>( viewport->Width ) / 16u, static_cast<uint32_t>( viewport->Height ) / 16u, 1u );
+
+                cmdList.end();
+            }
+
+            renderDevice->submitCommandList( &cmdList );
         }
     );
 
