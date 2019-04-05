@@ -41,9 +41,15 @@ GUIPanel::~GUIPanel()
     canBeDragged = false;
 }
 
-void GUIPanel::onMouseButtonDown()
+void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
 {
-    canBeDragged = true;
+    auto panelMin = Position - Size;
+    auto panelMax = Position + Size;
+
+    const bool isMouseInsideX = ( mouseX >= panelMin.x && mouseX <= panelMax.x );
+    const bool isMouseInsideY = ( mouseY >= panelMin.y && mouseY <= panelMax.y );
+
+    canBeDragged = ( isMouseInsideX && isMouseInsideY );
 }
 
 void GUIPanel::onMouseButtonUp()

@@ -149,7 +149,7 @@ void RegisterInputContexts()
 
         panelTest.onMouseCoordinatesUpdate( rawX, rawY );
         if ( input.States.find( NYA_STRING_HASH( "MouseClick" ) ) != input.States.end() ) {
-            panelTest.onMouseButtonDown();
+            panelTest.onMouseButtonDown( rawX, rawY );
         } else {
             panelTest.onMouseButtonUp();
         }

@@ -40,7 +40,7 @@ public:
                 GUIPanel& operator = ( GUIPanel& widget ) = default;
                 ~GUIPanel();
 
-    void        onMouseButtonDown();
+    void        onMouseButtonDown( const double mouseX, const double mouseY );
     void        onMouseButtonUp();
     void        onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
 
