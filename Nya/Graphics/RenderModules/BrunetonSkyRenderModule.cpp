@@ -146,7 +146,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             resourceList.resource[4].texture = irradianceTexture;
             resourceList.resource[5].texture = transmittanceTexture;
 
-            if ( useAutomaticExposure )
+            if ( renderSunDisk )
                 resourceList.resource[6].buffer = autoExposureBuffer;
 
             renderDevice->updateResourceList( pipelineStateObject, resourceList );
@@ -218,6 +218,7 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     // Allocate and cache pipeline state
     skyRenderPso = renderDevice->createPipelineState( psoDesc );
 
+    psoDesc.resourceListLayout.resources[6] = { 0, 0, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_FIXED_EXPOSURE", SHADER_STAGE_PIXEL );
     skyRenderNoSunFixedExposurePso = renderDevice->createPipelineState( psoDesc );
 
