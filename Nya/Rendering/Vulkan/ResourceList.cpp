@@ -64,7 +64,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             VkDescriptorImageInfo& descriptorImageInfo = descriptorImageInfos[i];
             descriptorImageInfo.imageView = resourceList.resource[i].renderTarget->textureRenderTargetView;
-            descriptorImageInfo.imageLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            descriptorImageInfo.imageLayout = VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
 
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
             samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -80,7 +80,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
             VkDescriptorImageInfo& descriptorImageInfo = descriptorImageInfos[i];
             descriptorImageInfo.imageView = resourceList.resource[i].texture->imageView;
-            descriptorImageInfo.imageLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            descriptorImageInfo.imageLayout = VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
             samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
