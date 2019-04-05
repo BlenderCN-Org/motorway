@@ -300,7 +300,7 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
 
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
-            renderDevice->updateResourceList( convolutionPso, resourceList );
+            renderDevice->updateResourceList( copyPso, resourceList );
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getPersitentRenderTarget( passData.output );
