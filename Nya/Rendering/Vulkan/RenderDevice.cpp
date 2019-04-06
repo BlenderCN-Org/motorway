@@ -201,6 +201,7 @@ RenderContext::~RenderContext()
 {
     vkDestroyDescriptorPool( device, descriptorPool, nullptr );
 
+    vkDestroySemaphore( device, presentSemaphore, nullptr );
     vkDestroySwapchainKHR( device, swapChain, nullptr );
     vkDestroySurfaceKHR( instance, displaySurface, nullptr );
     vkDestroyInstance( instance, nullptr );
@@ -687,6 +688,13 @@ void RenderDevice::create( DisplaySurface* surface )
     descriptorPoolDesc.poolSizeCount = 7u;
 
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->descriptorPool );
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo;
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    semaphoreCreateInfo.pNext = nullptr;
+    semaphoreCreateInfo.flags = 0u;
+
+    vkCreateSemaphore( renderContext->device, &semaphoreCreateInfo, nullptr, &renderContext->presentSemaphore );
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )
@@ -739,15 +747,15 @@ RenderTarget* RenderDevice::getSwapchainBuffer()
 
 void RenderDevice::present()
 {
-    vkAcquireNextImageKHR( renderContext->device, renderContext->swapChain, std::numeric_limits<uint64_t>::max(), nullptr, VK_NULL_HANDLE, &renderContext->currentFrameIndex );
+    vkAcquireNextImageKHR( renderContext->device, renderContext->swapChain, std::numeric_limits<uint64_t>::max(), renderContext->presentSemaphore, VK_NULL_HANDLE, &renderContext->currentFrameIndex );
 
     VkSwapchainKHR swapChains[1] = { renderContext->swapChain };
 
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
-    presentInfo.waitSemaphoreCount = 0;
-    presentInfo.pWaitSemaphores = nullptr;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderContext->presentSemaphore;
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains;
     presentInfo.pImageIndices = &renderContext->currentFrameIndex;

@@ -85,5 +85,7 @@ struct RenderContext
 
     VkCommandPool                       graphicsCommandPool;
     VkCommandPool                       computeCommandPool;
+
+    VkSemaphore                         presentSemaphore;
 };
 #endif
