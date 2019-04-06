@@ -59,14 +59,17 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
             Buffer* inputBuffer = renderPipelineResources.getBuffer( passData.input );
             Sampler* bilinearSampler = renderPipelineResources.getSampler( passData.bilinearSampler );
 
+            ResourceList resourceList;
+            resourceList.resource[0].sampler = bilinearSampler;
+            resourceList.resource[1].buffer = inputBuffer;
+            renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
+
+            const Viewport* pipelineDimensions = renderPipelineResources.getMainViewport();
+
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
-
-                ResourceList resourceList;
-                resourceList.resource[0].sampler = bilinearSampler;
-                resourceList.resource[1].buffer = inputBuffer;
-                renderDevice->updateResourceList( g_PipelineStateObject, resourceList );
+                cmdList.setViewport( *pipelineDimensions );
 
                 RenderPass renderPass;
                 renderPass.attachement[0] = { outputTarget, 0, 0 };

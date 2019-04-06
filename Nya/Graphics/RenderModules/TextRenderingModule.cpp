@@ -128,6 +128,8 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
                 cmdList.begin();
                 cmdList.updateBuffer( viewportBuffer, &rtDimensions, sizeof( nyaVec4u ) );
 
+                cmdList.setViewport( *pipelineDimensions );
+
                 RenderPass renderPass;
                 renderPass.attachement[0] = { outputTarget, 0, 0 };
 

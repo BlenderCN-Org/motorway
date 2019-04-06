@@ -145,6 +145,22 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
             const CameraData* cameraData = renderPipelineResources.getMainCamera();
 
+            nyaVec2f scaledViewportSize = cameraData->viewportSize * cameraData->imageQuality;
+            Viewport vp;
+            vp.X = 0;
+            vp.Y = 0;
+            vp.Width = static_cast<int>( scaledViewportSize.x );
+            vp.Height = static_cast<int>( scaledViewportSize.y );
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
+
+            PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
+
+            ResourceList resourceList;
+            resourceList.resource[0].buffer = resolveBuffer;
+            resourceList.resource[1].buffer = autoExposureBuffer;
+            renderDevice->updateResourceList( pso, resourceList );
+
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
@@ -155,9 +171,7 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
                 resolveBufferData.InputTextureDimension = ( cameraData->viewportSize * cameraData->imageQuality );
                 cmdList.updateBuffer( resolveBuffer, &resolveBufferData, sizeof( ResolveConstantBuffer ) );
 
-                ResourceList resourceList;
-                resourceList.resource[0].buffer = resolveBuffer;
-                resourceList.resource[1].buffer = autoExposureBuffer;
+                cmdList.setViewport( vp );
 
                 RenderPass renderPass;
                 renderPass.attachement[0] = { outputTarget, 0, 0 };
@@ -170,7 +184,6 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
                     renderPass.attachement[4] = { lastFrameTarget, 0, 0 };
                 }
 
-                PipelineState* pso = GetPermutationPSO( sampleCount, enableTAA );
                 cmdList.bindRenderPass( pso, renderPass );
                 cmdList.bindPipelineState( pso );
 

@@ -194,9 +194,13 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
+            const Viewport* viewport = renderPipelineResources.getMainViewport();
+
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
+
+                cmdList.setViewport( *viewport );
 
                 cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
                 cmdList.bindPipelineState( g_PipelineStateObject );

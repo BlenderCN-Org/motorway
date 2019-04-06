@@ -145,9 +145,13 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
             renderPass.attachement[0] = { inputTarget, 0, 0 };
             renderPass.attachement[1] = { renderTarget, 0, 0 };
 
+            const Viewport* viewport = renderPipelineResources.getMainViewport();
+
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
+
+                cmdList.setViewport( *viewport );
                 cmdList.bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
                 cmdList.bindPipelineState( g_BrightPassPipelineStateObject );
 
