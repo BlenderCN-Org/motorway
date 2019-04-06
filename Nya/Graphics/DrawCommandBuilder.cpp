@@ -243,8 +243,6 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
 
         worldRenderer->probeCaptureModule->importResourcesToPipeline( &renderPipeline );
 
-        renderPipeline.beginPassGroup();
-        {
             auto lightClustersData = lightGrid->updateClusters( &renderPipeline );
 
             auto sunShadowMap = AddCSMCapturePass( &renderPipeline );
@@ -270,8 +268,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
             
             auto postFxRenderTarget = AddFinalPostFxRenderPass( &renderPipeline, resolvedTarget, blurPyramid );
             AddPresentRenderPass( &renderPipeline, postFxRenderTarget );
-        }
-
+        
         // CSM Capture
         // TODO Check if we can skip CSM capture depending on sun orientation?
         const DirectionalLightData* sunLight = lightGrid->getDirectionalLightData();
@@ -354,8 +351,6 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
             buildMeshDrawCmds( worldRenderer, &probeCamera, static_cast< uint8_t >( cameraIdx ), DrawCommandKey::LAYER_WORLD, DrawCommandKey::WORLD_VIEWPORT_LAYER_DEFAULT );
         }
 
-        renderPipeline.beginPassGroup();
-        {
             auto faceRenderTarget = worldRenderer->SkyRenderModule->renderSky( &renderPipeline, false, false );
 
             // Capture World
@@ -370,8 +365,7 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
             }
 
             worldRenderer->probeCaptureModule->saveCapturedProbeFace( &renderPipeline, faceRenderTarget, cmd->CommandInfos.EnvProbeArrayIndex, cmd->CommandInfos.Step );
-        }
-
+        
         cameraIdx++;
 
         probeCaptureCmdAllocator->free( cmd );
@@ -382,11 +376,8 @@ void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightG
         RenderPipeline& renderPipeline = worldRenderer->allocateRenderPipeline( { 0, 0, IBL_PROBE_DIMENSION, IBL_PROBE_DIMENSION, 0.0f, 1.0f }, nullptr );
         worldRenderer->probeCaptureModule->importResourcesToPipeline( &renderPipeline );
 
-        renderPipeline.beginPassGroup();
-        {
             worldRenderer->probeCaptureModule->convoluteProbeFace( &renderPipeline, cmd->CommandInfos.EnvProbeArrayIndex, cmd->CommandInfos.Step, cmd->CommandInfos.MipIndex );
-        }
-
+        
         cameraIdx++;
 
         probeConvolutionCmdAllocator->free( cmd );
