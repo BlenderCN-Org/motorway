@@ -17,9 +17,9 @@ void LoadCachedResourcesPP( RenderDevice* renderDevice, ShaderCache* shaderCache
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
-    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
+    psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::SWAPCHAIN_BUFFER;
     psoDesc.renderPassLayout.attachements[0].targetState = RenderPassLayoutDesc::DONT_CARE;
-    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.renderPassLayout.attachements[0].viewFormat = eImageFormat::IMAGE_FORMAT_B8G8R8A8_UNORM;
 
     psoDesc.resourceListLayout.resources[0] = { 0u, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
     psoDesc.resourceListLayout.resources[1] = { 0u, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };

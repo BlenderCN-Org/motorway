@@ -417,6 +417,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
             }
         } break;
 
+        case RenderPassLayoutDesc::SWAPCHAIN_BUFFER:
         case RenderPassLayoutDesc::WRITE:
             renderPass.clearTarget[renderPass.rtvCount] = ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE );
             memcpy( renderPass.clearValue[renderPass.rtvCount], attachment.clearValue, sizeof( FLOAT ) * 4 );

@@ -105,7 +105,7 @@ static constexpr VkDescriptorType VK_DT[ResourceListLayoutDesc::RESOURCE_LIST_RE
 {
     VK_DESCRIPTOR_TYPE_SAMPLER,
     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+    VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, // VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
     VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
     VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
@@ -116,11 +116,11 @@ static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RES
 {
     0u,
     64u,
-    192u,
+    192u, // 192u,
     128u,
-    384u,
-    192u,
     256u,
+    384u,
+    320u,
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
@@ -393,12 +393,13 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         vertexInputBindingDesc.stride = vertexStride;
         vertexInputBindingDesc.inputRate = ( description.inputLayout[0].instanceCount ) > 1u ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
 
+        bool needVertexBinding = ( description.inputLayout[0].semanticName != nullptr );
         VkPipelineVertexInputStateCreateInfo vertexInputStateDesc;
         vertexInputStateDesc.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInputStateDesc.pNext = nullptr;
         vertexInputStateDesc.flags = 0u;
-        vertexInputStateDesc.vertexBindingDescriptionCount = 1u;
-        vertexInputStateDesc.pVertexBindingDescriptions = &vertexInputBindingDesc;
+        vertexInputStateDesc.vertexBindingDescriptionCount = ( needVertexBinding ) ? 1u : 0u;
+        vertexInputStateDesc.pVertexBindingDescriptions = ( needVertexBinding ) ? &vertexInputBindingDesc : nullptr;
         vertexInputStateDesc.vertexAttributeDescriptionCount = i;
         vertexInputStateDesc.pVertexAttributeDescriptions = vertexInputAttributeDesc;
 
@@ -488,6 +489,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentCount++;
             } break;
 
+            case RenderPassLayoutDesc::SWAPCHAIN_BUFFER:
             case RenderPassLayoutDesc::WRITE: {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
@@ -502,8 +504,13 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-                attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                if ( attachment.bindMode == RenderPassLayoutDesc::SWAPCHAIN_BUFFER ) {
+                    attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                } else {
+                    attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                }
 
                 if ( attachment.targetState != RenderPassLayoutDesc::DONT_CARE )
                     memcpy( &pipelineState->clearValues[attachmentCount], attachment.clearValue, sizeof( float ) * 4 );
