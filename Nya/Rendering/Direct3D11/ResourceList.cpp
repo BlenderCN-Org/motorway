@@ -36,7 +36,7 @@
 
 using namespace nya::rendering;
 
-void CommandList::bindResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
+void RenderDevice::updateResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
 {
     for ( int i = 0; i < pipelineState->resourceList.resourceToBindCount; i++ ) {
         auto& resource = pipelineState->resourceList.resources[i];
@@ -68,40 +68,5 @@ void CommandList::bindResourceList( PipelineState* pipelineState, const Resource
             break;
         }
     }
-
-    auto& resourceListLayout = pipelineState->resourceList;
-
-    // For extra-safety, unbind SRV resources prior to UAV bindings
-    if ( resourceListLayout.uavBuffersBindCount != 0 ) {
-        static constexpr ID3D11ShaderResourceView* NO_SRV[20] = { ( ID3D11ShaderResourceView* )nullptr };
-        static constexpr ID3D11RenderTargetView* NO_RTV[8] = { (ID3D11RenderTargetView*)nullptr };
-        CommandListObject->deferredContext->OMSetRenderTargets( 8u, NO_RTV, nullptr );
-
-        CommandListObject->deferredContext->VSSetShaderResources( 0, 20, NO_SRV );
-        CommandListObject->deferredContext->HSSetShaderResources( 0, 20, NO_SRV );
-        CommandListObject->deferredContext->DSSetShaderResources( 0, 20, NO_SRV );
-        CommandListObject->deferredContext->PSSetShaderResources( 0, 20, NO_SRV );
-        CommandListObject->deferredContext->CSSetShaderResources( 0, 20, NO_SRV );
-    }
-
-    CommandListObject->deferredContext->CSSetUnorderedAccessViews( 0, 7, resourceListLayout.uavBuffers, nullptr );
-
-    CommandListObject->deferredContext->VSSetSamplers( 0, 16, resourceListLayout.samplers.vertexStage );
-    CommandListObject->deferredContext->HSSetSamplers( 0, 16, resourceListLayout.samplers.hullStage );
-    CommandListObject->deferredContext->DSSetSamplers( 0, 16, resourceListLayout.samplers.domainStage );
-    CommandListObject->deferredContext->PSSetSamplers( 0, 16, resourceListLayout.samplers.pixelStage );
-    CommandListObject->deferredContext->CSSetSamplers( 0, 16, resourceListLayout.samplers.computeStage );
-
-    CommandListObject->deferredContext->VSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.vertexStage );
-    CommandListObject->deferredContext->HSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.hullStage );
-    CommandListObject->deferredContext->DSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.domainStage );
-    CommandListObject->deferredContext->PSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.pixelStage );
-    CommandListObject->deferredContext->CSSetConstantBuffers( 0, 14, resourceListLayout.constantBuffers.computeStage );
-
-    CommandListObject->deferredContext->VSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.vertexStage );
-    CommandListObject->deferredContext->HSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.hullStage );
-    CommandListObject->deferredContext->DSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.domainStage );
-    CommandListObject->deferredContext->PSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.pixelStage );
-    CommandListObject->deferredContext->CSSetShaderResources( 0, 20, resourceListLayout.shaderResourceViews.computeStage );
 }
 #endif
