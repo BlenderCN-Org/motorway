@@ -1,6 +1,6 @@
 #ifndef __SCENE_INFOS_H__
 #define __SCENE_INFOS_H__ 1
-cbuffer SceneInfos : register( b1 )
+cbuffer SceneInfos : register( b4 )
 {
 	float3	g_ClustersScale;
 	float3	g_ClustersInverseScale;

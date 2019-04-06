@@ -235,7 +235,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
         defaultPipelineStateDesc.resourceListLayout.resources[2] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
         defaultPipelineStateDesc.resourceListLayout.resources[3] = { 0, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
         defaultPipelineStateDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-        defaultPipelineStateDesc.resourceListLayout.resources[5] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+        defaultPipelineStateDesc.resourceListLayout.resources[5] = { 4, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
         defaultPipelineStateDesc.resourceListLayout.resources[6] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
         defaultPipelineStateDesc.resourceListLayout.resources[7] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
         defaultPipelineStateDesc.resourceListLayout.resources[8] = { 9, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
