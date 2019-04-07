@@ -674,7 +674,8 @@ void RenderDevice::create( DisplaySurface* surface )
     descriptorPoolDesc.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     descriptorPoolDesc.maxSets = 64u;
 
-    VkDescriptorPoolSize descriptorPoolSizes[7] = {
+    static constexpr uint32_t DESCRIPTOR_POOL_COUNT = 8u;
+    VkDescriptorPoolSize descriptorPoolSizes[DESCRIPTOR_POOL_COUNT] = {
         { VK_DESCRIPTOR_TYPE_SAMPLER, 64u },
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 64u },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64u },
@@ -682,10 +683,11 @@ void RenderDevice::create( DisplaySurface* surface )
         { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 64u },
         { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 64u },
         { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 64u },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 64u },
     };
 
     descriptorPoolDesc.pPoolSizes = descriptorPoolSizes;
-    descriptorPoolDesc.poolSizeCount = 7u;
+    descriptorPoolDesc.poolSizeCount = DESCRIPTOR_POOL_COUNT;
 
     vkCreateDescriptorPool( renderContext->device, &descriptorPoolDesc, nullptr, &renderContext->descriptorPool );
 
