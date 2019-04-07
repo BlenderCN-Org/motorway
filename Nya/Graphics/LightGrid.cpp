@@ -134,7 +134,7 @@ void LightGrid::loadCachedResources( RenderDevice* renderDevice, ShaderCache* sh
     pipelineState.resourceListLayout.resources[0] = { 0, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_TEXTURE };
     pipelineState.resourceListLayout.resources[1] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_UAV_BUFFER };
     pipelineState.resourceListLayout.resources[2] = { 2, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
-    pipelineState.resourceListLayout.resources[3] = { 1, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
+    pipelineState.resourceListLayout.resources[3] = { 4, SHADER_STAGE_COMPUTE, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER };
 
     lightCullingPso = renderDevice->createPipelineState( pipelineState );
 }
