@@ -254,7 +254,7 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
     uint32_t textureBindIndex = 11u;
     for ( int32_t textureIdx = 0; textureIdx < defaultTextureSetCount; textureIdx++ ) {
-        defaultPipelineStateDesc.resourceListLayout.resources[textureBindIndex] = { textureIdx + 4, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
+        defaultPipelineStateDesc.resourceListLayout.resources[textureBindIndex] = { textureIdx + 10, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
         textureBindIndex++;
     }
 

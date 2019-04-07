@@ -119,7 +119,7 @@ static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RES
     192u, // 192u,
     128u,
     256u,
-    384u,
+    256u, //384u,
     320u,
 };
 

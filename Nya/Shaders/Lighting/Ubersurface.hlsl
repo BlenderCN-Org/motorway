@@ -135,18 +135,18 @@ Buffer<uint> g_ItemList : register( t9 );
 // t2..4 => IBL Probes Array (Diffuse/Specular/Captured (HDR))
 // t5 => Shading Model BRDF DFG LUT
 
-Texture2D g_TexBaseColor0 : register( t5 );
-Texture2D g_TexAlphaMask0 : register( t6 );
-Texture2D g_TexReflectance0 : register( t7 );
+Texture2D g_TexBaseColor0 : register( t10 );
+Texture2D g_TexAlphaMask0 : register( t11 );
+Texture2D g_TexReflectance0 : register( t12 );
 
-Texture2D g_TexRoughness0 : register( t16 );
-Texture2D g_TexMetalness0 : register( t8 );
-Texture2D g_TexAmbientOcclusion0 : register( t10 );
-Texture2D g_TexNormal0 : register( t11 );
-Texture2D g_TexDisplacement0 : register( t12 );
-Texture2D g_TexEmissivity0 : register( t13 );
-Texture2D g_TexClearCoatNormal0 : register( t14 );
-Texture2D g_TexBlendMask0 : register( t15 );
+Texture2D g_TexRoughness0 : register( t13 );
+Texture2D g_TexMetalness0 : register( t14 );
+Texture2D g_TexAmbientOcclusion0 : register( t15 );
+Texture2D g_TexNormal0 : register( t16 );
+Texture2D g_TexDisplacement0 : register( t17 );
+Texture2D g_TexEmissivity0 : register( t18 );
+Texture2D g_TexClearCoatNormal0 : register( t19 );
+Texture2D g_TexBlendMask0 : register( t24 );
 
 cbuffer MaterialEdition : register( b3 )
 {
