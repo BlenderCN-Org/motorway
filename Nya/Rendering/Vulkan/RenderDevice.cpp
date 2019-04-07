@@ -761,7 +761,15 @@ void RenderDevice::present()
     presentInfo.pImageIndices = &renderContext->currentFrameIndex;
     presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR( renderContext->presentQueue, &presentInfo );
+    VkResult operationResult = vkQueuePresentKHR( renderContext->presentQueue, &presentInfo );
+
+    if ( operationResult != VK_SUCCESS ) {
+        NYA_TRIGGER_BREAKPOINT
+        NYA_CERR << "Failed to swap buffers! (error code " << NYA_PRINT_HEX( operationResult ) << ")" << std::endl;
+        NYA_ASSERT( false, "vkQueuePresentKHR failed/hanged! (error code: 0%X)", operationResult );
+    }
+
+    vkQueueWaitIdle( renderContext->presentQueue );
 }
 
 const nyaChar_t* RenderDevice::getBackendName() const
