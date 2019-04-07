@@ -29,7 +29,6 @@ struct PipelineState
     VkPipelineBindPoint         bindPoint;
     VkPipelineLayout            layout;
     VkRenderPass                renderPass;
-    VkFramebuffer               framebuffer;
 
     uint32_t                    attachmentCount;
     VkClearValue                clearValues[24];

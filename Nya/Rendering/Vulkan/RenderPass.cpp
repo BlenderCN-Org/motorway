@@ -38,8 +38,9 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
         CommandListObject->isRenderPassInProgress = false;
     }
 
-    if ( pipelineState->framebuffer != VK_NULL_HANDLE ) {
-        vkDestroyFramebuffer( CommandListObject->device, pipelineState->framebuffer, nullptr );
+    // TODO Don't assume a command list will only be used for one renderpass...
+    if ( CommandListObject->framebuffer != VK_NULL_HANDLE ) {
+        vkDestroyFramebuffer( CommandListObject->device, CommandListObject->framebuffer, nullptr );
     }
 
     VkImageView imageViews[24];
@@ -61,13 +62,13 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
     framebufferCreateInfos.height = static_cast<uint32_t>( CommandListObject->currentViewport.Height );
     framebufferCreateInfos.layers = 1u;
 
-    vkCreateFramebuffer( CommandListObject->device, &framebufferCreateInfos, nullptr, &pipelineState->framebuffer );
+    vkCreateFramebuffer( CommandListObject->device, &framebufferCreateInfos, nullptr, &CommandListObject->framebuffer );
 
     VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.pNext = nullptr;
     renderPassInfo.renderPass = pipelineState->renderPass;
-    renderPassInfo.framebuffer = pipelineState->framebuffer;
+    renderPassInfo.framebuffer = CommandListObject->framebuffer;
     renderPassInfo.clearValueCount = 24;
     renderPassInfo.pClearValues = pipelineState->clearValues;
 

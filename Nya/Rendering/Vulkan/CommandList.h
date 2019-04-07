@@ -32,5 +32,6 @@ struct NativeCommandList
     VkPipelineBindPoint resourcesBindPoint;
     bool                isRenderPassInProgress;
     VkDevice            device;
+    VkFramebuffer       framebuffer;
 };
 #endif
