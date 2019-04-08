@@ -360,6 +360,6 @@ void RenderDevice::setDebugMarker( Texture* texture, const char* objectName )
     dbgMarkerObjName.object = reinterpret_cast<uint64_t>( texture->image );
     dbgMarkerObjName.pObjectName = objectName;
 
-    //vkDebugMarkerSetObjectNameEXT( renderContext->device, &dbgMarkerObjName );
+    // renderContext->debugObjectMarker( renderContext->device, &dbgMarkerObjName );
 }
 #endif

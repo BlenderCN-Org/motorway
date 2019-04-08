@@ -20,14 +20,13 @@
 #pragma once
 
 #if NYA_VULKAN
-struct VkCommandBuffer_T;
-class RenderTarget;
+struct RenderTarget;
 
 #include <vulkan/vulkan.h>
 
 struct NativeCommandList
 {
-    VkCommandBuffer_T*  cmdBuffer;
+    VkCommandBuffer     cmdBuffer;
     Viewport            currentViewport;
     VkPipelineBindPoint resourcesBindPoint;
     bool                isRenderPassInProgress;

@@ -22,18 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #if NYA_VULKAN
 class PoolAllocator;
 class CommandList;
-class RenderTarget;
 
-struct VkInstance_T;
-struct VkPhysicalDevice_T;
-struct VkDevice_T;
-struct VkExtensionProperties;
-struct VkImage_T;
-struct VkQueue_T;
-struct VkDebugUtilsMessengerEXT_T;
-struct VkSurfaceKHR_T;
-struct VkSwapchainKHR_T;
-struct VkExtent2D;
+struct  RenderTarget;
 
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -46,11 +36,11 @@ struct RenderContext
     nyaStringHash_t*                    instanceExtensionHashes;
     uint32_t                            instanceExtensionCount;
 
-    VkInstance_T*                       instance;
-    VkPhysicalDevice_T*                 physicalDevice;
-    VkDevice_T*                         device;
-    VkSurfaceKHR_T*                     displaySurface;
-    VkSwapchainKHR_T*                   swapChain;
+    VkInstance                          instance;
+    VkPhysicalDevice                    physicalDevice;
+    VkDevice                            device;
+    VkSurfaceKHR                        displaySurface;
+    VkSwapchainKHR                      swapChain;
     VkPresentModeKHR                    presentMode;
     uint32_t                            physicalDeviceQueueCount;
     std::vector<VkExtensionProperties>  deviceExtensionList;
@@ -64,12 +54,13 @@ struct RenderContext
     size_t                              cmdListComputePoolCapacity;
 
 #if NYA_DEVBUILD
+    PFN_vkDebugMarkerSetObjectNameEXT   debugObjectMarker;
     VkDebugUtilsMessengerEXT_T*         debugCallback;
 #endif
 
-    VkQueue_T*                          graphicsQueue;
-    VkQueue_T*                          computeQueue;
-    VkQueue_T*                          presentQueue;
+    VkQueue                             graphicsQueue;
+    VkQueue                             computeQueue;
+    VkQueue                             presentQueue;
 
     uint32_t                            graphicsQueueIndex;
     uint32_t                            computeQueueIndex;

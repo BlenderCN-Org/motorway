@@ -367,7 +367,8 @@ void RenderDevice::create( DisplaySurface* surface )
 #endif
 
     NYA_GET_INSTANCE_PROC_ADDR( vulkanInstance, GetPhysicalDeviceSurfaceSupportKHR );
-
+    renderContext->debugObjectMarker = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetInstanceProcAddr(vulkanInstance, "vkDebugMarkerSetObjectNameEXT"); \
+       
 #if NYA_DEVBUILD
     NYA_GET_INSTANCE_PROC_ADDR( vulkanInstance, CreateDebugUtilsMessengerEXT );
 
@@ -463,6 +464,7 @@ void RenderDevice::create( DisplaySurface* surface )
     deviceFeatures.imageCubeArray = VK_TRUE;
     deviceFeatures.shaderStorageImageExtendedFormats = VK_TRUE;
     deviceFeatures.fillModeNonSolid = VK_TRUE;
+    deviceFeatures.samplerAnisotropy = VK_TRUE;
 
     VkDeviceCreateInfo deviceCreationInfos;
     deviceCreationInfos.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
