@@ -126,7 +126,7 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
     bufferInfo.flags = 0;
     bufferInfo.size = description.size;
 
-    bufferInfo.usage = 0;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     if ( description.type == BufferDesc::CONSTANT_BUFFER ) {
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     } else if ( description.type == BufferDesc::VERTEX_BUFFER
@@ -161,10 +161,6 @@ Buffer* RenderDevice::createBuffer( const BufferDesc& description, const void* i
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
         bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    }
-
-    if ( initialData != nullptr ) {
-        bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -254,8 +250,8 @@ void RenderDevice::setDebugMarker( Buffer* buffer, const char* objectName )
     dbgMarkerObjName.objectType = VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT;
     dbgMarkerObjName.object = reinterpret_cast<uint64_t>( buffer->bufferObject );
     dbgMarkerObjName.pObjectName = objectName;
-
-    //vkDebugMarkerSetObjectNameEXT( renderContext->device, &dbgMarkerObjName );
+    
+   // renderContext->debugObjectMarker( renderContext->device, &dbgMarkerObjName );
 }
 
 void CommandList::bindVertexBuffer( const Buffer* buffer, const unsigned int bindIndex )
@@ -272,7 +268,7 @@ void CommandList::bindIndiceBuffer( const Buffer* buffer )
 
 void CommandList::updateBuffer( Buffer* buffer, const void* data, const size_t dataSize )
 {
-    // TODO Implement me!
+    vkCmdUpdateBuffer(CommandListObject->cmdBuffer, buffer->bufferObject, 0ull, dataSize, data);
 }
 
 void CommandList::copyStructureCount( Buffer* srcBuffer, Buffer* dstBuffer, const unsigned int offset )
