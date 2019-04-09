@@ -200,13 +200,22 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
             RenderPass renderPass;
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
-            const Viewport* viewport = renderPipelineResources.getMainViewport();
+            const CameraData* camera = renderPipelineResources.getMainCamera();
+
+            nyaVec2f scaledViewportSize = camera->viewportSize * camera->imageQuality;
+            Viewport vp;
+            vp.X = 0;
+            vp.Y = 0;
+            vp.Width = static_cast< int >( scaledViewportSize.x );
+            vp.Height = static_cast< int >( scaledViewportSize.y );
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
 
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
 
-                cmdList.setViewport( *viewport );
+                cmdList.setViewport( vp );
 
                 cmdList.beginRenderPass( g_PipelineStateObject, renderPass );
                 {
