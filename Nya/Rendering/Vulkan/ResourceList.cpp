@@ -44,6 +44,9 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
     VkDescriptorImageInfo descriptorImageInfos[64];
     VkDescriptorBufferInfo descriptorBufferInfos[64];
 
+    pipelineState->bufferIndex = ++pipelineState->bufferIndex % 3;
+    VkDescriptorSet& activeDescriptorSet = pipelineState->descriptorSet[pipelineState->bufferIndex];
+
     for ( uint32_t i = 0u; i < pipelineState->descriptorBindingCount; i++ ) {
         switch ( pipelineState->descriptorBindingTypes[i] ) {
         case VK_DESCRIPTOR_TYPE_SAMPLER: {
@@ -53,7 +56,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
             samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             samplerWriteDescriptorSet.pNext = nullptr;
-            samplerWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+            samplerWriteDescriptorSet.dstSet = activeDescriptorSet;
             samplerWriteDescriptorSet.dstBinding = pipelineState->descriptorBindings[i];
             samplerWriteDescriptorSet.dstArrayElement = 0u;
             samplerWriteDescriptorSet.descriptorCount = 1u;
@@ -69,7 +72,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
             samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             samplerWriteDescriptorSet.pNext = nullptr;
-            samplerWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+            samplerWriteDescriptorSet.dstSet = activeDescriptorSet;
             samplerWriteDescriptorSet.dstBinding = pipelineState->descriptorBindings[i];
             samplerWriteDescriptorSet.dstArrayElement = 0u;
             samplerWriteDescriptorSet.descriptorCount = 1u;
@@ -85,7 +88,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
             VkWriteDescriptorSet& samplerWriteDescriptorSet = writeDescriptorSets[i];
             samplerWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             samplerWriteDescriptorSet.pNext = nullptr;
-            samplerWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+            samplerWriteDescriptorSet.dstSet = activeDescriptorSet;
             samplerWriteDescriptorSet.dstBinding = pipelineState->descriptorBindings[i];
             samplerWriteDescriptorSet.dstArrayElement = 0u;
             samplerWriteDescriptorSet.descriptorCount = 1u;
@@ -103,7 +106,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
             VkWriteDescriptorSet& uboWriteDescriptorSet = writeDescriptorSets[i];
             uboWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             uboWriteDescriptorSet.pNext = nullptr;
-            uboWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+            uboWriteDescriptorSet.dstSet = activeDescriptorSet;
             uboWriteDescriptorSet.dstBinding = pipelineState->descriptorBindings[i];
             uboWriteDescriptorSet.dstArrayElement = 0u;
             uboWriteDescriptorSet.descriptorCount = 1u;
@@ -116,7 +119,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
             VkWriteDescriptorSet& tboWriteDescriptorSet = writeDescriptorSets[i];
             tboWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             tboWriteDescriptorSet.pNext = nullptr;
-            tboWriteDescriptorSet.dstSet = pipelineState->descriptorSet;
+            tboWriteDescriptorSet.dstSet = activeDescriptorSet;
             tboWriteDescriptorSet.dstBinding = pipelineState->descriptorBindings[i];
             tboWriteDescriptorSet.dstArrayElement = 0u;
             tboWriteDescriptorSet.descriptorCount = 1u;

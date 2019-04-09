@@ -230,7 +230,10 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
     allocInfo.descriptorSetCount = 1u;
     allocInfo.pSetLayouts = &resourceListDescriptorSetLayout;
 
-    vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet );
+    for ( int i = 0; i < 3; i++ )
+        vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet[i] );
+
+    pipelineState->bufferIndex = 0u;
 
     // Allocate pipeline Layout for the current resource list
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -624,7 +627,7 @@ void CommandList::bindPipelineState( PipelineState* pipelineState )
         pipelineState->layout,
         0u,
         1u,
-        &pipelineState->descriptorSet,
+        &pipelineState->descriptorSet[pipelineState->bufferIndex],
         0u,
         nullptr
     );

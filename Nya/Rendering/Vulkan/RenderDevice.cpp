@@ -679,18 +679,18 @@ void RenderDevice::create( DisplaySurface* surface )
     descriptorPoolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolDesc.pNext = nullptr;
     descriptorPoolDesc.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    descriptorPoolDesc.maxSets = 64u;
+    descriptorPoolDesc.maxSets = 64u * 3;
 
     static constexpr uint32_t DESCRIPTOR_POOL_COUNT = 8u;
     VkDescriptorPoolSize descriptorPoolSizes[DESCRIPTOR_POOL_COUNT] = {
-        { VK_DESCRIPTOR_TYPE_SAMPLER, 64u },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 64u },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64u },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 64u },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 64u },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 64u },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 64u },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 64u },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 64u * 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 64u * 3 },
     };
 
     descriptorPoolDesc.pPoolSizes = descriptorPoolSizes;
@@ -753,6 +753,8 @@ void RenderDevice::submitCommandList( CommandList* commandList )
             vkDestroyFramebuffer( cmdList->device, fbo, nullptr );
             cmdList->framebuffers.pop();
         }
+
+        vkResetFences( renderContext->device, 1u, &cmdList->resourcesReleaseFence );
     } else if ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE ) {
         vkQueueSubmit( renderContext->computeQueue, 1u, &submitInfo, nullptr );
     }
