@@ -23,13 +23,15 @@
 struct RenderTarget;
 
 #include <vulkan/vulkan.h>
+#include <stack>
 
 struct NativeCommandList
 {
-    VkCommandBuffer     cmdBuffer;
-    Viewport            currentViewport;
-    VkPipelineBindPoint resourcesBindPoint;
-    VkDevice            device;
-    VkFramebuffer       framebuffer;
+    VkCommandBuffer             cmdBuffer;
+    Viewport                    currentViewport;
+    VkPipelineBindPoint         resourcesBindPoint;
+    VkDevice                    device;
+    VkFence                     resourcesReleaseFence;
+    std::stack<VkFramebuffer>   framebuffers;
 };
 #endif

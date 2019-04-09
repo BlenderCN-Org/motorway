@@ -27,7 +27,17 @@
 
 CommandList::~CommandList()
 {
+    CommandListObject->cmdBuffer = nullptr;
 
+    if ( CommandListObject->resourcesBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS ) {
+        vkDestroyFence( CommandListObject->device, CommandListObject->resourcesReleaseFence, nullptr );
+
+        while ( !CommandListObject->framebuffers.empty() ) {
+            VkFramebuffer fbo = CommandListObject->framebuffers.top();
+            vkDestroyFramebuffer( CommandListObject->device, fbo, nullptr );
+            CommandListObject->framebuffers.pop();
+        }
+    }
 }
 
 void CommandList::begin()

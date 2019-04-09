@@ -634,12 +634,19 @@ void RenderDevice::create( DisplaySurface* surface )
 
     vkAllocateCommandBuffers( renderContext->device, &cmdBufferAlloc, gfxCmdBuffers );
 
+    VkFenceCreateInfo gfxFenceCreateInfo;
+    gfxFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    gfxFenceCreateInfo.pNext = VK_NULL_HANDLE;
+    gfxFenceCreateInfo.flags = 0u;
+
     renderContext->cmdListPool = nya::core::allocateArray<CommandList>( memoryAllocator, 16, memoryAllocator );
     for ( size_t i = 0; i < 16; i++ ) {
         renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->cmdListPool[i].CommandListObject->cmdBuffer = gfxCmdBuffers[i];
         renderContext->cmdListPool[i].CommandListObject->device = device;
         renderContext->cmdListPool[i].CommandListObject->resourcesBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+        vkCreateFence( renderContext->device, &gfxFenceCreateInfo, nullptr, &renderContext->cmdListPool[i].CommandListObject->resourcesReleaseFence );
     }
 
     renderContext->cmdListPoolCapacity = 16;
@@ -726,7 +733,7 @@ CommandList& RenderDevice::allocateComputeCommandList() const
 
 void RenderDevice::submitCommandList( CommandList* commandList )
 {
-    const NativeCommandList* cmdList = commandList->CommandListObject;
+    NativeCommandList* cmdList = commandList->CommandListObject;
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -734,8 +741,21 @@ void RenderDevice::submitCommandList( CommandList* commandList )
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdList->cmdBuffer;
 
-    VkQueue submitQueue = ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS ) ? renderContext->graphicsQueue : renderContext->computeQueue;
-    vkQueueSubmit( submitQueue, 1u, &submitInfo, nullptr );
+    if ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS ) {
+        vkQueueSubmit( renderContext->graphicsQueue, 1u, &submitInfo, cmdList->resourcesReleaseFence );
+
+        // Wait until the cmds have finished, then release the fbos allocated by the commandlist
+        // signal fence once the commands have been completed on the GPU; release GPU resources on the CPU (could be done asynchronously using a dedicated thread?)
+        vkWaitForFences( renderContext->device, 1u, &cmdList->resourcesReleaseFence, VK_TRUE, 1000ull );
+
+        while ( !cmdList->framebuffers.empty() ) {
+            VkFramebuffer fbo = cmdList->framebuffers.top();
+            vkDestroyFramebuffer( cmdList->device, fbo, nullptr );
+            cmdList->framebuffers.pop();
+        }
+    } else if ( cmdList->resourcesBindPoint == VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE ) {
+        vkQueueSubmit( renderContext->computeQueue, 1u, &submitInfo, nullptr );
+    }
 }
 
 RenderTarget* RenderDevice::getSwapchainBuffer()
