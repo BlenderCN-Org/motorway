@@ -98,7 +98,6 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
             resourceList.resource[3].buffer = materialEditorBuffer;
 #endif
 
-
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.output );
 
@@ -125,17 +124,19 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
                 cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
                 for ( const auto& drawCmd : drawCmdBucket ) {
-                    drawCmd.infos.material->bindDepthOnly( cmdList, renderPass, resourceList );
-
 #if NYA_DEVBUILD
                     const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
                     cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
 
-                    cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
-                    cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+                    drawCmd.infos.material->bindDepthOnly( renderDevice, cmdList, renderPass, resourceList );
+                    {
+                        cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                        cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                    cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                        cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                    }
+                    cmdList.endRenderPass();
 
                     // Update vector buffer offset
                     instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );

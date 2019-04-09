@@ -160,10 +160,12 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
                 cmdList.updateBuffer( skyBuffer, &parameters, sizeof( parameters ) );
                 cmdList.updateBuffer( cameraBuffer, camera, sizeof( CameraData ) );
 
-                cmdList.bindRenderPass( pipelineStateObject, renderPass );
-                cmdList.bindPipelineState( pipelineStateObject );
-
-                cmdList.draw( 3 );
+                cmdList.beginRenderPass( pipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( pipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
                 cmdList.end();
             }

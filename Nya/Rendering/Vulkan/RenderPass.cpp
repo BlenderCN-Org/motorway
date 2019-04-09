@@ -31,13 +31,8 @@
 
 #include <vulkan/vulkan.h>
 
-void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
+void CommandList::beginRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
-    if ( CommandListObject->isRenderPassInProgress ) {
-        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
-        CommandListObject->isRenderPassInProgress = false;
-    }
-
     // TODO Don't assume a command list will only be used for one renderpass...
     if ( CommandListObject->framebuffer != VK_NULL_HANDLE ) {
         vkDestroyFramebuffer( CommandListObject->device, CommandListObject->framebuffer, nullptr );
@@ -73,7 +68,10 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
     renderPassInfo.pClearValues = pipelineState->clearValues;
 
     vkCmdBeginRenderPass( CommandListObject->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
+}
 
-    CommandListObject->isRenderPassInProgress = true;
+void CommandList::endRenderPass()
+{
+    vkCmdEndRenderPass( CommandListObject->cmdBuffer );
 }
 #endif

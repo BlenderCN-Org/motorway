@@ -129,11 +129,6 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
 
 void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] )
 {
-    if ( CommandListObject->isRenderPassInProgress ) {
-        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
-        CommandListObject->isRenderPassInProgress = false;
-    }
-
     VkClearColorValue colorClearValue;
     memcpy( colorClearValue.float32, clearValue, sizeof( float ) * 4 );
 
@@ -151,11 +146,6 @@ void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const u
 
 void CommandList::clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue )
 {
-    if ( CommandListObject->isRenderPassInProgress ) {
-        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
-        CommandListObject->isRenderPassInProgress = false;
-    }
-
     VkClearDepthStencilValue depthClearValue;
     depthClearValue.depth = clearValue;
     depthClearValue.stencil = 0u;

@@ -136,15 +136,17 @@ MutableResHandle_t TextRenderingModule::renderText( RenderPipeline* renderPipeli
                 // Update vertex buffer content
                 cmdList.updateBuffer( glyphVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferOffset ) * sizeof( float ) );
 
-                // Bind buffers
-                cmdList.bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
-                cmdList.bindIndiceBuffer( glyphIndiceBuffer );
-
                 // Pipeline State
-                cmdList.bindRenderPass( renderTextPso, renderPass );
-                cmdList.bindPipelineState( renderTextPso );
+                cmdList.beginRenderPass( renderTextPso, renderPass );
+                {
+                    cmdList.bindPipelineState( renderTextPso );
 
-                cmdList.drawIndexed( static_cast<uint32_t>( indiceCount ) );
+                    cmdList.bindVertexBuffer( glyphVertexBuffers[vertexBufferIndex] );
+                    cmdList.bindIndiceBuffer( glyphIndiceBuffer );
+
+                    cmdList.drawIndexed( static_cast< uint32_t >( indiceCount ) );
+                }
+                cmdList.endRenderPass();
 
                 cmdList.end();
             }

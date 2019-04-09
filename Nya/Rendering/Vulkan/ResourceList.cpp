@@ -129,6 +129,5 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
     }
 
     vkUpdateDescriptorSets( renderContext->device, pipelineState->descriptorBindingCount, writeDescriptorSets, 0u, nullptr );
-
 }
 #endif

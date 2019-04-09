@@ -184,10 +184,12 @@ ResHandle_t AddMSAAResolveRenderPass( RenderPipeline* renderPipeline, ResHandle_
                     renderPass.attachement[4] = { lastFrameTarget, 0, 0 };
                 }
 
-                cmdList.bindRenderPass( pso, renderPass );
-                cmdList.bindPipelineState( pso );
-
-                cmdList.draw( 3 );
+                cmdList.beginRenderPass( pso, renderPass );
+                {
+                    cmdList.bindPipelineState( pso );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
                 cmdList.end();
             }

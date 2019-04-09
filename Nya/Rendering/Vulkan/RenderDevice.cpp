@@ -639,7 +639,6 @@ void RenderDevice::create( DisplaySurface* surface )
         renderContext->cmdListPool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->cmdListPool[i].CommandListObject->cmdBuffer = gfxCmdBuffers[i];
         renderContext->cmdListPool[i].CommandListObject->device = device;
-        renderContext->cmdListPool[i].CommandListObject->isRenderPassInProgress = false;
         renderContext->cmdListPool[i].CommandListObject->resourcesBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
@@ -661,7 +660,6 @@ void RenderDevice::create( DisplaySurface* surface )
         renderContext->cmdListComputePool[i].CommandListObject = nya::core::allocate<NativeCommandList>( memoryAllocator );
         renderContext->cmdListComputePool[i].CommandListObject->cmdBuffer = computeCmdBuffers[i];
         renderContext->cmdListComputePool[i].CommandListObject->device = device;
-        renderContext->cmdListComputePool[i].CommandListObject->isRenderPassInProgress = false;
         renderContext->cmdListComputePool[i].CommandListObject->resourcesBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
     }
 
@@ -713,8 +711,6 @@ CommandList& RenderDevice::allocateGraphicsCommandList() const
     CommandList& cmdList = renderContext->cmdListPool[renderContext->cmdListPoolIndex];
     vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
 
-    cmdList.CommandListObject->isRenderPassInProgress = false;
-
     return cmdList;
 }
 
@@ -724,8 +720,6 @@ CommandList& RenderDevice::allocateComputeCommandList() const
 
     CommandList& cmdList = renderContext->cmdListComputePool[renderContext->cmdListComputePoolIndex];
     vkResetCommandBuffer( cmdList.CommandListObject->cmdBuffer, 0u );
-
-    cmdList.CommandListObject->isRenderPassInProgress = false;
 
     return cmdList;
 }

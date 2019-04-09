@@ -29,7 +29,6 @@ struct NativeCommandList
     VkCommandBuffer     cmdBuffer;
     Viewport            currentViewport;
     VkPipelineBindPoint resourcesBindPoint;
-    bool                isRenderPassInProgress;
     VkDevice            device;
     VkFramebuffer       framebuffer;
 };

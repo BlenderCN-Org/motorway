@@ -152,10 +152,14 @@ ResHandle_t AddBrightPassRenderPass( RenderPipeline* renderPipeline, ResHandle_t
                 cmdList.begin();
 
                 cmdList.setViewport( *viewport );
-                cmdList.bindRenderPass( g_BrightPassPipelineStateObject, renderPass );
-                cmdList.bindPipelineState( g_BrightPassPipelineStateObject );
 
-                cmdList.draw( 3 );
+                cmdList.beginRenderPass( g_BrightPassPipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( g_BrightPassPipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
+
                 cmdList.end();
             }
 
@@ -223,10 +227,13 @@ ResHandle_t AddDownsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandl
                 cmdList.begin();
                 cmdList.setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * downsample ) ), RoundToEven( static_cast< int >( inputHeight * downsample ) ), 0.0f, 1.0f } );
 
-                cmdList.bindRenderPass( pipelineStateObject, renderPass );
-                cmdList.bindPipelineState( pipelineStateObject );
+                cmdList.beginRenderPass( pipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( pipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 3 );
                 cmdList.end();
             }
 
@@ -304,10 +311,13 @@ ResHandle_t AddUpsampleMipRenderPass( RenderPipeline* renderPipeline, ResHandle_
 
                 cmdList.setViewport( { 0, 0, RoundToEven( static_cast< int >( inputWidth * inputInverseScaleFactor ) ), RoundToEven( static_cast< int >( inputHeight * inputInverseScaleFactor ) ), 0.0f, 1.0f } );
 
-                cmdList.bindRenderPass( g_UpsamplePipelineStateObject, renderPass );
-                cmdList.bindPipelineState( g_UpsamplePipelineStateObject );
+                cmdList.beginRenderPass( g_UpsamplePipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( g_UpsamplePipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 3 );
                 cmdList.end();
             }
 

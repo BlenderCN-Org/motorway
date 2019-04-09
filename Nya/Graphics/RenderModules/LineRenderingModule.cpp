@@ -119,14 +119,16 @@ ResHandle_t LineRenderingModule::addLineRenderPass( RenderPipeline* renderPipeli
                 cmdList.updateBuffer( lineVertexBuffers[vertexBufferIndex], buffer, static_cast<size_t>( bufferIndex ) * sizeof( float ) );
 
                 // Pipeline State
-                cmdList.bindRenderPass( renderLinePso, renderPass );
-                cmdList.bindPipelineState( renderLinePso );
+                cmdList.beginRenderPass( renderLinePso, renderPass );
+                {
+                    cmdList.bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
+                    cmdList.bindIndiceBuffer( lineIndiceBuffer );
 
-                // Bind buffers
-                cmdList.bindVertexBuffer( lineVertexBuffers[vertexBufferIndex] );
-                cmdList.bindIndiceBuffer( lineIndiceBuffer );
+                    cmdList.bindPipelineState( renderLinePso );
 
-                cmdList.draw( static_cast<unsigned int>( indiceCount ) );
+                    cmdList.draw( static_cast< unsigned int >( indiceCount ) );
+                }
+                cmdList.endRenderPass();
 
                 cmdList.end();
             }

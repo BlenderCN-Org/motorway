@@ -33,7 +33,7 @@
 
 #include <Core/Allocators/PoolAllocator.h>
 
-void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
+void CommandList::beginRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
     for ( int i = 0; i < pipelineState->renderPass.resourceToBindCount; i++ ) {
         auto& resource = pipelineState->renderPass.resources[i];
@@ -79,15 +79,17 @@ void CommandList::bindRenderPass( PipelineState* pipelineState, const RenderPass
         CommandListObject->deferredContext->ClearDepthStencilView( renderPassLayout.depthStencilView, D3D11_CLEAR_DEPTH, renderPassLayout.clearValue[8][0], 0x0 );
     }
     
-    // TODO Avoid resource binding dependencies (skip explicit SRV unbind)?
-    static constexpr ID3D11ShaderResourceView* NO_SRV[8] = { ( ID3D11ShaderResourceView* )nullptr };
-
-    CommandListObject->deferredContext->PSSetShaderResources( 20, 8, NO_SRV );
-    CommandListObject->deferredContext->CSSetShaderResources( 20, 8, NO_SRV );
-
     CommandListObject->deferredContext->OMSetRenderTargets( renderPassLayout.rtvCount, renderPassLayout.renderTargetViews, renderPassLayout.depthStencilView );
 
     CommandListObject->deferredContext->PSSetShaderResources( 20, 8, renderPassLayout.pixelStage.shaderResourceView );
     CommandListObject->deferredContext->CSSetShaderResources( 20, 8, renderPassLayout.computeStage.shaderResourceView );
+}
+
+void CommandList::endRenderPass()
+{
+    static constexpr ID3D11ShaderResourceView* NO_SRV[8] = { (ID3D11ShaderResourceView*)nullptr };
+
+    CommandListObject->deferredContext->PSSetShaderResources(20, 8, NO_SRV);
+    CommandListObject->deferredContext->CSSetShaderResources(20, 8, NO_SRV);
 }
 #endif

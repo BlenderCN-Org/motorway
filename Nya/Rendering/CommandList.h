@@ -87,7 +87,9 @@ public:
     void                bindIndiceBuffer( const Buffer* buffer );
 
     void                bindPipelineState( PipelineState* pipelineState );
-    void                bindRenderPass( PipelineState* pipelineState, const RenderPass& renderPass );
+
+    void                beginRenderPass( PipelineState* pipelineState, const RenderPass& renderPass );
+    void                endRenderPass();
 
     void                clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] );
     void                clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue );

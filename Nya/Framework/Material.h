@@ -84,9 +84,9 @@ public:
     void                        setName( const nyaString_t& meshName );
     const nyaString_t&          getName() const;
 
-    void                        bind( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
-    void                        bindProbeCapture( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
-    void                        bindDepthOnly( CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bind( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bindProbeCapture( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bindDepthOnly( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
 
     // NOTE -This function should only be used in case of override/debug materials
     //      -This function implicitly drops regular flagset (based on sortkey infos)

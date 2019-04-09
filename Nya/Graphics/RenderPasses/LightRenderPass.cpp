@@ -267,20 +267,23 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
-                if ( !isCapturingProbe )
-                    drawCmd.infos.material->bind( cmdList, renderPass, resourceList );
-                else
-                    drawCmd.infos.material->bindProbeCapture( cmdList, renderPass, resourceList );
-
 #if NYA_DEVBUILD
                 const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
                 cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
 #endif
 
-                cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
-                cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
+                if ( !isCapturingProbe ) {
+                    drawCmd.infos.material->bind( renderDevice, cmdList, renderPass, resourceList );
+                } else {
+                    drawCmd.infos.material->bindProbeCapture( renderDevice, cmdList, renderPass, resourceList );
+                }
+                {
+                    cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );
+                    cmdList.bindIndiceBuffer( drawCmd.infos.indiceBuffer );
 
-                cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                    cmdList.drawInstancedIndexed( drawCmd.infos.indiceBufferCount, drawCmd.infos.instanceCount, drawCmd.infos.indiceBufferOffset );
+                }
+                cmdList.endRenderPass();
 
                 // Update vector buffer offset
                 instanceBufferData.StartVector += ( drawCmd.infos.instanceCount * drawCmdBucket.vectorPerInstance );

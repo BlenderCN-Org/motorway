@@ -72,10 +72,13 @@ ResHandle_t AddCopyRenderPass( RenderPipeline* renderPipeline, ResHandle_t input
             {
                 cmdList.begin();
 
-                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
-                cmdList.bindPipelineState( g_PipelineStateObject );
+                cmdList.beginRenderPass( g_PipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( g_PipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 3 );
                 cmdList.end();
             }
 
@@ -144,10 +147,13 @@ ResHandle_t AddCopyAndDownsampleRenderPass( RenderPipeline* renderPipeline, ResH
                 cmdList.begin();
                 cmdList.setViewport( vp );
 
-                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
-                cmdList.bindPipelineState( g_PipelineStateObject );
+                cmdList.beginRenderPass( g_PipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( g_PipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 3 );
                 cmdList.end();
             }
 
@@ -202,10 +208,13 @@ void AddCurrentFrameSaveRenderPass( RenderPipeline* renderPipeline, ResHandle_t 
 
                 cmdList.setViewport( *viewport );
 
-                cmdList.bindRenderPass( g_PipelineStateObject, renderPass );
-                cmdList.bindPipelineState( g_PipelineStateObject );
+                cmdList.beginRenderPass( g_PipelineStateObject, renderPass );
+                {
+                    cmdList.bindPipelineState( g_PipelineStateObject );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 3 );
                 cmdList.end();
             }
 

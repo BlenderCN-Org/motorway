@@ -43,11 +43,6 @@ void CommandList::begin()
 
 void CommandList::end()
 {
-    if ( CommandListObject->isRenderPassInProgress ) {
-        vkCmdEndRenderPass( CommandListObject->cmdBuffer );
-        CommandListObject->isRenderPassInProgress = false;
-    }
-
     vkEndCommandBuffer( CommandListObject->cmdBuffer );
 }
 

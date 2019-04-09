@@ -256,10 +256,13 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
 
                 cmdList.updateBuffer( infosBuffer, &convolutionParameters, sizeof( PassInfos ) );
 
-                cmdList.bindRenderPass( convolutionPso, renderPass );
-                cmdList.bindPipelineState( convolutionPso );
+                cmdList.beginRenderPass( convolutionPso, renderPass );
+                {
+                    cmdList.bindPipelineState( convolutionPso );
+                    cmdList.draw( 4 );
+                }
+                cmdList.endRenderPass();
 
-                cmdList.draw( 4 );
                 cmdList.end();
             }
 
@@ -310,13 +313,20 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
             renderPass.attachement[0] = { outputTarget, 0, faceIndex };
             renderPass.attachement[1] = { inputTarget, 0, 0 };
 
+            const Viewport* viewport = renderPipelineResources.getMainViewport();
+
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             {
                 cmdList.begin();
-                cmdList.bindRenderPass( copyPso, renderPass );
-                cmdList.bindPipelineState( copyPso );
+                cmdList.setViewport( *viewport );
 
-                cmdList.draw( 3 );
+                cmdList.beginRenderPass( copyPso, renderPass );
+                {
+                    cmdList.bindPipelineState( copyPso );
+                    cmdList.draw( 3 );
+                }
+                cmdList.endRenderPass();
+
                 cmdList.end();
             }
 
