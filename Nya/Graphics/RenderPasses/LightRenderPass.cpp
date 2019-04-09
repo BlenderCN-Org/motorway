@@ -191,6 +191,12 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
             Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
 #endif
 
+            RenderTarget* sunShadowMapTarget = renderPipelineResources.getRenderTarget( passData.sunShadowMap );
+
+            RenderTarget* iblCapturedArray = renderPipelineResources.getPersitentRenderTarget( passData.iblCapturedArray );
+            RenderTarget* iblDiffuseArray = renderPipelineResources.getPersitentRenderTarget( passData.iblDiffuseArray );
+            RenderTarget* iblSpecularArray = renderPipelineResources.getPersitentRenderTarget( passData.iblSpecularArray );
+
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].sampler = anisotropicSampler;
@@ -205,19 +211,17 @@ LightPassOutput AddLightRenderPass( RenderPipeline* renderPipeline, const LightG
 #if NYA_DEVBUILD
             resourceList.resource[9].buffer = materialEditorBuffer;
 #endif
+
             resourceList.resource[10].buffer = clustersBuffer;
+            resourceList.resource[11].renderTarget = sunShadowMapTarget;
+            resourceList.resource[12].renderTarget = iblDiffuseArray;
+            resourceList.resource[13].renderTarget = iblSpecularArray;
 
             // RenderPass
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
             RenderTarget* zBufferTarget = renderPipelineResources.getRenderTarget( passData.zBuffer );
             RenderTarget* velocityTarget = renderPipelineResources.getRenderTarget( passData.velocityRenderTarget );
             RenderTarget* thinGBufferTarget = renderPipelineResources.getRenderTarget( passData.thinGBuffer );
-
-            RenderTarget* sunShadowMapTarget = renderPipelineResources.getRenderTarget( passData.sunShadowMap );
-
-            RenderTarget* iblCapturedArray = renderPipelineResources.getPersitentRenderTarget( passData.iblCapturedArray );
-            RenderTarget* iblDiffuseArray = renderPipelineResources.getPersitentRenderTarget( passData.iblDiffuseArray );
-            RenderTarget* iblSpecularArray = renderPipelineResources.getPersitentRenderTarget( passData.iblSpecularArray );
 
             // Upload buffer data
             const void* vectorBuffer = renderPipelineResources.getVectorBufferData();

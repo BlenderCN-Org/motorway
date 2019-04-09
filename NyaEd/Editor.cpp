@@ -214,15 +214,15 @@ void TestStuff()
     dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
     IBLProbeData globalProbe = {};
-    globalProbe.worldPosition = { 2, 6, 2 };
+    globalProbe.worldPosition = { 4, 8, 4 };
     globalProbe.isFallbackProbe = true;
 
     auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
     IBLProbeData localProbe = {};
-    localProbe.worldPosition = { 0, 8, -4 };
-    localProbe.radius = 4.0f;
+    localProbe.worldPosition = { 0, 6, 2 };
+    localProbe.radius = 8.0f;
     localProbe.isFallbackProbe = false;
 
     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
