@@ -120,7 +120,7 @@ static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RES
     128u,
     256u,
     256u, //384u,
-    320u,
+    192u,
 };
 
 void CreateShaderStageDescriptor( VkPipelineShaderStageCreateInfo& shaderStageInfos, const Shader* shader )
