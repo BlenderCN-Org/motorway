@@ -20,32 +20,36 @@
 
 #pragma once
 
-class DrawCommandBuilder;
 class Material;
 
 #include "Widget.h"
 
+#include <vector>
+
 class GUIPanel : public GUIWidget
 {
 public:
-    bool        IsDraggable;
-    bool        IsResizable;
-    bool        IsScrollable;
+    bool                    IsDraggable;
+    bool                    IsResizable;
+    bool                    IsScrollable;
 
-    Material*   PanelMaterial;
+    Material*               PanelMaterial;
 
 public:
-                GUIPanel();
-                GUIPanel( GUIPanel& widget ) = default;
-                GUIPanel& operator = ( GUIPanel& widget ) = default;
-                ~GUIPanel();
+                            GUIPanel();
+                            GUIPanel( GUIPanel& widget ) = default;
+                            GUIPanel& operator = ( GUIPanel& widget ) = default;
+                            ~GUIPanel();
 
-    void        onMouseButtonDown( const double mouseX, const double mouseY );
-    void        onMouseButtonUp();
-    void        onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
+    void                    onMouseButtonDown( const double mouseX, const double mouseY );
+    void                    onMouseButtonUp();
+    void                    onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
 
-    void        collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
+    void                    addChildren( GUIWidget* widget );
+    void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
 
 private:
-    bool        canBeDragged;
+    bool                    canBeDragged;
+    nyaVec2f                mousePressedCoordinates;
+    std::vector<GUIWidget*> children;
 };

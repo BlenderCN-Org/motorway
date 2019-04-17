@@ -21,7 +21,8 @@
 #include "Widget.h"
 
 GUIWidget::GUIWidget()
-    : Position( 0.0f, 0.0f )
+    : RelativePosition( 0.0f, 0.0f )
+    , Position( 0.0f, 0.0f )
     , Size( 1.0f, 1.0f )
 {
 
@@ -29,6 +30,7 @@ GUIWidget::GUIWidget()
 
 GUIWidget::~GUIWidget()
 {
+    RelativePosition = nyaVec2f( 0.0f, 0.0f );
     Position = nyaVec2f( 0.0f );
     Size = nyaVec2f( 0.0f );
 }

@@ -17,25 +17,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <Shared.h>
+#include "Button.h"
 
-#pragma once
+#include <Graphics/DrawCommandBuilder.h>
 
-class DrawCommandBuilder;
-
-#include <Maths/Vector.h>
-
-class GUIWidget
+GUIButton::GUIButton()
+    : GUIPanel()
 {
-public:
-    nyaVec2f        RelativePosition;
-    nyaVec2f        Position;
-    nyaVec2f        Size;
 
-public:
-                    GUIWidget();
-                    GUIWidget( GUIWidget& widget ) = default;
-                    GUIWidget& operator = ( GUIWidget& widget ) = default;
-                    ~GUIWidget();
+}
 
-    virtual void    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) = 0;
-};
+GUIButton::~GUIButton()
+{
+
+}

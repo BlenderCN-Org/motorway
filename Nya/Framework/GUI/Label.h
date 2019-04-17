@@ -20,22 +20,22 @@
 
 #pragma once
 
-class DrawCommandBuilder;
+class Material;
 
-#include <Maths/Vector.h>
+#include "Widget.h"
+#include <string>
 
-class GUIWidget
+class GUILabel : public GUIWidget
 {
 public:
-    nyaVec2f        RelativePosition;
-    nyaVec2f        Position;
-    nyaVec2f        Size;
+    std::string Value;
+    nyaVec4f    ColorAndAlpha;
 
 public:
-                    GUIWidget();
-                    GUIWidget( GUIWidget& widget ) = default;
-                    GUIWidget& operator = ( GUIWidget& widget ) = default;
-                    ~GUIWidget();
+                GUILabel();
+                GUILabel( GUILabel& widget ) = default;
+                GUILabel& operator = ( GUILabel& widget ) = default;
+                ~GUILabel();
 
-    virtual void    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) = 0;
+    void        collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
 };

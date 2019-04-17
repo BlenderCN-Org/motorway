@@ -29,7 +29,7 @@ GUIPanel::GUIPanel()
     , IsScrollable( false )
     , canBeDragged( false )
 {
-
+    mousePressedCoordinates = nyaVec2f( 0.0f, 0.0f );
 }
 
 GUIPanel::~GUIPanel()
@@ -39,10 +39,16 @@ GUIPanel::~GUIPanel()
     IsScrollable = false;
 
     canBeDragged = false;
+
+    mousePressedCoordinates = nyaVec2f( 0.0f, 0.0f );
 }
 
 void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
 {
+    if ( canBeDragged ) {
+        return;
+    }
+
     auto panelMin = Position - Size;
     auto panelMax = Position + Size;
 
@@ -50,6 +56,7 @@ void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
     const bool isMouseInsideY = ( mouseY >= panelMin.y && mouseY <= panelMax.y );
 
     canBeDragged = ( isMouseInsideX && isMouseInsideY );
+    mousePressedCoordinates = Position - nyaVec2f( mouseX, mouseY );
 }
 
 void GUIPanel::onMouseButtonUp()
@@ -60,11 +67,25 @@ void GUIPanel::onMouseButtonUp()
 void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
 {
     if ( IsDraggable && canBeDragged ) {
-        Position = nyaVec2f( mouseX, mouseY );
+        Position = mousePressedCoordinates + nyaVec2f( mouseX, mouseY );
+
+        for ( GUIWidget* child : children ) {
+            child->Position = Position - Size + ( child->RelativePosition * Size * 2.0f );
+        }
     }
+}
+
+void GUIPanel::addChildren( GUIWidget* widget )
+{
+    widget->Position = Position - Size + ( widget->RelativePosition * Size * 2.0f );
+    children.push_back( widget );
 }
 
 void GUIPanel::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 {
     drawCmdBuilder.addHUDRectangle( Position, Size, 0.0f, PanelMaterial );
+
+    for ( GUIWidget* child : children ) {
+        child->collectDrawCmds( drawCmdBuilder );
+    }
 }

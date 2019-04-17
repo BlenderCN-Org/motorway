@@ -20,22 +20,15 @@
 
 #pragma once
 
-class DrawCommandBuilder;
+class Material;
 
-#include <Maths/Vector.h>
+#include "Panel.h"
 
-class GUIWidget
+class GUIButton : public GUIPanel
 {
 public:
-    nyaVec2f        RelativePosition;
-    nyaVec2f        Position;
-    nyaVec2f        Size;
-
-public:
-                    GUIWidget();
-                    GUIWidget( GUIWidget& widget ) = default;
-                    GUIWidget& operator = ( GUIWidget& widget ) = default;
-                    ~GUIWidget();
-
-    virtual void    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) = 0;
+            GUIButton();
+            GUIButton( GUIButton& widget ) = default;
+            GUIButton& operator = ( GUIButton& widget ) = default;
+            ~GUIButton();
 };
