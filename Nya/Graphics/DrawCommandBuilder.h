@@ -74,6 +74,8 @@ public:
     void                        addIBLProbeToCapture( const IBLProbeData* probeData );
     void                        addHUDRectangle( const nyaVec2f& positionScreenSpace, const nyaVec2f& dimensionScreenSpace, const float rotationInRadians, Material* material );
 
+    void                        addHUDText( const nyaVec2f& positionScreenSpace, const float size, const nyaVec4f& colorAndAlpha, const std::string& value );
+
     void                        buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid );
 
 private:
@@ -139,6 +141,14 @@ private:
         Material*       material;
     };
 
+    struct TextDrawCommand
+    {
+        std::string     stringToPrint;
+        nyaVec4f        color;
+        nyaVec2f        positionScreenSpace;
+        float           scale;
+    };
+
 private:
     BaseAllocator*                          memoryAllocator;
 
@@ -149,6 +159,8 @@ private:
 
     PoolAllocator*                          primitivesToRender;
     nyaMat4x4f                              primitivesModelMatricess[8192];
+
+    PoolAllocator*                          textToRenderAllocator;
 
     StackAllocator*                         probeCaptureCmdAllocator;
     StackAllocator*                         probeConvolutionCmdAllocator;

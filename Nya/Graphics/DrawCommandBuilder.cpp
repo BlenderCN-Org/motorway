@@ -141,6 +141,7 @@ DrawCommandBuilder::DrawCommandBuilder( BaseAllocator* allocator )
     meshes = nya::core::allocate<PoolAllocator>( allocator, sizeof( MeshInstance ), 4, 4096 * sizeof( MeshInstance ), allocator->allocate( 4096 * sizeof( MeshInstance ) ) );
     spheresToRender = nya::core::allocate<PoolAllocator>( allocator, sizeof( PrimitiveInstance ), 4, 4096 * sizeof( PrimitiveInstance ), allocator->allocate( 4096 * sizeof( PrimitiveInstance ) ) );
     primitivesToRender = nya::core::allocate<PoolAllocator>( allocator, sizeof( PrimitiveInstance ), 4, 4096 * sizeof( PrimitiveInstance ), allocator->allocate( 4096 * sizeof( PrimitiveInstance ) ) );
+    textToRenderAllocator = nya::core::allocate<PoolAllocator>( allocator, sizeof( TextDrawCommand ), 4, 1024 * sizeof( TextDrawCommand ), allocator->allocate( 1024 * sizeof( TextDrawCommand ) ) );
 
     probeCaptureCmdAllocator = nya::core::allocate<StackAllocator>( allocator, 16 * 6 * sizeof( IBLProbeCaptureCommand ), allocator->allocate( 16 * 6 * sizeof( IBLProbeCaptureCommand ) ) );
     probeConvolutionCmdAllocator = nya::core::allocate<StackAllocator>( allocator, 16 * 8 * 6 * sizeof( IBLProbeConvolutionCommand ), allocator->allocate( 16 * 8 * 6 * sizeof( IBLProbeConvolutionCommand ) ) );
@@ -152,6 +153,7 @@ DrawCommandBuilder::~DrawCommandBuilder()
     nya::core::free( memoryAllocator, meshes );
     nya::core::free( memoryAllocator, spheresToRender );
     nya::core::free( memoryAllocator, primitivesToRender );
+    nya::core::free( memoryAllocator, textToRenderAllocator );
     nya::core::free( memoryAllocator, probeCaptureCmdAllocator );
     nya::core::free( memoryAllocator, probeConvolutionCmdAllocator );
 
@@ -223,6 +225,15 @@ void DrawCommandBuilder::addHUDRectangle( const nyaVec2f& positionScreenSpace, c
     auto primInstance = nya::core::allocate<PrimitiveInstance>( primitivesToRender );
     primInstance->modelMatrix = mat5;
     primInstance->material = material;
+}
+
+void DrawCommandBuilder::addHUDText( const nyaVec2f& positionScreenSpace, const float size, const nyaVec4f& colorAndAlpha, const std::string& value )
+{
+    auto textCmd = nya::core::allocate<TextDrawCommand>( textToRenderAllocator );
+    textCmd->stringToPrint = value;
+    textCmd->color = colorAndAlpha;
+    textCmd->scale = size;
+    textCmd->positionScreenSpace = positionScreenSpace;
 }
 
 void DrawCommandBuilder::buildRenderQueues( WorldRenderer* worldRenderer, LightGrid* lightGrid )
@@ -393,6 +404,7 @@ void DrawCommandBuilder::resetEntityCounters()
     meshes->clear();
     spheresToRender->clear();
     primitivesToRender->clear();
+    textToRenderAllocator->clear();
 }
 
 void DrawCommandBuilder::buildMeshDrawCmds( WorldRenderer* worldRenderer, CameraData* camera, const uint8_t cameraIdx, const uint8_t layer, const uint8_t viewportLayer )
@@ -492,5 +504,13 @@ void DrawCommandBuilder::buildHUDDrawCmds( WorldRenderer* worldRenderer, CameraD
         key.layer = DrawCommandKey::Layer::LAYER_HUD;
         key.viewportLayer = DrawCommandKey::HUDViewportLayer::HUD_VIEWPORT_LAYER_DEFAULT;
         key.viewportId = cameraIdx;
+    }
+
+    TextDrawCommand* textDrawCmdArray = static_cast<TextDrawCommand*>( textToRenderAllocator->getBaseAddress() );
+    const size_t textToDrawCount = textToRenderAllocator->getAllocationCount();
+
+    for ( uint32_t textIdx = 0; textIdx < textToDrawCount; textIdx++ ) {
+        const TextDrawCommand& drawCmd = textDrawCmdArray[textIdx];
+        worldRenderer->TextRenderModule->addOutlinedText( drawCmd.stringToPrint.c_str(), drawCmd.scale, drawCmd.positionScreenSpace.x, drawCmd.positionScreenSpace.y, drawCmd.color );
     }
 }
