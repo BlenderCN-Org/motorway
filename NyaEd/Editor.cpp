@@ -48,6 +48,8 @@
 #include <Core/FramerateCounter.h>
 
 #include <Framework/GUI/Panel.h>
+#include <Framework/GUI/Label.h>
+#include <Framework/GUI/Button.h>
 
 #include "DefaultInputConfig.h"
 
@@ -90,6 +92,9 @@ NYA_ENV_VAR( EnableTAA, false, bool ) // "Enable TemporalAntiAliasing [false/tru
 NYA_ENV_VAR( MSAASamplerCount, 1, uint32_t ) // "MultiSampledAntiAliasing Sampler Count [1..8]"
 
 static GUIPanel panelTest;
+static GUIPanel titleBarTest;
+static GUILabel labelTest;
+static GUIButton buttonTest;
 
 void RegisterInputContexts()
 {
@@ -221,7 +226,7 @@ void TestStuff()
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
     IBLProbeData localProbe = {};
-    localProbe.worldPosition = { 0, 6, 2 };
+    localProbe.worldPosition = { 0, 10, 2 };
     localProbe.radius = 8.0f;
     localProbe.isFallbackProbe = false;
 
@@ -234,15 +239,30 @@ void TestStuff()
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
 
-    panelTest.Position.x = 1280/2.0f;
-    panelTest.Position.y = 720/2.0f;
-
-    panelTest.Size.x = 128;
-    panelTest.Size.y = 128;
-
+    panelTest.Position = static_cast<nyaVec2f>( ScreenSize / 2u );
+    panelTest.Size = nyaVec2f( 128.0f, 128.0f );
     panelTest.IsDraggable = true;
 
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+
+    labelTest.Value = "New Window";
+    labelTest.RelativePosition = nyaVec2f( 0.01f, 0.015f );
+    labelTest.Size.x = 0.40f;
+    labelTest.ColorAndAlpha = nyaVec4f( 0.9f, 0.9f, 0.9f, 1.0f );
+
+    panelTest.addChildren( &labelTest );
+
+    buttonTest.RelativePosition = nyaVec2f( 0.95f, 0.05f );
+    buttonTest.Size = nyaVec2f( 8.0f, 8.0f );
+    buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+
+    panelTest.addChildren( &buttonTest );
+
+    titleBarTest.RelativePosition = nyaVec2f( 0.0f, 0.0f );
+    titleBarTest.Size = nyaVec2f( 128.0f, 16.0f );
+    titleBarTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+
+    panelTest.addChildren( &titleBarTest );
 }
 
 void InitializeIOSubsystems()
@@ -461,6 +481,7 @@ void MainLoop()
             g_WorldRenderer->LineRenderModule->addLine( nyaVec3f( 0, 0, 1 ), nyaVec3f( 64, 64, 1 ), 1.0f, nyaVec4f( 0, 1, 0, 1 ) );
 
             panelTest.collectDrawCmds( *g_DrawCommandBuilder );
+            labelTest.collectDrawCmds( *g_DrawCommandBuilder );
 
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
             g_WorldRenderer->TextRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );
