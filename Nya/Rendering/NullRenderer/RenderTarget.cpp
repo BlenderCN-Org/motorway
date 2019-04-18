@@ -42,4 +42,14 @@ void RenderDevice::destroyRenderTarget( RenderTarget* renderTarget )
 {
 
 }
+
+void CommandList::clearColorRenderTargets( RenderTarget** renderTargets, const uint32_t renderTargetCount, const float clearValue[4] )
+{
+
+}
+
+void CommandList::clearDepthStencilRenderTarget( RenderTarget* renderTarget, const float clearValue )
+{
+
+}
 #endif

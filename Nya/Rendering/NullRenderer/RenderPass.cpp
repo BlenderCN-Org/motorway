@@ -20,20 +20,14 @@
 #include <Shared.h>
 
 #if NYA_NULL_RENDERER
-#include <Rendering/RenderDevice.h>
 #include <Rendering/CommandList.h>
 
-RenderPass* RenderDevice::createRenderPass( const RenderPassDesc& description )
-{
-    return nullptr;
-}
-
-void RenderDevice::destroyRenderPass( RenderPass* renderPass )
+void CommandList::beginRenderPass( PipelineState* pipelineState, const RenderPass& renderPass )
 {
 
 }
 
-void CommandList::useRenderPass( RenderPass* renderPass )
+void CommandList::endRenderPass()
 {
 
 }

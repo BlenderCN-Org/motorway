@@ -21,14 +21,8 @@
 
 #if NYA_NULL_RENDERER
 #include <Rendering/RenderDevice.h>
-#include <Rendering/CommandList.h>
 
-ResourceList& RenderDevice::allocateResourceList( const ResourceListDesc& description ) const
-{
-
-}
-
-void CommandList::bindResourceList( ResourceList* resourceList )
+void RenderDevice::updateResourceList( PipelineState* pipelineState, const ResourceList& resourceList )
 {
 
 }
