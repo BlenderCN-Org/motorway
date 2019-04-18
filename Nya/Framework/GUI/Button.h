@@ -27,8 +27,13 @@ class Material;
 class GUIButton : public GUIPanel
 {
 public:
-            GUIButton();
-            GUIButton( GUIButton& widget ) = default;
-            GUIButton& operator = ( GUIButton& widget ) = default;
-            ~GUIButton();
+    bool*           Value;
+    
+public:
+                    GUIButton();
+                    GUIButton( GUIButton& widget ) = default;
+                    GUIButton& operator = ( GUIButton& widget ) = default;
+                    ~GUIButton();
+
+    void            onMouseCoordinatesUpdate( const double mouseX, const double mouseY ) override;
 };

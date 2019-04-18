@@ -21,16 +21,29 @@
 #include "Widget.h"
 
 GUIWidget::GUIWidget()
-    : RelativePosition( 0.0f, 0.0f )
+    : VirtualPosition( 0.0f, 0.0f )
+    , VirtualSize( 0.0f, 0.0f )
     , Position( 0.0f, 0.0f )
-    , Size( 1.0f, 1.0f )
+    , Size( 0.0f, 0.0f )
 {
 
 }
 
 GUIWidget::~GUIWidget()
 {
-    RelativePosition = nyaVec2f( 0.0f, 0.0f );
-    Position = nyaVec2f( 0.0f );
-    Size = nyaVec2f( 0.0f );
+    VirtualPosition = nyaVec2f( 0.0f, 0.0f );
+    VirtualSize = nyaVec2f( 0.0f, 0.0f );
+    Position = nyaVec2f( 0.0f, 0.0f );
+    Size = nyaVec2f( 0.0f, 0.0f );
+}
+
+void GUIWidget::onScreenSizeChange( const nyaVec2f& updatedVirtualToScreenSpaceFactor )
+{
+    Position = VirtualPosition * updatedVirtualToScreenSpaceFactor;
+    Size = VirtualSize * updatedVirtualToScreenSpaceFactor;
+}
+
+void GUIWidget::setScreenPosition( const nyaVec2f& screenSpacePosition )
+{
+    Position = screenSpacePosition + Size;
 }

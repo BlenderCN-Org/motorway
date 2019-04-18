@@ -47,6 +47,7 @@
 #include <Core/EnvVarsRegister.h>
 #include <Core/FramerateCounter.h>
 
+#include <Framework/GUI/Screen.h>
 #include <Framework/GUI/Panel.h>
 #include <Framework/GUI/Label.h>
 #include <Framework/GUI/Button.h>
@@ -77,6 +78,8 @@ static LightGrid*              g_LightGrid;
 
 static Scene*                  g_SceneTest;
 static FreeCamera*             g_FreeCamera;
+static GUIScreen*              g_DebugGUI;
+static GUILabel*               g_FramerateGUILabel;
 static bool                    g_IsDevMenuVisible = false;
 
 // Game Specifics
@@ -90,11 +93,6 @@ NYA_ENV_VAR( ImageQuality, 1.0f, float ) // "Image Quality Scale (in degrees) [0
 NYA_ENV_VAR( EnableVSync, false, bool ) // "Enable Vertical Synchronisation [false/true]"
 NYA_ENV_VAR( EnableTAA, false, bool ) // "Enable TemporalAntiAliasing [false/true]"
 NYA_ENV_VAR( MSAASamplerCount, 1, uint32_t ) // "MultiSampledAntiAliasing Sampler Count [1..8]"
-
-static GUIPanel panelTest;
-static GUIPanel titleBarTest;
-static GUILabel labelTest;
-static GUIButton buttonTest;
 
 void RegisterInputContexts()
 {
@@ -152,11 +150,11 @@ void RegisterInputContexts()
         auto rawX = nya::maths::clamp( static_cast<float>( g_InputReader->getAbsoluteAxisValue( nya::input::eInputAxis::MOUSE_X ) ), 0.0f, static_cast<float>( ScreenSize.x ) );
         auto rawY = nya::maths::clamp( static_cast<float>( g_InputReader->getAbsoluteAxisValue( nya::input::eInputAxis::MOUSE_Y ) ), 0.0f, static_cast<float>( ScreenSize.y ) );
 
-        panelTest.onMouseCoordinatesUpdate( rawX, rawY );
+        g_DebugGUI->onMouseCoordinatesUpdate( rawX, rawY );
         if ( input.States.find( NYA_STRING_HASH( "MouseClick" ) ) != input.States.end() ) {
-            panelTest.onMouseButtonDown( rawX, rawY );
+            g_DebugGUI->onLeftMouseButtonDown( rawX, rawY );
         } else {
-            panelTest.onMouseButtonUp();
+            g_DebugGUI->onLeftMouseButtonUp();
         }
     }, -1 );
 }
@@ -239,30 +237,41 @@ void TestStuff()
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
 
-    panelTest.Position = static_cast<nyaVec2f>( ScreenSize / 2u );
-    panelTest.Size = nyaVec2f( 128.0f, 128.0f );
+    g_DebugGUI = nya::core::allocate<GUIScreen>( g_GlobalAllocator, g_GlobalAllocator ); 
+    g_DebugGUI->setVirtualScreenSize( nyaVec2u( 1280u, 720u ) );
+
+    GUIPanel& panelTest = g_DebugGUI->allocatePanel();
+    panelTest.VirtualPosition = nyaVec2f( 640.0f, 480.0f );
+    panelTest.VirtualSize = nyaVec2f( 320.0f, 240.0f );
     panelTest.IsDraggable = true;
-
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+   
+    g_FramerateGUILabel = g_DebugGUI->allocateWidget<GUILabel>();
+    g_FramerateGUILabel->VirtualPosition = nyaVec2f( 995.0f, 0.0f );
+    g_FramerateGUILabel->VirtualSize.x = 0.40f;
+    g_FramerateGUILabel->ColorAndAlpha = nyaVec4f( 0.9f, 0.9f, 0.0f, 1.0f );
+  
+    GUILabel* windowLabelTest = g_DebugGUI->allocateWidget<GUILabel>();
+    windowLabelTest->VirtualPosition = nyaVec2f( 0.01f, 0.0f );
+    windowLabelTest->VirtualSize.x = 0.40f;
+    windowLabelTest->ColorAndAlpha = nyaVec4f( 1.0f, 1.0f, 1.0f, 1.0f );
+    windowLabelTest->Value = "New Window";
 
-    labelTest.Value = "New Window";
-    labelTest.RelativePosition = nyaVec2f( 0.01f, 0.015f );
-    labelTest.Size.x = 0.40f;
-    labelTest.ColorAndAlpha = nyaVec4f( 0.9f, 0.9f, 0.9f, 1.0f );
-
-    panelTest.addChildren( &labelTest );
-
-    buttonTest.RelativePosition = nyaVec2f( 0.95f, 0.05f );
-    buttonTest.Size = nyaVec2f( 8.0f, 8.0f );
-    buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
-
-    panelTest.addChildren( &buttonTest );
-
-    titleBarTest.RelativePosition = nyaVec2f( 0.0f, 0.0f );
-    titleBarTest.Size = nyaVec2f( 128.0f, 16.0f );
+    GUIPanel& titleBarTest = g_DebugGUI->allocatePanel();
+    titleBarTest.VirtualPosition = nyaVec2f( 0.0f, 0.0f );
+    titleBarTest.VirtualSize = nyaVec2f( 320.0f, 8.0f );
     titleBarTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
+    GUIPanel& buttonTest = g_DebugGUI->allocatePanel();
+    buttonTest.VirtualPosition = nyaVec2f( 0.975f, 0.00f );
+    buttonTest.VirtualSize = nyaVec2f( 8.0f, 8.0f );
+    buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+    
+    g_DebugGUI->onScreenResize( ScreenSize );
+
+    panelTest.addChildren( windowLabelTest );
     panelTest.addChildren( &titleBarTest );
+    panelTest.addChildren( &buttonTest );
 }
 
 void InitializeIOSubsystems()
@@ -472,16 +481,9 @@ void MainLoop()
         NYA_END_PROFILE_SCOPE()
 
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
-            std::string fpsString = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
+            g_FramerateGUILabel->Value = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
             
-            g_WorldRenderer->TextRenderModule->addOutlinedText( "Thread Profiling", 0.350f, 0.0f, 0.0f );
-            g_WorldRenderer->TextRenderModule->addOutlinedText( fpsString.c_str(), 0.350f, 0.0f, 15.0f, nyaVec4f( 1, 1, 0, 1 ) );
-            
-            g_WorldRenderer->LineRenderModule->addLine( nyaVec3f( 0, 0, 1 ), nyaVec3f( 64, 0, 1 ), 1.0f, nyaVec4f( 1, 0, 0, 1 ) );
-            g_WorldRenderer->LineRenderModule->addLine( nyaVec3f( 0, 0, 1 ), nyaVec3f( 64, 64, 1 ), 1.0f, nyaVec4f( 0, 1, 0, 1 ) );
-
-            panelTest.collectDrawCmds( *g_DrawCommandBuilder );
-            labelTest.collectDrawCmds( *g_DrawCommandBuilder );
+            g_DebugGUI->collectDrawCmds( *g_DrawCommandBuilder );
 
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
             g_WorldRenderer->TextRenderModule->addOutlinedText( profileString.c_str(), 0.350f, 256.0f, 0.0f );

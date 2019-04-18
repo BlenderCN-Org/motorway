@@ -49,8 +49,8 @@ void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
         return;
     }
 
-    auto panelMin = Position - Size;
-    auto panelMax = Position + Size;
+    auto panelMin = ( Position - Size );
+    auto panelMax = ( Position + Size );
 
     const bool isMouseInsideX = ( mouseX >= panelMin.x && mouseX <= panelMax.x );
     const bool isMouseInsideY = ( mouseY >= panelMin.y && mouseY <= panelMax.y );
@@ -70,14 +70,14 @@ void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouse
         Position = mousePressedCoordinates + nyaVec2f( mouseX, mouseY );
 
         for ( GUIWidget* child : children ) {
-            child->Position = Position - Size + ( child->RelativePosition * Size * 2.0f );
+            child->setScreenPosition( Position - Size + ( child->VirtualPosition * Size * 2.0f ) );
         }
     }
 }
 
 void GUIPanel::addChildren( GUIWidget* widget )
 {
-    widget->Position = Position - Size + ( widget->RelativePosition * Size * 2.0f );
+    widget->setScreenPosition( Position - Size + ( widget->VirtualPosition * Size * 2.0f ) );
     children.push_back( widget );
 }
 

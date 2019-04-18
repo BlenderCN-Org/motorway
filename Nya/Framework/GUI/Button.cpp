@@ -32,3 +32,8 @@ GUIButton::~GUIButton()
 {
 
 }
+
+void GUIButton::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
+{
+    *Value = !*Value;
+}

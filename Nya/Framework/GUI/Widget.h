@@ -27,9 +27,10 @@ class DrawCommandBuilder;
 class GUIWidget
 {
 public:
-    nyaVec2f        RelativePosition;
-    nyaVec2f        Position;
-    nyaVec2f        Size;
+    // Position in virtual coordinates system
+    nyaVec2f        VirtualPosition;
+    // Size in virtual coordinates system
+    nyaVec2f        VirtualSize;
 
 public:
                     GUIWidget();
@@ -38,4 +39,15 @@ public:
                     ~GUIWidget();
 
     virtual void    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) = 0;
+    void            onScreenSizeChange( const nyaVec2f& updatedVirtualToScreenSpaceFactor );
+
+    // Override widget screenspace position
+    // It should only be use for specific case (e.g. relative positioning)
+    void            setScreenPosition( const nyaVec2f& screenSpacePosition );
+
+protected:
+    // Position in screen coordinates system
+    nyaVec2f        Position;
+    // Size in screen coordinates system
+    nyaVec2f        Size;
 };

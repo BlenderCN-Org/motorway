@@ -41,9 +41,9 @@ public:
                             GUIPanel& operator = ( GUIPanel& widget ) = default;
                             ~GUIPanel();
 
-    void                    onMouseButtonDown( const double mouseX, const double mouseY );
-    void                    onMouseButtonUp();
-    void                    onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
+    virtual void            onMouseButtonDown( const double mouseX, const double mouseY );
+    virtual void            onMouseButtonUp();
+    virtual void            onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
 
     void                    addChildren( GUIWidget* widget );
     void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
