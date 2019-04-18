@@ -209,6 +209,9 @@ def compile_permutation_spirv( shader_name, filename, entry_point, extension, sh
     cmdLine = glslang_exe + " -I" + shader_folder + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -V --sub " + shading_model + " 64 --suavb " + shading_model + " 128 --sib " + shading_model + " 192 --stb " + shading_model + " 256 --sbb " + shading_model + " 384 -o " + compiled_shader_folder + filename + extension + ".vk -D ./tmp/" + filename + ".unroll"
     popenAndCall( ( cmdLine ) )
     
+    cmdLineGL = glslang_exe + " -I" + shader_folder + " -S " + shading_model + " -e " + entry_point + " " + flag_list_glsl + " -G --sub " + shading_model + " 64 --suavb " + shading_model + " 128 --sib " + shading_model + " 192 --stb " + shading_model + " 256 --sbb " + shading_model + " 384 -o " + compiled_shader_folder + filename + extension + ".gl -D ./tmp/" + filename + ".unroll"
+    popenAndCall( ( cmdLineGL ) )
+    
 def compile_shader( shader_name, type, flags = [] ):
     flagset = generate_combination_list( flags )
     
