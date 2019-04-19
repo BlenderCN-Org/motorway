@@ -39,7 +39,7 @@ cbuffer AtmosphereBuffer : register( b1 )
 struct DEFAULT_VS_OUT 
 { 
     float4 position : SV_Position; 
-    float4 viewRay : POSITION0;
+    float3 viewRay : POSITION0;
 };
 
 DEFAULT_VS_OUT EntryPointVS( uint id : SV_VERTEXID )
@@ -57,16 +57,16 @@ DEFAULT_VS_OUT EntryPointVS( uint id : SV_VERTEXID )
         1.0
     );
 
-    output.viewRay = mul( output.position, g_InverseViewProjectionMatrix ).xzyw;
+    output.viewRay = mul( output.position, g_InverseViewProjectionMatrix ).xzy;
 
     return output;
 }
 
 StructuredBuffer<AutoExposureInfos> AutoExposureBuffer : register( t3 );
 
-float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET
+float4 EntryPointPS( in DEFAULT_VS_OUT VertexStage ) : SV_TARGET0
 {
-    float3 viewDirection = normalize( VertexStage.viewRay.xyz );
+    float3 viewDirection = normalize( VertexStage.viewRay );
 
     float3 transmittance;
     float3 radiance = GetSkyRadiance( float3( g_WorldPosition.xz * 0.05f, 0.05f ) - g_EarthCenter, viewDirection, 0, g_SunDirection, transmittance );
