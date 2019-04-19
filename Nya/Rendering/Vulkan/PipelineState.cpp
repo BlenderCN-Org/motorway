@@ -230,10 +230,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
     allocInfo.descriptorSetCount = 1u;
     allocInfo.pSetLayouts = &resourceListDescriptorSetLayout;
 
-    for ( int i = 0; i < 3; i++ )
-        vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet[i] );
-
-    pipelineState->bufferIndex = 0u;
+    vkAllocateDescriptorSets( renderContext->device, &allocInfo, &pipelineState->descriptorSet );
 
     // Allocate pipeline Layout for the current resource list
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -406,46 +403,6 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         vertexInputStateDesc.vertexAttributeDescriptionCount = i;
         vertexInputStateDesc.pVertexAttributeDescriptions = vertexInputAttributeDesc;
 
-        // Create Pipeline descriptor
-        VkGraphicsPipelineCreateInfo pipelineInfo;
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.pNext = nullptr;
-        pipelineInfo.flags = 0u;
-
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pTessellationState = nullptr;
-        pipelineInfo.pViewportState = nullptr;
-        pipelineInfo.pRasterizationState = &rasterizerStateInfos;
-        pipelineInfo.pMultisampleState = nullptr;
-        pipelineInfo.pDepthStencilState = &depthStencilStateInfos;
-        pipelineInfo.pColorBlendState = &blendCreateInfos;
-        pipelineInfo.pDynamicState = &dynamicState;
-        pipelineInfo.pVertexInputState = &vertexInputStateDesc;
-
-        uint32_t pipelineStageCount = 0u;
-        VkPipelineShaderStageCreateInfo pipelineStages[SHADER_STAGE_COUNT];
-
-        if ( description.vertexShader != nullptr ) {
-            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.vertexShader );
-        }
-        if ( description.tesselationEvalShader != nullptr ) {
-            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.tesselationEvalShader );
-        }
-        if ( description.tesselationControlShader != nullptr ) {
-            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.tesselationControlShader );
-        }
-        if ( description.pixelShader != nullptr ) {
-            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.pixelShader );
-        }
-
-        pipelineInfo.pStages = pipelineStages;
-        pipelineInfo.stageCount = pipelineStageCount;
-
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        pipelineInfo.basePipelineIndex = -1;
-
-        pipelineInfo.layout = pipelineState->layout;
-
         VkRenderPassCreateInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.pNext = nullptr;
@@ -464,17 +421,19 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         uint32_t readReferenceCount = 0u;
         uint32_t writeReferenceCount = 0u;
 
+        VkSampleCountFlagBits maxWriteSampleCount = VK_SAMPLE_COUNT_1_BIT;
         VkAttachmentDescription attachments[24];
         uint32_t attachmentCount = 0u;
         for ( int i = 0; i < 24; i++ ) {
             const auto& attachment = description.renderPassLayout.attachements[i];
 
             switch ( attachment.bindMode ) {
-            case RenderPassLayoutDesc::READ: {
+            case RenderPassLayoutDesc::READ:
+            {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
-                attachmentDesc.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+                attachmentDesc.samples = GetVkSampleCount( attachment.sampleCount );
 
                 attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
                 attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -493,11 +452,14 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
             } break;
 
             case RenderPassLayoutDesc::SWAPCHAIN_BUFFER:
-            case RenderPassLayoutDesc::WRITE: {
+            case RenderPassLayoutDesc::WRITE:
+            {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
-                attachmentDesc.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+                attachmentDesc.samples = GetVkSampleCount( attachment.sampleCount );
+
+                maxWriteSampleCount = nya::maths::max( maxWriteSampleCount, attachmentDesc.samples );
 
                 attachmentDesc.loadOp = ( attachment.targetState == RenderPassLayoutDesc::DONT_CARE )
                     ? VK_ATTACHMENT_LOAD_OP_DONT_CARE
@@ -523,13 +485,16 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
                 attachmentCount++;
-               } break;
+            } break;
 
-            case RenderPassLayoutDesc::WRITE_DEPTH: {
+            case RenderPassLayoutDesc::WRITE_DEPTH:
+            {
                 VkAttachmentDescription& attachmentDesc = attachments[attachmentCount];
                 attachmentDesc.flags = 0u;
                 attachmentDesc.format = VK_IMAGE_FORMAT[attachment.viewFormat];
-                attachmentDesc.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+                attachmentDesc.samples = GetVkSampleCount( attachment.sampleCount );
+
+                maxWriteSampleCount = nya::maths::max( maxWriteSampleCount, attachmentDesc.samples );
 
                 attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -573,6 +538,58 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         renderPassInfo.pDependencies = nullptr;
 
         vkCreateRenderPass( renderContext->device, &renderPassInfo, nullptr, &pipelineState->renderPass );
+
+        // Multisampled Rasterizer state
+        VkPipelineMultisampleStateCreateInfo multisampleStateInfos = {};
+        multisampleStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampleStateInfos.pNext = nullptr;
+        multisampleStateInfos.flags = 0u;
+        multisampleStateInfos.rasterizationSamples = maxWriteSampleCount;
+        multisampleStateInfos.sampleShadingEnable = VK_FALSE;
+        multisampleStateInfos.minSampleShading = 0.0f;
+        multisampleStateInfos.pSampleMask = nullptr;
+        multisampleStateInfos.alphaToCoverageEnable = ( blendStateDescription.enableAlphaToCoverage ) ? VK_TRUE : VK_FALSE;
+        multisampleStateInfos.alphaToOneEnable = VK_FALSE;
+
+        // Create Pipeline descriptor
+        VkGraphicsPipelineCreateInfo pipelineInfo;
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.pNext = nullptr;
+        pipelineInfo.flags = 0u;
+
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pTessellationState = nullptr;
+        pipelineInfo.pViewportState = nullptr;
+        pipelineInfo.pRasterizationState = &rasterizerStateInfos;
+        pipelineInfo.pMultisampleState = &multisampleStateInfos;
+        pipelineInfo.pDepthStencilState = &depthStencilStateInfos;
+        pipelineInfo.pColorBlendState = &blendCreateInfos;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.pVertexInputState = &vertexInputStateDesc;
+
+        uint32_t pipelineStageCount = 0u;
+        VkPipelineShaderStageCreateInfo pipelineStages[SHADER_STAGE_COUNT];
+
+        if ( description.vertexShader != nullptr ) {
+            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.vertexShader );
+        }
+        if ( description.tesselationEvalShader != nullptr ) {
+            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.tesselationEvalShader );
+        }
+        if ( description.tesselationControlShader != nullptr ) {
+            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.tesselationControlShader );
+        }
+        if ( description.pixelShader != nullptr ) {
+            CreateShaderStageDescriptor( pipelineStages[pipelineStageCount++], description.pixelShader );
+        }
+
+        pipelineInfo.pStages = pipelineStages;
+        pipelineInfo.stageCount = pipelineStageCount;
+
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
+
+        pipelineInfo.layout = pipelineState->layout;
 
         pipelineInfo.renderPass = pipelineState->renderPass;
         pipelineInfo.subpass = 0u;
@@ -627,7 +644,7 @@ void CommandList::bindPipelineState( PipelineState* pipelineState )
         pipelineState->layout,
         0u,
         1u,
-        &pipelineState->descriptorSet[pipelineState->bufferIndex],
+        &pipelineState->descriptorSet,
         0u,
         nullptr
     );

@@ -44,8 +44,7 @@ void RenderDevice::updateResourceList( PipelineState* pipelineState, const Resou
     VkDescriptorImageInfo descriptorImageInfos[64];
     VkDescriptorBufferInfo descriptorBufferInfos[64];
 
-    pipelineState->bufferIndex = ++pipelineState->bufferIndex % 3;
-    VkDescriptorSet& activeDescriptorSet = pipelineState->descriptorSet[pipelineState->bufferIndex];
+    VkDescriptorSet& activeDescriptorSet = pipelineState->descriptorSet;
 
     for ( uint32_t i = 0u; i < pipelineState->descriptorBindingCount; i++ ) {
         switch ( pipelineState->descriptorBindingTypes[i] ) {
