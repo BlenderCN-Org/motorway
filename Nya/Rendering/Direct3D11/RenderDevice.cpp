@@ -337,6 +337,8 @@ void RenderDevice::present()
         NYA_CERR << "Failed to swap buffers! (error code " << NYA_PRINT_HEX( swapBufferResult ) << ")" << std::endl;
         NYA_ASSERT( swapBufferResult == DXGI_ERROR_DEVICE_REMOVED, "Device removed! (error code: 0%X)", renderContext->nativeDevice->GetDeviceRemovedReason() );
     }
+
+    frameIndex = ++frameIndex % std::numeric_limits<size_t>::max();
 }
 
 const nyaChar_t* RenderDevice::getBackendName() const

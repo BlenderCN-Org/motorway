@@ -473,6 +473,7 @@ public:
     CommandList&        allocateComputeCommandList() const;
     void                submitCommandList( CommandList* commandList );
    
+    size_t              getFrameIndex() const;
     RenderTarget*       getSwapchainBuffer();
 
     Texture*            createTexture1D( const TextureDescription& description, const void* initialData = nullptr, const size_t initialDataSize = 0 );
@@ -507,4 +508,5 @@ public:
 
 private:
     BaseAllocator*      memoryAllocator;
+    size_t              frameIndex;
 };

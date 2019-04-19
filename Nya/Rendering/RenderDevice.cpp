@@ -23,6 +23,12 @@
 RenderDevice::RenderDevice( BaseAllocator* allocator )
     : renderContext( nullptr )
     , memoryAllocator( allocator )
+    , frameIndex( 0ull )
 {
 
+}
+
+size_t RenderDevice::getFrameIndex() const
+{
+    return frameIndex;
 }

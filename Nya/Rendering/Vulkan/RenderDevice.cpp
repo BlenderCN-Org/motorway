@@ -789,6 +789,8 @@ void RenderDevice::present()
         NYA_ASSERT( false, "vkQueuePresentKHR failed/hanged! (error code: 0%X)", operationResult );
     }
 
+    frameIndex = ++frameIndex % std::numeric_limits<size_t>::max();
+
     vkQueueWaitIdle( renderContext->presentQueue );
 }
 

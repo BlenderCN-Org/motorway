@@ -179,6 +179,7 @@ RenderContext* CreateRenderContextSysImpl( BaseAllocator* memoryAllocator, Displ
 void RenderDevice::present()
 {
     glXSwapBuffers( renderContext->X11Display, renderContext->DrawContext );
+    frameIndex = ++frameIndex % std::numeric_limits<size_t>::max();
 }
 
 void RenderDevice::enableVerticalSynchronisation( const bool enabled )
