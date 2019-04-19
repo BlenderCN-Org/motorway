@@ -292,6 +292,28 @@ static VkImageViewType GetViewType( const TextureDescription& description, const
     }
 }
 
+static VkSampleCountFlagBits GetVkSampleCount( const uint32_t sampleCount )
+{
+    switch ( sampleCount ) {
+    case 1:
+        return VK_SAMPLE_COUNT_1_BIT;
+    case 2:
+        return VK_SAMPLE_COUNT_2_BIT;
+    case 4:
+        return VK_SAMPLE_COUNT_4_BIT;
+    case 8:
+        return VK_SAMPLE_COUNT_8_BIT;
+    case 16:
+        return VK_SAMPLE_COUNT_16_BIT;
+    case 32:
+        return VK_SAMPLE_COUNT_32_BIT;
+    case 64:
+        return VK_SAMPLE_COUNT_64_BIT;
+    default:
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+}
+
 static VkImageView CreateImageView( VkDevice device, const TextureDescription& description, const VkImage image, const uint32_t sliceIndex = 0u, const uint32_t sliceCount = ~0u, const uint32_t mipIndex = 0u, const uint32_t mipCount = ~0u )
 {
     const bool isPerSliceView = ( sliceIndex != 0 );
