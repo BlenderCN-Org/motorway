@@ -206,7 +206,6 @@ RenderContext::~RenderContext()
     vkDestroySurfaceKHR( instance, displaySurface, nullptr );
     vkDestroyInstance( instance, nullptr );
     vkDestroyDevice( device, nullptr );
-    vkDestroyInstance( instance, nullptr );
 }
 
 RenderDevice::~RenderDevice()
