@@ -43,8 +43,8 @@ public:
     void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
 private:
-    PipelineState*              skyRenderPso;
-    PipelineState*              skyRenderNoSunFixedExposurePso;
+    PipelineState*              skyRenderPso[7];
+    PipelineState*              skyRenderNoSunFixedExposurePso[7];
 
     Texture*                    transmittanceTexture;
     Texture*                    scatteringTexture;
@@ -55,9 +55,12 @@ private:
     float                       sunAngularRadius;
 
     struct {
-        nyaVec3f               EarthCenter;
-        float                  SunSizeX;
-        nyaVec3f               SunDirection;
-        float                  SunSizeY;
+        nyaVec3f                EarthCenter;
+        float                   SunSizeX;
+        nyaVec3f                SunDirection;
+        float                   SunSizeY;
     } parameters;
+
+private:
+    PipelineState*              getPipelineStatePermutation( const uint32_t samplerCount, const bool renderSunDisk, const bool useAutomaticExposure );
 };

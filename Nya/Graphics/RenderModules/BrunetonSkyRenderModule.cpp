@@ -135,7 +135,7 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
             renderPass.attachement[0] = { outputTarget, 0, 0 };
 
             // Pipeline State
-            PipelineState* pipelineStateObject = ( renderSunDisk ) ? skyRenderPso : skyRenderNoSunFixedExposurePso;
+            PipelineState* pipelineStateObject = getPipelineStatePermutation( camera->msaaSamplerCount, renderSunDisk, useAutomaticExposure );
 
             // Resource List
             ResourceList resourceList;
@@ -179,15 +179,17 @@ MutableResHandle_t BrunetonSkyRenderModule::renderSky( RenderPipeline* renderPip
 
 void BrunetonSkyRenderModule::destroy( RenderDevice* renderDevice )
 {
-    renderDevice->destroyPipelineState( skyRenderPso );
-    renderDevice->destroyPipelineState( skyRenderNoSunFixedExposurePso );
+    for ( uint32_t i = 0; i < 7u; i++ ) {
+        renderDevice->destroyPipelineState( skyRenderPso[i] );
+        renderDevice->destroyPipelineState( skyRenderNoSunFixedExposurePso[i] );
+    }
 }
 
 void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache )
 {
     PipelineStateDesc psoDesc = {};
     psoDesc.vertexShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky", SHADER_STAGE_VERTEX );
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_RENDER_SUN_DISC", SHADER_STAGE_PIXEL );
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_FIXED_EXPOSURE", SHADER_STAGE_PIXEL );
     psoDesc.primitiveTopology = nya::rendering::ePrimitiveTopology::PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
     psoDesc.rasterizerState.cullMode = nya::rendering::eCullMode::CULL_MODE_NONE;
     psoDesc.depthStencilState.enableDepthTest = false;
@@ -205,8 +207,6 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.resourceListLayout.resources[4] = { 1, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
     psoDesc.resourceListLayout.resources[5] = { 2, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
 
-    psoDesc.resourceListLayout.resources[6] = { 3, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
-
     // RenderPass
     psoDesc.renderPassLayout.attachements[0].stageBind = SHADER_STAGE_PIXEL;
     psoDesc.renderPassLayout.attachements[0].bindMode = RenderPassLayoutDesc::WRITE;
@@ -216,13 +216,32 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
     psoDesc.renderPassLayout.attachements[0].clearValue[1] = 0.0f;
     psoDesc.renderPassLayout.attachements[0].clearValue[2] = 0.0f;
     psoDesc.renderPassLayout.attachements[0].clearValue[3] = 1.0f;
+    psoDesc.renderPassLayout.attachements[0].sampleCount = 1u;
+
+    skyRenderNoSunFixedExposurePso[0] = renderDevice->createPipelineState( psoDesc );
 
     // Allocate and cache pipeline state
-    skyRenderPso = renderDevice->createPipelineState( psoDesc );
+    uint32_t samplerCount = 2u;
+    for ( uint32_t i = 1u; i < 7u; i++ ) {
+        psoDesc.renderPassLayout.attachements[0].sampleCount = samplerCount;
+        skyRenderNoSunFixedExposurePso[i] = renderDevice->createPipelineState( psoDesc );
 
-    psoDesc.resourceListLayout.resources[6] = { 0, 0, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_SAMPLER };
-    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_FIXED_EXPOSURE", SHADER_STAGE_PIXEL );
-    skyRenderNoSunFixedExposurePso = renderDevice->createPipelineState( psoDesc );
+        samplerCount *= 2u;
+    }
+
+    psoDesc.pixelShader = shaderCache->getOrUploadStage( "Atmosphere/BrunetonSky+NYA_RENDER_SUN_DISC", SHADER_STAGE_PIXEL );
+    psoDesc.resourceListLayout.resources[6] = { 3, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };
+
+    skyRenderPso[0] = renderDevice->createPipelineState( psoDesc );
+
+    // Allocate and cache pipeline state
+    samplerCount = 2u;
+    for ( uint32_t i = 1u; i < 7u; i++ ) {
+        psoDesc.renderPassLayout.attachements[0].sampleCount = samplerCount;
+        skyRenderPso[i] = renderDevice->createPipelineState( psoDesc );
+
+        samplerCount *= 2u;
+    }
 
     // Load precomputed table and shaders
     transmittanceTexture = graphicsAssetCache->getTexture( ATMOSPHERE_TRANSMITTANCE_TEXTURE_NAME );
@@ -231,4 +250,26 @@ void BrunetonSkyRenderModule::loadCachedResources( RenderDevice* renderDevice, S
 
     // Set Default Parameters
     parameters.EarthCenter = nyaVec3f( 0.0, 0.0, -kBottomRadius / kLengthUnitInMeters );
+}
+
+PipelineState* BrunetonSkyRenderModule::getPipelineStatePermutation( const uint32_t samplerCount, const bool renderSunDisk, const bool useAutomaticExposure )
+{
+    switch ( samplerCount ) {
+    case 1:
+        return ( renderSunDisk ) ? skyRenderPso[0] : skyRenderNoSunFixedExposurePso[0];
+    case 2:
+        return ( renderSunDisk ) ? skyRenderPso[1] : skyRenderNoSunFixedExposurePso[1];
+    case 4:
+        return ( renderSunDisk ) ? skyRenderPso[2] : skyRenderNoSunFixedExposurePso[2];
+    case 8:
+        return ( renderSunDisk ) ? skyRenderPso[3] : skyRenderNoSunFixedExposurePso[3];
+    case 16:
+        return ( renderSunDisk ) ? skyRenderPso[4] : skyRenderNoSunFixedExposurePso[4];
+    case 32:
+        return ( renderSunDisk ) ? skyRenderPso[5] : skyRenderNoSunFixedExposurePso[5];
+    case 64:
+        return ( renderSunDisk ) ? skyRenderPso[6] : skyRenderNoSunFixedExposurePso[6];
+    default:
+        return ( renderSunDisk ) ? skyRenderPso[0] : skyRenderNoSunFixedExposurePso[0];
+    }
 }

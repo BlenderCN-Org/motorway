@@ -24,6 +24,8 @@
 #if NYA_VULKAN
 #include <vulkan/vulkan.h>
 
+#include "RenderDevice.h"
+
 // Channel * PerChannelSize
 static constexpr size_t VK_IMAGE_FORMAT_SIZE[IMAGE_FORMAT_COUNT] =
 {
@@ -340,4 +342,91 @@ static VkImageView CreateImageView( VkDevice device, const TextureDescription& d
 
     return imageView;
 }
+
+namespace
+{
+    static VkCommandBuffer BeginSingleTimeCommands( RenderContext* renderContext )
+    {
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = renderContext->graphicsCommandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers( renderContext->device, &allocInfo, &commandBuffer );
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer( commandBuffer, &beginInfo );
+
+        return commandBuffer;
+    }
+
+    void EndSingleTimeCommands( RenderContext* renderContext, VkCommandBuffer commandBuffer )
+    {
+        vkEndCommandBuffer( commandBuffer );
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit( renderContext->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE );
+        vkQueueWaitIdle( renderContext->graphicsQueue );
+
+        vkFreeCommandBuffers( renderContext->device, renderContext->graphicsCommandPool, 1, &commandBuffer );
+    }
+}
+
+static void TransitionImageLayout( RenderContext* renderContext, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout )
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands( renderContext );
+
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if ( oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if ( oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else {   
+        NYA_DEV_ASSERT( false, "Invalid layout transition! (oldLayout: %X, nextLayout: %X)", oldLayout, newLayout );
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
+    EndSingleTimeCommands( renderContext, commandBuffer );
+}
+
 #endif

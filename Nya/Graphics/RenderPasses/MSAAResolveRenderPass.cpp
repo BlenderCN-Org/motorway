@@ -43,6 +43,11 @@ void LoadCachedResourcesMRP( RenderDevice* renderDevice, ShaderCache* shaderCach
     psoDesc.renderPassLayout.attachements[3].viewFormat = eImageFormat::IMAGE_FORMAT_R32_TYPELESS;
 
 #define LOAD_PERMUTATION( samplerCount )\
+    psoDesc.renderPassLayout.attachements[0].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[1].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[2].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[3].sampleCount = samplerCount;\
+    \
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount, SHADER_STAGE_PIXEL );\
     g_x##samplerCount##PipelineStateObject = renderDevice->createPipelineState( psoDesc );\
 
@@ -58,6 +63,11 @@ void LoadCachedResourcesMRP( RenderDevice* renderDevice, ShaderCache* shaderCach
     psoDesc.renderPassLayout.attachements[4].viewFormat = eImageFormat::IMAGE_FORMAT_R16G16B16A16_FLOAT;
 
 #define LOAD_PERMUTATION_TAA( samplerCount )\
+    psoDesc.renderPassLayout.attachements[0].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[1].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[2].sampleCount = samplerCount;\
+    psoDesc.renderPassLayout.attachements[3].sampleCount = samplerCount;\
+    \
     psoDesc.pixelShader = shaderCache->getOrUploadStage( "MSAAResolve+NYA_MSAA_X" #samplerCount "+NYA_USE_TAA", SHADER_STAGE_PIXEL );\
     g_x##samplerCount##TAAPipelineStateObject = renderDevice->createPipelineState( psoDesc );
 

@@ -119,7 +119,7 @@ static constexpr uint32_t VK_DT_OFFSET[ResourceListLayoutDesc::RESOURCE_LIST_RES
     192u, // 192u,
     128u,
     256u,
-    256u, //384u,
+    384u, // 256u, //384u,
     192u,
 };
 
@@ -385,7 +385,7 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
             vertexInputAttributeDesc[i].format = VK_IMAGE_FORMAT[description.inputLayout[i].format];
             vertexInputAttributeDesc[i].offset = description.inputLayout[i].offsetInBytes;
 
-            vertexStride += VK_IMAGE_FORMAT_SIZE[description.inputLayout[i].format];
+            vertexStride += static_cast<uint32_t>( VK_IMAGE_FORMAT_SIZE[description.inputLayout[i].format] );
         }
 
         VkVertexInputBindingDescription vertexInputBindingDesc;
