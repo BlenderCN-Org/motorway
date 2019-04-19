@@ -419,6 +419,7 @@ struct RenderPassLayoutDesc
         BindMode        bindMode;
         State           targetState;
         eImageFormat    viewFormat;
+        uint32_t        sampleCount;
         float           clearValue[4];
     } attachements[24];
 };
