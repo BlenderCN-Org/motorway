@@ -56,7 +56,7 @@ void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
     const bool isMouseInsideY = ( mouseY >= panelMin.y && mouseY <= panelMax.y );
 
     canBeDragged = ( isMouseInsideX && isMouseInsideY );
-    mousePressedCoordinates = Position - nyaVec2f( mouseX, mouseY );
+    mousePressedCoordinates = Position - nyaVec2f( static_cast<float>( mouseX ), static_cast<float>( mouseY ) );
 }
 
 void GUIPanel::onMouseButtonUp()
@@ -67,7 +67,7 @@ void GUIPanel::onMouseButtonUp()
 void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
 {
     if ( IsDraggable && canBeDragged ) {
-        Position = mousePressedCoordinates + nyaVec2f( mouseX, mouseY );
+        Position = mousePressedCoordinates + nyaVec2f( static_cast< float >( mouseX ), static_cast< float >( mouseY ) );
 
         for ( GUIWidget* child : children ) {
             child->setScreenPosition( Position - Size + ( child->VirtualPosition * Size * 2.0f ) );
