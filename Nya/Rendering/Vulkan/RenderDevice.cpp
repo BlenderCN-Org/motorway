@@ -746,7 +746,7 @@ void RenderDevice::submitCommandList( CommandList* commandList )
 
         // Wait until the cmds have finished, then release the fbos allocated by the commandlist
         // signal fence once the commands have been completed on the GPU; release GPU resources on the CPU (could be done asynchronously using a dedicated thread?)
-        vkWaitForFences( renderContext->device, 1u, &cmdList->resourcesReleaseFence, VK_TRUE, 1000ull );
+        vkWaitForFences( renderContext->device, 1u, &cmdList->resourcesReleaseFence, VK_TRUE, 100000000ull );
 
         while ( !cmdList->framebuffers.empty() ) {
             VkFramebuffer fbo = cmdList->framebuffers.top();
