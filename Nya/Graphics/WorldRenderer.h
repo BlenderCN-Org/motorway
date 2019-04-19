@@ -102,7 +102,7 @@ struct DrawCommandKey
 
 struct DrawCommandInfos
 {
-    const Material*             material; // Geom cmd
+    Material*                   material; // Geom cmd
     const Buffer*               vertexBuffer;
     const Buffer*               indiceBuffer;
     uint32_t                    indiceBufferOffset; // unused if indice buffer is null

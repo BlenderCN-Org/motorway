@@ -123,7 +123,7 @@ ResHandle_t AddCSMCapturePass( RenderPipeline* renderPipeline )
 
                 cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
-                for ( const auto& drawCmd : drawCmdBucket ) {
+                for ( auto& drawCmd : drawCmdBucket ) {
 #if NYA_DEVBUILD
                     const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
                     cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );

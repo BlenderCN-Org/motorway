@@ -86,6 +86,9 @@ Material::Material( const nyaString_t& materialName )
     , depthOnlyTextureSet{ nullptr }
     , depthOnlyTextureSetCount( 0 )
     , sortKey( 0u )
+    , latestUpdateFrameIndex( std::numeric_limits<size_t>::max() )
+    , latestProbeCaptureUpdateFrameIndex( std::numeric_limits<size_t>::max() )
+    , latestDepthOnlyUpdateFrameIndex( std::numeric_limits<size_t>::max() )
 {
     sortKeyInfos.shadingModel = eShadingModel::SHADING_MODEL_NONE;
 }
@@ -489,32 +492,51 @@ const nyaString_t& Material::getName() const
     return name;
 }
 
-void Material::bind( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bind( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList )
 {
-    bindDefaultTextureSet( resourceList );
-    renderDevice->updateResourceList( defaultPipelineState, resourceList );
+    const size_t frameIndex = renderDevice->getFrameIndex();
+
+    if ( frameIndex != latestUpdateFrameIndex ) {
+        bindDefaultTextureSet( resourceList );
+        renderDevice->updateResourceList( defaultPipelineState, resourceList );
+
+        latestUpdateFrameIndex = frameIndex;
+    }
 
     cmdList.beginRenderPass( defaultPipelineState, renderPass );
     cmdList.bindPipelineState( defaultPipelineState );
 }
 
-void Material::bindProbeCapture( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bindProbeCapture( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList )
 {
-    bindDefaultTextureSet( resourceList );
-    renderDevice->updateResourceList( probeCapturePipelineState, resourceList );
+    const size_t frameIndex = renderDevice->getFrameIndex();
+
+    if ( frameIndex != latestProbeCaptureUpdateFrameIndex ) {
+        bindDefaultTextureSet( resourceList );
+        renderDevice->updateResourceList( probeCapturePipelineState, resourceList );
+
+        latestProbeCaptureUpdateFrameIndex = frameIndex;
+    }
 
     cmdList.beginRenderPass( probeCapturePipelineState, renderPass );
     cmdList.bindPipelineState( probeCapturePipelineState );
 }
 
-void Material::bindDepthOnly( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const
+void Material::bindDepthOnly( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList )
 {
-    uint32_t resourceBindIndex = 4u;
-    for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
-        resourceList.resource[resourceBindIndex++].texture = depthOnlyTextureSet[textureIdx];
+    const size_t frameIndex = renderDevice->getFrameIndex();
+
+    if ( frameIndex != latestDepthOnlyUpdateFrameIndex ) {
+        uint32_t resourceBindIndex = 4u;
+        for ( int32_t textureIdx = 0; textureIdx < depthOnlyTextureSetCount; textureIdx++ ) {
+            resourceList.resource[resourceBindIndex++].texture = depthOnlyTextureSet[textureIdx];
+        }
+
+        renderDevice->updateResourceList( depthOnlyPipelineState, resourceList );
+
+        latestDepthOnlyUpdateFrameIndex = frameIndex;
     }
 
-    renderDevice->updateResourceList( depthOnlyPipelineState, resourceList );
     cmdList.beginRenderPass( depthOnlyPipelineState, renderPass );
     cmdList.bindPipelineState( depthOnlyPipelineState );
 }

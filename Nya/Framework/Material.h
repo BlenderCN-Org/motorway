@@ -84,9 +84,9 @@ public:
     void                        setName( const nyaString_t& meshName );
     const nyaString_t&          getName() const;
 
-    void                        bind( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
-    void                        bindProbeCapture( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
-    void                        bindDepthOnly( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList ) const;
+    void                        bind( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList );
+    void                        bindProbeCapture( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList );
+    void                        bindDepthOnly( RenderDevice* renderDevice, CommandList& cmdList, RenderPass& renderPass, ResourceList& resourceList );
 
     // NOTE -This function should only be used in case of override/debug materials
     //      -This function implicitly drops regular flagset (based on sortkey infos)
@@ -135,6 +135,10 @@ private:
 
         uint32_t                sortKey;
     };
+
+    size_t                      latestUpdateFrameIndex;
+    size_t                      latestProbeCaptureUpdateFrameIndex;
+    size_t                      latestDepthOnlyUpdateFrameIndex;
 
 private:
     void                        bindDefaultTextureSet( ResourceList& resourceList ) const;
