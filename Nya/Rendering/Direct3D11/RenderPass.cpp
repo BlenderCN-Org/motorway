@@ -45,16 +45,16 @@ void CommandList::beginRenderPass( PipelineState* pipelineState, const RenderPas
 
         switch ( resource.type ) {
         case PipelineState::RenderPassLayout::RenderTargetView:
-            if ( attachment.faceIndex != 0 )
-                *resource.renderTargetView = ( attachment.mipLevel != 0 )
+            if ( attachment.faceIndex != -1 )
+                *resource.renderTargetView = ( attachment.mipLevel != -1 )
                     ? renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel]
                     : renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetViewPerSlice[attachment.faceIndex];
             else
                 *resource.renderTargetView = renderPass.attachement[resource.resourceIndex].renderTarget->textureRenderTargetView;
             break;
         case PipelineState::RenderPassLayout::DepthStencilView:
-            if ( attachment.faceIndex != 0 )
-                *resource.depthStencilView = ( attachment.mipLevel != 0 )
+            if ( attachment.faceIndex != -1 )
+                *resource.depthStencilView = ( attachment.mipLevel != -1 )
                     ? renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthStencilViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel]
                     : renderPass.attachement[resource.resourceIndex].renderTarget->textureDepthStencilViewPerSlice[attachment.faceIndex];
             else

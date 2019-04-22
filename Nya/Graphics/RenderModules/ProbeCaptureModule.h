@@ -45,8 +45,8 @@ public:
     void                        loadCachedResources( RenderDevice* renderDevice, ShaderCache* shaderCache, GraphicsAssetCache* graphicsAssetCache );
 
     void                        importResourcesToPipeline( RenderPipeline* renderPipeline );
-    void                        convoluteProbeFace( RenderPipeline* renderPipeline, const uint32_t probeArrayIndex, const uint16_t probeCaptureStep, const uint32_t mipLevel = 0 );
-    void                        saveCapturedProbeFace( RenderPipeline* renderPipeline, ResHandle_t capturedFace, const uint32_t probeArrayIndex, const uint16_t probeCaptureStep );
+    void                        convoluteProbeFace( RenderPipeline* renderPipeline, const int32_t probeArrayIndex, const uint16_t probeCaptureStep, const int32_t mipLevel = 0 );
+    void                        saveCapturedProbeFace( RenderPipeline* renderPipeline, ResHandle_t capturedFace, const int32_t probeArrayIndex, const int16_t probeCaptureStep );
     
 private:
     RenderTarget*               capturedProbesArray;

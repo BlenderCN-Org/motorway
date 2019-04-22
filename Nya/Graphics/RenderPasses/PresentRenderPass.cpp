@@ -73,7 +73,7 @@ void AddPresentRenderPass( RenderPipeline* renderPipeline, ResHandle_t inputUAVB
                 cmdList.setViewport( *pipelineDimensions );
 
                 RenderPass renderPass;
-                renderPass.attachement[0] = { outputTarget, 0, 0 };
+                renderPass.attachement[0].renderTarget = outputTarget;
 
                 cmdList.beginRenderPass( g_PipelineStateObject, renderPass );
                 {

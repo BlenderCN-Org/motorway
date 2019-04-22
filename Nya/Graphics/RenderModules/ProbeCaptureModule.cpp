@@ -133,9 +133,9 @@ void ProbeCaptureModule::importResourcesToPipeline( RenderPipeline* renderPipeli
     renderPipeline->importPersistentRenderTarget( NYA_STRING_HASH( "IBL/SpecularProbesArray" ), specularProbesArray );
 }
 
-void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, const uint32_t probeArrayIndex, const uint16_t probeCaptureStep, const uint32_t mipLevel )
+void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, const int32_t probeArrayIndex, const uint16_t probeCaptureStep, const int32_t mipLevel )
 {
-    uint32_t faceIndex = probeArrayIndex * 6u + probeCaptureStep;
+    int32_t faceIndex = probeArrayIndex * 6 + probeCaptureStep;
 
     struct PassData {
         ResHandle_t input;
@@ -271,7 +271,7 @@ void ProbeCaptureModule::convoluteProbeFace( RenderPipeline* renderPipeline, con
     );
 }
 
-void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, ResHandle_t capturedFace, const uint32_t probeArrayIndex, const uint16_t probeCaptureStep )
+void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, ResHandle_t capturedFace, const int32_t probeArrayIndex, const int16_t probeCaptureStep )
 {
     struct PassData {
         ResHandle_t input;
@@ -279,15 +279,12 @@ void ProbeCaptureModule::saveCapturedProbeFace( RenderPipeline* renderPipeline, 
         ResHandle_t bilinearSampler;
     };
 
-    const uint32_t faceIndex = probeArrayIndex * 6u + probeCaptureStep;
+    const int32_t faceIndex = probeArrayIndex * 6 + probeCaptureStep;
 
     renderPipeline->addRenderPass<PassData>(
         "IBL Captured Face Save Pass",
         [&]( RenderPipelineBuilder& renderPipelineBuilder, PassData& passData ) {
-            renderPipelineBuilder.setUncullablePass();
-
             passData.input = renderPipelineBuilder.readRenderTarget( capturedFace );
-
             passData.output = renderPipelineBuilder.retrievePersistentRenderTarget( NYA_STRING_HASH( "IBL/CapturedProbesArray" ) );
 
             SamplerDesc bilinearSamplerDesc = {};

@@ -64,9 +64,9 @@ struct RenderPass
 {
     struct {
         RenderTarget*   renderTarget;
-        uint32_t        mipLevel;
-        uint32_t        faceIndex;
-    } attachement[24] = { nullptr, 0u, 0u };
+        int32_t        mipLevel;
+        int32_t        faceIndex;
+    } attachement[24] = { nullptr, -1, -1 };
 };
 
 class CommandList

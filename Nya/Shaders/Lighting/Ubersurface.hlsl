@@ -259,7 +259,7 @@ NYA_READ_LAYER( 0 )
 #include "ShadingModels/Debug.hlsl"
 #endif    
 
-static const int LD_MIP_COUNT = 7;
+static const int LD_MIP_COUNT = 8;
 
 float3x3 ComputeTangentFrame( const float3 N, const float3 P, const float2 UV, out float3 T, out float3 B )
 {
