@@ -115,7 +115,7 @@ LightGrid::PassData LightGrid::updateClusters( RenderPipeline* renderPipeline )
 
                 cmdList.bindPipelineState( lightCullingPso );
 
-                cmdList.dispatchCompute( 4u, 4u, 4u );
+                cmdList.dispatchCompute( 16u, 8u, 24u );
 
                 cmdList.end();
             }

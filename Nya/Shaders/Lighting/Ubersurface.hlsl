@@ -524,7 +524,7 @@ float2 ComputeVelocity( VertexStageData VertexStage )
 
 uint3 UnpackUint_12_12_8( in uint coords )
 {
-    return uint3( ( coords >> 24 ) & 0x00000FFF, ( coords >> 12 ) & 0xFF, coords & 0x000000FF );
+    return uint3( asuint( ( coords >> 20 ) & 0x00000FFF ), asuint( ( coords >> 8 ) & 0x00000FFF ), asuint( coords & 0x000000FF ) );
 }
 
 PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_IsFrontFace )
@@ -640,7 +640,7 @@ PixelStageData EntryPointPS( VertexStageData VertexStage, bool isFrontFace : SV_
 		LightContribution.rgb += DoShading( L, surface ) * pointLightIlluminance;	
     }
 	
-    light_mask.r += MAX_POINT_LIGHT_COUNT;
+    light_mask.r += entityCount.r;
     light_mask.r += entityCount.g;
 	
     LightContribution.rgb += ( LightContribution.rgb * surface.Emissivity );   

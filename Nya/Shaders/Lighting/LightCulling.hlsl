@@ -1,9 +1,9 @@
 #include <LightsData.hlsli>
 #include <SceneInfos.hlsli>
 
-static const int NUM_THREADS_X = 4;
-static const int NUM_THREADS_Y = 2;
-static const int NUM_THREADS_Z = 6;
+static const int NUM_THREADS_X = 1;
+static const int NUM_THREADS_Y = 1;
+static const int NUM_THREADS_Z = 1;
 static const int NUM_THREADS = ( NUM_THREADS_X * NUM_THREADS_Y * NUM_THREADS_Z );
 
 static const int CLUSTER_X = 16;
@@ -15,15 +15,15 @@ static const uint CLUSTER_COUNT = ( CLUSTER_Z * CLUSTER_Y * CLUSTER_X );
 RWTexture3D<uint2> g_LightClusters : register( u0 );
 RWBuffer<uint> g_ItemList : register( u1 );
 
-groupshared uint g_ClusterItems[NUM_THREADS * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT )];
+groupshared uint g_ClusterItems[( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT )];
 
 [numthreads( NUM_THREADS_X, NUM_THREADS_Y, NUM_THREADS_Z )]
-void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_GroupThreadID, uint3 groupIdx : SV_GroupID )
-{
+void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_GroupThreadID, uint3 groupIdx : SV_GroupID, uint groupIndex : SV_GroupIndex )
+{	
 	int3 groupClusterOffset = int3( groupIdx * int3( NUM_THREADS_X, NUM_THREADS_Y, NUM_THREADS_Z ) );
-    int3 clusterIdx = int3( localIdx ) + groupClusterOffset;
-    uint localIdxFlattened = localIdx.x + localIdx.y * NUM_THREADS_X + localIdx.z * NUM_THREADS_X * NUM_THREADS_Y;
-	uint localItemListOffset = localIdxFlattened * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT );
+	int3 clusterIdx = int3( localIdx ) + groupClusterOffset;
+    // uint localIdxFlattened = localIdx.x + localIdx.y * NUM_THREADS_X + localIdx.z * NUM_THREADS_X * NUM_THREADS_Y;
+	// uint localItemListOffset = localIdxFlattened * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT );
 	
     uint threadListOffset = 0u;
     
@@ -79,12 +79,12 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 		dx += dy;
 	            			
 		if ( dx < squaredRadius ) {
-			g_ClusterItems[localItemListOffset + threadListOffset] = i;
+			g_ClusterItems[threadListOffset] = i;
             threadListOffset++;
 		}
 	}
     
-    uint pointLightCount = threadListOffset;
+    const uint pointLightCount = threadListOffset;
 	
 	// IBLProbe Culling
     for ( uint j = 0; j < MAX_LOCAL_IBL_PROBE_COUNT; j++ ) {
@@ -138,23 +138,18 @@ void EntryPointCS( uint3 globalIdx : SV_DispatchThreadID, uint3 localIdx : SV_Gr
 		dx += dy;
 	            			
 		if ( dx < squaredRadius ) {
-			g_ClusterItems[localItemListOffset + threadListOffset] = j;
+			g_ClusterItems[threadListOffset] = j;
             threadListOffset++;
 		}
 	}
     
-    uint iblProbeCount = threadListOffset;
-	
+    uint iblProbeCount = ( threadListOffset - pointLightCount );	
     uint spotLightCount = 0u;
 	
 	uint itemListOffset = ( globalIdx.x + globalIdx.y * CLUSTER_X + globalIdx.z * CLUSTER_X * CLUSTER_Y ) * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT );	
-    g_LightClusters[globalIdx] = uint2( itemListOffset, pointLightCount << 20 | spotLightCount << 8 | iblProbeCount );
-	
-	GroupMemoryBarrierWithGroupSync();
+    g_LightClusters[globalIdx] = uint2( itemListOffset, ( pointLightCount << 20 ) & 0xFFF00000 | ( spotLightCount << 8 ) & 0x000FFF00 | ( iblProbeCount & 0x000000FF ) );
 	
     // Write from LDS memory to UAV
-    if ( localIdxFlattened == 0 ) { 
-		for ( int i = 0; i < NUM_THREADS * ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT ); i++ )
-			g_ItemList[i] = g_ClusterItems[i];
-	}
+	for ( int x = 0; x < ( MAX_POINT_LIGHT_COUNT + MAX_LOCAL_IBL_PROBE_COUNT ); x++ )
+		g_ItemList[itemListOffset+x] = g_ClusterItems[x];
 }
