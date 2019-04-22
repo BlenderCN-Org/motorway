@@ -191,7 +191,7 @@ void TestStuff()
         for ( int i = 0; i < 6; i++ ) {
             PointLightData pointLightData;
             pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
-            pointLightData.radius = 0.5f;
+            pointLightData.radius = 0.50f;
             pointLightData.lightPower = 100.0f;
             pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
 
@@ -222,27 +222,51 @@ void TestStuff()
 
     auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
+    {
+        IBLProbeData localProbe = {};
+        localProbe.worldPosition = { 0, 10, 2 };
+        localProbe.radius = 4.0f;
+        localProbe.isFallbackProbe = false;
 
-    IBLProbeData localProbe = {};
-    localProbe.worldPosition = { 0, 10, 2 };
-    localProbe.radius = 8.0f;
-    localProbe.isFallbackProbe = false;
+        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
 
-    nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
-    localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+    }
+    {
+        IBLProbeData localProbe = {};
+        localProbe.worldPosition = { -10, 10, 2 };
+        localProbe.radius = 4.0f;
+        localProbe.isFallbackProbe = false;
 
-    auto& localProbeNode = g_SceneTest->allocateIBLProbe();
-    localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
 
+        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+    }
+    {
+        IBLProbeData localProbe = {};
+        localProbe.worldPosition = { -10, 10, 12 };
+        localProbe.radius = 4.0f;
+        localProbe.isFallbackProbe = false;
+
+        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+
+        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+    }
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
-    g_LightGrid->setSceneBounds( aabbMesh.maxPoint, nyaVec3f( -16.0f, 0.0f, -16.0f ) );
+    g_LightGrid->setSceneBounds( nyaVec3f( 20, 20, 20 ), nyaVec3f( -20, -20, -20 ) );
 
     g_DebugGUI = nya::core::allocate<GUIScreen>( g_GlobalAllocator, g_GlobalAllocator ); 
     g_DebugGUI->setVirtualScreenSize( nyaVec2u( 1280u, 720u ) );
 
     GUIPanel& panelTest = g_DebugGUI->allocatePanel();
     panelTest.VirtualPosition = nyaVec2f( 640.0f, 480.0f );
-    panelTest.VirtualSize = nyaVec2f( 320.0f, 240.0f );
+    panelTest.VirtualSize = nyaVec2f( 250.0f, 120.0f );
     panelTest.IsDraggable = true;
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
    
@@ -259,19 +283,33 @@ void TestStuff()
 
     GUIPanel& titleBarTest = g_DebugGUI->allocatePanel();
     titleBarTest.VirtualPosition = nyaVec2f( 0.0f, 0.0f );
-    titleBarTest.VirtualSize = nyaVec2f( 320.0f, 8.0f );
+    titleBarTest.VirtualSize = nyaVec2f( 250.0f, 8.0f );
     titleBarTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
     GUIPanel& buttonTest = g_DebugGUI->allocatePanel();
-    buttonTest.VirtualPosition = nyaVec2f( 0.975f, 0.00f );
+    buttonTest.VirtualPosition = nyaVec2f( 0.965f, 0.00f );
     buttonTest.VirtualSize = nyaVec2f( 8.0f, 8.0f );
     buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
-    
+
+    GUIButton* buttonTest2 = g_DebugGUI->allocateWidget<GUIButton>();
+    buttonTest2->VirtualPosition = nyaVec2f( 0.01f, 0.08f );
+    buttonTest2->VirtualSize = nyaVec2f( 8.0f, 8.0f );
+    buttonTest2->PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+    buttonTest2->Value = &g_IsDevMenuVisible;
+
+    GUILabel* buttonLabel = g_DebugGUI->allocateWidget<GUILabel>();
+    buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.08f );
+    buttonLabel->VirtualSize.x = 0.35f;
+    buttonLabel->ColorAndAlpha = nyaVec4f( 1.0f, 1.0f, 1.0f, 1.0f );
+    buttonLabel->Value = "g_IsDevMenuVisible";
+
     g_DebugGUI->onScreenResize( ScreenSize );
 
     panelTest.addChildren( windowLabelTest );
     panelTest.addChildren( &titleBarTest );
     panelTest.addChildren( &buttonTest );
+    panelTest.addChildren( buttonTest2 );
+    panelTest.addChildren( buttonLabel );
 }
 
 void InitializeIOSubsystems()
@@ -462,20 +500,21 @@ void MainLoop()
 
         frameTime = static_cast< float >( nya::core::GetTimerDeltaAsSeconds( &updateTimer ) );
 
+		// Update Input
+		g_InputReader->onFrame( g_InputMapper );
+
+		// Update Local Game Instance
+		g_InputMapper->update( frameTime );
+		g_InputMapper->clear();
+
         logicCounter.onFrame( frameTime );
 
         accumulator += static_cast<double>( frameTime );
         
         NYA_BEGIN_PROFILE_SCOPE( "Fixed-step updates" )
             while ( accumulator >= static_cast<double>( nya::editor::LOGIC_DELTA ) ) {
-                // Update Input
-                g_InputReader->onFrame( g_InputMapper );
-
-                // Update Local Game Instance
-                g_InputMapper->update( nya::editor::LOGIC_DELTA );
-                g_InputMapper->clear();
-
                 g_SceneTest->updateLogic( nya::editor::LOGIC_DELTA );
+
                 accumulator -= static_cast<double>( nya::editor::LOGIC_DELTA );
             }
         NYA_END_PROFILE_SCOPE()
