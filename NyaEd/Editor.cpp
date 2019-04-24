@@ -265,7 +265,7 @@ void TestStuff()
     g_DebugGUI->setVirtualScreenSize( nyaVec2u( 1280u, 720u ) );
 
     GUIPanel& panelTest = g_DebugGUI->allocatePanel();
-    panelTest.VirtualPosition = nyaVec2f( 0.0f, 0.0f );
+    panelTest.VirtualPosition = nyaVec2f( 0.0f, 1.00f );
     panelTest.VirtualSize = nyaVec2f( 250.0f, 120.0f );
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
    
@@ -287,21 +287,21 @@ void TestStuff()
     titleBarTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
     GUIPanel& buttonTest = g_DebugGUI->allocatePanel();
-    buttonTest.VirtualPosition = nyaVec2f( 1.0f, 0.0f );
+    buttonTest.VirtualPosition = nyaVec2f( 0.96725f, 0.0f );
     buttonTest.VirtualSize = nyaVec2f( 8.0f, 8.0f );
     buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
     GUIButton* buttonTest2 = g_DebugGUI->allocateWidget<GUIButton>();
-    buttonTest2->VirtualPosition = nyaVec2f( 0.01f, 0.08f );
+    buttonTest2->VirtualPosition = nyaVec2f( 0.01f, 0.0f );
     buttonTest2->VirtualSize = nyaVec2f( 8.0f, 8.0f );
     buttonTest2->PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
-    buttonTest2->Value = &g_IsDevMenuVisible;
+    buttonTest2->Value = &EnableVSync;
 
     GUILabel* buttonLabel = g_DebugGUI->allocateWidget<GUILabel>();
-    buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.08f );
+    buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.0f );
     buttonLabel->VirtualSize.x = 0.35f;
     buttonLabel->ColorAndAlpha = nyaVec4f( 1.0f, 1.0f, 1.0f, 1.0f );
-    buttonLabel->Value = "g_IsDevMenuVisible";
+    buttonLabel->Value = "EnableVSync";
 
     g_DebugGUI->onScreenResize( ScreenSize );
 
