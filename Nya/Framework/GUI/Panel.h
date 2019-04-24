@@ -47,6 +47,7 @@ public:
 
     void                    addChild( GUIWidget* widget );
     void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
+    void                    setScreenPosition( const nyaVec2f& screenSpacePosition ) override;
 
 private:
     bool                    canBeDragged;

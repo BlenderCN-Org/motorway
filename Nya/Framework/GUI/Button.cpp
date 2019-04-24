@@ -33,7 +33,17 @@ GUIButton::~GUIButton()
 
 }
 
-void GUIButton::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
+void GUIButton::onMouseButtonDown( const double mouseX, const double mouseY )
 {
     *Value = !*Value;
+}
+
+void GUIButton::onMouseButtonUp()
+{
+
+}
+
+void GUIButton::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
+{
+
 }

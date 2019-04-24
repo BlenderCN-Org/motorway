@@ -35,5 +35,7 @@ public:
                     GUIButton& operator = ( GUIButton& widget ) = default;
                     ~GUIButton();
 
+    void            onMouseButtonDown( const double mouseX, const double mouseY ) override;
+    void            onMouseButtonUp() override;
     void            onMouseCoordinatesUpdate( const double mouseX, const double mouseY ) override;
 };

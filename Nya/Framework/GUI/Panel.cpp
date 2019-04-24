@@ -90,3 +90,13 @@ void GUIPanel::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
         child->collectDrawCmds( drawCmdBuilder );
     }
 }
+
+void GUIPanel::setScreenPosition( const nyaVec2f& screenSpacePosition )
+{
+    GUIWidget::setScreenPosition( screenSpacePosition );
+
+    // Propagate screen position update to children
+    for ( GUIWidget* child : children ) {
+        child->setScreenPosition( Position - Size + ( child->VirtualPosition * Size * 2.0f ) );
+    }
+}

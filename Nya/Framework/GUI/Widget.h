@@ -43,7 +43,7 @@ public:
 
     // Override widget screenspace position
     // It should only be use for specific case (e.g. relative positioning)
-    void            setScreenPosition( const nyaVec2f& screenSpacePosition );
+    virtual void    setScreenPosition( const nyaVec2f& screenSpacePosition );
 
 protected:
     // Position in screen coordinates system
