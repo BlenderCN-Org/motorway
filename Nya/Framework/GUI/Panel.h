@@ -45,7 +45,7 @@ public:
     virtual void            onMouseButtonUp();
     virtual void            onMouseCoordinatesUpdate( const double mouseX, const double mouseY );
 
-    void                    addChildren( GUIWidget* widget );
+    void                    addChild( GUIWidget* widget );
     void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
 
 private:

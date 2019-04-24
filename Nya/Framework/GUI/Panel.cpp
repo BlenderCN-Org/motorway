@@ -28,6 +28,7 @@ GUIPanel::GUIPanel()
     , IsResizable( false )
     , IsScrollable( false )
     , canBeDragged( false )
+    , PanelMaterial( nullptr )
 {
     mousePressedCoordinates = nyaVec2f( 0.0f, 0.0f );
 }
@@ -75,7 +76,7 @@ void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouse
     }
 }
 
-void GUIPanel::addChildren( GUIWidget* widget )
+void GUIPanel::addChild( GUIWidget* widget )
 {
     widget->setScreenPosition( Position - Size + ( widget->VirtualPosition * Size * 2.0f ) );
     children.push_back( widget );

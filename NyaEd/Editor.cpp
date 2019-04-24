@@ -216,13 +216,7 @@ void TestStuff()
     auto& dirLight = g_SceneTest->allocateDirectionalLight();
     dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
-    IBLProbeData globalProbe = {};
-    globalProbe.worldPosition = { 4, 8, 4 };
-    globalProbe.isFallbackProbe = true;
-
-    auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
-    globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
-    {
+   {
         IBLProbeData localProbe = {};
         localProbe.worldPosition = { 0, 10, 2 };
         localProbe.radius = 4.0f;
@@ -258,6 +252,12 @@ void TestStuff()
         auto& localProbeNode = g_SceneTest->allocateIBLProbe();
         localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
     }
+
+    IBLProbeData globalProbe = {};
+    globalProbe.isFallbackProbe = true;
+    auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
+    globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
+
     const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( nyaVec3f( 20, 20, 20 ), nyaVec3f( -20, -20, -20 ) );
 
@@ -265,9 +265,8 @@ void TestStuff()
     g_DebugGUI->setVirtualScreenSize( nyaVec2u( 1280u, 720u ) );
 
     GUIPanel& panelTest = g_DebugGUI->allocatePanel();
-    panelTest.VirtualPosition = nyaVec2f( 640.0f, 480.0f );
+    panelTest.VirtualPosition = nyaVec2f( 0.0f, 0.0f );
     panelTest.VirtualSize = nyaVec2f( 250.0f, 120.0f );
-    panelTest.IsDraggable = true;
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
    
     g_FramerateGUILabel = g_DebugGUI->allocateWidget<GUILabel>();
@@ -282,12 +281,13 @@ void TestStuff()
     windowLabelTest->Value = "New Window";
 
     GUIPanel& titleBarTest = g_DebugGUI->allocatePanel();
-    titleBarTest.VirtualPosition = nyaVec2f( 0.0f, 0.0f );
+    titleBarTest.VirtualPosition = nyaVec2f( 640.0f, 480.0f );
     titleBarTest.VirtualSize = nyaVec2f( 250.0f, 8.0f );
+    titleBarTest.IsDraggable = true;
     titleBarTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
     GUIPanel& buttonTest = g_DebugGUI->allocatePanel();
-    buttonTest.VirtualPosition = nyaVec2f( 0.965f, 0.00f );
+    buttonTest.VirtualPosition = nyaVec2f( 1.0f, 0.0f );
     buttonTest.VirtualSize = nyaVec2f( 8.0f, 8.0f );
     buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
 
@@ -305,11 +305,11 @@ void TestStuff()
 
     g_DebugGUI->onScreenResize( ScreenSize );
 
-    panelTest.addChildren( windowLabelTest );
-    panelTest.addChildren( &titleBarTest );
-    panelTest.addChildren( &buttonTest );
-    panelTest.addChildren( buttonTest2 );
-    panelTest.addChildren( buttonLabel );
+    titleBarTest.addChild( &panelTest );
+    titleBarTest.addChild( windowLabelTest );
+    titleBarTest.addChild( &buttonTest );
+    panelTest.addChild( buttonTest2 );
+    panelTest.addChild( buttonLabel );
 }
 
 void InitializeIOSubsystems()
