@@ -81,6 +81,7 @@ static FreeCamera*             g_FreeCamera;
 static GUIScreen*              g_DebugGUI;
 static GUILabel*               g_FramerateGUILabel;
 static bool                    g_IsDevMenuVisible = false;
+static GUILabel*               g_CheckboxTestLabel;
 
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -289,26 +290,27 @@ void TestStuff()
     GUIPanel& buttonTest = g_DebugGUI->allocatePanel();
     buttonTest.VirtualPosition = nyaVec2f( 0.96725f, 0.0f );
     buttonTest.VirtualSize = nyaVec2f( 8.0f, 8.0f );
-    buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
+    buttonTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/CloseButton.mat" ) );
 
-    GUIButton* buttonTest2 = g_DebugGUI->allocateWidget<GUIButton>();
-    buttonTest2->VirtualPosition = nyaVec2f( 0.01f, 0.0f );
-    buttonTest2->VirtualSize = nyaVec2f( 8.0f, 8.0f );
-    buttonTest2->PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
-    buttonTest2->Value = &EnableVSync;
-
+    GUIButton& buttonTest2 = g_DebugGUI->allocatePanel<GUIButton>();
+    buttonTest2.VirtualPosition = nyaVec2f( 0.01f, 0.01f );
+    buttonTest2.VirtualSize = nyaVec2f( 8.0f, 8.0f );
+    buttonTest2.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/Checkbox.mat" ) );
+    buttonTest2.Value = &EnableTAA;
+    
     GUILabel* buttonLabel = g_DebugGUI->allocateWidget<GUILabel>();
-    buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.0f );
+    buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.01f );
     buttonLabel->VirtualSize.x = 0.35f;
     buttonLabel->ColorAndAlpha = nyaVec4f( 1.0f, 1.0f, 1.0f, 1.0f );
-    buttonLabel->Value = "EnableVSync";
+    buttonLabel->Value = "EnableTAA";
+    g_CheckboxTestLabel = buttonLabel;
 
     g_DebugGUI->onScreenResize( ScreenSize );
 
     titleBarTest.addChild( &panelTest );
     titleBarTest.addChild( windowLabelTest );
     titleBarTest.addChild( &buttonTest );
-    panelTest.addChild( buttonTest2 );
+    panelTest.addChild( &buttonTest2 );
     panelTest.addChild( buttonLabel );
 }
 
@@ -521,7 +523,7 @@ void MainLoop()
 
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
             g_FramerateGUILabel->Value = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
-            
+            g_CheckboxTestLabel->Value = ( EnableTAA ) ? "EnableTAA 1" : "EnableTAA 0";
             g_DebugGUI->collectDrawCmds( *g_DrawCommandBuilder );
 
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
@@ -543,6 +545,8 @@ void Shutdown()
     g_WorldRenderer->destroy( g_RenderDevice );
     g_GraphicsAssetCache->destroy();
 
+    nya::display::DestroyDisplaySurface( g_DisplaySurface );
+
     nya::core::free( g_GlobalAllocator, g_DrawCommandBuilder );
     nya::core::free( g_GlobalAllocator, g_SceneTest );
     nya::core::free( g_GlobalAllocator, g_GraphicsAssetCache );
@@ -556,8 +560,6 @@ void Shutdown()
     nya::core::free( g_GlobalAllocator, g_RenderDevice );
     nya::core::free( g_GlobalAllocator, g_InputReader );
     nya::core::free( g_GlobalAllocator, g_InputMapper );
-
-    nya::display::DestroyDisplaySurface( g_DisplaySurface );
 
     g_GlobalAllocator->clear();
     g_GlobalAllocator->~LinearAllocator();

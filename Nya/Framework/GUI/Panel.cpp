@@ -27,7 +27,7 @@ GUIPanel::GUIPanel()
     , IsDraggable( false )
     , IsResizable( false )
     , IsScrollable( false )
-    , canBeDragged( false )
+    , isMouseInside( false )
     , PanelMaterial( nullptr )
 {
     mousePressedCoordinates = nyaVec2f( 0.0f, 0.0f );
@@ -39,14 +39,14 @@ GUIPanel::~GUIPanel()
     IsResizable = false;
     IsScrollable = false;
 
-    canBeDragged = false;
+    isMouseInside = false;
 
     mousePressedCoordinates = nyaVec2f( 0.0f, 0.0f );
 }
 
 void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
 {
-    if ( canBeDragged ) {
+    if ( isMouseInside ) {
         return;
     }
 
@@ -56,18 +56,18 @@ void GUIPanel::onMouseButtonDown( const double mouseX, const double mouseY )
     const bool isMouseInsideX = ( mouseX >= panelMin.x && mouseX <= panelMax.x );
     const bool isMouseInsideY = ( mouseY >= panelMin.y && mouseY <= panelMax.y );
 
-    canBeDragged = ( isMouseInsideX && isMouseInsideY );
+    isMouseInside = ( isMouseInsideX && isMouseInsideY );
     mousePressedCoordinates = Position - nyaVec2f( static_cast<float>( mouseX ), static_cast<float>( mouseY ) );
 }
 
 void GUIPanel::onMouseButtonUp()
 {
-    canBeDragged = false;
+    isMouseInside = false;
 }
 
 void GUIPanel::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
 {
-    if ( IsDraggable && canBeDragged ) {
+    if ( IsDraggable && isMouseInside ) {
         Position = mousePressedCoordinates + nyaVec2f( static_cast< float >( mouseX ), static_cast< float >( mouseY ) );
 
         for ( GUIWidget* child : children ) {

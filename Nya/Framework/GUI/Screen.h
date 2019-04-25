@@ -38,8 +38,20 @@ public:
 
     void                    setVirtualScreenSize( const nyaVec2u& virtualScreenSizeInPixels );
     void                    onScreenResize( const nyaVec2u& screenSizeInPixels );
-   
-    GUIPanel&               allocatePanel();
+
+    template<typename T = GUIPanel>
+    T& allocatePanel()
+    {
+        nyaVec2f virtualToScreenRatio = nyaVec2f( screenSize ) / nyaVec2f( virtualScreenSize );
+
+        T* panel = nya::core::allocate<T>( memoryAllocator );
+        panels.push_back( panel );
+
+        panel->onScreenSizeChange( virtualToScreenRatio );
+
+        return *panel;
+    }
+
     template<typename T> T* allocateWidget()
     {
         T* widget = nya::core::allocate<T>( memoryAllocator );

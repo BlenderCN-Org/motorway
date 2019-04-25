@@ -49,8 +49,10 @@ public:
     void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder ) override;
     void                    setScreenPosition( const nyaVec2f& screenSpacePosition ) override;
 
+protected:
+    bool                    isMouseInside;
+
 private:
-    bool                    canBeDragged;
     nyaVec2f                mousePressedCoordinates;
     std::vector<GUIWidget*> children;
 };

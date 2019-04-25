@@ -247,9 +247,14 @@ void Material::create( RenderDevice* renderDevice, ShaderCache* shaderCache )
 
         defaultPipelineStateDesc.resourceListLayout.resources[1] = { 0, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER }; // cbuffer ActiveCameraBuffer
         defaultPipelineStateDesc.resourceListLayout.resources[2] = { 1, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER }; // cbuffer SceneInfos
+     
         defaultPipelineStateDesc.resourceListLayout.resources[3] = { 8, SHADER_STAGE_VERTEX, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_GENERIC_BUFFER };  // Buffer<float4> g_InstanceVectorBuffer
 
-        uint32_t resourceBindIdx = 4u;
+#if NYA_DEVBUILD
+        defaultPipelineStateDesc.resourceListLayout.resources[4] = { 3, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_CBUFFER }; // cbuffer MaterialEdition
+#endif
+
+        uint32_t resourceBindIdx = 5u;
         for ( int32_t textureIndex = 0u; textureIndex < defaultTextureSetCount; textureIndex++ ) {
             defaultPipelineStateDesc.resourceListLayout.resources[resourceBindIdx++] = { textureIndex, SHADER_STAGE_PIXEL, ResourceListLayoutDesc::RESOURCE_LIST_RESOURCE_TYPE_TEXTURE };
         }

@@ -24,6 +24,7 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
         ResHandle_t screenBuffer;
         ResHandle_t instanceBuffer;
         ResHandle_t vectorDataBuffer;
+        ResHandle_t materialEditionBuffer;
     };
 
     struct InstanceBuffer {
@@ -61,6 +62,14 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
 
             passData.vectorDataBuffer = renderPipelineBuilder.allocateBuffer( vectorDataBufferDesc, SHADER_STAGE_VERTEX );
 
+#if NYA_DEVBUILD
+            BufferDesc materialBufferDesc;
+            materialBufferDesc.type = BufferDesc::CONSTANT_BUFFER;
+            materialBufferDesc.size = sizeof( Material::EditorBuffer );
+
+            passData.materialEditionBuffer = renderPipelineBuilder.allocateBuffer( materialBufferDesc, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL );
+#endif
+
             // Misc Resources
             SamplerDesc bilinearSamplerDesc = {};
             bilinearSamplerDesc.addressU = nya::rendering::eSamplerAddress::SAMPLER_ADDRESS_CLAMP_EDGE;
@@ -77,11 +86,19 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             Buffer* vectorDataBuffer = renderPipelineResources.getBuffer( passData.vectorDataBuffer );
             RenderTarget* outputTarget = renderPipelineResources.getRenderTarget( passData.input );
 
+#if NYA_DEVBUILD
+            Buffer* materialEditorBuffer = renderPipelineResources.getBuffer( passData.materialEditionBuffer );
+#endif
+
             ResourceList resourceList;
             resourceList.resource[0].sampler = bilinearSampler;
             resourceList.resource[1].buffer = screenBuffer;
             resourceList.resource[2].buffer = instanceBuffer;
             resourceList.resource[3].buffer = vectorDataBuffer;
+
+#if NYA_DEVBUILD
+            resourceList.resource[4].buffer = materialEditorBuffer;
+#endif
 
             CommandList& cmdList = renderDevice->allocateGraphicsCommandList();
             cmdList.begin();
@@ -117,6 +134,11 @@ ResHandle_t AddHUDRenderPass( RenderPipeline* renderPipeline, ResHandle_t output
             cmdList.updateBuffer( instanceBuffer, &instanceBufferData, sizeof( InstanceBuffer ) );
 
             for ( const auto& drawCmd : drawCmdBucket ) {
+#if NYA_DEVBUILD
+                const Material::EditorBuffer& matEditBuffer = drawCmd.infos.material->getEditorBuffer();
+                cmdList.updateBuffer( materialEditorBuffer, &matEditBuffer, sizeof( Material::EditorBuffer ) );
+#endif
+
                 drawCmd.infos.material->bind( renderDevice, cmdList, renderPass, resourceList );
                 {
                     cmdList.bindVertexBuffer( drawCmd.infos.vertexBuffer );

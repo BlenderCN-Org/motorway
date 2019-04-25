@@ -58,18 +58,6 @@ void GUIScreen::onScreenResize( const nyaVec2u& screenSizeInPixels )
     }
 }
 
-GUIPanel& GUIScreen::allocatePanel()
-{
-    nyaVec2f virtualToScreenRatio = nyaVec2f( screenSize ) / nyaVec2f( virtualScreenSize );
-
-    GUIPanel* panel = nya::core::allocate<GUIPanel>( memoryAllocator );
-    panels.push_back( panel );
-
-    panel->onScreenSizeChange( virtualToScreenRatio );
-
-    return *panel;
-}
-
 void GUIScreen::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 {
     for ( GUIPanel* panel : panels ) {

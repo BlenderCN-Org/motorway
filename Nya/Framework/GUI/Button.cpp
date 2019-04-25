@@ -35,12 +35,17 @@ GUIButton::~GUIButton()
 
 void GUIButton::onMouseButtonDown( const double mouseX, const double mouseY )
 {
-    *Value = !*Value;
+    if ( isMouseInside ) return;
+
+    GUIPanel::onMouseButtonDown( mouseX, mouseY );
+
+    if ( isMouseInside )
+        *Value = !*Value;
 }
 
 void GUIButton::onMouseButtonUp()
 {
-
+    GUIPanel::onMouseButtonUp();
 }
 
 void GUIButton::onMouseCoordinatesUpdate( const double mouseX, const double mouseY )
