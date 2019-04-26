@@ -482,6 +482,16 @@ void Initialize()
 #endif
 }
 
+#if NYA_DEVBUILD
+void DebugUpdate()
+{
+    g_RenderDevice->enableVerticalSynchronisation( EnableVSync );
+
+    auto& cameraFlags = g_FreeCamera->getUpdatableFlagset();
+    cameraFlags.enableTAA = EnableTAA;
+}
+#endif
+
 void MainLoop()
 {
     // Application main loop
@@ -520,6 +530,10 @@ void MainLoop()
                 accumulator -= static_cast<double>( nya::editor::LOGIC_DELTA );
             }
         NYA_END_PROFILE_SCOPE()
+
+#if NYA_DEVBUILD
+        DebugUpdate();
+#endif
 
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
             g_FramerateGUILabel->Value = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
