@@ -31,7 +31,8 @@ struct PipelineState
     VkRenderPass                renderPass;
 
     uint32_t                    attachmentCount;
-    VkClearValue                clearValues[24];
+    VkClearValue                clearValues[24]; 
+    VkImageLayout               attachmentLayoutTransition[24];
     VkDescriptorSet             descriptorSet;
     uint32_t                    descriptorBindingCount;
     VkDescriptorType            descriptorBindingTypes[64];

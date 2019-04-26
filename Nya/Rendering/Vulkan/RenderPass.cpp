@@ -24,6 +24,7 @@
 #include "CommandList.h"
 
 #include "RenderTarget.h"
+#include "ImageHelpers.h"
 #include "Texture.h"
 #include "PipelineState.h"
 
@@ -38,7 +39,19 @@ void CommandList::beginRenderPass( PipelineState* pipelineState, const RenderPas
     for ( ; attachmentCount < pipelineState->attachmentCount; attachmentCount++ ) {
         const auto& attachment = renderPass.attachement[attachmentCount];
 
-        imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
+        if ( pipelineState->attachmentLayoutTransition[attachmentCount] != VK_IMAGE_LAYOUT_UNDEFINED ) {
+            SetImageLayout( CommandListObject->cmdBuffer, attachment.renderTarget->texture->image, VK_IMAGE_LAYOUT_UNDEFINED, pipelineState->attachmentLayoutTransition[attachmentCount], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT );
+        }
+
+        if ( attachment.faceIndex != -1 ) {
+            if ( attachment.faceIndex != -1 ) {
+                imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetViewPerSliceAndMipLevel[attachment.faceIndex][attachment.mipLevel];
+            } else {
+                imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetViewPerSlice[attachment.faceIndex];
+            }
+        } else {
+            imageViews[attachmentCount] = attachment.renderTarget->textureRenderTargetView;
+        }
     }
 
     VkFramebuffer fbo;

@@ -472,6 +472,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
                 if ( attachment.bindMode == RenderPassLayoutDesc::SWAPCHAIN_BUFFER ) {
                     attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                     attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+                    pipelineState->attachmentLayoutTransition[attachmentCount] = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 } else {
                     attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                     attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -545,8 +547,8 @@ PipelineState* RenderDevice::createPipelineState( const PipelineStateDesc& descr
         multisampleStateInfos.pNext = nullptr;
         multisampleStateInfos.flags = 0u;
         multisampleStateInfos.rasterizationSamples = maxWriteSampleCount;
-        multisampleStateInfos.sampleShadingEnable = VK_FALSE;
-        multisampleStateInfos.minSampleShading = 0.0f;
+        multisampleStateInfos.sampleShadingEnable = VK_TRUE;
+        multisampleStateInfos.minSampleShading = 0.250f;
         multisampleStateInfos.pSampleMask = nullptr;
         multisampleStateInfos.alphaToCoverageEnable = ( blendStateDescription.enableAlphaToCoverage ) ? VK_TRUE : VK_FALSE;
         multisampleStateInfos.alphaToOneEnable = VK_FALSE;
