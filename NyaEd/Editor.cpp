@@ -51,8 +51,20 @@
 #include <Framework/GUI/Panel.h>
 #include <Framework/GUI/Label.h>
 #include <Framework/GUI/Button.h>
+#include <Framework/TransactionHandler/TransactionHandler.h>
 
 #include "DefaultInputConfig.h"
+
+#if NYA_DEVBUILD
+#include <imgui/imgui.h>
+#include <imgui/examples/imgui_impl_dx11.h>
+#include <imgui/examples/imgui_impl_win32.h>
+#include <Display/DisplaySurfaceWin32.h>
+#include <Rendering/Direct3D11/CommandList.h>
+#include <Rendering/Direct3D11/RenderDevice.h>
+#include <Rendering/Direct3D11/RenderTarget.h>  
+#include <d3d11.h>
+#endif
 
 static constexpr const nyaChar_t* const PROJECT_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "NyaEd" ) );
 
@@ -81,7 +93,8 @@ static FreeCamera*             g_FreeCamera;
 static GUIScreen*              g_DebugGUI;
 static GUILabel*               g_FramerateGUILabel;
 static bool                    g_IsDevMenuVisible = false;
-static GUILabel*               g_CheckboxTestLabel;
+static SceneNode*              g_PickedNode = nullptr;
+static TransactionHandler*     g_TransactionHandler = nullptr;
 
 // Game Specifics
 #define WIN_MODE_OPTION_LIST( option ) option( WINDOWED ) option( FULLSCREEN ) option( BORDERLESS )
@@ -157,12 +170,60 @@ void RegisterInputContexts()
         } else {
             g_DebugGUI->onLeftMouseButtonUp();
         }
+        ImGuiIO& io = ImGui::GetIO();
+
+        if ( !io.WantCaptureMouse ) {
+            if ( input.Actions.find( NYA_STRING_HASH( "PickNode" ) ) != input.Actions.end() ) {
+                auto cameraData = g_FreeCamera->getData();
+                auto viewMat = cameraData.viewMatrix;
+                auto projMat = cameraData.depthProjectionMatrix;
+
+                auto inverseViewProj = ( projMat * viewMat ).inverse();
+
+                nyaVec4f ray =
+                {
+                    ( io.MousePos.x / io.DisplaySize.x ) * 2.f - 1.f,
+                    ( 1.f - ( io.MousePos.y / io.DisplaySize.y ) ) * 2.f - 1.f,
+                    0.0f,
+                    1.0f
+                };
+
+                nyaVec4f rayOrigin =
+                {
+                    ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
+                    ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
+                    ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
+                    ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
+                };
+                rayOrigin *= ( 1.0f / rayOrigin.w );
+
+                ray.z = 1.0f;
+                nyaVec4f rayEnd =
+                {
+                    ray.x * inverseViewProj[0][0] + ray.y * inverseViewProj[1][0] + ray.z * inverseViewProj[2][0] + ray.w * inverseViewProj[3][0],
+                    ray.x * inverseViewProj[0][1] + ray.y * inverseViewProj[1][1] + ray.z * inverseViewProj[2][1] + ray.w * inverseViewProj[3][1],
+                    ray.x * inverseViewProj[0][2] + ray.y * inverseViewProj[1][2] + ray.z * inverseViewProj[2][2] + ray.w * inverseViewProj[3][2],
+                    ray.x * inverseViewProj[0][3] + ray.y * inverseViewProj[1][3] + ray.z * inverseViewProj[2][3] + ray.w * inverseViewProj[3][3],
+                };
+                rayEnd *= ( 1.0f / rayEnd.w );
+
+                auto rayDir = ( rayEnd - rayOrigin ).normalize();
+
+                nyaVec3f rayDirection = nyaVec3f( rayDir );
+                nyaVec3f rayOrig = nyaVec3f( rayOrigin );
+
+                Ray rayObj( rayOrig, rayDirection );
+                g_PickedNode = g_SceneTest->intersect( rayObj );
+            }
+        }
     }, -1 );
 }
 
 void TestStuff()
 {
     NYA_CLOG << "Initializing stuff..." << std::endl;
+
+    g_TransactionHandler = nya::core::allocate<TransactionHandler>( g_GlobalAllocator );
 
     auto freeCameraId = g_SceneTest->FreeCameraDatabase.allocate();
 
@@ -177,104 +238,103 @@ void TestStuff()
     auto& cameraFlags = g_FreeCamera->getUpdatableFlagset();
     cameraFlags.enableTAA = EnableTAA;
 
-    auto& meshTest = g_SceneTest->allocateStaticGeometry();
+   // auto& meshTest = g_SceneTest->allocateStaticGeometry();
 
-    auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
-    geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
-    
-    auto& planeTest = g_SceneTest->allocateStaticGeometry();
+   // auto& geometry = g_SceneTest->RenderableMeshDatabase[meshTest.mesh];
+   // geometry.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/test.mesh" ) );
+   // 
+   // auto& planeTest = g_SceneTest->allocateStaticGeometry();
 
-    auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
-    geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
-    geometryPlane.renderDepth = 0;
+   // auto& geometryPlane = g_SceneTest->RenderableMeshDatabase[planeTest.mesh];
+   // geometryPlane.meshResource = g_GraphicsAssetCache->getMesh( NYA_STRING( "GameData/geometry/plane.mesh" ) );
+   // geometryPlane.renderDepth = 0;
 
-    for ( int j = 0; j < 5; j++ ) {
-        for ( int i = 0; i < 6; i++ ) {
-            PointLightData pointLightData;
-            pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
-            pointLightData.radius = 0.50f;
-            pointLightData.lightPower = 100.0f;
-            pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
+   // for ( int j = 0; j < 5; j++ ) {
+   //     for ( int i = 0; i < 6; i++ ) {
+   //         PointLightData pointLightData;
+   //         pointLightData.worldPosition = { static_cast< float >( i ), 0.25f, static_cast< float>( j ) };
+   //         pointLightData.radius = 0.50f;
+   //         pointLightData.lightPower = 100.0f;
+   //         pointLightData.colorRGB = { static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX, static_cast< float >( rand() ) / RAND_MAX };
 
-            auto& pointLight = g_SceneTest->allocatePointLight();
-            pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+   //         auto& pointLight = g_SceneTest->allocatePointLight();
+   //         pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
 
-            auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
-            pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
-        }
-    }
+   //         auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
+   //         pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
+   //     }
+   // }
 
-    DirectionalLightData sunLight = {};
-    sunLight.isSunLight = true;
-    sunLight.intensityInLux = 100000.0f;
-    sunLight.angularRadius = 0.00935f / 2.0f;
-    const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * static_cast<float>( 1.0f - cosf( sunLight.angularRadius ) );
+   // DirectionalLightData sunLight = {};
+   // sunLight.isSunLight = true;
+   // sunLight.intensityInLux = 100000.0f;
+   // sunLight.angularRadius = 0.00935f / 2.0f;
+   // const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * static_cast<float>( 1.0f - cosf( sunLight.angularRadius ) );
 
-    sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
-    sunLight.sphericalCoordinates = nyaVec2f( 0.50f, 0.5f );
-    sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
+   // sunLight.illuminanceInLux = sunLight.intensityInLux * solidAngle;
+   // sunLight.sphericalCoordinates = nyaVec2f( 0.50f, 0.5f );
+   // sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
-    auto& dirLight = g_SceneTest->allocateDirectionalLight();
-    dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
+   // auto& dirLight = g_SceneTest->allocateDirectionalLight();
+   // dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
 
-   {
-        IBLProbeData localProbe = {};
-        localProbe.worldPosition = { 0, 10, 2 };
-        localProbe.radius = 4.0f;
-        localProbe.isFallbackProbe = false;
+   //{
+   //     IBLProbeData localProbe = {};
+   //     localProbe.worldPosition = { 0, 10, 2 };
+   //     localProbe.radius = 4.0f;
+   //     localProbe.isFallbackProbe = false;
 
-        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
-        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+   //     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+   //     localProbe.inverseModelMatrix = probeModelMatrix.inverse();
 
-        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
-        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
-    }
-    {
-        IBLProbeData localProbe = {};
-        localProbe.worldPosition = { -10, 10, 2 };
-        localProbe.radius = 4.0f;
-        localProbe.isFallbackProbe = false;
+   //     auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+   //     localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+   // }
+   // {
+   //     IBLProbeData localProbe = {};
+   //     localProbe.worldPosition = { -10, 10, 2 };
+   //     localProbe.radius = 4.0f;
+   //     localProbe.isFallbackProbe = false;
 
-        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
-        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+   //     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+   //     localProbe.inverseModelMatrix = probeModelMatrix.inverse();
 
-        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
-        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
-    }
-    {
-        IBLProbeData localProbe = {};
-        localProbe.worldPosition = { -10, 10, 12 };
-        localProbe.radius = 4.0f;
-        localProbe.isFallbackProbe = false;
+   //     auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+   //     localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+   // }
+   // {
+   //     IBLProbeData localProbe = {};
+   //     localProbe.worldPosition = { -10, 10, 12 };
+   //     localProbe.radius = 4.0f;
+   //     localProbe.isFallbackProbe = false;
 
-        nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
-        localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+   //     nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+   //     localProbe.inverseModelMatrix = probeModelMatrix.inverse();
 
-        auto& localProbeNode = g_SceneTest->allocateIBLProbe();
-        localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
-    }
+   //     auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+   //     localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+   // }
 
     IBLProbeData globalProbe = {};
     globalProbe.isFallbackProbe = true;
     auto& globalProbeNode = g_SceneTest->allocateIBLProbe();
     globalProbeNode.iblProbe = g_LightGrid->updateGlobalIBLProbeData( std::forward<IBLProbeData>( globalProbe ) );
 
-    const AABB& aabbMesh = geometry.meshResource->getMeshAABB();
     g_LightGrid->setSceneBounds( nyaVec3f( 20, 20, 20 ), nyaVec3f( -20, -20, -20 ) );
 
     g_DebugGUI = nya::core::allocate<GUIScreen>( g_GlobalAllocator, g_GlobalAllocator ); 
     g_DebugGUI->setVirtualScreenSize( nyaVec2u( 1280u, 720u ) );
-
+/*
     GUIPanel& panelTest = g_DebugGUI->allocatePanel();
     panelTest.VirtualPosition = nyaVec2f( 0.0f, 1.00f );
     panelTest.VirtualSize = nyaVec2f( 250.0f, 120.0f );
     panelTest.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/DefaultMaterial.mat" ) );
-   
+   */
     g_FramerateGUILabel = g_DebugGUI->allocateWidget<GUILabel>();
     g_FramerateGUILabel->VirtualPosition = nyaVec2f( 995.0f, 0.0f );
     g_FramerateGUILabel->VirtualSize.x = 0.40f;
     g_FramerateGUILabel->ColorAndAlpha = nyaVec4f( 0.9f, 0.9f, 0.0f, 1.0f );
-  
+  /*
     GUILabel* windowLabelTest = g_DebugGUI->allocateWidget<GUILabel>();
     windowLabelTest->VirtualPosition = nyaVec2f( 0.01f, 0.0f );
     windowLabelTest->VirtualSize.x = 0.40f;
@@ -296,22 +356,67 @@ void TestStuff()
     buttonTest2.VirtualPosition = nyaVec2f( 0.01f, 0.01f );
     buttonTest2.VirtualSize = nyaVec2f( 8.0f, 8.0f );
     buttonTest2.PanelMaterial = g_GraphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/HUD/Checkbox.mat" ) );
-    buttonTest2.Value = &EnableTAA;
+    buttonTest2.Value = &EnableVSync;
     
     GUILabel* buttonLabel = g_DebugGUI->allocateWidget<GUILabel>();
     buttonLabel->VirtualPosition = nyaVec2f( 0.05f, 0.01f );
     buttonLabel->VirtualSize.x = 0.35f;
     buttonLabel->ColorAndAlpha = nyaVec4f( 1.0f, 1.0f, 1.0f, 1.0f );
-    buttonLabel->Value = "EnableTAA";
+    buttonLabel->Value = "EnableVSync";
     g_CheckboxTestLabel = buttonLabel;
-
+*/
     g_DebugGUI->onScreenResize( ScreenSize );
 
-    titleBarTest.addChild( &panelTest );
-    titleBarTest.addChild( windowLabelTest );
-    titleBarTest.addChild( &buttonTest );
-    panelTest.addChild( &buttonTest2 );
-    panelTest.addChild( buttonLabel );
+    //titleBarTest.addChild( &panelTest );
+    //titleBarTest.addChild( windowLabelTest );
+    //titleBarTest.addChild( &buttonTest );
+    //panelTest.addChild( &buttonTest2 );
+    //panelTest.addChild( buttonLabel );
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); ( void )io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplWin32_Init( g_DisplaySurface->nativeDisplaySurface->Handle );
+
+    ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0.41f, 0.41f, 0.41f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.14f, 0.14f, 0.14f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.38f, 0.38f, 0.38f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_TitleBgActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_SeparatorActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_TextSelectedBg, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_HeaderActive, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ScrollbarGrab, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_HeaderHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBgHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.27f, 0.31f, 0.35f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.8f, 0.8f, 0.8f, 1.0f ) );
+    ImGui::PushStyleColor( ImGuiCol_CheckMark, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_TitleBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_FrameBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_MenuBarBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_Header, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+    ImGui::PushStyleColor( ImGuiCol_PopupBg, ImVec4( 0.28f, 0.28f, 0.28f, 0.750f ) );
+
+    ImGui::PushStyleColor( ImGuiCol_ScrollbarBg, ImVec4( 0.24f, 0.24f, 0.24f, 1.0f ) );
 }
 
 void InitializeIOSubsystems()
@@ -483,12 +588,205 @@ void Initialize()
 }
 
 #if NYA_DEVBUILD
-void DebugUpdate()
-{
-    g_RenderDevice->enableVerticalSynchronisation( EnableVSync );
+static int g_ActivePanelIndex = 0;
 
-    auto& cameraFlags = g_FreeCamera->getUpdatableFlagset();
-    cameraFlags.enableTAA = EnableTAA;
+static void PrintTab( const char* tabName, const int tabIndex )
+{
+    if ( g_ActivePanelIndex == tabIndex ) {
+        ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.96f, 0.62f, 0.1f, 1.0f ) );
+        ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.1f, 0.1f, 0.1f, 1.0f ) );
+        if ( ImGui::Button( tabName ) ) {
+            g_ActivePanelIndex = tabIndex;
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+    }
+    else {
+        if ( ImGui::Button( tabName ) ) {
+            g_ActivePanelIndex = tabIndex;
+        }
+    }
+}
+
+static void DisplayMenuBar()
+{
+    if ( ImGui::BeginMainMenuBar() ) {
+            if ( ImGui::BeginMenu( "File" ) ) {
+                if ( ImGui::MenuItem( "New Scene" ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Load Scene..." ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Save Scene..." ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Export Scene..." ) ) {
+
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if ( ImGui::BeginMenu( "Edit" ) ) {
+                if ( ImGui::MenuItem( "Undo" ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Redo" ) ) {
+
+                }
+
+                ImGui::Separator();
+
+                if ( ImGui::MenuItem( "Copy" ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Paste" ) ) {
+
+                }
+
+                if ( ImGui::MenuItem( "Delete" ) ) {
+
+                }
+                ImGui::EndMenu();
+            }
+
+            if ( ImGui::BeginMenu( "Add To Scene" ) ) {
+                if ( ImGui::MenuItem( "Static Geometry" ) ) {
+                }
+
+                ImGui::Separator();
+
+                if ( ImGui::MenuItem( "Point Light" ) ) {
+                    PointLightData pointLightData;
+                    pointLightData.worldPosition = { 0, 1, 0 };
+                    pointLightData.radius = 1.0f;
+                    pointLightData.lightPower = 100.0f;
+                    pointLightData.colorRGB = { 1, 1, 1 };
+
+                    auto& pointLight = g_SceneTest->allocatePointLight();
+                    pointLight.pointLight = g_LightGrid->allocatePointLightData( std::forward<PointLightData>( pointLightData ) );
+
+                    auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight.transform];
+                    pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
+                }
+
+                if ( ImGui::MenuItem( "IBL Probe" ) ) {
+                    IBLProbeData localProbe = {};
+                    localProbe.worldPosition = { 0, 4, 0 };
+                    localProbe.radius = 4.0f;
+                    localProbe.isFallbackProbe = false;
+
+                    nyaMat4x4f probeModelMatrix = nya::maths::MakeTranslationMat( localProbe.worldPosition ) * nya::maths::MakeScaleMat( localProbe.radius );
+                    localProbe.inverseModelMatrix = probeModelMatrix.inverse();
+
+                    auto& localProbeNode = g_SceneTest->allocateIBLProbe();
+                    localProbeNode.iblProbe = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if ( ImGui::BeginMenu( "Graphics" ) ) {
+                if ( ImGui::BeginMenu( "MSAA" ) ) {
+                    if ( ImGui::MenuItem( "x1", nullptr, MSAASamplerCount == 1 ) ) {
+                        MSAASamplerCount = 1;
+                        g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
+                    }
+                    if ( ImGui::MenuItem( "x2", nullptr, MSAASamplerCount == 2 ) ) {
+                        MSAASamplerCount = 2;
+                        g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
+                    }
+                    if ( ImGui::MenuItem( "x4", nullptr, MSAASamplerCount == 4 ) ) {
+                        MSAASamplerCount = 4;
+                        g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
+                    }
+                    if ( ImGui::MenuItem( "x8", nullptr, MSAASamplerCount == 8 ) ) {
+                        MSAASamplerCount = 8;
+                        g_FreeCamera->setMSAASamplerCount( MSAASamplerCount );
+                    }
+                    ImGui::EndMenu();
+                }
+
+                if ( ImGui::SliderFloat( "Image Quality", &ImageQuality, 0.01f, 4.0f ) ) {
+                    g_FreeCamera->setImageQuality( ImageQuality );
+                }
+
+                if ( ImGui::Checkbox( "Enable VSync", &EnableVSync ) ) {
+                    g_RenderDevice->enableVerticalSynchronisation( EnableVSync );
+                }
+
+                if ( ImGui::Checkbox( "Enable Temporal AntiAliasing", &EnableTAA ) ) {
+                    auto& cameraFlags = g_FreeCamera->getUpdatableFlagset();
+                    cameraFlags.enableTAA = EnableTAA;
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMainMenuBar();
+        }
+}
+
+void PrintEditorGUI()
+{
+    if ( !g_IsDevMenuVisible ) {
+        return;
+    }
+
+    CommandList& cmdList = g_RenderDevice->allocateGraphicsCommandList();
+    ImGui_ImplDX11_Init( g_RenderDevice->renderContext->nativeDevice, cmdList.CommandListObject->deferredContext );
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    {
+        cmdList.CommandListObject->deferredContext->OMSetRenderTargets( 1, &g_RenderDevice->getSwapchainBuffer()->textureRenderTargetView, nullptr );
+      
+        DisplayMenuBar();
+
+        ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0, 0, 0, 0 ) );
+        ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0, 0, 0, 0 ) );
+        ImGui::PushStyleColor( ImGuiCol_BorderShadow, ImVec4( 0, 0, 0, 0 ) );
+        if ( ImGui::Begin( "TabManager", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ) ) {
+            ImGui::SetWindowPos( ImVec2( 16, 48 ) );
+            ImGui::SetWindowSize( ImVec2( 800, 40 ) );
+            PrintTab( "NodeEd", 0 );
+            ImGui::SameLine( 0, 2 );
+            PrintTab( "MaterialEd", 1 );
+
+            ImGui::End();
+        }
+
+        ImGui::PushStyleVar( ImGuiStyleVar_::ImGuiStyleVar_WindowRounding, 0 );
+        if ( ImGui::Begin( "Editor Panel", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ) ) {
+            ImGui::SetWindowPos( ImVec2( 16, 75 ) );
+            ImGui::SetWindowSize( ImVec2( 800, 390 ) );
+
+            ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.96f, 0.1f, 0.05f, 1.0f ) );
+            if ( ImGui::Button( "Delete!" ) ) {
+                ImGui::PopStyleColor();
+            } else {
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::End();
+        }
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+    }
+
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData( ImGui::GetDrawData() );
+    cmdList.end();
+    g_RenderDevice->submitCommandList( &cmdList );
 }
 #endif
 
@@ -531,13 +829,8 @@ void MainLoop()
             }
         NYA_END_PROFILE_SCOPE()
 
-#if NYA_DEVBUILD
-        DebugUpdate();
-#endif
-
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
             g_FramerateGUILabel->Value = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
-            g_CheckboxTestLabel->Value = ( EnableTAA ) ? "EnableTAA 1" : "EnableTAA 0";
             g_DebugGUI->collectDrawCmds( *g_DrawCommandBuilder );
 
             const std::string& profileString = g_Profiler.getProfilingSummaryString();
@@ -549,12 +842,19 @@ void MainLoop()
             g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
         NYA_END_PROFILE_SCOPE()
 
+#if NYA_DEVBUILD
+        PrintEditorGUI();
+#endif
         g_RenderDevice->present();
     }
 }
 
 void Shutdown()
 {
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
     g_LightGrid->destroy( g_RenderDevice );
     g_WorldRenderer->destroy( g_RenderDevice );
     g_GraphicsAssetCache->destroy();

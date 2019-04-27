@@ -24,12 +24,17 @@
 #include "DisplaySurfaceWin32.h"
 
 #include <Input/InputReaderWin32.h>
+#include <imgui/imgui.h>
+
+IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
 void nya::display::PollSystemEventsImpl( NativeDisplaySurface* surface, InputReader* inputReader )
 {
     MSG msg = { 0 };
 
     while ( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) ) {
+        ImGui_ImplWin32_WndProcHandler( msg.hwnd, msg.message, msg.wParam, msg.lParam );
+
         if ( msg.message == WM_INPUT ) {
             nya::input::ProcessInputEventImpl( inputReader, msg.hwnd, msg.lParam, msg.time );
         } else if ( msg.message == WM_QUIT ) {

@@ -1,13 +1,27 @@
 file( GLOB_RECURSE SOURCES "*.cpp" "*.ico" "*.h" "*.rc" "*.manifest" )
 file( GLOB_RECURSE SOURCE_MINIZ "${NYA_BASE_FOLDER}/ThirdParty/miniz/miniz.c"
                                 "${NYA_BASE_FOLDER}/ThirdParty/miniz/miniz.h" )
+file( GLOB_RECURSE SOURCE_IMGUI "${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui.cpp"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui.h"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/imconfig.h"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui_draw.cpp"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui_widgets.cpp"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imstb_rectpack.h"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imstb_textedit.h"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imstb_truetype.h"
+								"${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui_internal.h"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_dx11.cpp"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_dx11.h"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.cpp"
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.h" )
                                
 build_file_macros( SOURCES )
 
-add_executable( NyaEd ${GUI_TYPE} ${SOURCES} ${SOURCE_MINIZ} )
+add_executable( NyaEd ${GUI_TYPE} ${SOURCES} ${SOURCE_MINIZ} ${SOURCE_IMGUI} )
 
 add_msvc_filters( "${SOURCES}" )
 
+include_directories( "${NYA_BASE_FOLDER}/ThirdParty/imgui" )
 include_directories( "${NYA_BASE_FOLDER}/NyaEd" )
 
 target_link_libraries( NyaEd debug Nya_Debug optimized Nya )
