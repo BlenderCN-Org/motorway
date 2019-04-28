@@ -93,7 +93,7 @@ static FreeCamera*             g_FreeCamera;
 static GUIScreen*              g_DebugGUI;
 static GUILabel*               g_FramerateGUILabel;
 static bool                    g_IsDevMenuVisible = false;
-static SceneNode*              g_PickedNode = nullptr;
+//static Scene::Node*            g_PickedNode = nullptr;
 static TransactionHandler*     g_TransactionHandler = nullptr;
 
 // Game Specifics
@@ -213,7 +213,7 @@ void RegisterInputContexts()
                 nyaVec3f rayOrig = nyaVec3f( rayOrigin );
 
                 Ray rayObj( rayOrig, rayDirection );
-                g_PickedNode = g_SceneTest->intersect( rayObj );
+                //g_PickedNode = g_SceneTest->intersect( rayObj );
             }
         }
     }, -1 );
@@ -223,7 +223,7 @@ void TestStuff()
 {
     NYA_CLOG << "Initializing stuff..." << std::endl;
 
-    g_TransactionHandler = nya::core::allocate<TransactionHandler>( g_GlobalAllocator );
+    g_TransactionHandler = nya::core::allocate<TransactionHandler>( g_GlobalAllocator, g_GlobalAllocator );
 
     auto freeCameraId = g_SceneTest->FreeCameraDatabase.allocate();
 
