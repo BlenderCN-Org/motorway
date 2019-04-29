@@ -68,7 +68,7 @@ void Mesh::addLevelOfDetail( const uint32_t lodIndex, const float lodDistance )
 
 void Mesh::addSubMesh( const uint32_t lodIndex, SubMesh&& subMeshData )
 {
-    nya::core::ExpandAABB( aabb, subMeshData.aabb );
+    nya::maths::ExpandAABB( aabb, subMeshData.aabb );
 
     lod[lodIndex].subMeshes.push_back( std::move( subMeshData ) );
 }

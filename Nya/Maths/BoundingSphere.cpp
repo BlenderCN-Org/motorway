@@ -22,13 +22,13 @@
 
 #include "Vector.h"
 
-void nya::core::CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius )
+void nya::maths::CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius )
 {
     sphere.center = sphereCenter;
     sphere.radius = sphereRadius;
 }
 
-bool nya::core::SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right )
+bool nya::maths::SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right )
 {
     float r = left.radius + right.radius;
     r *= r;
@@ -44,7 +44,7 @@ bool nya::core::SphereSphereIntersectionTest( const BoundingSphere& left, const 
     return r < ( xDistance + yDistance + zDistance );
 }
 
-bool nya::core::RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance )
+bool nya::maths::RaySphereIntersectionTest( const BoundingSphere& sphere, const Ray& ray, float& hitDistance )
 {
     auto sphereRadiusSqr = sphere.radius * sphere.radius;
 

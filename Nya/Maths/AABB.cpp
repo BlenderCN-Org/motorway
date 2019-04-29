@@ -25,43 +25,43 @@
 
 using namespace nya::maths;
 
-void nya::core::CreateAABBFromMinMaxPoints( AABB& aabb, const nyaVec3f& minPoint, const nyaVec3f& maxPoint )
+void nya::maths::CreateAABBFromMinMaxPoints( AABB& aabb, const nyaVec3f& minPoint, const nyaVec3f& maxPoint )
 {
     aabb.minPoint = minPoint;
     aabb.maxPoint = maxPoint;
 }
 
-void nya::core::CreateAABB( AABB& aabb, const nyaVec3f& boxCentroid, const nyaVec3f& boxHalfExtents )
+void nya::maths::CreateAABB( AABB& aabb, const nyaVec3f& boxCentroid, const nyaVec3f& boxHalfExtents )
 {
     aabb.minPoint = boxCentroid - boxHalfExtents;
     aabb.maxPoint = boxCentroid + boxHalfExtents;
 }
 
-nyaVec3f nya::core::GetAABBHalfExtents( const AABB& aabb )
+nyaVec3f nya::maths::GetAABBHalfExtents( const AABB& aabb )
 {
     return ( ( aabb.maxPoint - aabb.minPoint ) * 0.5f );
 }
 
-nyaVec3f nya::core::GetAABBCentroid( const AABB& aabb )
+nyaVec3f nya::maths::GetAABBCentroid( const AABB& aabb )
 {
     auto halfExtents = GetAABBHalfExtents( aabb );
 
     return ( aabb.minPoint + halfExtents );
 }
 
-void nya::core::ExpandAABB( AABB& aabb, const nyaVec3f& pointToInclude )
+void nya::maths::ExpandAABB( AABB& aabb, const nyaVec3f& pointToInclude )
 {
     aabb.minPoint = min( aabb.minPoint, pointToInclude );
     aabb.maxPoint = max( aabb.maxPoint, pointToInclude );
 }
 
-void nya::core::ExpandAABB( AABB& aabb, const AABB& aabbToInclude )
+void nya::maths::ExpandAABB( AABB& aabb, const AABB& aabbToInclude )
 {
     aabb.minPoint = min( aabb.minPoint, aabbToInclude.minPoint );
     aabb.maxPoint = max( aabb.maxPoint, aabbToInclude.maxPoint );
 }
 
-void nya::core::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
+void nya::maths::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
 {
     auto minPoint = sphereToInclude.center - sphereToInclude.radius;
     auto maxPoint = sphereToInclude.center + sphereToInclude.radius;
@@ -70,7 +70,7 @@ void nya::core::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
     aabb.maxPoint = max( aabb.maxPoint, maxPoint );
 }
 
-bool nya::core::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float& minHit, float& maxHit )
+bool nya::maths::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float& minHit, float& maxHit )
 {
     double txMin, txMax, tyMin, tyMax, tzMin, tzMax;
 
@@ -105,7 +105,7 @@ bool nya::core::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float
     return true;
 }
 
-uint32_t nya::core::GetMaxDimensionAxisAABB( const AABB& aabb )
+uint32_t nya::maths::GetMaxDimensionAxisAABB( const AABB& aabb )
 {
     auto halfExtents = GetAABBHalfExtents( aabb );
 

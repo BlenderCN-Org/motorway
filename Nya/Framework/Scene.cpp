@@ -28,17 +28,13 @@
 #include "Light.h"
 
 #include <Core/EnvVarsRegister.h>
+#include <Shaders/Shared.h>
 
 NYA_ENV_VAR( DisplayDebugIBLProbe, true, bool ) // [Debug] Display IBL Probe as reflective Sphere in the scene [True/False]
 
 Scene::Scene( BaseAllocator* allocator, const std::string& sceneName )
     : name( sceneName )
     , memoryAllocator( allocator )
-    , staticGeometryCount( 0u )
-    , pointLightCount( 0u )
-    , spotLightCount( 0u )
-    , dirLightCount( 0u )
-    , iblProbeCount( 0u )
 {
     // TODO Test!!
     TransformDatabase.components = nya::core::allocateArray<Transform>( allocator, 8192 );
@@ -49,6 +45,9 @@ Scene::Scene( BaseAllocator* allocator, const std::string& sceneName )
 
     FreeCameraDatabase.components = nya::core::allocateArray<FreeCamera>( allocator, 4 );
     FreeCameraDatabase.capacity = 4;
+
+    IBLProbeDatabase.components = nya::core::allocateArray<IBLProbe>( allocator, MAX_IBL_PROBE_COUNT );
+    IBLProbeDatabase.capacity = MAX_IBL_PROBE_COUNT;
 }
 
 Scene::~Scene()
@@ -58,6 +57,7 @@ Scene::~Scene()
     nya::core::freeArray( memoryAllocator, TransformDatabase.components );
     nya::core::freeArray( memoryAllocator, RenderableMeshDatabase.components );
     nya::core::freeArray( memoryAllocator, FreeCameraDatabase.components );
+    nya::core::freeArray( memoryAllocator, IBLProbeDatabase.components );
 }
 
 void Scene::setSceneName( const std::string& sceneName )
@@ -73,27 +73,15 @@ const std::string& Scene::getSceneName() const
 void Scene::updateLogic( const float deltaTime )
 {
     // Propagate light transform prior to transform update
-    for ( uint32_t pointLightIdx = 0; pointLightIdx < pointLightCount; pointLightIdx++ ) {
-        auto& light = pointLight[pointLightIdx];
+    for ( uint32_t pointLightIdx = 0; pointLightIdx < PointLightDatabase.usageIndex; pointLightIdx++ ) {
+        auto& light = PointLightDatabase[pointLightIdx];
 
         auto& transform = TransformDatabase[light.transform];
 
         if ( transform.needRebuild() ) {
-            light.pointLight->worldPosition = transform.getWorldTranslation();
+            light.pointLightData->worldPosition = transform.getWorldTranslation();
         } else {
-            transform.setWorldTranslation( light.pointLight->worldPosition );
-        }
-    }
-
-    for ( uint32_t spotLightIdx = 0; spotLightIdx < spotLightCount; spotLightIdx++ ) {
-        auto& light = spotLight[spotLightIdx];
-
-        auto& transform = TransformDatabase[light.transform];
-
-        if ( transform.needRebuild() ) {
-            light.spotLight->worldPosition = transform.getWorldTranslation();
-        } else {
-            transform.setWorldTranslation( light.spotLight->worldPosition );
+            transform.setWorldTranslation( light.pointLightData->worldPosition );
         }
     }
 
@@ -116,8 +104,8 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
 
 #if NYA_DEVBUILD
     if ( DisplayDebugIBLProbe ) {
-        for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
-            auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
+        for ( uint32_t iblProbeIdx = 0; iblProbeIdx < IBLProbeDatabase.usageIndex; iblProbeIdx++ ) {
+            IBLProbeData* iblProbe = IBLProbeDatabase[iblProbeIdx].iblProbeData;
             
             // Skip global probe
             if ( iblProbe->isFallbackProbe ) {
@@ -129,8 +117,8 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
     }
 #endif
 
-    for ( uint32_t iblProbeIdx = 0; iblProbeIdx < iblProbeCount; iblProbeIdx++ ) {
-        auto& iblProbe = iblProbes[iblProbeIdx].iblProbe;
+    for ( uint32_t iblProbeIdx = 0; iblProbeIdx < IBLProbeDatabase.usageIndex; iblProbeIdx++ ) {
+        IBLProbeData* iblProbe = IBLProbeDatabase[iblProbeIdx].iblProbeData;
 
         if ( !iblProbe->isCaptured ) {
             drawCmdBuilder.addIBLProbeToCapture( iblProbe );
@@ -138,15 +126,13 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
         }
     }
 
-    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < staticGeometryCount; staticGeomIdx++ ) {
-        auto& geometry = staticGeometry[staticGeomIdx];
-
-        auto& transform = TransformDatabase[geometry.transform];
-        auto& renderable = RenderableMeshDatabase[geometry.mesh];
+    for ( uint32_t staticGeomIdx = 0; staticGeomIdx < RenderableMeshDatabase.usageIndex; staticGeomIdx++ ) {
+        const RenderableMesh& geometry = RenderableMeshDatabase[staticGeomIdx];
+        Transform& transform = TransformDatabase[geometry.transform];
 
         // Check renderable flags (but don't cull the instance yet)
-        if ( renderable.isVisible ) {
-            drawCmdBuilder.addGeometryToRender( renderable.meshResource, transform.getWorldModelMatrix(), renderable.flags );
+        if ( geometry.isVisible ) {
+            drawCmdBuilder.addGeometryToRender( geometry.meshResource, transform.getWorldModelMatrix(), geometry.flags );
         }
     }
 
@@ -155,47 +141,63 @@ void Scene::collectDrawCmds( DrawCommandBuilder& drawCmdBuilder )
     }
 }
 
-Scene::StaticGeometry& Scene::allocateStaticGeometry()
+Scene::Node* Scene::intersect( const Ray& ray )
 {
-    auto& geom = staticGeometry[staticGeometryCount++];
-    geom.transform = TransformDatabase.allocate();
-    geom.mesh = RenderableMeshDatabase.allocate();
+    float bestIntersectionDist = std::numeric_limits<float>::max();
+    Scene::Node* pickedNode = nullptr;
 
-    return geom;
+    for ( Node* node : sceneNodes ) {
+        float intersectionDist = std::numeric_limits<float>::max();
+        auto isIntersected = node->intersect( ray, intersectionDist );
+
+        if ( isIntersected && intersectionDist >= 0.0f && intersectionDist < bestIntersectionDist ) {
+            bestIntersectionDist = intersectionDist;
+            pickedNode = node;
+        }
+    }
+
+    return pickedNode;
 }
 
-Scene::Light& Scene::allocatePointLight()
+Scene::StaticGeometryNode* Scene::allocateStaticGeometry()
 {
-    auto& light = pointLight[pointLightCount++];
-    light.transform = TransformDatabase.allocate();
-    light.pointLight = nullptr;
+    StaticGeometryNode* staticGeometryNode = nya::core::allocate<StaticGeometryNode>( memoryAllocator );
+    staticGeometryNode->transform = TransformDatabase.allocate();
+    staticGeometryNode->mesh = RenderableMeshDatabase.allocate();
 
-    return light;
+    RenderableMeshDatabase[staticGeometryNode->mesh].transform = staticGeometryNode->transform;
+    
+    staticGeometryNode->meshResource = &RenderableMeshDatabase[staticGeometryNode->mesh].meshResource;
+
+    sceneNodes.push_back( staticGeometryNode );
+
+    return staticGeometryNode;
 }
 
-Scene::Light& Scene::allocateSpotLight()
+Scene::PointLightNode* Scene::allocatePointLight()
 {
-    auto& light = spotLight[spotLightCount++];
-    light.transform = TransformDatabase.allocate();
-    light.spotLight = nullptr;
+    PointLightNode* pointLightNode = nya::core::allocate<PointLightNode>( memoryAllocator );
+    pointLightNode->transform = TransformDatabase.allocate();
+    pointLightNode->pointLight = PointLightDatabase.allocate();
 
-    return light;
+    PointLightDatabase[pointLightNode->pointLight].transform = pointLightNode->transform;
+
+    pointLightNode->pointLightData = &PointLightDatabase[pointLightNode->pointLight].pointLightData;
+
+    sceneNodes.push_back( pointLightNode );
+
+    return pointLightNode;
 }
 
-Scene::Light& Scene::allocateDirectionalLight()
+Scene::IBLProbeNode* Scene::allocateIBLProbe()
 {
-    auto& light = dirLight[dirLightCount++];
-    light.transform = TransformDatabase.allocate();
-    light.directionalLight = nullptr;
+    IBLProbeNode* iblProbeNode = nya::core::allocate<IBLProbeNode>( memoryAllocator );
+    iblProbeNode->transform = TransformDatabase.allocate();
+    iblProbeNode->iblProbe = IBLProbeDatabase.allocate();
 
-    return light;
-}
+    iblProbeNode->iblProbeData = &IBLProbeDatabase[iblProbeNode->iblProbe].iblProbeData;
 
-Scene::Light& Scene::allocateIBLProbe()
-{
-    auto& light = iblProbes[iblProbeCount++];
-    light.transform = TransformDatabase.allocate();
-    light.iblProbe = nullptr;
+    sceneNodes.push_back( iblProbeNode );
 
-    return light;
+    return iblProbeNode;
 }

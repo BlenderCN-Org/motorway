@@ -25,88 +25,261 @@ class DrawCommandBuilder;
 class Transform;
 class Mesh;
 class FreeCamera;
+class TransactionHandler;
+class GraphicsAssetCache;
+class LightGrid;
+class FileSystemObject;
 
 struct PointLightData;
 struct SpotLightData;
 struct DirectionalLightData;
 struct IBLProbeData;
+struct Ray;
 
-struct RenderableMesh
-{
-    Mesh*   meshResource;
+#include <vector>
 
-    union {
-        struct {
-            uint8_t isVisible : 1;
-            uint8_t renderDepth : 1;
-            uint8_t useBatching : 1;
-            uint8_t : 0;
-        };
+#include <Maths/BoundingSphere.h>
+#include <Framework/Mesh.h>
+#include <Framework/Light.h>
 
-        uint32_t    flags;
-    };
-
-    RenderableMesh()
-    {
-        renderDepth = 1;
-        isVisible = 1;
-    }
-};
+using nyaComponentHandle_t = uint32_t;
 
 class Scene
 {
 public:
-    using nyaComponentHandle_t = uint32_t;
+    struct RenderableMesh
+    {
+        nyaComponentHandle_t transform;
+        Mesh* meshResource;
 
-private:
+        union
+        {
+            struct
+            {
+                uint8_t isVisible : 1;
+                uint8_t renderDepth : 1;
+                uint8_t useBatching : 1;
+                uint8_t : 0;
+            };
+
+            uint32_t    flags;
+        };
+
+        RenderableMesh()
+        {
+            renderDepth = 1;
+            isVisible = 1;
+        }
+    };
+
+    struct IBLProbe
+    {
+        nyaComponentHandle_t    transform;
+        IBLProbeData*           iblProbeData;
+    };
+
+    struct PointLight
+    {
+        nyaComponentHandle_t    transform;
+        PointLightData*         pointLightData;
+    };
+
+    struct Node {
+        std::string                     name;
+        nyaStringHash_t                 hashcode;
+        nyaComponentHandle_t            transform;
+        std::vector<Scene::Node*>       children;
+
+        Node( const std::string& nodeName = "Node" )
+            : name( nodeName )
+            , hashcode( nya::core::CRC32( name ) )
+            , transform( 0 )
+        {
+            name.resize( 256 );
+        }
+
+        Node( Node& node )
+            : name( node.name )
+            , hashcode( node.hashcode )
+            , transform( node.transform )
+        {
+
+        }
+
+        Node* findChildByHashcode( const nyaStringHash_t nodeHashcode )
+        {
+            // TODO Precompute hash/node map to avoid a vector lookup?
+            for ( Node* child : children ) {
+                if ( child->hashcode == nodeHashcode ) {
+                    return child;
+                }
+            }
+
+            return nullptr;
+        }
+
+        virtual Node* clone( LightGrid* lightGrid )
+        {
+            return new Node( *this );
+        }
+
+        virtual nyaStringHash_t getNodeType() const
+        {
+            return NYA_STRING_HASH( "Node" );
+        }
+
+        virtual void remove( LightGrid* lightGrid )
+        {
+
+        }
+
+        virtual bool intersect( const Ray& ray, float& hitDistance ) const
+        {
+            return false;
+        }
+
+        virtual void serialize( FileSystemObject* stream, const nyaStringHash_t sceneNodeHashcode = 0x0 )
+        {
+            //stream->write( sceneNodeHashcode );
+            //stream->write<int32_t>( 0 );
+
+            //stream->writeString( name.c_str() );
+            //stream->write<uint8_t>( 0x0 );
+
+            //stream->write<uint8_t>( 0 );
+            //stream->write<uint8_t>( 0x0 ); // RESERVED       
+            //stream->write<uint8_t>( 0x0 ); // RESERVED
+            //stream->write<uint8_t>( 0x0 ); // RESERVED
+        }
+
+        virtual void deserialize( FileSystemObject* stream, GraphicsAssetCache* graphicsAssetCache, LightGrid* lightGrid )
+        {
+            //uint8_t hasRigidBody = 0, reserved1, reserved2, reserved3;
+            //FLAN_DESERIALIZE_VARIABLE( stream, hasRigidBody );
+
+            //// RESERVED
+            //FLAN_DESERIALIZE_VARIABLE( stream, reserved1 );
+            //FLAN_DESERIALIZE_VARIABLE( stream, reserved2 );
+            //FLAN_DESERIALIZE_VARIABLE( stream, reserved3 );
+
+            //transform.deserialize( stream );
+
+            //if ( hasRigidBody == 1 ) {
+            //    rigidBody = new RigidBody( 0 );
+            //    rigidBody->deserialize( stream );
+            //}
+        }
+    };
+
+    struct StaticGeometryNode : public Node
+    {
+        nyaComponentHandle_t    mesh;
+        Mesh**                  meshResource;
+
+        Node* clone( LightGrid* lightGrid ) override
+        {
+            return new Node( *this );
+        }
+
+        nyaStringHash_t getNodeType() const override
+        {
+            return NYA_STRING_HASH( "StaticGeometryNode" );
+        }
+
+        bool intersect( const Ray& ray, float& hitDistance ) const override
+        {
+            float dontCare = 0.0f;
+            return nya::maths::RayAABBIntersectionTest( ( *meshResource )->getMeshAABB(), ray, hitDistance, dontCare );
+        }
+    };
+
+    struct PointLightNode : public Node
+    {
+        nyaComponentHandle_t pointLight;
+        PointLightData**     pointLightData;
+
+        Node* clone( LightGrid* lightGrid ) override
+        {
+            return new Node( *this );
+        }
+
+        nyaStringHash_t getNodeType() const override
+        {
+            return NYA_STRING_HASH( "PointLightNode" );
+        }
+
+        bool intersect( const Ray& ray, float& hitDistance ) const override
+        {
+            BoundingSphere sphere;
+            sphere.center = ( *pointLightData )->worldPosition;
+            sphere.radius = 1.5f;
+
+            return nya::maths::RaySphereIntersectionTest( sphere, ray, hitDistance );
+        }
+    };
+
+    struct IBLProbeNode : public Node
+    {
+        nyaComponentHandle_t iblProbe;
+        IBLProbeData**       iblProbeData;
+
+        Node* clone( LightGrid* lightGrid ) override
+        {
+            return new Node( *this );
+        }
+
+        nyaStringHash_t getNodeType() const override
+        {
+            return NYA_STRING_HASH( "IBLProbeNode" );
+        }
+
+        bool intersect( const Ray& ray, float& hitDistance ) const override
+        {
+            BoundingSphere sphere;
+            sphere.center = ( *iblProbeData )->worldPosition;
+            sphere.radius = ( *iblProbeData )->radius;
+
+            return nya::maths::RaySphereIntersectionTest( sphere, ray, hitDistance );
+        }
+    };
+
+public:
     template<typename T>
-    struct ComponentDatabase {
-        T*                      components;
+    struct ComponentDatabase
+    {
+        T* components;
         size_t                  capacity;
         nyaComponentHandle_t    usageIndex;
 
         ComponentDatabase()
             : components( nullptr )
             , capacity( 0ull )
-            , usageIndex( 0u ) {
+            , usageIndex( 0u )
+        {
 
         }
 
-        nyaComponentHandle_t allocate() {
+        nyaComponentHandle_t allocate()
+        {
             return ( usageIndex++ % capacity );
         }
 
-        T& operator [] ( const nyaComponentHandle_t handle ) {
+        T& operator [] ( const nyaComponentHandle_t handle )
+        {
             return components[handle];
         }
 
-        T& operator [] ( const nyaComponentHandle_t handle ) const {
+        T& operator [] ( const nyaComponentHandle_t handle ) const
+        {
             return components[handle];
         }
     };
 
-public:
-    struct Light {
-        nyaComponentHandle_t    transform;
-
-        // NOTE Light data should be managed by the Graphics subsystem
-        union {
-            PointLightData*         pointLight;
-            SpotLightData*          spotLight;
-            DirectionalLightData*   directionalLight;
-            IBLProbeData*           iblProbe;
-        };
-    };
-
-    struct StaticGeometry {
-        nyaComponentHandle_t    transform;
-        nyaComponentHandle_t    mesh;
-    };
-
+    ComponentDatabase<FreeCamera>       FreeCameraDatabase;
     ComponentDatabase<Transform>        TransformDatabase;
     ComponentDatabase<RenderableMesh>   RenderableMeshDatabase;
-    ComponentDatabase<FreeCamera>       FreeCameraDatabase;
-    ComponentDatabase<Light>            LightDatabase;
+    ComponentDatabase<IBLProbe>         IBLProbeDatabase;
+    ComponentDatabase<PointLight>       PointLightDatabase;
 
 public:
                             Scene( BaseAllocator* allocator, const std::string& sceneName = "Default Scene" );
@@ -120,29 +293,15 @@ public:
     void                    updateLogic( const float deltaTime );
     void                    collectDrawCmds( DrawCommandBuilder& drawCmdBuilder );
 
-    StaticGeometry&         allocateStaticGeometry();
+    Node*                   intersect( const Ray& ray );
 
-    Light&                  allocatePointLight();
-    Light&                  allocateSpotLight();
-    Light&                  allocateDirectionalLight();
-    Light&                  allocateIBLProbe();
+    StaticGeometryNode*     allocateStaticGeometry();
+    PointLightNode*         allocatePointLight();
+    IBLProbeNode*           allocateIBLProbe();
 
 private:
     std::string             name;
     BaseAllocator*          memoryAllocator;
 
-    StaticGeometry          staticGeometry[4096];
-    uint32_t                staticGeometryCount;
-
-    Light                   pointLight[64];
-    uint32_t                pointLightCount;
-
-    Light                   spotLight[64];
-    uint32_t                spotLightCount;
-
-    Light                   dirLight[1];
-    uint32_t                dirLightCount;
-
-    Light                   iblProbes[32];
-    uint32_t                iblProbeCount;
+    std::vector<Node*>      sceneNodes;
 };

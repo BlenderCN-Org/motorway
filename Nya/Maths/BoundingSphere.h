@@ -33,7 +33,7 @@ struct BoundingSphere
 
 namespace nya
 {
-    namespace core
+    namespace maths
     {
         void CreateSphere( BoundingSphere& sphere, const nyaVec3f& sphereCenter, const float sphereRadius );
         bool SphereSphereIntersectionTest( const BoundingSphere& left, const BoundingSphere& right );

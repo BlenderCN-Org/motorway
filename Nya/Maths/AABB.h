@@ -32,7 +32,7 @@ struct AABB
 
 namespace nya
 {
-    namespace core
+    namespace maths
     {
         void CreateAABB( AABB& aabb, const nyaVec3f& boxCentroid, const nyaVec3f& boxHalfExtents );
         void CreateAABBFromMinMaxPoints( AABB& aabb, const nyaVec3f& minPoint, const nyaVec3f& maxPoint );

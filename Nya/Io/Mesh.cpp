@@ -135,7 +135,7 @@ void nya::core::LoadGeometryFile( FileSystemObject* file, GeomLoadData& data )
                         file->read( ( uint8_t* )&location, sizeof( nyaVec3f ) );
                         file->read( ( uint8_t* )&dimensions, sizeof( nyaVec3f ) );
 
-                        nya::core::CreateAABB( subMesh.aabb, location, dimensions );
+                        nya::maths::CreateAABB( subMesh.aabb, location, dimensions );
                     }
 
                     file->read( subMesh.levelOfDetailIndex );
