@@ -47,7 +47,7 @@ public:
             commandCount -= ( commandCount - commandIdx );
         }
 
-        auto cmd = flan::core::allocate<T>( cmdAllocator, std::forward<TArgs>( args )... );
+        auto cmd = nya::core::allocate<T>( cmdAllocator, std::forward<TArgs>( args )... );
         cmd->execute();
 
         commands[commandIdx] = cmd;

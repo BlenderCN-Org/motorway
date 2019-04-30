@@ -102,7 +102,7 @@ bool nya::maths::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, floa
     minHit = static_cast<float>( mint );
     maxHit = static_cast<float>( maxt );
 
-    return true;
+    return maxt >= mint && maxt >= 0.0;
 }
 
 uint32_t nya::maths::GetMaxDimensionAxisAABB( const AABB& aabb )

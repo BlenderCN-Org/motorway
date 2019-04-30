@@ -13,7 +13,9 @@ file( GLOB_RECURSE SOURCE_IMGUI "${NYA_BASE_FOLDER}/ThirdParty/imgui/imgui.cpp"
                                 "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_dx11.cpp"
                                 "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_dx11.h"
                                 "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.cpp"
-                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.h" )
+                                "${NYA_BASE_FOLDER}/ThirdParty/imgui/examples/imgui_impl_win32.h"
+                                "${NYA_BASE_FOLDER}/ThirdParty/ImGuizmo/ImGuizmo.cpp"
+                                "${NYA_BASE_FOLDER}/ThirdParty/ImGuizmo/ImGuizmo.h" )
                                
 build_file_macros( SOURCES )
 

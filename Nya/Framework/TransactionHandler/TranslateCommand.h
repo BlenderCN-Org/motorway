@@ -21,12 +21,12 @@
 
 #include "TransactionCommand.h"
 
-#include <Core/Maths/Transform.h>
+#include <Maths/Transform.h>
 
 class LocalTranslateCommand : public TransactionCommand
 {
 public:
-    LocalTranslateCommand( Transform* transformToEdit, const glm::vec3& translationValue )
+    LocalTranslateCommand( Transform* transformToEdit, const nyaVec3f& translationValue )
         : transform( transformToEdit )
         , translation( translationValue )
         , translationBackup( 0, 0, 0 )
@@ -48,14 +48,14 @@ public:
 
 private:
     Transform*  transform;
-    glm::vec3   translation;
-    glm::vec3   translationBackup;
+    nyaVec3f   translation;
+    nyaVec3f   translationBackup;
 };
 
 class WorldTranslateCommand : public TransactionCommand
 {
 public:
-    WorldTranslateCommand( Transform* transformToEdit, const glm::vec3& translationValue )
+    WorldTranslateCommand( Transform* transformToEdit, const nyaVec3f& translationValue )
         : transform( transformToEdit )
         , translation( translationValue )
         , translationBackup( 0, 0, 0 )
@@ -77,6 +77,6 @@ public:
 
 private:
     Transform*  transform;
-    glm::vec3   translation;
-    glm::vec3   translationBackup;
+    nyaVec3f   translation;
+    nyaVec3f   translationBackup;
 };

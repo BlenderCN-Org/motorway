@@ -51,19 +51,125 @@
 #include <Framework/GUI/Panel.h>
 #include <Framework/GUI/Label.h>
 #include <Framework/GUI/Button.h>
+#include <Framework/TransactionHandler/TranslateCommand.h>
 #include <Framework/TransactionHandler/TransactionHandler.h>
 
 #include "DefaultInputConfig.h"
 
 #if NYA_DEVBUILD
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <imgui/examples/imgui_impl_dx11.h>
 #include <imgui/examples/imgui_impl_win32.h>
+#include <ImGuizmo/ImGuizmo.h>
 #include <Display/DisplaySurfaceWin32.h>
 #include <Rendering/Direct3D11/CommandList.h>
 #include <Rendering/Direct3D11/RenderDevice.h>
 #include <Rendering/Direct3D11/RenderTarget.h>  
 #include <d3d11.h>
+
+
+static bool IsItemActiveLastFrame()
+{
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    if ( g.ActiveIdPreviousFrame )
+        return g.ActiveIdPreviousFrame == g.CurrentWindow->DC.LastItemId;
+    return false;
+}
+
+#define NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, cmdType )\
+    static decltype( variable ) variable##_Backup = {}; \
+    if ( ImGui::IsItemActive() && !IsItemActiveLastFrame() ) {\
+        variable##_Backup = variable;\
+    }\
+    if ( ImGui::IsItemDeactivatedAfterEdit() ) {\
+        transactionHandler->commit<cmdType>( &variable, variable, variable##_Backup );\
+    }
+
+#define NYA_IMGUI_UNDO_IMPL_PTR( transactionHandler, variable, cmdType )\
+    static decltype( variable ) variable##_Backup = {}; \
+    if ( ImGui::IsItemActive() && !IsItemActiveLastFrame() ) {\
+        variable##_Backup = variable;\
+    }\
+    if ( ImGui::IsItemDeactivatedAfterEdit() ) {\
+        transactionHandler->commit<cmdType>( variable, *variable, variable##_Backup );\
+    }
+
+#define NYA_IMGUI_DRAG_FLOAT( transactionHandler, variable, step, rangeMin, rangeMax )\
+    ImGui::DragFloat( #variable, &variable, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, FloatEditCommand )
+
+#define NYA_IMGUI_DRAG_FLOAT_PTR( transactionHandler, variable, step, rangeMin, rangeMax )\
+    ImGui::DragFloat( #variable, variable, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL_PTR( variable, FloatEditCommand )
+
+#define NYA_IMGUI_DRAG_INT( transactionHandler, variable, step, rangeMin, rangeMax )\
+    ImGui::DragInt( #variable, &variable, step, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, IntEditCommand )
+
+#define NYA_IMGUI_DRAG_FLOAT2( transactionHandler, variable, step, rangeMin, rangeMax )\
+    ImGui::DragFloat2( #variable, &variable, step, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, Float2EditCommand )
+
+#define NYA_IMGUI_DRAG_FLOAT3( transactionHandler, variable, step, rangeMin, rangeMax )\
+    ImGui::DragFloat3( #variable, (float*)&variable, step, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, Float3EditCommand )
+
+#define NYA_IMGUI_INPUT_FLOAT3( transactionHandler, variable )\
+    ImGui::InputFloat3( #variable, (float*)&variable );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, Float3EditCommand )
+
+#define NYA_IMGUI_SLIDER_INT( transactionHandler, variable, rangeMin, rangeMax )\
+    ImGui::SliderInt( #variable, &variable, rangeMin, rangeMax );\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, IntEditCommand )
+
+#define NYA_IMGUI_CHECKBOX( transactionHandler, variable, onChecked )\
+    if ( ImGui::Checkbox( #variable, &variable ) ) {\
+        onChecked\
+    }\
+    NYA_IMGUI_UNDO_IMPL( transactionHandler, variable, BoolEditCommand )
+
+#define NYA_IMGUI_CHECKBOX_PTR( transactionHandler, variable, onChecked )\
+    if ( ImGui::Checkbox( #variable, variable ) ) {\
+        onChecked\
+    }\
+    NYA_IMGUI_UNDO_IMPL_PTR( variable, BoolEditCommand )
+
+#define NYA_IMPL_EDIT_TYPE( cmdName, type )\
+class cmdName##Command : public TransactionCommand\
+{\
+public:\
+cmdName##Command( type* editedValue, type nextValue, type backupValue )\
+        : editedValue( editedValue )\
+        , nextValue( nextValue )\
+        , backupValue( backupValue )\
+    {\
+        actionInfos = "Edit " #type " Variable";\
+    }\
+\
+    virtual void execute() override\
+    {\
+        *editedValue = nextValue;\
+    }\
+\
+    virtual void undo() override\
+    {\
+        *editedValue = backupValue;\
+    }\
+\
+private:\
+    type*      editedValue;\
+    const type nextValue;\
+    const type backupValue;\
+};
+
+NYA_IMPL_EDIT_TYPE( BoolEdit, bool )
+NYA_IMPL_EDIT_TYPE( FloatEdit, float )
+NYA_IMPL_EDIT_TYPE( IntEdit, int )
+NYA_IMPL_EDIT_TYPE( Float2Edit, nyaVec2f )
+NYA_IMPL_EDIT_TYPE( Float3Edit, nyaVec3f )
+NYA_IMPL_EDIT_TYPE( Float4Edit, nyaVec4f )
+
 #endif
 
 static constexpr const nyaChar_t* const PROJECT_NAME = static_cast<const nyaChar_t* const>( NYA_STRING( "NyaEd" ) );
@@ -200,7 +306,7 @@ void RegisterInputContexts()
                 auto viewMat = cameraData.viewMatrix;
                 auto projMat = cameraData.depthProjectionMatrix;
 
-                auto inverseViewProj = ( viewMat * projMat ).inverse();
+                auto inverseViewProj = ( projMat * viewMat ).inverse();
 
                 nyaVec4f ray =
                 {
@@ -290,7 +396,7 @@ void TestStuff()
             pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
         }
     }*/
-    /*
+    
     DirectionalLightData sunLight = {};
     sunLight.isSunLight = true;
     sunLight.intensityInLux = 100000.0f;
@@ -301,9 +407,9 @@ void TestStuff()
     sunLight.sphericalCoordinates = nyaVec2f( 0.50f, 0.5f );
     sunLight.direction = nya::maths::SphericalToCarthesianCoordinates( sunLight.sphericalCoordinates.x, sunLight.sphericalCoordinates.y );
 
-    auto& dirLight = g_SceneTest->allocateDirectionalLight();
-    dirLight.directionalLight = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
-*/
+    auto* dirLight = g_SceneTest->allocateDirectionalLight();
+    dirLight->dirLightData = g_LightGrid->updateDirectionalLightData( std::forward<DirectionalLightData>( sunLight ) );
+
    //{
    //     IBLProbeData localProbe = {};
    //     localProbe.worldPosition = { 0, 10, 2 };
@@ -767,7 +873,9 @@ void PrintEditorGUI()
     ImGui::NewFrame();
     {
         cmdList.CommandListObject->deferredContext->OMSetRenderTargets( 1, &g_RenderDevice->getSwapchainBuffer()->textureRenderTargetView, nullptr );
-      
+
+        ImGuizmo::BeginFrame();
+
         DisplayMenuBar();
 
         ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0, 0, 0, 0 ) );
@@ -808,7 +916,114 @@ void PrintEditorGUI()
                         //*dev_IsInputText = !*dev_IsInputText;
                     }
 
-                    // transform.drawInEditor( frameTime, transactionHandler );
+                    if ( ImGui::TreeNode( "Transform" ) ) {
+                        Transform& transform = g_SceneTest->TransformDatabase[g_PickedNode->transform];
+
+                        static ImGuizmo::OPERATION mCurrentGizmoOperation( ImGuizmo::TRANSLATE );
+                        static int activeManipulationMode = 0;
+                        static bool useSnap = false;
+                        static float snap[3] = { 1.f, 1.f, 1.f };
+                        static ImGuizmo::MODE mCurrentGizmoMode( ImGuizmo::LOCAL );
+
+                        nyaMat4x4f* modelMatrix = ( mCurrentGizmoMode == ImGuizmo::LOCAL ) ? transform.getLocalModelMatrix() : transform.getWorldModelMatrix();
+
+                        if ( mCurrentGizmoOperation != ImGuizmo::SCALE ) {
+                            if ( ImGui::RadioButton( "Local", mCurrentGizmoMode == ImGuizmo::LOCAL ) ) {
+                                mCurrentGizmoMode = ImGuizmo::LOCAL;
+                                modelMatrix = transform.getLocalModelMatrix();
+                            }
+
+                            ImGui::SameLine();
+
+                            if ( ImGui::RadioButton( "World", mCurrentGizmoMode == ImGuizmo::WORLD ) ) {
+                                mCurrentGizmoMode = ImGuizmo::WORLD;
+                                modelMatrix = transform.getWorldModelMatrix();
+                            }
+                        }
+
+                        ImGui::Checkbox( "", &useSnap );
+                        ImGui::SameLine();
+
+                        switch ( mCurrentGizmoOperation ) {
+                        case ImGuizmo::TRANSLATE:
+                            ImGui::InputFloat3( "Snap", snap );
+                            break;
+                        case ImGuizmo::ROTATE:
+                            ImGui::InputFloat( "Angle Snap", snap );
+                            break;
+                        case ImGuizmo::SCALE:
+                            ImGui::InputFloat( "Scale Snap", snap );
+                            break;
+                        }
+
+                        ImGui::RadioButton( "Translate", &activeManipulationMode, 0 );
+                        ImGui::SameLine();
+                        ImGui::RadioButton( "Rotate", &activeManipulationMode, 1 );
+                        ImGui::SameLine();
+                        ImGui::RadioButton( "Scale", &activeManipulationMode, 2 );
+
+                        CameraData& cameraData = g_FreeCamera->getData();
+                        ImGuiIO& io = ImGui::GetIO();
+                        ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
+                        ImGuizmo::Manipulate( cameraData.viewMatrix.toArray(), cameraData.depthProjectionMatrix.toArray(), static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, modelMatrix->toArray(), NULL, useSnap ? &snap[activeManipulationMode] : NULL );
+
+                        nyaVec3f translation = nya::maths::ExtractTranslation( *modelMatrix );
+                        NYA_IMGUI_INPUT_FLOAT3( g_TransactionHandler, translation )
+
+                        if ( ImGuizmo::IsUsing() ) {
+                            g_TransactionHandler->commit<LocalTranslateCommand>( &transform, translation );
+                        }
+
+                        //glm::vec3 Scale;
+                        //glm::quat rotationDecomposed;
+                        //glm::vec3 skewDecomposed;
+                        //glm::vec3 Translation;
+                        //glm::vec4 perspectiveDecomposed;
+                        //glm::decompose( *modelMatrix, Scale, rotationDecomposed, Translation, skewDecomposed, perspectiveDecomposed );
+
+                        //NYA_IMGUI_INPUT_FLOAT3( transactionHandler, Translation )
+
+                        //auto Rotation = glm::eulerAngles( rotationDecomposed );
+
+                        //glm::quat nextRotation = localRotation;
+
+                        //// TODO FIXME Why the fuck rotation sperg out when it's enabled (loss of precision when converting euler angles to quaternion?)
+                        //if ( ImGui::InputFloat3( "Rotation", ( float* )& Rotation, 3 ) ) {
+                        //    nextRotation = glm::toQuat( glm::eulerAngleXYZ( Rotation.x, Rotation.y, Rotation.z ) );
+                        //}
+                        //else {
+                        //    nextRotation = rotationDecomposed;
+                        //}
+
+                        //NYA_IMGUI_INPUT_FLOAT3( transactionHandler, Scale )
+
+                        //    isManipulating = ImGuizmo::IsUsing();
+
+                        //if ( !isManipulating ) {
+                        //    if ( Translation != localTranslation ) {
+                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                        //            transactionHandler->commit<LocalTranslateCommand>( this, Translation );
+                        //        else
+                        //            transactionHandler->commit<WorldTranslateCommand>( this, Translation );
+                        //    }
+
+                        //    if ( Scale != localScale ) {
+                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                        //            transactionHandler->commit<LocalScaleCommand>( this, Scale );
+                        //        else
+                        //            transactionHandler->commit<WorldScaleCommand>( this, Scale );
+                        //    }
+
+                        //    if ( nextRotation != localRotation ) {
+                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
+                        //            transactionHandler->commit<LocalRotateCommand>( this, nextRotation );
+                        //        else
+                        //            transactionHandler->commit<WorldRotateCommand>( this, nextRotation );
+                        //    }
+                        //}
+
+                        ImGui::TreePop();
+                    }
 
                     switch ( g_PickedNode->getNodeType() ) {
                     case NYA_STRING_HASH( "IBLProbeNode" ):
@@ -826,6 +1041,30 @@ void PrintEditorGUI()
                         if ( probeData->isDynamic ) {
                             ImGui::InputInt( "Update Frequency (in frames)", ( int* )&probeData->CaptureFrequency );
                         }
+                    } break;
+
+                    case NYA_STRING_HASH( "DirectionalLightNode" ):
+                    {
+                        Scene::DirectionalLightNode* sceneNode = static_cast< Scene::DirectionalLightNode* >( g_PickedNode );
+                        DirectionalLightData* dirLightData = sceneNode->dirLightData;
+
+                        ImGui::Checkbox( "Enable Shadow", &dirLightData->enableShadow );
+                        ImGui::SameLine();
+                        ImGui::Checkbox( "Acts as Sun", &dirLightData->isSunLight );
+/*
+                        flan::editor::PanelLuminousIntensity( lightData.intensityInLux );
+                        flan::editor::PanelColor( activeColorMode, lightData.colorRGB );
+*/
+                        ImGui::DragFloat( "Angular Radius", &dirLightData->angularRadius, 0.00001f, 0.0f, 1.0f );
+
+                        const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( dirLightData->angularRadius ) );
+
+                        dirLightData->illuminanceInLux = dirLightData->intensityInLux * solidAngle;
+
+                        ImGui::DragFloat( "Spherical Coordinate Theta", &dirLightData->sphericalCoordinates.x, 0.01f, -1.0f, 1.0f );
+                        ImGui::DragFloat( "Spherical Coordinate Gamma", &dirLightData->sphericalCoordinates.y, 0.01f, -1.0f, 1.0f );
+
+                        dirLightData->direction = nya::maths::SphericalToCarthesianCoordinates( dirLightData->sphericalCoordinates.x, dirLightData->sphericalCoordinates.y );
                     } break;
 
                     case NYA_STRING_HASH( "StaticGeometryNode" ):

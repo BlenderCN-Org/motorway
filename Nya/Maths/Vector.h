@@ -845,7 +845,7 @@ struct Vector<Precision, 4>
 
     constexpr Precision length() const
     {
-        return nya::maths::sqrt( lengthSquared() );
+        return sqrt( lengthSquared() );
     }
 };
 

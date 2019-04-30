@@ -100,6 +100,11 @@ struct Matrix<Precision, 4, 4>
 
     }
 
+    constexpr Precision* toArray()
+    {
+        return &_00;
+    }
+
     constexpr const Vector<Precision, COLUMN_COUNT>& operator[] ( const unsigned int index ) const
     {
         return rows[index];

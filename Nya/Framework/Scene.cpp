@@ -163,6 +163,7 @@ Scene::StaticGeometryNode* Scene::allocateStaticGeometry()
 {
     StaticGeometryNode* staticGeometryNode = nya::core::allocate<StaticGeometryNode>( memoryAllocator );
     staticGeometryNode->transform = TransformDatabase.allocate();
+    staticGeometryNode->worldTransform = &TransformDatabase[staticGeometryNode->transform];
     staticGeometryNode->mesh = RenderableMeshDatabase.allocate();
 
     RenderableMeshDatabase[staticGeometryNode->mesh].transform = staticGeometryNode->transform;
@@ -178,6 +179,7 @@ Scene::PointLightNode* Scene::allocatePointLight()
 {
     PointLightNode* pointLightNode = nya::core::allocate<PointLightNode>( memoryAllocator );
     pointLightNode->transform = TransformDatabase.allocate();
+    pointLightNode->worldTransform = &TransformDatabase[pointLightNode->transform];
     pointLightNode->pointLight = PointLightDatabase.allocate();
 
     PointLightDatabase[pointLightNode->pointLight].transform = pointLightNode->transform;
@@ -193,6 +195,7 @@ Scene::IBLProbeNode* Scene::allocateIBLProbe()
 {
     IBLProbeNode* iblProbeNode = nya::core::allocate<IBLProbeNode>( memoryAllocator );
     iblProbeNode->transform = TransformDatabase.allocate();
+    iblProbeNode->worldTransform = &TransformDatabase[iblProbeNode->transform];
     iblProbeNode->iblProbe = IBLProbeDatabase.allocate();
 
     iblProbeNode->iblProbeData = &IBLProbeDatabase[iblProbeNode->iblProbe].iblProbeData;
@@ -200,4 +203,15 @@ Scene::IBLProbeNode* Scene::allocateIBLProbe()
     sceneNodes.push_back( iblProbeNode );
 
     return iblProbeNode;
+}
+
+Scene::DirectionalLightNode* Scene::allocateDirectionalLight()
+{
+    DirectionalLightNode* dirLightNode = nya::core::allocate<DirectionalLightNode>( memoryAllocator );
+    dirLightNode->transform = TransformDatabase.allocate();
+    dirLightNode->worldTransform = &TransformDatabase[dirLightNode->transform];
+
+    sceneNodes.push_back( dirLightNode );
+
+    return dirLightNode;
 }

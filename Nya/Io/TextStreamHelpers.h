@@ -60,8 +60,8 @@ namespace nya
 
         //    auto hashcode = CRC32( lowerCaseString.c_str() );
 
-        //    if ( hashcode == FLAN_STRING_HASH( "none" ) ) {
-        //        return FLAN_STRING( "" );
+        //    if ( hashcode == NYA_STRING_HASH( "none" ) ) {
+        //        return NYA_STRING( "" );
         //    }
 
         //    auto unwrappedString = WrappedStringToString( typelessString );

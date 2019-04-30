@@ -38,6 +38,7 @@ struct Ray;
 
 #include <vector>
 
+#include <Maths/Transform.h>
 #include <Maths/BoundingSphere.h>
 #include <Framework/Mesh.h>
 #include <Framework/Light.h>
@@ -89,6 +90,8 @@ public:
         nyaStringHash_t                 hashcode;
         nyaComponentHandle_t            transform;
         std::vector<Scene::Node*>       children;
+
+        Transform* worldTransform;
 
         Node( const std::string& nodeName = "Node" )
             : name( nodeName )
@@ -189,7 +192,18 @@ public:
         bool intersect( const Ray& ray, float& hitDistance ) const override
         {
             float dontCare = 0.0f;
-            return nya::maths::RayAABBIntersectionTest( ( *meshResource )->getMeshAABB(), ray, hitDistance, dontCare );
+
+            const nyaVec3f& worldTranslation = worldTransform->getWorldTranslation();
+            const nyaVec3f& worldScale = worldTransform->getWorldScale();
+
+            AABB aabb = ( *meshResource )->getMeshAABB();
+            aabb.minPoint += worldTranslation;
+            aabb.maxPoint += worldTranslation;
+
+            aabb.maxPoint *= worldScale;
+            aabb.maxPoint *= worldScale;
+
+            return nya::maths::RayAABBIntersectionTest( aabb, ray, hitDistance, dontCare );
         }
     };
 
@@ -218,6 +232,33 @@ public:
         }
     };
 
+    struct DirectionalLightNode : public Node
+    {
+        DirectionalLightData* dirLightData;
+
+        Node* clone( LightGrid* lightGrid ) override
+        {
+            return new Node( *this );
+        }
+
+        nyaStringHash_t getNodeType() const override
+        {
+            return NYA_STRING_HASH( "DirectionalLightNode" );
+        }
+
+        bool intersect( const Ray& ray, float& hitDistance ) const override
+        {
+            const nyaVec3f& worldTranslation = worldTransform->getWorldTranslation();
+            const float worldScale = worldTransform->getWorldBiggestScale();
+
+            BoundingSphere sphere;
+            sphere.center = worldTranslation;
+            sphere.radius = 1.0f;
+
+            return nya::maths::RaySphereIntersectionTest( sphere, ray, hitDistance );
+        }
+    };
+
     struct IBLProbeNode : public Node
     {
         nyaComponentHandle_t iblProbe;
@@ -235,10 +276,13 @@ public:
 
         bool intersect( const Ray& ray, float& hitDistance ) const override
         {
-            BoundingSphere sphere;
-            sphere.center = ( *iblProbeData )->worldPosition;
-            sphere.radius = ( *iblProbeData )->radius;
+            const nyaVec3f& worldTranslation = worldTransform->getWorldTranslation();
+            const float worldScale = worldTransform->getWorldBiggestScale();
 
+            BoundingSphere sphere;
+            sphere.center = ( *iblProbeData )->worldPosition + worldTranslation;
+            sphere.radius = ( *iblProbeData )->radius * worldScale;
+            
             return nya::maths::RaySphereIntersectionTest( sphere, ray, hitDistance );
         }
     };
@@ -298,6 +342,7 @@ public:
     StaticGeometryNode*     allocateStaticGeometry();
     PointLightNode*         allocatePointLight();
     IBLProbeNode*           allocateIBLProbe();
+    DirectionalLightNode*   allocateDirectionalLight();
 
 private:
     std::string             name;
