@@ -166,6 +166,7 @@ DrawCommandBuilder::~DrawCommandBuilder()
 void DrawCommandBuilder::loadDebugResources( GraphicsAssetCache* graphicsAssetCache )
 {
     MaterialDebugIBLProbe = graphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/Debug/IBLProbe.mat" ) );
+    MaterialDebugWireframe = graphicsAssetCache->getMaterial( NYA_STRING( "GameData/materials/Debug/Wireframe.mat" ) );
 }
 #endif
 
@@ -181,6 +182,13 @@ void DrawCommandBuilder::addSphereToRender( const nyaVec3f& sphereCenter, const 
 {
     auto sphereMatrix = nya::core::allocate<PrimitiveInstance>( spheresToRender );
     sphereMatrix->modelMatrix = nya::maths::MakeTranslationMat( sphereCenter ) *  nya::maths::MakeScaleMat( sphereRadius );
+    sphereMatrix->material = material;
+}
+
+void DrawCommandBuilder::addAABBToRender( const AABB& aabb, Material* material )
+{
+    auto sphereMatrix = nya::core::allocate<PrimitiveInstance>( spheresToRender );
+    sphereMatrix->modelMatrix = nya::maths::MakeTranslationMat( nya::maths::GetAABBCentroid( aabb ) ) *  nya::maths::MakeScaleMat( nya::maths::GetAABBHalfExtents( aabb ) );
     sphereMatrix->material = material;
 }
 

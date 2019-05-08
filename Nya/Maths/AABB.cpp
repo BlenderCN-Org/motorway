@@ -51,14 +51,14 @@ nyaVec3f nya::maths::GetAABBCentroid( const AABB& aabb )
 
 void nya::maths::ExpandAABB( AABB& aabb, const nyaVec3f& pointToInclude )
 {
-    aabb.minPoint = min( aabb.minPoint, pointToInclude );
-    aabb.maxPoint = max( aabb.maxPoint, pointToInclude );
+    aabb.minPoint = nyaVec3f::min( aabb.minPoint, pointToInclude );
+    aabb.maxPoint = nyaVec3f::max( aabb.maxPoint, pointToInclude );
 }
 
 void nya::maths::ExpandAABB( AABB& aabb, const AABB& aabbToInclude )
 {
-    aabb.minPoint = min( aabb.minPoint, aabbToInclude.minPoint );
-    aabb.maxPoint = max( aabb.maxPoint, aabbToInclude.maxPoint );
+    aabb.minPoint = nyaVec3f::min( aabb.minPoint, aabbToInclude.minPoint );
+    aabb.maxPoint = nyaVec3f::max( aabb.maxPoint, aabbToInclude.maxPoint );
 }
 
 void nya::maths::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
@@ -66,8 +66,8 @@ void nya::maths::ExpandAABB( AABB& aabb, const BoundingSphere& sphereToInclude )
     auto minPoint = sphereToInclude.center - sphereToInclude.radius;
     auto maxPoint = sphereToInclude.center + sphereToInclude.radius;
 
-    aabb.minPoint = min( aabb.minPoint, minPoint );
-    aabb.maxPoint = max( aabb.maxPoint, maxPoint );
+    aabb.minPoint = nyaVec3f::min( aabb.minPoint, minPoint );
+    aabb.maxPoint = nyaVec3f::max( aabb.maxPoint, maxPoint );
 }
 
 bool nya::maths::RayAABBIntersectionTest( const AABB& aabb, const Ray& ray, float& minHit, float& maxHit )

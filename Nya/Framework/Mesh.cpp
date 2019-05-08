@@ -47,7 +47,8 @@ void Mesh::create( RenderDevice* renderDevice, const BufferDesc& vertexBufferDes
     indiceBuffer = renderDevice->createBuffer( indiceBufferDesc, indiceBufferContent );
 
     // Implicitly resets bounding box
-    aabb.minPoint = aabb.maxPoint = nyaVec3f( 0, 0, 0 );
+    aabb.minPoint = nyaVec3f::Max;
+    aabb.maxPoint = -nyaVec3f::Max;
 }
 
 void Mesh::destroy( RenderDevice* renderDevice )

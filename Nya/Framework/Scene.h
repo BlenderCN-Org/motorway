@@ -40,8 +40,18 @@ struct Ray;
 
 #include <Maths/Transform.h>
 #include <Maths/BoundingSphere.h>
+#include <Maths/AABB.h>
+
 #include <Framework/Mesh.h>
 #include <Framework/Light.h>
+
+namespace nya
+{
+    namespace editor
+    {
+        enum eColorMode : int;
+    }
+}
 
 using nyaComponentHandle_t = uint32_t;
 
@@ -52,6 +62,7 @@ public:
     {
         nyaComponentHandle_t transform;
         Mesh* meshResource;
+        AABB meshBoundingBox;
 
         union
         {
@@ -177,7 +188,7 @@ public:
     struct StaticGeometryNode : public Node
     {
         nyaComponentHandle_t    mesh;
-        Mesh**                  meshResource;
+        RenderableMesh*        renderableMesh;
 
         Node* clone( LightGrid* lightGrid ) override
         {
@@ -196,7 +207,8 @@ public:
             const nyaVec3f& worldTranslation = worldTransform->getWorldTranslation();
             const nyaVec3f& worldScale = worldTransform->getWorldScale();
 
-            AABB aabb = ( *meshResource )->getMeshAABB();
+            Mesh* meshResource = renderableMesh->meshResource;
+            AABB aabb = meshResource->getMeshAABB();
             aabb.minPoint += worldTranslation;
             aabb.maxPoint += worldTranslation;
 
@@ -209,8 +221,9 @@ public:
 
     struct PointLightNode : public Node
     {
-        nyaComponentHandle_t pointLight;
-        PointLightData**     pointLightData;
+        nyaComponentHandle_t    pointLight;
+        PointLightData**        pointLightData;
+        nya::editor::eColorMode colorMode;
 
         Node* clone( LightGrid* lightGrid ) override
         {
@@ -234,7 +247,8 @@ public:
 
     struct DirectionalLightNode : public Node
     {
-        DirectionalLightData* dirLightData;
+        DirectionalLightData*   dirLightData;
+        nya::editor::eColorMode colorMode;
 
         Node* clone( LightGrid* lightGrid ) override
         {
@@ -280,7 +294,7 @@ public:
             const float worldScale = worldTransform->getWorldBiggestScale();
 
             BoundingSphere sphere;
-            sphere.center = ( *iblProbeData )->worldPosition + worldTranslation;
+            sphere.center = worldTranslation;
             sphere.radius = ( *iblProbeData )->radius * worldScale;
             
             return nya::maths::RaySphereIntersectionTest( sphere, ray, hitDistance );
@@ -344,9 +358,13 @@ public:
     IBLProbeNode*           allocateIBLProbe();
     DirectionalLightNode*   allocateDirectionalLight();
 
+    const std::vector<Node*>&     getNodes() const;
+    const AABB&                   getSceneAabb() const;
+
 private:
     std::string             name;
     BaseAllocator*          memoryAllocator;
 
+    AABB                    sceneAabb;
     std::vector<Node*>      sceneNodes;
 };

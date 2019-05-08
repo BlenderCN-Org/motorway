@@ -41,7 +41,7 @@ GUIScreen::~GUIScreen()
 void GUIScreen::setVirtualScreenSize( const nyaVec2u& virtualScreenSizeInPixels )
 {
     virtualScreenSize = virtualScreenSize;
-    virtualScreenSize = nya::maths::max( virtualScreenSize, nyaVec2u( 1u ) );
+    virtualScreenSize = nyaVec2u::max( virtualScreenSize, nyaVec2u( 1u ) );
 }
 
 void GUIScreen::onScreenResize( const nyaVec2u& screenSizeInPixels )

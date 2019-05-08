@@ -67,6 +67,17 @@ struct Quaternion
 
     }
 
+    constexpr Quaternion( const Vector<Precision, 3>& eulerAngles )
+    {
+        Vector<Precision, 3> c = nyaVec3f::cos( nya::maths::radians<Precision>( eulerAngles ) * Precision( 0.5 ) );
+        Vector<Precision, 3> s = nyaVec3f::sin( nya::maths::radians<Precision>( eulerAngles ) * Precision( 0.5 ) );
+
+        w = c.x * c.y * c.z + s.x * s.y * s.z;
+        x = s.x * c.y * c.z - c.x * s.y * s.z;
+        y = c.x * s.y * c.z + s.x * c.y * s.z;
+        z = c.x * c.y * s.z - s.x * s.y * c.z;
+    }
+
     constexpr Quaternion( const Matrix<Precision, 4, 4>& rotationMatrix )
     {
         float r11 = rotationMatrix._00;
@@ -275,6 +286,15 @@ struct Quaternion
             xy2 - wz2, ( Precision )1 - xx2 - zz2, yz2 + wx2, 0,
             xz2 + wy2, yz2 - wx2, ( Precision )1 - xx2 - yy2, 0,
             (Precision)0, ( Precision )0, ( Precision )0, ( Precision )1 );
+    }
+
+    constexpr Vector<Precision, 3> toEulerAngles() const
+    {
+        return Vector <Precision, 3>(
+            nya::maths::degrees<Precision>( atan2( static_cast<Precision>( 2 ) * ( y * z + w * x ), w * w - x * x - y * y + z * z ) ),
+            nya::maths::degrees<Precision>( asin( nya::maths::clamp( static_cast<Precision>( -2 ) * ( x * z - w * y ), static_cast<Precision>( -1 ), static_cast<Precision>( 1 ) ) ) ),
+            nya::maths::degrees<Precision>( static_cast<Precision>( atan2( static_cast<Precision>( 2 ) * ( x * y + w * z ), w * w + x * x - y * y - z * z ) ) )
+        );
     }
 };
 

@@ -32,6 +32,7 @@ class GraphicsAssetCache;
 
 struct CameraData;
 struct IBLProbeData;
+struct AABB;
 
 #include <stack>
 
@@ -56,6 +57,7 @@ class DrawCommandBuilder
 #if NYA_DEVBUILD
 public:
     Material*                   MaterialDebugIBLProbe;
+    Material*                   MaterialDebugWireframe;
 #endif
 
 public:
@@ -70,6 +72,7 @@ public:
 
     void                        addGeometryToRender( const Mesh* meshResource, const nyaMat4x4f* modelMatrix, const uint32_t flagset );
     void                        addSphereToRender( const nyaVec3f& sphereCenter, const float sphereRadius, Material* material );
+    void                        addAABBToRender( const AABB& aabb, Material* material );
     void                        addCamera( CameraData* cameraData );
     void                        addIBLProbeToCapture( const IBLProbeData* probeData );
     void                        addHUDRectangle( const nyaVec2f& positionScreenSpace, const nyaVec2f& dimensionScreenSpace, const float rotationInRadians, Material* material );

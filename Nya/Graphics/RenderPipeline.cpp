@@ -355,7 +355,7 @@ void RenderPipelineResources::updateVectorBuffer( const DrawCmd& cmd, size_t& in
     case DrawCommandKey::LAYER_DEPTH: {
         const size_t instancesDataSize = sizeof( nyaMat4x4f ) * cmd.infos.instanceCount;
         
-        nyaMat4x4f modelViewProjection = activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u] * *cmd.infos.modelMatrix;
+        nyaMat4x4f modelViewProjection = *cmd.infos.modelMatrix * activeCameraData.shadowViewMatrix[cmd.key.bitfield.viewportLayer - 1u];
         memcpy( ( uint8_t* )instanceBufferData + instanceBufferOffset, &modelViewProjection, sizeof( nyaMat4x4f ) );
          
         instanceBufferOffset += instancesDataSize;

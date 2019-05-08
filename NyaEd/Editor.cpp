@@ -9,6 +9,7 @@
 #include <Core/Timer.h>
 #include <Core/FileLogger.h>
 #include <Core/Environment.h>
+#include <Core/StringHelpers.h>
 
 #include <Core/Allocators/LinearAllocator.h>
 #include <Core/Allocators/GrowingStackAllocator.h>
@@ -51,10 +52,17 @@
 #include <Framework/GUI/Panel.h>
 #include <Framework/GUI/Label.h>
 #include <Framework/GUI/Button.h>
+
+#include <Core/ColormetryHelpers.h>
+
 #include <Framework/TransactionHandler/TranslateCommand.h>
+#include <Framework/TransactionHandler/ScaleCommand.h>
+#include <Framework/TransactionHandler/RotateCommand.h>
 #include <Framework/TransactionHandler/TransactionHandler.h>
 
 #include "DefaultInputConfig.h"
+
+#include <FileSystem/FileSystemWatchdog.h>
 
 #if NYA_DEVBUILD
 #include <imgui/imgui.h>
@@ -68,6 +76,7 @@
 #include <Rendering/Direct3D11/RenderTarget.h>  
 #include <d3d11.h>
 
+#include <Core/FileSystemIOHelpers.h>
 
 static bool IsItemActiveLastFrame()
 {
@@ -193,6 +202,7 @@ static WorldRenderer*          g_WorldRenderer;
 static GraphicsAssetCache*     g_GraphicsAssetCache;
 static DrawCommandBuilder*     g_DrawCommandBuilder;
 static LightGrid*              g_LightGrid;
+static FileSystemWatchdog*     g_FileSystemWatchdog;
 
 static Scene*                  g_SceneTest;
 static FreeCamera*             g_FreeCamera;
@@ -615,6 +625,11 @@ void InitializeIOSubsystems()
         EnvironmentVariables::deserialize( envConfigurationFile );
         envConfigurationFile->close();
     }
+
+#if NYA_DEVBUILD
+    g_FileSystemWatchdog = nya::core::allocate<FileSystemWatchdog>( g_GlobalAllocator );
+    g_FileSystemWatchdog->create();
+#endif
 }
 
 void InitializeInputSubsystems()
@@ -735,6 +750,37 @@ static void PrintTab( const char* tabName, const int tabIndex )
     }
 }
 
+static void PrintNode( Scene::Node* node )
+{
+    ImGuiTreeNodeFlags flags = 0;
+
+    const bool isLeaf = node->children.empty();
+    const bool isSelected = ( g_PickedNode == node );
+
+    if ( isSelected )
+        flags |= ImGuiTreeNodeFlags_Selected;
+
+    if ( isLeaf )
+        flags |= ImGuiTreeNodeFlags_Leaf;
+
+    bool isOpened = ImGui::TreeNodeEx( node->name.c_str(), flags );
+
+    if ( ImGui::IsItemClicked() ) {
+        g_PickedNode = node;
+    }
+
+    if ( isOpened ) {
+        if ( !isLeaf ) {
+            ImGui::Indent();
+            for ( auto child : node->children ) {
+                PrintNode( child );
+            }
+        }
+
+        ImGui::TreePop();
+    }
+}
+
 static void DisplayMenuBar()
 {
     if ( ImGui::BeginMainMenuBar() ) {
@@ -760,11 +806,11 @@ static void DisplayMenuBar()
 
             if ( ImGui::BeginMenu( "Edit" ) ) {
                 if ( ImGui::MenuItem( "Undo" ) ) {
-
+                    g_TransactionHandler->undo();
                 }
 
                 if ( ImGui::MenuItem( "Redo" ) ) {
-
+                    g_TransactionHandler->redo();
                 }
 
                 ImGui::Separator();
@@ -785,6 +831,7 @@ static void DisplayMenuBar()
 
             if ( ImGui::BeginMenu( "Add To Scene" ) ) {
                 if ( ImGui::MenuItem( "Static Geometry" ) ) {
+                    g_PickedNode = g_SceneTest->allocateStaticGeometry();
                 }
 
                 ImGui::Separator();
@@ -801,6 +848,8 @@ static void DisplayMenuBar()
 
                     auto& pointLightTransform = g_SceneTest->TransformDatabase[pointLight->transform];
                     pointLightTransform.setWorldTranslation( pointLightData.worldPosition );
+
+                    g_PickedNode = pointLight;
                 }
 
                 if ( ImGui::MenuItem( "IBL Probe" ) ) {
@@ -814,6 +863,8 @@ static void DisplayMenuBar()
 
                     Scene::IBLProbeNode* localProbeNode = g_SceneTest->allocateIBLProbe();
                     g_SceneTest->IBLProbeDatabase[localProbeNode->iblProbe].iblProbeData = g_LightGrid->allocateLocalIBLProbeData( std::forward<IBLProbeData>( localProbe ) );
+                
+                    g_PickedNode = localProbeNode;
                 }
 
                 ImGui::EndMenu();
@@ -923,23 +974,8 @@ void PrintEditorGUI()
                         static int activeManipulationMode = 0;
                         static bool useSnap = false;
                         static float snap[3] = { 1.f, 1.f, 1.f };
-                        static ImGuizmo::MODE mCurrentGizmoMode( ImGuizmo::LOCAL );
 
-                        nyaMat4x4f* modelMatrix = ( mCurrentGizmoMode == ImGuizmo::LOCAL ) ? transform.getLocalModelMatrix() : transform.getWorldModelMatrix();
-
-                        if ( mCurrentGizmoOperation != ImGuizmo::SCALE ) {
-                            if ( ImGui::RadioButton( "Local", mCurrentGizmoMode == ImGuizmo::LOCAL ) ) {
-                                mCurrentGizmoMode = ImGuizmo::LOCAL;
-                                modelMatrix = transform.getLocalModelMatrix();
-                            }
-
-                            ImGui::SameLine();
-
-                            if ( ImGui::RadioButton( "World", mCurrentGizmoMode == ImGuizmo::WORLD ) ) {
-                                mCurrentGizmoMode = ImGuizmo::WORLD;
-                                modelMatrix = transform.getWorldModelMatrix();
-                            }
-                        }
+                        nyaMat4x4f* modelMatrix = transform.getLocalModelMatrix();
 
                         ImGui::Checkbox( "", &useSnap );
                         ImGui::SameLine();
@@ -965,62 +1001,37 @@ void PrintEditorGUI()
                         CameraData& cameraData = g_FreeCamera->getData();
                         ImGuiIO& io = ImGui::GetIO();
                         ImGuizmo::SetRect( 0, 0, io.DisplaySize.x, io.DisplaySize.y );
-                        ImGuizmo::Manipulate( cameraData.viewMatrix.toArray(), cameraData.depthProjectionMatrix.toArray(), static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), mCurrentGizmoMode, modelMatrix->toArray(), NULL, useSnap ? &snap[activeManipulationMode] : NULL );
+                        ImGuizmo::Manipulate( cameraData.viewMatrix.toArray(), cameraData.depthProjectionMatrix.toArray(), static_cast< ImGuizmo::OPERATION >( activeManipulationMode ), ImGuizmo::MODE::LOCAL, modelMatrix->toArray(), NULL, useSnap ? &snap[activeManipulationMode] : NULL );
 
-                        nyaVec3f translation = nya::maths::ExtractTranslation( *modelMatrix );
-                        NYA_IMGUI_INPUT_FLOAT3( g_TransactionHandler, translation )
+                        nyaVec3f Translation = nya::maths::ExtractTranslation( *modelMatrix );
+                        NYA_IMGUI_INPUT_FLOAT3( g_TransactionHandler, Translation )
 
-                        if ( ImGuizmo::IsUsing() ) {
-                            g_TransactionHandler->commit<LocalTranslateCommand>( &transform, translation );
+                        nyaVec3f Scale = nya::maths::ExtractScale( *modelMatrix );
+
+                        nyaQuatf RotationQuat = nya::maths::ExtractRotation( *modelMatrix, Scale );
+                        nyaVec3f Rotation = RotationQuat.toEulerAngles();
+                        ImGui::InputFloat3( "Rotation", ( float* )&Rotation, 3 );
+                        RotationQuat = nyaQuatf( Rotation );
+
+                        static nyaVec3f Rotation_Backup = {};
+                        if ( ImGui::IsItemActive() && !IsItemActiveLastFrame() ) {
+                            Rotation_Backup = Rotation;
+                        }
+                        if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                            g_TransactionHandler->commit<LocalRotateCommand>( &transform, RotationQuat );
+                            transform.setLocalRotation( RotationQuat );
                         }
 
-                        //glm::vec3 Scale;
-                        //glm::quat rotationDecomposed;
-                        //glm::vec3 skewDecomposed;
-                        //glm::vec3 Translation;
-                        //glm::vec4 perspectiveDecomposed;
-                        //glm::decompose( *modelMatrix, Scale, rotationDecomposed, Translation, skewDecomposed, perspectiveDecomposed );
+                        NYA_IMGUI_INPUT_FLOAT3( g_TransactionHandler, Scale )
 
-                        //NYA_IMGUI_INPUT_FLOAT3( transactionHandler, Translation )
-
-                        //auto Rotation = glm::eulerAngles( rotationDecomposed );
-
-                        //glm::quat nextRotation = localRotation;
-
-                        //// TODO FIXME Why the fuck rotation sperg out when it's enabled (loss of precision when converting euler angles to quaternion?)
-                        //if ( ImGui::InputFloat3( "Rotation", ( float* )& Rotation, 3 ) ) {
-                        //    nextRotation = glm::toQuat( glm::eulerAngleXYZ( Rotation.x, Rotation.y, Rotation.z ) );
-                        //}
-                        //else {
-                        //    nextRotation = rotationDecomposed;
-                        //}
-
-                        //NYA_IMGUI_INPUT_FLOAT3( transactionHandler, Scale )
-
-                        //    isManipulating = ImGuizmo::IsUsing();
-
-                        //if ( !isManipulating ) {
-                        //    if ( Translation != localTranslation ) {
-                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                        //            transactionHandler->commit<LocalTranslateCommand>( this, Translation );
-                        //        else
-                        //            transactionHandler->commit<WorldTranslateCommand>( this, Translation );
-                        //    }
-
-                        //    if ( Scale != localScale ) {
-                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                        //            transactionHandler->commit<LocalScaleCommand>( this, Scale );
-                        //        else
-                        //            transactionHandler->commit<WorldScaleCommand>( this, Scale );
-                        //    }
-
-                        //    if ( nextRotation != localRotation ) {
-                        //        if ( mCurrentGizmoMode == ImGuizmo::LOCAL )
-                        //            transactionHandler->commit<LocalRotateCommand>( this, nextRotation );
-                        //        else
-                        //            transactionHandler->commit<WorldRotateCommand>( this, nextRotation );
-                        //    }
-                        //}
+                        if ( ImGuizmo::IsUsing() ) {
+                            g_TransactionHandler->commit<LocalTranslateCommand>( &transform, Translation );
+                            g_TransactionHandler->commit<LocalScaleCommand>( &transform, Scale );
+                            g_TransactionHandler->commit<LocalRotateCommand>( &transform, RotationQuat );
+                        } else {
+                            transform.setLocalTranslation( Translation );
+                            transform.setLocalScale( Scale );
+                        }
 
                         ImGui::TreePop();
                     }
@@ -1028,56 +1039,126 @@ void PrintEditorGUI()
                     switch ( g_PickedNode->getNodeType() ) {
                     case NYA_STRING_HASH( "IBLProbeNode" ):
                     {
-                        Scene::IBLProbeNode* sceneNode = static_cast< Scene::IBLProbeNode* >( g_PickedNode );
-                        IBLProbeData* probeData = ( *sceneNode->iblProbeData );
+                        if ( ImGui::TreeNode( "IBL Probe" ) ) {
+                            Scene::IBLProbeNode* sceneNode = static_cast< Scene::IBLProbeNode* >( g_PickedNode );
+                            IBLProbeData* probeData = ( *sceneNode->iblProbeData );
 
-                        if ( ImGui::Button( "Force Probe Capture" ) ) {
-                            probeData->isCaptured = false;
-                        }
+                            if ( ImGui::Button( "Force Probe Capture" ) ) {
+                                probeData->isCaptured = false;
+                            }
 
-                        ImGui::Checkbox( "Is Fallback Probe", &probeData->isFallbackProbe );
-                        ImGui::Checkbox( "Is Dynamic", &probeData->isDynamic );
+                            ImGui::DragFloat( "Radius", &probeData->radius, 0.01f, 0.01f, 64.0f );
 
-                        if ( probeData->isDynamic ) {
-                            ImGui::InputInt( "Update Frequency (in frames)", ( int* )&probeData->CaptureFrequency );
+                            ImGui::Checkbox( "Is Fallback Probe", &probeData->isFallbackProbe );
+                            ImGui::Checkbox( "Is Dynamic", &probeData->isDynamic );
+
+                            if ( probeData->isDynamic ) {
+                                ImGui::InputInt( "Update Frequency (in frames)", ( int* )&probeData->CaptureFrequency );
+                            }
+
+                            ImGui::TreePop();
                         }
                     } break;
 
                     case NYA_STRING_HASH( "DirectionalLightNode" ):
                     {
-                        Scene::DirectionalLightNode* sceneNode = static_cast< Scene::DirectionalLightNode* >( g_PickedNode );
-                        DirectionalLightData* dirLightData = sceneNode->dirLightData;
+                        if ( ImGui::TreeNode( "Directional Light" ) ) {
+                            Scene::DirectionalLightNode* sceneNode = static_cast< Scene::DirectionalLightNode* >( g_PickedNode );
+                            DirectionalLightData* dirLightData = sceneNode->dirLightData;
 
-                        ImGui::Checkbox( "Enable Shadow", &dirLightData->enableShadow );
-                        ImGui::SameLine();
-                        ImGui::Checkbox( "Acts as Sun", &dirLightData->isSunLight );
-/*
-                        flan::editor::PanelLuminousIntensity( lightData.intensityInLux );
-                        flan::editor::PanelColor( activeColorMode, lightData.colorRGB );
-*/
-                        ImGui::DragFloat( "Angular Radius", &dirLightData->angularRadius, 0.00001f, 0.0f, 1.0f );
+                            ImGui::Checkbox( "Enable Shadow", &dirLightData->enableShadow );
+                            ImGui::SameLine();
+                            ImGui::Checkbox( "Acts as Sun", &dirLightData->isSunLight );
 
-                        const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( dirLightData->angularRadius ) );
+                            nya::editor::PanelLuminousIntensity( dirLightData->intensityInLux );
+                            nya::editor::PanelColor( sceneNode->colorMode, dirLightData->colorRGB );
 
-                        dirLightData->illuminanceInLux = dirLightData->intensityInLux * solidAngle;
+                            ImGui::DragFloat( "Angular Radius", &dirLightData->angularRadius, 0.00001f, 0.0f, 1.0f );
 
-                        ImGui::DragFloat( "Spherical Coordinate Theta", &dirLightData->sphericalCoordinates.x, 0.01f, -1.0f, 1.0f );
-                        ImGui::DragFloat( "Spherical Coordinate Gamma", &dirLightData->sphericalCoordinates.y, 0.01f, -1.0f, 1.0f );
+                            const float solidAngle = ( 2.0f * nya::maths::PI<float>() ) * ( 1.0f - cos( dirLightData->angularRadius ) );
 
-                        dirLightData->direction = nya::maths::SphericalToCarthesianCoordinates( dirLightData->sphericalCoordinates.x, dirLightData->sphericalCoordinates.y );
+                            dirLightData->illuminanceInLux = dirLightData->intensityInLux * solidAngle;
+
+                            ImGui::DragFloat( "Spherical Coordinate Theta", &dirLightData->sphericalCoordinates.x, 0.01f, -1.0f, 1.0f );
+                            ImGui::DragFloat( "Spherical Coordinate Gamma", &dirLightData->sphericalCoordinates.y, 0.01f, -1.0f, 1.0f );
+
+                            dirLightData->direction = nya::maths::SphericalToCarthesianCoordinates( dirLightData->sphericalCoordinates.x, dirLightData->sphericalCoordinates.y );
+
+                            ImGui::TreePop();
+                        }
                     } break;
 
+                    case NYA_STRING_HASH( "PointLightNode" ):
+                    {
+                        if ( ImGui::TreeNode( "Point Light" ) ) {
+                            Scene::PointLightNode* sceneNode = static_cast< Scene::PointLightNode* >( g_PickedNode );
+                            PointLightData* pointLightData = ( *sceneNode->pointLightData );
+
+                            ImGui::DragFloat( "Radius", &pointLightData->radius, 0.01f, 0.01f, 64.0f );
+
+                            nya::editor::PanelLuminousIntensity( pointLightData->lightPower );
+                            nya::editor::PanelColor( sceneNode->colorMode, pointLightData->colorRGB );
+
+                            ImGui::TreePop();
+                        }
+                    } break;
+                    
                     case NYA_STRING_HASH( "StaticGeometryNode" ):
                     {
-                        Scene::StaticGeometryNode* sceneNode = static_cast< Scene::StaticGeometryNode* >( g_PickedNode );
-                        Mesh* meshResource = ( *sceneNode->meshResource );
+                        if ( ImGui::TreeNode( "Static Geometry" ) ) {
+                            Scene::StaticGeometryNode* sceneNode = static_cast< Scene::StaticGeometryNode* >( g_PickedNode );
+                            Scene::RenderableMesh* renderableMesh = sceneNode->renderableMesh;
+                            Mesh* meshResource = renderableMesh->meshResource;
 
-                        auto meshPath = ( meshResource != nullptr ) ? "lol test" : "(empty)";
-                        ImGui::LabelText( "##meshPath", meshPath );
-                        ImGui::SameLine();
+                            auto meshPath = ( meshResource != nullptr ) ? nya::core::WideStringToString( meshResource->getName() ) : "(empty)";
+                            ImGui::LabelText( "##meshPath", meshPath.c_str() );
+                            ImGui::SameLine();
 
-                        if ( ImGui::Button( "..." ) ) {
+                            if ( ImGui::Button( "..." ) ) {
+                                nyaString_t meshName;
+                                if ( nya::core::DisplayFileOpenPrompt( meshName, NYA_STRING( "Mesh file (*.mesh)\0*.mesh" ), NYA_STRING( "./" ), NYA_STRING( "Select a Mesh" ) ) ) {
+                                    meshName = nyaString_t( meshName.c_str() );
 
+                                    auto workingDir = nyaString_t( NYA_STRING( "" ) );
+                                    nya::core::RetrieveWorkingDirectory( workingDir );
+
+                                    workingDir.append( NYA_STRING( "data" ) );
+                                    size_t poswd = meshName.find( workingDir );
+
+                                    if ( poswd != nyaString_t::npos ) {
+                                        // If found then erase it from string
+                                        meshName.erase( poswd, workingDir.length() );
+                                    }
+
+                                    std::replace( meshName.begin(), meshName.end(), '\\', '/' );
+
+                                    renderableMesh->meshResource = g_GraphicsAssetCache->getMesh( ( NYA_STRING( "GameData" ) + meshName ).c_str() );
+                                }
+                            }
+
+                            for ( int lodIdx = 0; lodIdx < meshResource->getLevelOfDetailCount(); lodIdx++ ) {
+                                const auto& lod = meshResource->getLevelOfDetailByIndex( lodIdx );
+
+                                if ( lod.startDistance < 0.0f ) {
+                                    continue;
+                                }
+
+                                if ( ImGui::TreeNode( std::string( "LOD" + std::to_string( lodIdx ) ).c_str() ) ) {
+                                    ImGui::LabelText( "##loddistance", std::string( "Distance: " + std::to_string( lod.lodDistance ) ).c_str() );
+
+                                    ImGui::TreePop();
+                                }
+                            }
+
+                            bool IsVisible = renderableMesh->isVisible;
+                            NYA_IMGUI_CHECKBOX( g_TransactionHandler, IsVisible );
+                            renderableMesh->isVisible = IsVisible;
+
+                            bool RenderDepth = renderableMesh->renderDepth;
+                            NYA_IMGUI_CHECKBOX( g_TransactionHandler, RenderDepth );
+                            renderableMesh->renderDepth = RenderDepth;
+
+                            ImGui::TreePop();
                         }
                     } break;
                     }
@@ -1095,13 +1176,10 @@ void PrintEditorGUI()
             char sceneNodeSearch[256] = { '\0' };
             ImGui::InputText( "##SceneNodeLookup", sceneNodeSearch, 256, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue );
             ImGui::Separator();
-/*
-            const auto & sceneNodes = scene->getSceneNodes();
-            for ( auto& node : sceneNodes ) {
-                if ( node->parent == nullptr ) {
-                    PrintNode( node );
-                }
-            }*/
+
+            for ( Scene::Node* node : g_SceneTest->getNodes() ) {
+                PrintNode( node );
+            }
 
             ImGui::End();
         }
@@ -1142,6 +1220,8 @@ void MainLoop()
 		g_InputMapper->update( frameTime );
 		g_InputMapper->clear();
 
+        g_FileSystemWatchdog->onFrame( g_GraphicsAssetCache, g_ShaderCache );
+
         logicCounter.onFrame( frameTime );
 
         accumulator += static_cast<double>( frameTime );
@@ -1155,6 +1235,7 @@ void MainLoop()
         NYA_END_PROFILE_SCOPE()
 
         NYA_BEGIN_PROFILE_SCOPE( "Rendering" )
+            // Update Debug GUI widgets
             g_FramerateGUILabel->Value = "Main Loop " + std::to_string( logicCounter.AvgDeltaTime ).substr( 0, 6 ) + " ms / " + std::to_string( logicCounter.MaxDeltaTime ).substr( 0, 6 ) + " ms (" + std::to_string( logicCounter.AvgFramePerSecond ).substr( 0, 6 ) + " FPS)";
             g_DebugGUI->collectDrawCmds( *g_DrawCommandBuilder );
 
@@ -1163,6 +1244,11 @@ void MainLoop()
             g_WorldRenderer->LineRenderModule->addLine( g_PickingRay.origin, g_PickingRay.direction, 10.0f, nyaVec4f( 1, 0, 0, 1 ) );
 
             g_SceneTest->collectDrawCmds( *g_DrawCommandBuilder );
+
+            // Update scene bounds each frame
+            const AABB& sceneAabb = g_SceneTest->getSceneAabb();
+            g_LightGrid->setSceneBounds( sceneAabb.maxPoint, sceneAabb.minPoint );
+
             g_DrawCommandBuilder->buildRenderQueues( g_WorldRenderer, g_LightGrid );
 
             g_WorldRenderer->drawWorld( g_RenderDevice, frameTime );
@@ -1171,15 +1257,18 @@ void MainLoop()
 #if NYA_DEVBUILD
         PrintEditorGUI();
 #endif
+
         g_RenderDevice->present();
     }
 }
 
 void Shutdown()
 {
+#if NYA_DEVBUILD
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
+#endif
 
     g_LightGrid->destroy( g_RenderDevice );
     g_WorldRenderer->destroy( g_RenderDevice );

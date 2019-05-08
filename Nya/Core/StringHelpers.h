@@ -46,7 +46,16 @@ namespace nya
             str.erase( std::remove( str.begin(), str.end(), '\r' ), str.end() );
             str.erase( std::remove( str.begin(), str.end(), '\t' ), str.end() );
         }
-        
+
+        static void RemoveWordFromString( nyaString_t& string, const nyaString_t& word, const nyaString_t& newWord = NYA_STRING( "" ) )
+        {
+            std::size_t wordIndex = 0;
+
+            while ( ( wordIndex = string.find( word ) ) != nyaString_t::npos ) {
+                string.replace( wordIndex, word.size(), newWord );
+            }
+        }
+
         inline void StringToLower( nyaString_t& string )
         {
             std::transform( string.begin(), string.end(), string.begin(), ::tolower );

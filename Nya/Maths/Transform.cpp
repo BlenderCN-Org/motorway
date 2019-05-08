@@ -140,7 +140,7 @@ void Transform::translate( const nyaVec3f& translation )
 
 void Transform::propagateParentModelMatrix( const nyaMat4x4f& parentModelMatrix )
 {
-    worldModelMatrix = localModelMatrix * parentModelMatrix;
+    worldModelMatrix = ( localModelMatrix * parentModelMatrix ).transpose();
 
     worldTranslation = ExtractTranslation( worldModelMatrix );
     worldScale = ExtractScale( worldModelMatrix );

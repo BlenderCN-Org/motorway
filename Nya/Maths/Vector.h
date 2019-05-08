@@ -47,6 +47,7 @@ struct Vector<Precision, 1>
     static constexpr Precision  EPSILON = std::numeric_limits<Precision>::epsilon();
 
     static const Vector         Zero;
+    static const Vector         Max;
 
     union {
         Precision               scalars[SCALAR_COUNT];
@@ -170,6 +171,26 @@ struct Vector<Precision, 1>
     { 
         return nya::maths::sqrt( lengthSquared() );
     }
+
+    static constexpr Vector<Precision, 1> min( const Vector<Precision, 1>& l, const Vector<Precision, 1>& r )
+    {
+        Vector<Precision, 1> v;
+
+        for ( int i = 0; i < 1; i++ )
+            v[i] = ( l[i] < r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 1> max( const Vector<Precision, 1>& l, const Vector<Precision, 1>& r )
+    {
+        Vector<Precision, 1> v;
+
+        for ( int i = 0; i < 1; i++ )
+            v[i] = ( l[i] > r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
 };
 
 template<typename Precision>
@@ -179,6 +200,7 @@ struct Vector<Precision, 2>
     static constexpr Precision  EPSILON = std::numeric_limits<Precision>::epsilon();
 
     static const Vector         Zero;
+    static const Vector         Max;
 
     union {
         Precision               scalars[SCALAR_COUNT];
@@ -351,6 +373,26 @@ struct Vector<Precision, 2>
     {
         return nya::maths::sqrt( lengthSquared() );
     }
+
+    static constexpr Vector<Precision, 2> min( const Vector<Precision, 2>& l, const Vector<Precision, 2>& r )
+    {
+        Vector<Precision, ScalarCount> v;
+
+        for ( int i = 0; i < 2; i++ )
+            v[i] = ( l[i] < r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 2> max( const Vector<Precision, 2>& l, const Vector<Precision, 2>& r )
+    {
+        Vector<Precision, 2> v;
+
+        for ( int i = 0; i < 2; i++ )
+            v[i] = ( l[i] > r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
 };
 
 template<typename Precision>
@@ -359,7 +401,8 @@ struct Vector<Precision, 3>
     static constexpr int        SCALAR_COUNT = 3;
     static constexpr Precision  EPSILON = std::numeric_limits<Precision>::epsilon();
 
-    static const Vector         Zero; 
+    static const Vector         Zero;
+    static const Vector         Max;
 
     union
     {
@@ -577,6 +620,46 @@ struct Vector<Precision, 3>
 
         return ( dist.x * dist.x + dist.y * dist.y + dist.z * dist.z );
     }
+
+    static constexpr Vector<Precision, 3> cos( const Vector<Precision, 3>& r )
+    {
+        Vector<Precision, 3> v = r;
+
+        for ( int i = 0; i < 3; i++ )
+            v[i] = ::cos( r[i] );
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 3> sin( const Vector<Precision, 3>& r )
+    {
+        Vector<Precision, 3> v = r;
+
+        for ( int i = 0; i < 3; i++ )
+            v[i] = ::sin( r[i] );
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 3> min( const Vector<Precision, 3>& l, const Vector<Precision, 3>& r )
+    {
+        Vector<Precision, 3> v;
+
+        for ( int i = 0; i < 3; i++ )
+            v[i] = ( l[i] < r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 3> max( const Vector<Precision, 3>& l, const Vector<Precision, 3>& r )
+    {
+        Vector<Precision, 3> v;
+
+        for ( int i = 0; i < 3; i++ )
+            v[i] = ( l[i] > r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
 };
 
 template<typename Precision>
@@ -586,6 +669,7 @@ struct Vector<Precision, 4>
     static constexpr Precision  EPSILON = std::numeric_limits<Precision>::epsilon();
 
     static const Vector         Zero;
+    static const Vector         Max;
 
     union
     {
@@ -847,6 +931,26 @@ struct Vector<Precision, 4>
     {
         return sqrt( lengthSquared() );
     }
+
+    static constexpr Vector<Precision, 4> min( const Vector<Precision, 4>& l, const Vector<Precision, 4>& r )
+    {
+        Vector<Precision, 4> v;
+
+        for ( int i = 0; i < 4; i++ )
+            v[i] = ( l[i] < r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
+
+    static constexpr Vector<Precision, 4> max( const Vector<Precision, 4>& l, const Vector<Precision, 4>& r )
+    {
+        Vector<Precision, 4> v;
+
+        for ( int i = 0; i < 4; i++ )
+            v[i] = ( l[i] > r[i] ) ? l[i] : r[i];
+
+        return v;
+    }
 };
 
 template <typename Precision, int ScalarCount>
@@ -924,18 +1028,6 @@ static constexpr Vector<Precision, ScalarCount> operator / ( const Vector<Precis
     return v;
 }
 
-template <typename Precision, int ScalarCount>
-static constexpr bool operator < ( const Vector<Precision, ScalarCount>& l, const Vector<Precision, ScalarCount>& r )
-{
-    return abs( l.lengthSquared() ) > abs( r.lengthSquared() );
-}
-
-template <typename Precision, int ScalarCount>
-static constexpr bool operator > ( const Vector<Precision, ScalarCount>& l, const Vector<Precision, ScalarCount>& r )
-{
-    return l.lengthSquared() > r.lengthSquared();
-}
-
 namespace nya
 {
     namespace maths
@@ -949,6 +1041,28 @@ namespace nya
                 biggestScalar = nya::maths::max( biggestScalar, r[i] );
 
             return biggestScalar;
+        }
+
+        template <typename Precision, int ScalarCount>
+        static constexpr Vector<Precision, ScalarCount> degrees( const Vector<Precision, ScalarCount>& r )
+        {
+            Vector<Precision, ScalarCount> v = r;
+
+            for ( int i = 0; i < ScalarCount; i++ )
+                v[i] = nya::maths::degrees( r[i] );
+
+            return v;
+        }
+
+        template <typename Precision, int ScalarCount>
+        static constexpr Vector<Precision, ScalarCount> radians( const Vector<Precision, ScalarCount>& r )
+        {
+            Vector<Precision, ScalarCount> v = r;
+
+            for ( int i = 0; i < ScalarCount; i++ )
+                v[i] = nya::maths::radians( r[i] );
+
+            return v;
         }
     }
 }

@@ -40,7 +40,7 @@
 
 static constexpr size_t MAX_DRAW_CMD_COUNT = 8192;
 
-void RadixSort( DrawCmd* _keys, DrawCmd* _tempKeys, const size_t size )
+void RadixSort( DrawCmd* NYA_RESTRICT _keys, DrawCmd* NYA_RESTRICT _tempKeys, const size_t size )
 {
     NYA_PROFILE_FUNCTION
 
